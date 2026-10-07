@@ -1,41 +1,33 @@
-# VÉ: RUBRIC-NORMALIZE-PC0575 (chuẩn hoá thước đo chấm + chấm lại offline)
+# VÉ: RETRIEVAL-ENTITY-PC0575 (ràng buộc thực thể + chống lấn át trong retrieval — fix nhóm A)
 
-- Mã vé: `RUBRIC-NORMALIZE-PC0575`
+- Mã vé: `RETRIEVAL-ENTITY-PC0575`
 - Máy: CÔNG TY KDTVN-PC0575 (thợ agy), CPU-only.
-- Role gợi ý: DEFAULT (code nhỏ + chấm lại offline).
-- Nguồn: báo cáo `docs/phieu-viec/ket-qua/rag-fail-analysis-pc0575.md` §5 Ưu tiên 1 (tác động +0,360 GPA, rủi ro 0).
+- Role gợi ý: DEFAULT (code + test + kiểm chứng mức retrieval).
+- Nguồn: `docs/phieu-viec/ket-qua/rag-fail-analysis-pc0575.md` §4.3 + §5 Ưu tiên 2 (tác động kỳ vọng +0,280 GPA lane RAG).
 
 ## Bối cảnh
 
-Phân tích lane RAG (GPA 0,93) cho thấy 10/50 câu bị **thước đo chấm oan** (nhóm C, mất 18,0 điểm): đáp án đúng nội dung nhưng bộ chấm tự động không nhận vì khác định dạng số/đơn vị, cộng thêm vài từ khóa trong bộ đề bị lỗi. Vé này sửa THƯỚC ĐO và chấm lại từ đáp án đã lưu — đây là đính chính phép đo, không phải cải thiện hệ thống; báo cáo phải ghi rõ điều đó.
+Nhóm A — 7 câu retrieval trượt (mất 14,0 điểm): tài liệu ĐÃ có trong index (`Sirius 2`, `OKNGUNIT`, `3V2ND19040`, `Y_BeamH_Camera 140`…) nhưng mảnh đúng không vào được top-k vì tệp khổng lồ `Loi KDTPS.xlsx` lấn át kết quả. Danh sách 7 câu: xem §4.3 của báo cáo phân tích.
 
 ## Việc phải làm
 
-1. **Hàm chuẩn hoá khi chấm** — thêm `normalize_text_for_eval` trong `aios_habit.quality_harness` (kèm test):
-   - Bỏ dấu chấm phân cách hàng nghìn: `48.384` → `48384`.
-   - Đổi dấu phẩy thập phân sang dấu chấm: `-0,81` → `-0.81`.
-   - Đồng nhất đơn vị: `3 giây` = `3 s`; `0 - 15 độ C` = `0–15°C`.
-   - Áp chuẩn hoá cho CẢ đáp án lẫn từ khóa trước khi so khớp.
-2. **Sửa từ khóa lỗi trong bộ đề** (theo đúng danh sách báo cáo §5):
-   - `Q0630`: thay `['DRUM.', 'DRUM.', 'LSU_2019.01.18_K.']` bằng khái niệm cốt lõi (quét ngang, quay drum).
-   - `Q0635`: bổ sung từ khóa nội dung (quang lượng tâm, vùng biên, nhạt màu).
-   - `Q0674`: bổ sung từ khóa tiếng Việt (`không bất thường`, `không thay đổi`).
-   - `Q0708`: chấp nhận thêm `1.15` và `1.24`.
-   - Mọi thay đổi từ khóa phải liệt kê trước/sau trong báo cáo — cấm sửa thêm ngoài danh sách khi chưa có bằng chứng lỗi tương tự.
-3. **Chấm lại offline** từ file đáp án đã lưu của lane RAG (`rag_progress.json` trên máy): không gọi lại RAG, không gọi mạng. Xuất bảng từng câu: điểm cũ → điểm mới, câu nào đổi và vì chuẩn hoá nào.
-4. Nếu trên máy còn file đáp án đã lưu của lane C-Agent: chấm lại bằng thước mới, báo cáo riêng (trước/sau), không trộn với lane RAG.
+0. **Đóng dấu thước đo vào repo (việc nhỏ, làm trước):** commit bộ đề 50 câu + bộ từ khóa đã chuẩn hoá (đúng trạng thái đã dùng khi chấm lại ở vé RUBRIC-NORMALIZE) vào repo — đường dẫn fixtures/eval rõ ràng, kèm ghi chú nguồn gốc. Từ nay thước đo phải tái lập được từ repo.
+1. **Entity Matching Boost:** khi câu hỏi chứa mã lỗi chuyên biệt (ví dụ `C7620`) hoặc số hiệu đồ gá/tên chuyên đề (`1035`, `MOUNT LD BLOCK`, `Sirius 2`…), tăng trọng số cho tài liệu có thực thể đó trong tiêu đề/nội dung đầu. Boost phải có trần, không áp đảo hoàn toàn điểm liên quan gốc.
+2. **Diversity Capping:** tối đa **3 mảnh từ một tệp nguồn duy nhất** trong top-k ngữ cảnh (ca điển hình: `Loi KDTPS.xlsx`). Cap áp ở tầng chọn ngữ cảnh, ghi log khi cap kích hoạt.
+3. **Test:** tái lập ca lấn át (tệp lớn chiếm gần hết top-k → sau vá ≤3); ca boost thực thể (câu có mã lỗi → tài liệu chuyên đề vào top-k); ca không đổi hành vi khi câu hỏi không có thực thể.
 
-## Nghiệm thu
+## Nghiệm thu (mức retrieval — KHÔNG chạy lại lane ở vé này)
 
-- Test hàm chuẩn hoá xanh (ca: nghìn, thập phân phẩy, đơn vị, ca không đổi điểm khi đáp án sai thật).
-- Tổng mới lane RAG đối chiếu kỳ vọng ~1,29 GPA; lệch thì giải thích bằng bảng từng câu.
-- Ghi cứng trong báo cáo: "điểm tăng do sửa thước đo, không phải hệ thống trả lời tốt hơn".
+- Trên đúng 7 câu nhóm A: mảnh/tài liệu đúng vào top-k ở **7/7 câu** (trước vá: trượt cả 7 theo báo cáo).
+- Hồi quy test retrieval liên quan xanh; không đổi hành vi lane C-Agent (matcher không thuộc vé này).
+- Đo lại toàn lane để sau, khi các fix đã gom đủ (matcher + thước đo + retrieval + bổ sung nguồn) — vé này chỉ cần bằng chứng mức retrieval.
 
 ## Rào cứng
 
-- Không merge `main`. Không ghi index. Python 3.11. Không đụng `wire_qa_staging.py` (OMP đang vá ở vé MATCHER-FIX) và không đụng `rag_v2/synthesis.py`.
+- Không merge `main`. Không ghi index. Python 3.11.
+- Không đụng `wire_qa_staging.py` (vé MATCHER-FIX của OMP) và không đụng `rag_v2/synthesis.py` (việc máy nhà). Nếu cơ chế boost/cap buộc phải chạm file chung, DỪNG và ghi rõ vào mailbox chờ điều phối.
 - Heartbeat tối thiểu 15 phút nếu việc kéo dài.
 
 ## Báo cáo
 
-`docs/phieu-viec/ket-qua/rubric-normalize-pc0575.md` — danh sách thay đổi thước đo/từ khóa, bảng điểm từng câu trước/sau, tổng kết 2 lane (nếu chấm lại được cả C-Agent).
+`docs/phieu-viec/ket-qua/retrieval-entity-pc0575.md` — đường dẫn bộ đề đã commit, cơ chế boost/cap, bảng top-k trước/sau cho 7 câu nhóm A, kết quả test.
