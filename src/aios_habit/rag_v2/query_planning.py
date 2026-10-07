@@ -171,6 +171,14 @@ class QueryExpander(Protocol):
         ...
 
 
+def _split_script_boundaries(text: str) -> str:
+    if not text:
+        return ""
+    text = re.sub(r"([a-zA-Z0-9]+)([\u3040-\u30ff\u3400-\u9fff])", r"\1 \2", text)
+    text = re.sub(r"([\u3040-\u30ff\u3400-\u9fff])([a-zA-Z0-9]+)", r"\1 \2", text)
+    return text
+
+
 def extract_content_terms(value: str) -> Tuple[str, ...]:
     """Return ordered, unique query terms after generic function-word removal."""
     seen: set[str] = set()
@@ -181,6 +189,25 @@ def extract_content_terms(value: str) -> Tuple[str, ...]:
             continue
         seen.add(token)
         result.append(token)
+    split_text = _split_script_boundaries(value or "")
+    if split_text != (value or ""):
+        for match in _TOKEN_RE.finditer(split_text):
+            token = match.group(0).lower()
+            if token in _COMMON_STOPWORDS or token in seen:
+                continue
+            seen.add(token)
+            result.append(token)
+    if _CJK_RE.search(split_text):
+        for match in _CJK_RE.finditer(split_text):
+            compound = match.group(0).lower()
+            if len(compound) < 2:
+                continue
+            for width in (2, 3):
+                for index in range(len(compound) - width + 1):
+                    ngram = compound[index : index + width]
+                    if ngram not in _COMMON_STOPWORDS and ngram not in seen:
+                        seen.add(ngram)
+                        result.append(ngram)
     return tuple(result)
 
 

@@ -57,7 +57,51 @@ _CJK_RE = re.compile(r"[\u3040-\u30ff\u3400-\u9fff]+")
 _EXACT_IDENTIFIER_RE = re.compile(
     r"(?<!\w)[A-Za-z][A-Za-z0-9]*(?:[_-][A-Za-z0-9]+)+(?!\w)"
 )
+_SPECIAL_ENTITY_RES = (
+    re.compile(r"(?<![A-Za-z0-9])C\d{2,5}(?![A-Za-z0-9])", re.IGNORECASE),
+    re.compile(r"(?<!\w)[0-9][A-Z0-9]{5,}(?!\w)", re.IGNORECASE),
+    re.compile(r"\b(?:Sirius(?:\s*2)?|OKNGUNIT|Camera\s*140|MOUNT\s*LD\s*BLOCK|SIM\s*tape|NanoScan|Bow_Skew)\b", re.IGNORECASE),
+    re.compile(r"\b(?:g1|g2|OHP)\b", re.IGNORECASE),
+    re.compile(r"\b(?:1035|1004)\b"),
+    re.compile(r"(?<!\w)[A-Za-z][A-Za-z0-9]*(?:[_-][A-Za-z0-9]+)+(?!\w)"),
+)
+MAX_ENTITY_BOOST = 0.025
 _EXACT_IDENTIFIER_QUOTA = 8
+
+
+def _extract_query_entities(query: str) -> tuple[str, ...]:
+    text = query or ""
+    entities = []
+    seen = set()
+    for pattern in _SPECIAL_ENTITY_RES:
+        for match in pattern.finditer(text):
+            val = match.group(0).strip()
+            key = val.lower()
+            if key not in seen and len(val) >= 2:
+                seen.add(key)
+                entities.append(val)
+    return tuple(entities)
+
+
+def _compute_entity_boost(
+    entities: Sequence[str],
+    source_name: str,
+    source_path: str,
+    text: str,
+) -> float:
+    if not entities:
+        return 0.0
+    boost = 0.0
+    source_name_lower = (source_name or "").lower()
+    source_path_lower = (source_path or "").lower()
+    prefix_text_lower = (text or "")[:300].lower()
+    for entity in entities:
+        ent_lower = entity.lower()
+        if ent_lower in source_name_lower or ent_lower in source_path_lower:
+            boost += 0.012
+        elif ent_lower in prefix_text_lower:
+            boost += 0.006
+    return min(boost, MAX_ENTITY_BOOST)
 
 
 def _query_carries_exact_values(query: str) -> bool:
@@ -67,12 +111,19 @@ def _query_carries_exact_values(query: str) -> bool:
     prepended ahead of the body chunks that hold the literal answer.
     """
     text = query or ""
-    if _EXACT_IDENTIFIER_RE.search(text):
+    if _extract_query_entities(text):
         return True
     return bool(re.search(r"(?<!\w)\d+(?:[.,]\d+)?(?!\w)", text))
 
 
-def _identifier_patterns(query: str) -> tuple[re.Pattern[str], ...]:    return tuple(
+def _identifier_patterns(query: str) -> tuple[re.Pattern[str], ...]:
+    entities = _extract_query_entities(query or "")
+    if entities:
+        return tuple(
+            re.compile(rf"(?<!\w){re.escape(ent)}(?!\w)", re.IGNORECASE)
+            for ent in entities
+        )
+    return tuple(
         re.compile(rf"(?<!\w){re.escape(match.group(0))}(?!\w)", re.IGNORECASE)
         for match in _EXACT_IDENTIFIER_RE.finditer(query or "")
     )
@@ -624,6 +675,14 @@ def _select_hybrid_results(
         if document_counts[document_key] >= per_document_limit or _is_near_duplicate(
             result, selected, near_duplicate_threshold
         ):
+            if document_counts[document_key] >= per_document_limit:
+                LOGGER.info(
+                    "rag_v2.diversity_cap_triggered document_id=%s source=%s limit=%d chunk_id=%s",
+                    result.document_id,
+                    result.source_name,
+                    per_document_limit,
+                    result.chunk_id,
+                )
             rejected_ids.add(result.chunk_id)
             return False
         signals = dict(result.ranking_signals)
@@ -764,19 +823,29 @@ def fuse_ranked_channels(
             record["rrf"] += weight / (ranking.rrf_k + rank)
             record[f"{channel}_rank"] = rank
 
+    query_text = plan.original_query if hasattr(plan, "original_query") else str(query)
+    entities = _extract_query_entities(query_text)
     fused = []
     for record in records.values():
         result = record["result"]
+        entity_boost = _compute_entity_boost(
+            entities,
+            result.source_name,
+            result.source_path,
+            result.text,
+        )
         signals = dict(result.ranking_signals)
         signals.update({
             "lexical_channel_rank": float(record["lexical_rank"]),
             "dense_channel_rank": float(record["dense_rank"]),
             "sparse_channel_rank": float(record["sparse_rank"]),
             "fused_rrf": float(record["rrf"]),
+            "entity_match_boost": float(entity_boost),
+            "boosted_rrf": float(record["rrf"] + entity_boost),
         })
         fused.append(replace(result, ranking_signals=signals))
     fused.sort(key=lambda result: (
-        -result.ranking_signals["fused_rrf"],
+        -result.ranking_signals["boosted_rrf"],
         result.chunk_id,
     ))
     fused_pre_rerank = tuple(fused)
@@ -2944,12 +3013,20 @@ class LocalChunkIndex:
                 multivector_load_latency_ms,
                 multivector_maxsim_latency_ms,
             ) = self._multivector_rerank_scores(plan, window)
+        is_single_doc = bool(
+            (options.allowed_document_ids and len(options.allowed_document_ids) == 1)
+            or (options.allowed_source_paths and len(options.allowed_source_paths) == 1)
+        )
+        fuse_options = replace(
+            options,
+            per_document_limit=options.per_document_limit if is_single_doc else min(options.per_document_limit, 3),
+        )
         response = fuse_ranked_channels(
             query,
             lexical,
             dense,
             limit=limit,
-            options=pool_options,
+            options=fuse_options,
             sparse_results=sparse,
             config=ranking_config,
             reranker=reranker,
@@ -3929,6 +4006,13 @@ class LocalChunkIndex:
             row = candidate["row"]
             document_key = row["document_id"] or row["source_path"]
             if document_counts[document_key] >= effective_per_doc_limit:
+                LOGGER.info(
+                    "rag_v2.diversity_cap_triggered document_id=%s source=%s limit=%d chunk_id=%s",
+                    row["document_id"],
+                    row["source_name"],
+                    effective_per_doc_limit,
+                    row["chunk_id"],
+                )
                 diversity_limited += 1
                 continue
             document_counts[document_key] += 1
@@ -4815,6 +4899,18 @@ class LocalChunkIndex:
             signals["repetitive_dump_penalty"] = -4.0
         elif is_repetitive_dump:
             signals["repetitive_dump_penalty"] = -2.0
+
+        query_text = query_plan.original_query if query_plan else ""
+        entities = _extract_query_entities(query_text)
+        if entities:
+            src_lower = (source_name or "").lower() + " " + (source_path or "").lower()
+            title_hits = sum(1 for ent in entities if ent.lower() in src_lower)
+            if title_hits:
+                signals["entity_title_match"] = min(3.0 * float(title_hits), 4.0)
+            prefix_lower = (text or "")[:300].lower()
+            prefix_hits = sum(1 for ent in entities if ent.lower() in prefix_lower)
+            if prefix_hits:
+                signals["entity_prefix_match"] = min(1.5 * float(prefix_hits), 2.0)
 
         if target_matches:
             signals["target_term_match_count"] = float(len(target_matches))

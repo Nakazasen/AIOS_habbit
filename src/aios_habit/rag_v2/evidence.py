@@ -9,6 +9,7 @@ and query_intent modules.  It must not contain domain-specific terms.
 from __future__ import annotations
 
 import hashlib
+import logging
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -21,6 +22,8 @@ from .query_planning import (
     extract_content_terms,
 )
 from .script_family import plan_has_cjk_variants, query_corpus_script_mismatch
+
+LOGGER = logging.getLogger(__name__)
 
 
 def clean_passage(text: str, limit: int = 1500) -> str:
@@ -85,7 +88,7 @@ class EvidencePackConfig:
     min_final_evidence_term_coverage: float = 0.6
     min_semantic_support_score: float = 0.55
     max_snippet_chars: int = 1500
-    per_document_limit: int = 5
+    per_document_limit: int = 3
     high_score_threshold: float = 8.0
     medium_score_threshold: float = 3.0
     soft_warning_codes: frozenset[str] = frozenset({
@@ -566,6 +569,13 @@ def build_evidence_pack(
             return False
         doc_count = doc_counts.get(result.document_id, 0)
         if doc_count >= effective_per_doc_limit:
+            LOGGER.info(
+                "rag_v2.diversity_cap_triggered document_id=%s source=%s limit=%d chunk_id=%s",
+                result.document_id,
+                result.source_name,
+                effective_per_doc_limit,
+                result.chunk_id,
+            )
             return False
         doc_counts[result.document_id] = doc_count + 1
         selected_chunk_ids.add(result.chunk_id)

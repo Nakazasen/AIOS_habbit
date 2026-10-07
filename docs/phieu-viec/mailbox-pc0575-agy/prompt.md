@@ -1,43 +1,33 @@
-# Vé LSU-QUALITY-DRYRUN-PC0575 — Chạy thử pipeline đo chất lượng LSU trên index TẠM
+# VÉ: RETRIEVAL-ENTITY-PC0575 (ràng buộc thực thể + chống lấn át trong retrieval — fix nhóm A)
 
-**Máy thực hiện:** [CTY] KDTVN-PC0575 (CPU-only).
-**Thợ:** agy.
-**Role gợi ý:** SMOL (chạy thử, không đo thật).
+- Mã vé: `RETRIEVAL-ENTITY-PC0575`
+- Máy: CÔNG TY KDTVN-PC0575 (thợ agy), CPU-only.
+- Role gợi ý: DEFAULT (code + test + kiểm chứng mức retrieval).
+- Nguồn: `docs/phieu-viec/ket-qua/rag-fail-analysis-pc0575.md` §4.3 + §5 Ưu tiên 2 (tác động kỳ vọng +0,280 GPA lane RAG).
 
 ## Bối cảnh
 
-- agy đã xong bộ 50 câu hỏi (`docs/phieu-viec/ket-qua/lsu-quality-set.md`, verdict ĐẠT).
-- opencode đã xong khung đo (`src/aios_habit/quality_harness.py`, verdict ĐẠT).
-- Vé đo thật `LSU-QUALITY-PC0575` phải chờ index chính được khôi phục
-  (vé `RESTORE-INDEX-SPLIT-PC0575` đang chạy) + vé `WIRE-QA-CAGENT-PC0575` nối xong.
-- Vé này: chạy thử TRỌN PIPELINE đo lường trên index TẠM hiện tại để bắt lỗi
-  tích hợp sớm (câu hỏi load đúng không, harness chạy 2 lane có lỗi không,
-  rubric chấm có vận hành không, báo cáo sinh ra đúng không).
+Nhóm A — 7 câu retrieval trượt (mất 14,0 điểm): tài liệu ĐÃ có trong index (`Sirius 2`, `OKNGUNIT`, `3V2ND19040`, `Y_BeamH_Camera 140`…) nhưng mảnh đúng không vào được top-k vì tệp khổng lồ `Loi KDTPS.xlsx` lấn át kết quả. Danh sách 7 câu: xem §4.3 của báo cáo phân tích.
+
+## Việc phải làm
+
+0. **Đóng dấu thước đo vào repo (việc nhỏ, làm trước):** commit bộ đề 50 câu + bộ từ khóa đã chuẩn hoá (đúng trạng thái đã dùng khi chấm lại ở vé RUBRIC-NORMALIZE) vào repo — đường dẫn fixtures/eval rõ ràng, kèm ghi chú nguồn gốc. Từ nay thước đo phải tái lập được từ repo.
+1. **Entity Matching Boost:** khi câu hỏi chứa mã lỗi chuyên biệt (ví dụ `C7620`) hoặc số hiệu đồ gá/tên chuyên đề (`1035`, `MOUNT LD BLOCK`, `Sirius 2`…), tăng trọng số cho tài liệu có thực thể đó trong tiêu đề/nội dung đầu. Boost phải có trần, không áp đảo hoàn toàn điểm liên quan gốc.
+2. **Diversity Capping:** tối đa **3 mảnh từ một tệp nguồn duy nhất** trong top-k ngữ cảnh (ca điển hình: `Loi KDTPS.xlsx`). Cap áp ở tầng chọn ngữ cảnh, ghi log khi cap kích hoạt.
+3. **Test:** tái lập ca lấn át (tệp lớn chiếm gần hết top-k → sau vá ≤3); ca boost thực thể (câu có mã lỗi → tài liệu chuyên đề vào top-k); ca không đổi hành vi khi câu hỏi không có thực thể.
+
+## Nghiệm thu (mức retrieval — KHÔNG chạy lại lane ở vé này)
+
+- Trên đúng 7 câu nhóm A: mảnh/tài liệu đúng vào top-k ở **7/7 câu** (trước vá: trượt cả 7 theo báo cáo).
+- Hồi quy test retrieval liên quan xanh; không đổi hành vi lane C-Agent (matcher không thuộc vé này).
+- Đo lại toàn lane để sau, khi các fix đã gom đủ (matcher + thước đo + retrieval + bổ sung nguồn) — vé này chỉ cần bằng chứng mức retrieval.
 
 ## Rào cứng
 
-- Đây là DRY-RUN trên index TẠM `062ec090` (đã biết lệch nguồn LSU 0/494) —
-  ĐIỂM SỐ KHÔNG CÓ GIÁ TRỊ ĐO THẬT. Mọi báo cáo/output phải ghi rõ nhãn
-  "DRY-RUN trên index TẠM — không phải kết quả đo thật".
-- Không nhập điểm dry-run vào kho tri thức. Không merge `main`. Python 3.11.
-- Heartbeat mốc tiến độ 15 phút/lần (vé chạy đo có thể lâu).
+- Không merge `main`. Không ghi index. Python 3.11.
+- Không đụng `wire_qa_staging.py` (vé MATCHER-FIX của OMP) và không đụng `rag_v2/synthesis.py` (việc máy nhà). Nếu cơ chế boost/cap buộc phải chạm file chung, DỪNG và ghi rõ vào mailbox chờ điều phối.
+- Heartbeat tối thiểu 15 phút nếu việc kéo dài.
 
-## Việc cần làm (đúng thứ tự)
+## Báo cáo
 
-1. Load bộ 50 câu từ `docs/phieu-viec/ket-qua/lsu-quality-set.md`.
-2. Chạy khung `src/aios_habit/quality_harness.py` trên cả 2 lane:
-   lane C-Agent và lane RAG (index TẠM). Mỗi câu chấm theo rubric 0–3 trong báo cáo.
-   Nếu lane nào lỗi kỹ thuật (không phải do đáp án dở): ghi rõ lỗi, không chấm bừa.
-3. Sinh báo cáo thử `docs/phieu-viec/ket-qua/lsu-quality-dryrun-pc0575.md`:
-   - Tỉ lệ câu chạy thành công từng lane (không phải tỉ lệ đạt điểm).
-   - Danh sách lỗi kỹ thuật gặp phải (timeout, parse, lane sập...) + cách khắc phục đề xuất.
-   - 5 câu ví dụ có đáp án + điểm chấm thử để minh họa rubric vận hành được.
-   - Kết luận: pipeline SẴN SÀNG / CHƯA SẴN SÀNG cho lần đo thật.
-
-## Điều kiện nghiệm thu
-
-- 50/50 câu được đưa qua pipeline (kể cả câu lỗi kỹ thuật — phải ghi rõ).
-- Báo cáo dry-run có đủ 4 mục trên, nhãn DRY-RUN rõ ràng.
-- Commit riêng nhánh `phieu-viec/rag-fix1`.
-
-**Verdict:** Muse review trên bằng chứng độc lập.
+`docs/phieu-viec/ket-qua/retrieval-entity-pc0575.md` — đường dẫn bộ đề đã commit, cơ chế boost/cap, bảng top-k trước/sau cho 7 câu nhóm A, kết quả test.

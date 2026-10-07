@@ -129,3 +129,55 @@ def test_strip_echoed_draft_label_keeps_normal_answer() -> None:
 
 def test_strip_echoed_draft_label_plain_text_untouched() -> None:
     assert strip_echoed_draft_label("  Đáp án bình thường.  ") == "Đáp án bình thường."
+
+
+# --- Vá 2 lỗi matcher vé MATCHER-FIX-PC0575 (tái lập từ báo cáo LSU-QUALITY) ---
+
+
+def test_recall_verbatim_cjk_question_is_selected() -> None:
+    """Lỗi recall Q0703: câu CJK y hệt cặp của nó tự chấm 1 điểm → ngưỡng 3,0 loại."""
+    question = "B距離が長くなる想定状態は何ですか。"
+    pair = _synthetic_pair("Q0703", question, "想定状態では距離が長くなることがある。")
+    assert [p.id for p in select_relevant_pairs(question, [pair])] == ["Q0703"]
+
+
+def test_recall_verbatim_question_with_fullwidth_punctuation_is_selected() -> None:
+    """Lỗi recall Q1034: câu CJK+Latin tự chấm 2 điểm ('error'/'record' khớp)."""
+    question = "哪一天 Error Record 最多？"
+    pair = _synthetic_pair("Q1034", "哪一天 Error Record 最多?", "記錄如表。")
+    assert [p.id for p in select_relevant_pairs(question, [pair])] == ["Q1034"]
+
+
+def test_recall_verbatim_question_with_backticked_numbers_is_selected() -> None:
+    """Lỗi recall Q1827: token chứa số bị bỏ nên câu y hệt tự chấm 0 điểm."""
+    question = "Các cột `-8` đến `-3` và `+2` đến `+8` ghi `--`; phải xử lý thế nào?"
+    pair = _synthetic_pair("Q1827", question, "Đặt lại giá trị cột theo hướng dẫn.")
+    assert [p.id for p in select_relevant_pairs(question, [pair])] == ["Q1827"]
+
+
+def test_component_bonus_cannot_swamp_real_match() -> None:
+    """Lỗi ranking Q0671/Q0658: cặp nhiễu 0–1 khớp thật + bonus mã linh kiện
+    không được chiếm top-3 chỗ của cặp đúng."""
+    query = "kiểm tra quy trình vệ sinh đầu in thực tế"
+    correct = _synthetic_pair("Q0001", "kiểm tra quy trình vệ sinh đầu in", "Vệ sinh theo quy trình.")
+    # Nhiễu 0 khớp thật (Q2604) và nhiễu 1 khớp thật (Q2610/Q2643) — như ca thật.
+    noise = (
+        _synthetic_pair("Q2604", "Mã lỗi C35", "F401, Q402, D304 và IC401 bằng đồng hồ đo."),
+        _synthetic_pair("Q2610", "kiểm tra C35", "F401, Q402, D304 và IC401 bằng đồng hồ đo."),
+        _synthetic_pair("Q2643", "kiểm tra C35", "F401, Q402, D304 và IC401 bằng đồng hồ đo."),
+    )
+    assert [p.id for p in select_relevant_pairs(query, (correct, *noise))] == ["Q0001"]
+
+
+def test_very_short_query_does_not_trigger_verbatim_bonus() -> None:
+    """Chốt chặn: câu ngắn ('hi') không được hưởng điểm khớp nguyên văn nhờ chuỗi con."""
+    pair = _synthetic_pair("Q0009", "hi chi tiết kỹ thuật", "Nội dung.")
+    assert select_relevant_pairs("hi", [pair]) == ()
+
+
+def test_component_intent_still_prefers_component_rich_pair() -> None:
+    """Sau vá: bonus mã linh kiện vẫn tác dụng khi hai cặp cùng điểm khớp thật."""
+    query = "kiểm tra mã lỗi C35"
+    rich = _synthetic_pair("Q0004", "mã lỗi C35", "Kiểm F401, Q402, D304.")
+    plain = _synthetic_pair("Q0005", "mã lỗi C35", "Kiểm quy trình chung.")
+    assert [p.id for p in select_relevant_pairs(query, (plain, rich))] == ["Q0004", "Q0005"]

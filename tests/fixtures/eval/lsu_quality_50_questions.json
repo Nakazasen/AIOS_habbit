@@ -1,0 +1,679 @@
+[
+  {
+    "stt": 1,
+    "id": "Q0699",
+    "question": "C7620中Magenta相对Black的副扫描色差达到多少会成为NG？",
+    "reference_answer": "资料说明色补正后，M（Magenta）相对Bk（Black）的副扫描方向色差超过`70 dot`时判定NG；`70 dot以内`为OK范围。来源文件：`Sirius 2 _ C7620_報告版 4.pptx`.",
+    "source": "`lsu/batch-17.md` (Batch 17)",
+    "focus": "Ngưỡng lệch màu phụ C7620判定 NG giữa Magenta và Black (quá 70 dot)",
+    "expected_keywords": [
+      "70 dot",
+      "70 dot以内"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 2,
+    "id": "Q0700",
+    "question": "C23とC24ではどのような発生Trendでしたか。",
+    "reference_answer": "`2月19日`にC23/C24でNG率が同じTrendで同時に上昇し、発生色は`Magenta`です。出典ファイル：`Sirius 2 _ C7620_報告版 4.pptx`.",
+    "source": "`lsu/batch-17.md` (Batch 17)",
+    "focus": "Xu hướng phát sinh lỗi C7620 tại C23 và C24 ngày 19/2 ở màu Magenta",
+    "expected_keywords": [
+      "2月19日",
+      "Magenta"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 3,
+    "id": "Q0703",
+    "question": "B距離が長くなる想定状態は何ですか。",
+    "reference_answer": "①Mの光路高さが通常よりプラス側へずれる、②Bkの光路高さがマイナス側へずれる、③その両方が同時にずれる、という3状態が示されています。B距離が長いほどC7620 M色Errorが出やすいとしています。出典ファイル：`Sirius 2 _ C7620_報告版 4.pptx`.",
+    "source": "`lsu/batch-17.md` (Batch 17)",
+    "focus": "Trạng thái khoảng cách B dài ra làm phát sinh lỗi C7620 màu Magenta",
+    "expected_keywords": [
+      "C7620",
+      "C7620_"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 4,
+    "id": "Q0708",
+    "question": "光路高さ1.15 mmを超えると必ずCamera読取不能になりますか。",
+    "reference_answer": "いいえ。資料では`1.15 mm以上`はC7620発生可能性があるLevelで、Camera読取範囲外になる目安は`1.24以上`と記載されています。この2つのThresholdを区別する必要があります。出典ファイル：`Sirius 2 _ C7620_報告版 4.pptx`.",
+    "source": "`lsu/batch-17.md` (Batch 17)",
+    "focus": "Phân biệt ngưỡng rủi ro lỗi 1.15 mm và ngưỡng mất tín hiệu Camera 1.24 mm",
+    "expected_keywords": [
+      "1.15",
+      "1.24"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 5,
+    "id": "Q0849",
+    "question": "File có bao nhiêu record lỗi và phạm vi ngày nào?",
+    "reference_answer": "Có`3.153 record`, từ`2026/08/01` đến`2026/08/25`, liên quan tới`1.252 Serial` khác nhau. Tất cả record có Abstract=`BowOverAdjustment`. Nguồn file: `2026_08_Error_BowOverAdjust.csv`.",
+    "source": "`lsu/batch-21.md` (Batch 21)",
+    "focus": "Số lượng record lỗi và phạm vi ngày của log BowOverAdjustment",
+    "expected_keywords": [
+      "3.153 record",
+      "2026/08/01",
+      "2026/08/25",
+      "1.252 Serial"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 6,
+    "id": "Q0850",
+    "question": "Yellow、Cyan、Magenta分别有多少件？",
+    "reference_answer": "Yellow=`1304件`、Cyan=`1035件`、Magenta=`814件`。Yellow最多。来源文件：`2026_08_Error_BowOverAdjust.csv`.",
+    "source": "`lsu/batch-21.md` (Batch 21)",
+    "focus": "Phân bố số lượng lỗi theo màu Yellow, Cyan, Magenta trong file BowOverAdjust",
+    "expected_keywords": [
+      "1304件",
+      "1035件",
+      "814件"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 7,
+    "id": "Q0851",
+    "question": "このFileにはBlackのErrColorもありますか。",
+    "reference_answer": "ありません。ErrColorとして確認できるのはYellow、Cyan、Magentaの3色で、Blackは`0件`です。出典ファイル：`2026_08_Error_BowOverAdjust.csv`.",
+    "source": "`lsu/batch-21.md` (Batch 21)",
+    "focus": "Kiểm tra sự xuất hiện của lỗi ErrColor màu Black trong BowOverAdjust (0件)",
+    "expected_keywords": [
+      "0件"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 8,
+    "id": "Q1029",
+    "question": "Error Fileには何Record、何Serialありますか。",
+    "reference_answer": "`183 Record`、`109個の異なるSerial`があり、期間は`2026/08/01～2026/08/26`です。Modeは全183件で`Error`です。出典ファイル：`2026_08_Error.csv`.",
+    "source": "`lsu/batch-25.md` (Batch 25)",
+    "focus": "Tổng số record lỗi và serial trong 2026_08_Error.csv (183 record, 109 serial)",
+    "expected_keywords": [
+      "183 Record",
+      "109個の異なるSerial",
+      "2026/08/01～2026/08/26",
+      "Error"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 9,
+    "id": "Q1034",
+    "question": "哪一天Error Record最多？",
+    "reference_answer": "`2026/08/11`最多，有`34笔`；之后为`08/12=22`、`08/18=16`、`08/21=12`、`08/25=10`。来源文件：`2026_08_Error.csv`.",
+    "source": "`lsu/batch-25.md` (Batch 25)",
+    "focus": "Ngày phát sinh số lượng record lỗi nhiều nhất trong tháng 8 (11/08/2026)",
+    "expected_keywords": [
+      "2026/08/11",
+      "34笔",
+      "08/12=22",
+      "08/18=16"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 10,
+    "id": "Q0620",
+    "question": "2026年3月のBOWSKEW 4 BEAM NG率はいくつですか。",
+    "reference_answer": "資料ではIris Jig BOWSKEW 4 BEAMが25.42%から上昇し、2026年3月に49.49%へ達したと説明されています。出典ファイル：AI cảnh báo lỗi LSU.pptx.",
+    "source": "`lsu/batch-16.md` (Batch 16)",
+    "focus": "Tỷ lệ NG của JIG trọng điểm BOWSKEW 4 BEAM tháng 3/2026 (49.49%)",
+    "expected_keywords": [
+      "25.42%",
+      "49.49%"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 11,
+    "id": "Q0621",
+    "question": "Tỷ lệ NG của ba JIG trọng điểm khác nhau thế nào?",
+    "reference_answer": "Tháng 03/2026, BOWSKEW 4 BEAM = 49,49%, BOWSKEW 2 BEAM = 25,04%, và BEAM 4 BEAM = 20,56%. Vì vậy BOWSKEW 4 BEAM có mức NG cao nhất. Nguồn file: AI cảnh báo lỗi LSU.pptx.",
+    "source": "`lsu/batch-16.md` (Batch 16)",
+    "focus": "So sánh tỷ lệ NG giữa 3 JIG Iris trọng điểm (BOWSKEW 4, BOWSKEW 2, BEAM 4)",
+    "expected_keywords": [
+      "49,49%",
+      "25,04%",
+      "20,56%"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 12,
+    "id": "Q0824",
+    "question": "`61C1068E7022`は8月12日と13日で判定Patternが変わりましたか。",
+    "reference_answer": "変わっていません。両方ともTotal=`NG`、Black=`OK`、Magenta=`OK`、Cyan=`NG`、Yellow=`OK`です。出典ファイル：`2026_08_UnitTest.csv`.",
+    "source": "`lsu/batch-21.md` (Batch 21)",
+    "focus": "Thay đổi pattern phán định của serial 61C1068E7022 giữa ngày 12 và 13/8",
+    "expected_keywords": [
+      "NG",
+      "OK"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 13,
+    "id": "Q0689",
+    "question": "Điểm bất thường được phát hiện ở Jig nào và vị trí Camera nào?",
+    "reference_answer": "Bất thường được ghi nhận trên `Jig Bow_Skew 1035` tại vị trí `Camera +140`: đường kính tia Beam có dấu hiệu to lên trong vùng đánh giá Beam diameter. Nguồn file: `Y_BeamH_Camera 140_to bất thường.pptx`.",
+    "source": "`lsu/batch-17.md` (Batch 17)",
+    "focus": "Bất thường đường kính Beam tại Camera +140 trên Jig Bow_Skew 1035",
+    "expected_keywords": [
+      "Jig Bow_Skew 1035",
+      "Camera +140"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 14,
+    "id": "Q0704",
+    "question": "Sau ngày bảo dưỡng khuôn 14/2, Housing màu Magenta có điểm gì đáng chú ý?",
+    "reference_answer": "Tài liệu ghi góc MIRROR của Magenta sau ngày bảo dưỡng khuôn `14/2` đã ra ngoài range của thời kỳ ổn định ở cả ba vị trí `MIRROR A`, `MIRROR BOW` và `MIRROR C`. Nguồn file: `Sirius 2 _ C7620_報告版 4.pptx`.",
+    "source": "`lsu/batch-17.md` (Batch 17)",
+    "focus": "Hiện tượng góc Mirror Magenta ra ngoài dải ổn định sau bảo dưỡng khuôn 14/2",
+    "expected_keywords": [
+      "14/2",
+      "MIRROR A",
+      "MIRROR BOW",
+      "MIRROR C"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 15,
+    "id": "Q0701",
+    "question": "Hiện tượng tại LSU Line được mô tả như thế nào?",
+    "reference_answer": "Khi bắt đầu điều chỉnh trên BOWSKEW jig, chiều cao quang lộ lệch thêm về phía dương nên `Camera -90` không đọc được vị trí Beam. Vấn đề xảy ra trên LSU Magenta. Nguồn file: `Sirius 2 _ C7620_報告版 4.pptx`.",
+    "source": "`lsu/batch-17.md` (Batch 17)",
+    "focus": "Chiều cao quang lộ lệch dương khiến Camera -90 không đọc được tại line LSU",
+    "expected_keywords": [
+      "Camera -90"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 16,
+    "id": "Q0718",
+    "question": "File có xác nhận chênh lệch DMT–PMT chính là nguyên nhân duy nhất gây NG không?",
+    "reference_answer": "Không. File cung cấp dữ liệu Skew, chênh lệch giữa DMT/CN/PMT và quy luật Light Path, nhưng phần dữ liệu đọc được không xác nhận đây là nguyên nhân duy nhất của NG. Nguồn file: `sirius2 beam径確認_240202.xlsx`.",
+    "source": "`lsu/batch-18.md` (Batch 18)",
+    "focus": "Phân tích chênh lệch DMT–PMT có phải nguyên nhân duy nhất gây NG không",
+    "expected_keywords": [
+      "Không",
+      "DMT",
+      "PMT",
+      "NG."
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 17,
+    "id": "Q0828",
+    "question": "Có thể khẳng định Black Skew là nguyên nhân duy nhất của mọi Total NG trong file không?",
+    "reference_answer": "Không. Có record Total NG nhưng Black vẫn `OK`, ví dụ `61C1068E6778` hoặc `61C1068E7022`; lỗi có thể nằm ở Cyan/Yellow. File không xác nhận Black Skew là nguyên nhân duy nhất. Nguồn file: `2026_08_UnitTest.csv`.",
+    "source": "`lsu/batch-21.md` (Batch 21)",
+    "focus": "Phân tích Black Skew có phải nguyên nhân duy nhất của mọi Total NG không",
+    "expected_keywords": [
+      "OK",
+      "61C1068E6778",
+      "61C1068E7022"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 18,
+    "id": "Q0858",
+    "question": "Yellow nhiều record nhất có đồng nghĩa Yellow là nguyên nhân gốc duy nhất không?",
+    "reference_answer": "Không. File chỉ ghi log lỗi `BowOverAdjustment` theo màu và số liệu liên quan; Yellow có số record cao nhất nhưng tài liệu không xác nhận nó là root cause duy nhất của mọi NG. Nguồn file: `2026_08_Error_BowOverAdjust.csv`.",
+    "source": "`lsu/batch-21.md` (Batch 21)",
+    "focus": "Yellow nhiều record nhất có đồng nghĩa là nguyên nhân gốc duy nhất không",
+    "expected_keywords": [
+      "BowOverAdjustment"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 19,
+    "id": "Q0685",
+    "question": "Bracketの測定値を見るだけで斜め光NG原因を確定できますか。",
+    "reference_answer": "このFileだけでは確定できません。NG/OK UNITの差分は箇所ごとに正負が混在し、例えばNo.1-3差は約`0.002`、No.9-11差は約`0.015`などです。因果関係の確定までは記載されていません。出典ファイル：`OKNGUNITのCO・BRACKETの倒れ・傾き確認結果.xlsx`.",
+    "source": "`lsu/batch-17.md` (Batch 17)",
+    "focus": "Đánh giá số đo LD Bracket đơn lẻ có đủ để kết luận nguyên nhân lỗi quang lộ xiên",
+    "expected_keywords": [
+      "0.002",
+      "0.015"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 20,
+    "id": "Q0688",
+    "question": "このDataから原因候補を評価する時に何を注意しますか。",
+    "reference_answer": "LENS CO、LD BRACKETとも複数回・複数PointのNG/OK比較が必要です。単一Pointだけでは差の方向が一定ではないため、Fileが示す実測差を使って再現性を確認し、資料にない因果関係を推測で確定しないことが必要です。出典ファイル：`OKNGUNITのCO・BRACKETの倒れ・傾き確認結果.xlsx`.",
+    "source": "`lsu/batch-17.md` (Batch 17)",
+    "focus": "Nguyên tắc đánh giá nguyên nhân từ dữ liệu thực đo LENS CO và LD BRACKET",
+    "expected_keywords": [
+      "LENS",
+      "BRACKET",
+      "OKNGUNIT",
+      "BRACKET"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 21,
+    "id": "Q0695",
+    "question": "Dữ liệu hiện tại ủng hộ lỗi chung của 1004 và 1035 hay lỗi riêng của 1035?",
+    "reference_answer": "Dữ liệu ủng hộ vấn đề riêng ở `1035`: Camera +140 trên 1035 đọc Beam lớn bất thường, hiện tượng không có trên 1004 và NanoScan lại khớp với 1004. Nguồn file: `Y_BeamH_Camera 140_to bất thường.pptx`.",
+    "source": "`lsu/batch-17.md` (Batch 17)",
+    "focus": "Phân biệt bất thường Beam H là lỗi chung của cả 2 Jig hay là lỗi riêng của Jig 1035",
+    "expected_keywords": [
+      "1035"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 22,
+    "id": "Q0632",
+    "question": "LENS COLLIMATEの取付位置がずれると何が問題になりますか。",
+    "reference_answer": "LENS COLLIMATEはLaser Diodeから出る拡散光を平行光へ変換します。Laser Diodeの組付け位置やCOLLIMATE LensのHousing位置が正しくない場合、光が設定方向へ進まなくなると説明されています。出典ファイル：Tài liệu đào tạo LSU_2019.01.18_K.pptx.",
+    "source": "`lsu/batch-16.md` (Batch 16)",
+    "focus": "Ảnh hưởng của sai lệch vị trí lắp đặt LENS COLLIMATE tới chùm sáng song song",
+    "expected_keywords": [
+      "LENS",
+      "COLLIMATE",
+      "COLLIMATE",
+      "LSU_2019.01.18_K."
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 23,
+    "id": "Q0635",
+    "question": "Laser Powerはなぜ画像中央だけでなく周辺も確認する必要がありますか。",
+    "reference_answer": "資料では画像中央付近、つまりF Lens中央部で光量が基本的に最大となり、中央から離れるほど弱くなるためです。差が大きい場合、画像両端の濃度が薄くなるため、周辺光量を測定して補正します。出典ファイル：Tài liệu đào tạo LSU_2019.01.18_K.pptx.",
+    "source": "`lsu/batch-16.md` (Batch 16)",
+    "focus": "Nguyên nhân phải kiểm tra quang lượng Laser (Laser Power) ở cả vùng biên F Lens",
+    "expected_keywords": [
+      "quang lượng tâm",
+      "vùng biên",
+      "nhạt màu"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 24,
+    "id": "Q0636",
+    "question": "Polygon Motor có chỉ tạo chuyển động quay mà không ảnh hưởng đường quét Laser không?",
+    "reference_answer": "Không. Bề mặt gương của MOTOR POLYGON phản xạ tia Laser; mỗi mặt gương thực hiện quét từ đầu tới cuối DRUM. Vì vậy Polygon Motor liên quan trực tiếp tới quá trình scanning và chất lượng hình ảnh. Nguồn file: Tài liệu đào tạo LSU_2019.01.18_K.pptx.",
+    "source": "`lsu/batch-16.md` (Batch 16)",
+    "focus": "Cơ chế quét và phản xạ chùm tia Laser của từng mặt gương Polygon Motor",
+    "expected_keywords": [
+      "Không",
+      "MOTOR",
+      "POLYGON",
+      "DRUM."
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 25,
+    "id": "Q1798",
+    "question": "Có được nhìn BeamV Black `97` ở record `09:37:13` rồi tự kết luận riêng giá trị đó là nguyên nhân NG không?",
+    "reference_answer": "Không. File ghi BeamV_M35_K = `97` và Judge của record là NG, nhưng nguồn không chứng minh riêng giá trị `97` là nguyên nhân; không được tự suy diễn quan hệ nhân quả. Nguồn file: 2025_02_UniteTest.csv",
+    "source": "`lsu/batch-41.md` (Batch 41)",
+    "focus": "Nguyên tắc không tự quy kết giá trị BeamV Black 97 đơn lẻ là nguyên nhân gây NG",
+    "expected_keywords": [
+      "97"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 26,
+    "id": "Q0671",
+    "question": "Kết quả kiểm tra bằng tấm OHP trước đối sách là bao nhiêu?",
+    "reference_answer": "Kiểm tra OHP phát hiện `43/98 pcs NG = 43,9%`. Nguồn file: `Bong TAPE COVER GLASS Rev.00 VN.pptx`.",
+    "source": "`lsu/batch-17.md` (Batch 17)",
+    "focus": "Đo kiểm tỷ lệ NG bằng tấm OHP trước khi thực hiện đối sách (43.9% NG)",
+    "expected_keywords": [
+      "43/98 pcs NG = 43,9%",
+      "98 pcs",
+      "43,9%"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 27,
+    "id": "Q0674",
+    "question": "Kết quả xác nhận 4M có phát hiện bất thường không?",
+    "reference_answer": "Không. Tài liệu ghi thao tác không có bất thường, không có thay đổi 4M và lực bám dính của TAPE COVER GLASS trên LOT tồn kho được xác nhận `OK`. Nguồn file: `Bong TAPE COVER GLASS Rev.00 VN.pptx`.",
+    "source": "`lsu/batch-17.md` (Batch 17)",
+    "focus": "Kết quả xác nhận các yếu tố 4M đối với bất thường bong Tape Cover Glass",
+    "expected_keywords": [
+      "không bất thường",
+      "không thay đổi"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 28,
+    "id": "Q0677",
+    "question": "Tăng thời gian ép từ 3 giây lên 6 giây có hiệu quả không?",
+    "reference_answer": "Không. Hiện tại `3 s` cho kết quả khe hở NG và thử nghiệm `6 s` cũng vẫn NG. Nguồn file: `Bong TAPE COVER GLASS Rev.00 VN.pptx`.",
+    "source": "`lsu/batch-17.md` (Batch 17)",
+    "focus": "Đánh giá hiệu quả của đối sách tăng thời gian ép tape từ 3s lên 6s",
+    "expected_keywords": [
+      "3 s",
+      "6 s"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 29,
+    "id": "Q0706",
+    "question": "SIM追加後のMagenta光路高さとC7620発生率はどうなりましたか。",
+    "reference_answer": "SIM追加後、Magenta光路高さ平均は`0.7 mm`となり、発生実績は`3/517 = 0.58% NG`です。資料では3台を分析中としています。出典ファイル：`Sirius 2 _ C7620_報告版 4.pptx`.",
+    "source": "`lsu/batch-17.md` (Batch 17)",
+    "focus": "Hiệu quả của đối sách bổ sung SIM tape (giảm quang lộ xuống 0.7mm, NG còn 0.58%)",
+    "expected_keywords": [
+      "0.7 mm",
+      "3/517 = 0.58% NG"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 30,
+    "id": "Q0707",
+    "question": "SIM tape được dán ở đâu, dày bao nhiêu và trình tự thao tác thế nào?",
+    "reference_answer": "Dán SIM tape dày `40 µm` tại điểm đỡ `119.h2` của `MIRROR C`. Trình tự: ⓪ tháo LID → ① tháo Spring → ② dán SIM, dùng vật tư chung `302HS19850` → ③ cố định lại Spring → ④ lắp LID → ⑤ điều chỉnh và đo. Nguồn file: `Sirius 2 _ C7620_報告版 4.pptx`.",
+    "source": "`lsu/batch-17.md` (Batch 17)",
+    "focus": "Vị trí, quy cách độ dày SIM tape (40 µm tại 119.h2) và 5 bước thao tác đối sách",
+    "expected_keywords": [
+      "40 µm",
+      "119.h2",
+      "MIRROR C",
+      "302HS19850"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 31,
+    "id": "Q0693",
+    "question": "NanoScan比较后，需要重新Correlation的是哪台Jig？",
+    "reference_answer": "需要重新Correlation的是`Jig Bow_Skew 1035`。来源文件：`Y_BeamH_Camera 140_to bất thường.pptx`.",
+    "source": "`lsu/batch-17.md` (Batch 17)",
+    "focus": "Xác định JIG cần thực hiện đối sách Re-Correlation sau khi đối chiếu NanoScan (1035)",
+    "expected_keywords": [
+      "Jig Bow_Skew 1035"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 32,
+    "id": "Q0696",
+    "question": "排查时应先调整Unit还是确认Jig相关性？",
+    "reference_answer": "根据资料证据，应先确认Jig相关性。因为NanoScan与1004一致，而1035存在异常读值，所以文件提出`需要重新Correlation Bow_Skew 1035`。来源文件：`Y_BeamH_Camera 140_to bất thường.pptx`.",
+    "source": "`lsu/batch-17.md` (Batch 17)",
+    "focus": "Trình tự ưu tiên: Xác nhận Jig Correlation trước khi can thiệp điều chỉnh Unit",
+    "expected_keywords": [
+      "需要重新Correlation Bow_Skew 1035"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 33,
+    "id": "Q0633",
+    "question": "Linh kiện nào cần kiểm tra nếu nghi vấn liên quan đến giới hạn đường kính beam?",
+    "reference_answer": "Cần kiểm tra APERTURE. Chức năng của APERTURE là kiểm soát diện tích/đường kính beam đi qua và hạn chế nhiễu xạ. Tài liệu nêu ví dụ aperture có đường kính lớn NG ở LSU A3 có thể làm beam diameter khi điều chỉnh bị thấp. Nguồn file: Tài liệu đào tạo LSU_2019.01.18_K.pptx.",
+    "source": "`lsu/batch-16.md` (Batch 16)",
+    "focus": "Linh kiện cần kiểm tra đối sách khi có nghi vấn về giới hạn đường kính beam (Aperture)",
+    "expected_keywords": [
+      "APERTURE.",
+      "APERTURE",
+      "LSU",
+      "LSU_2019.01.18_K."
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 34,
+    "id": "Q0787",
+    "question": "Có thể xử lý 999 như một giá trị Beam diameter thông thường không?",
+    "reference_answer": "Không nên. File không định nghĩa ý nghĩa của `999`; vì vậy không có căn cứ để xem nó tương đương các giá trị Beam khoảng `60–70 µm`. Nguồn file: `2026_07_Yellow_depth.csv`.",
+    "source": "`lsu/batch-19.md` (Batch 19)",
+    "focus": "Quy tắc xử lý giá trị ngoại lai 999 trong dữ liệu Beam diameter (giữ nguyên Raw value)",
+    "expected_keywords": [
+      "999",
+      "60–70 µm"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 35,
+    "id": "Q1777",
+    "question": "`Takt_WorkFixSolid` và `Takt_UVBond` của record đầu ghi bao nhiêu và nên xử lý thế nào?",
+    "reference_answer": "Cả hai ghi **Raw value `0`**. Không tự suy ra rằng công đoạn bị bỏ qua hoặc NG nếu nguồn không định nghĩa. Nguồn file: 2025_02_Master.csv",
+    "source": "`lsu/batch-41.md` (Batch 41)",
+    "focus": "Quy tắc xử lý giá trị Takt_WorkFixSolid và Takt_UVBond bằng 0 trong dữ liệu đo",
+    "expected_keywords": [
+      "Raw value `0`"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 36,
+    "id": "Q1827",
+    "question": "Các cột `-8` đến `-3` và `+2` đến `+8` ghi `--`; phải xử lý thế nào?",
+    "reference_answer": "Giữ nguyên **Raw value `--`**; không tự suy ra OK/NG hoặc trạng thái đo. Nguồn file: 2025_02_Magenta_Depth_UniteTest.csv",
+    "source": "`lsu/batch-42.md` (Batch 42)",
+    "focus": "Quy tắc xử lý ký tự -- trong dữ liệu Depth UnitTest (giữ nguyên Raw value --)",
+    "expected_keywords": [
+      "--",
+      "Raw value `--`"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 37,
+    "id": "Q2157",
+    "question": "Các giá trị `9999.9` của Magenta/Yellow LightPath phải xử lý thế nào?",
+    "reference_answer": "Giữ nguyên **Raw value `9999.9`**; không tự đổi thành giá trị đo khác hoặc gán trạng thái OK/NG. Nguồn file: Ver2 vs Ver4/500/1004_1/Ver4/2025_02_UnitTest.csv",
+    "source": "`lsu/batch-48.md` (Batch 48)",
+    "focus": "Quy tắc xử lý giá trị 9999.9 của Magenta/Yellow LightPath (giữ nguyên Raw value 9999.9)",
+    "expected_keywords": [
+      "9999.9",
+      "Raw value `9999.9`"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 38,
+    "id": "Q0662",
+    "question": "Các mục tham khảo số 13–16 có nominal và dung sai thế nào?",
+    "reference_answer": "No.13 tại `12A` có nominal `123.5 ±0.2`; No.14 tại `12A` là `103.5 ±0.2`; No.15 tại `13A` là `83.5 ±0.2`; No.16 tại `13A` là `63.5 ±0.2`. Cả bốn đều được phán định `O`. Nguồn file: `3V2ND19040-MOUNT LD BLOCK LOT 18.8.2026.xlsx`.",
+    "source": "`lsu/batch-17.md` (Batch 17)",
+    "focus": "Nominal và dung sai kích thước các mục 13–16 trên bản vẽ MOUNT LD BLOCK",
+    "expected_keywords": [
+      "12A",
+      "123.5 ±0.2",
+      "103.5 ±0.2",
+      "13A"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 39,
+    "id": "Q0665",
+    "question": "Kích thước tại các điểm Y73–Y104 có giới hạn bao nhiêu?",
+    "reference_answer": "Nominal là `39`, dung sai `+0.08 / -0.05`, tương ứng giới hạn trên `39.08` và dưới `38.95`. Các điểm từ Y73 tới Y104 hiển thị trong bảng đều được phán định `O`. Nguồn file: `3V2ND19040-MOUNT LD BLOCK LOT 18.8.2026.xlsx`.",
+    "source": "`lsu/batch-17.md` (Batch 17)",
+    "focus": "Kích thước nominal và giới hạn trên/dưới tại các điểm Y73–Y104 (39 +0.08/-0.05)",
+    "expected_keywords": [
+      "39",
+      "+0.08 / -0.05",
+      "39.08",
+      "38.95"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 40,
+    "id": "Q0668",
+    "question": "g1 và g2 có nominal và giới hạn nào?",
+    "reference_answer": "Cả g1 và g2 dùng nominal `13.81`, dung sai `+0.12 / -0.05`, tức giới hạn trên `13.93`, giới hạn dưới `13.76`. Các giá trị đọc được khoảng `13.845–13.856`, đều được đánh giá `O`. Nguồn file: `3V2ND19040-MOUNT LD BLOCK LOT 18.8.2026.xlsx`.",
+    "source": "`lsu/batch-17.md` (Batch 17)",
+    "focus": "Thông số nominal và giới hạn dung sai của g1 và g2 (13.81 +0.12/-0.05)",
+    "expected_keywords": [
+      "13.81",
+      "+0.12 / -0.05",
+      "13.93",
+      "13.76"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 41,
+    "id": "Q0705",
+    "question": "正常Magenta光路高度和色差平均值是多少，余量多少？",
+    "reference_answer": "BOWSKEW治具上正常Magenta光路高度平均约`1.1 mm`，与Bk的色偏平均为`64.09 dot`。相对70-dot上限，剩余余量约`5.9 dot`。来源文件：`Sirius 2 _ C7620_報告版 4.pptx`.",
+    "source": "`lsu/batch-17.md` (Batch 17)",
+    "focus": "Thông số chiều cao quang lộ Magenta (1.1 mm), độ lệch màu (64.09 dot), margin (5.9 dot)",
+    "expected_keywords": [
+      "1.1 mm",
+      "64.09 dot",
+      "5.9 dot"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 42,
+    "id": "Q0709",
+    "question": "Trong bảng quy đổi Skew, Black, Cyan, Magenta và Yellow lần lượt có giá trị µm và dot bao nhiêu?",
+    "reference_answer": "Black=`0 µm / 0 dot`; Cyan=`-34 µm / -0.8095 dot`; Magenta=`81 µm / 1.9286 dot`; Yellow=`125 µm / 2.9762 dot`. Nguồn file: `sirius2 beam径確認_240202.xlsx`.",
+    "source": "`lsu/batch-18.md` (Batch 18)",
+    "focus": "Bảng quy đổi Skew sang µm và dot cho 4 màu Black, Cyan, Magenta, Yellow",
+    "expected_keywords": [
+      "0 µm / 0 dot",
+      "-34 µm / -0.8095 dot",
+      "81 µm / 1.9286 dot",
+      "125 µm / 2.9762 dot"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 43,
+    "id": "Q0843",
+    "question": "Cặp giới hạn Current phổ biến nhất là bao nhiêu?",
+    "reference_answer": "Cặp phổ biến nhất là Lower=`370 mA`, Upper=`520 mA`, xuất hiện trong`4.399 record`. Nguồn file: `2026_08_Spec.csv`.",
+    "source": "`lsu/batch-21.md` (Batch 21)",
+    "focus": "Cặp giới hạn dòng điện Current (Lower 370 mA, Upper 520 mA) phổ biến nhất",
+    "expected_keywords": [
+      "370 mA",
+      "520 mA",
+      "4.399 record"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 44,
+    "id": "Q0864",
+    "question": "BeamPosX=3024,6 µm cách hai giới hạn bao nhiêu?",
+    "reference_answer": "So với Lower 2890, nó cao hơn`134,6 µm`; so với Upper 3190, nó còn khoảng`165,4 µm`. Nguồn file: `2026_08_CamPos.csv`.",
+    "source": "`lsu/batch-21.md` (Batch 21)",
+    "focus": "Khoảng cách từ vị trí BeamPosX = 3024.6 µm tới giới hạn Lower (2890) và Upper (3190)",
+    "expected_keywords": [
+      "134,6 µm",
+      "165,4 µm"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 45,
+    "id": "Q0680",
+    "question": "Phương pháp tính độ lệch trái–phải của LENS CO trong file là gì?",
+    "reference_answer": "Đo khoảng cách từ các điểm đánh dấu đỏ tới `基準軸` – trục chuẩn, sau đó tính chênh lệch trái–phải của LENS CO. Nguồn file: `OKNGUNITのCO・BRACKETの倒れ・傾き確認結果.xlsx`.",
+    "source": "`lsu/batch-17.md` (Batch 17)",
+    "focus": "Phương pháp đo khoảng cách từ điểm đánh dấu đỏ tới trục chuẩn (基準軸) của LENS CO",
+    "expected_keywords": [
+      "基準軸"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 46,
+    "id": "Q0684",
+    "question": "NG UNIT与OK UNIT的Bracket测量值大致在哪个范围？",
+    "reference_answer": "两者原始数值都集中在约`43.95～44.03`附近。NG UNIT示例为约`43.956～43.999`，OK UNIT示例可到约`44.030`。来源文件：`OKNGUNITのCO・BRACKETの倒れ・傾き確認結果.xlsx`.",
+    "source": "`lsu/batch-17.md` (Batch 17)",
+    "focus": "Dải thông số đo LD Bracket của NG UNIT và OK UNIT (khoảng 43.95 ~ 44.03 mm)",
+    "expected_keywords": [
+      "43.95～44.03",
+      "43.956～43.999",
+      "44.030"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 47,
+    "id": "Q0924",
+    "question": "Cam-140、LD1_1のIndex 150ではBeam HとVはいくつですか。",
+    "reference_answer": "Beam H=`1.59750681`、Beam V=`2.103347`で、Raw値ではVの方が約`0.506`大きいです。出典ファイル：`2026_08_Magenta_Profile.csv`.",
+    "source": "`lsu/batch-23.md` (Batch 23)",
+    "focus": "Thông số Beam H (1.5975) và Beam V (2.1033) tại Cam-140, LD1_1 của Index 150",
+    "expected_keywords": [
+      "1.59750681",
+      "2.103347",
+      "0.506"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 48,
+    "id": "Q0630",
+    "question": "Hướng quét chính và hướng quét phụ khác nhau thế nào?",
+    "reference_answer": "Hướng quét chính là hướng tia Laser quét ngang trên DRUM. Hướng quét phụ là hướng chuyển động của giấy và hướng quay của DRUM. Nguồn file: Tài liệu đào tạo LSU_2019.01.18_K.pptx.",
+    "source": "`lsu/batch-16.md` (Batch 16)",
+    "focus": "Định nghĩa thông số hướng quét chính (Main-scan) và hướng quét phụ (Sub-scan)",
+    "expected_keywords": [
+      "quét ngang",
+      "quay drum"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 49,
+    "id": "Q0652",
+    "question": "Hai loại Motor Polygon được tài liệu phân biệt như thế nào?",
+    "reference_answer": "Loại dùng cho đời cao 2LV, 2P6 có phần màu xanh phủ hết tấm kim loại và tốc độ quay 48.384 vòng/phút. Loại dùng cho các đời khác có phần xanh không phủ hết tấm kim loại và tốc độ 40.042 vòng/phút. Nguồn file: LSU UNIT (V) Lần 2.ppt.",
+    "source": "`lsu/batch-16.md` (Batch 16)",
+    "focus": "Phân biệt 2 loại Motor Polygon theo tốc độ quay (48.384 vs 40.042 vòng/phút)",
+    "expected_keywords": [
+      "48.384 vòng/phút",
+      "40.042 vòng/phút"
+    ],
+    "requires_citation": true
+  },
+  {
+    "stt": 50,
+    "id": "Q0658",
+    "question": "Keo UV phải được quản lý và kiểm tra thế nào trước khi sử dụng?",
+    "reference_answer": "Tài liệu yêu cầu bảo quản keo UV ở 0–15°C. Trước khi làm việc phải kiểm tra khối lượng keo UV; tài liệu cũng minh họa keo dùng để gắn CO/CY và keo gắn LENS F/APERTURE bằng hệ thống bơm keo. Nguồn file: LSU UNIT (V) Lần 2.ppt.",
+    "source": "`lsu/batch-16.md` (Batch 16)",
+    "focus": "Thông số nhiệt độ bảo quản keo UV (0–15°C) và điều kiện kiểm tra trước khi thao tác",
+    "expected_keywords": [
+      "0–15°C"
+    ],
+    "requires_citation": true
+  }
+]

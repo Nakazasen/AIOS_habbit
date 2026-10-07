@@ -1,30 +1,27 @@
-# Vé WATCHER-UPGRADE-PC0575 — Nâng cấp vòng lặp mailbox lên code mới nhất
+# VÉ: SRC-PROBE-PC0575 (probe RAG đầu-cuối cho 29 tệp nguồn đã khôi phục)
 
-**Máy thực hiện:** CÔNG TY KDTVN-PC0575 (thợ opencode).
-**Phạm vi:** `D:\Sandbox\agent-mailbox` (repo vòng lặp mailbox), `config.local.ps1`, watcher đã đăng ký.
-**CẤM:** force-push, merge commit bừa, commit `config.local.ps1` (chứa token), bịa mailbox không tồn tại.
+- Mã vé: `SRC-PROBE-PC0575`
+- Role gợi ý: DEFAULT
+- Máy: công ty KDTVN-PC0575
+- Báo cáo: `docs/phieu-viec/ket-qua/src-probe-pc0575.md`
+- Đầu vào bắt buộc đọc trước: `docs/phieu-viec/ket-qua/src-sync-pc0575.md` (đặc biệt mục 7: 29 tệp đã khôi phục; mục 8: vân tay logic mốc `87a3626a…`).
 
-Bạn đang ngồi trên máy công ty PC0575 (user tvn183660, không admin). Nhiệm vụ: nâng cấp vòng lặp mailbox lên code mới nhất, kiểm chứng thợ chạy được, rồi báo cáo. Bên máy nhà vừa đẩy một loạt vá quyết định — máy này đang chạy code cũ từ chiều 05/10, thiếu hết. Làm theo thứ tự, vướng thì tự điều tra đến gốc, không báo PASS giả.
+## Bối cảnh
 
-## 1. Pull code mới (cẩn thận, 2 bên cùng đẩy main)
-1. Trong `D:\Sandbox\agent-mailbox`: `git fetch origin` xem trước, rồi `git pull --rebase origin main`. Có conflict thì DỪNG, hỏi user — cấm force-push, cấm merge commit bừa.
-2. Xác nhận có các commit mới: `zombie v2`, `chong mu chu BOM`, `chon template theo major CLI`, `remote-access`. Liệt kê `git log --oneline -8` làm bằng chứng.
+Vé `SRC-SYNC-PC0575` phần máy công ty đã verdict ĐẠT (07/10): 29 tệp nguồn được khôi phục từ nội dung mảnh trong chỉ mục và qua probe mô phỏng cổng stale. Nhưng báo cáo mục 7 ghi rõ còn thiếu bước cuối: **chưa chạy probe RAG đầy đủ với `strict_semantic=True`** trên các tệp này. Vé này khép điểm đó — chứng minh 29 tệp thật sự chảy qua được toàn bộ đường truy hồi thật, không chỉ qua mô phỏng.
 
-## 2. Những gì đã đổi (đọc để khỏi giẫm chân)
-- Watcher giờ tự nhận major CLI opencode: máy này v2 → giữ nguyên đường `--standalone --model --auto` của bên này (không đổi hành vi); máy nhà v1 → đường `--auto --dir --attach`. Đừng gộp 2 đường làm một.
-- CẤM thêm lại `--max-time` blanket: đã gỡ vì nó giết cả vé dài chạy thật (KNOWLEDGE 6 tiếng). Diệt zombie đã có cơ chế chính xác (im + CPU+I/O phẳng mới kill).
-- File `.ps1` LUÔN lưu UTF-8 có BOM (máy Shift-JIS đọc sai regex tiếng Việt nếu mất BOM — vừa cháy 1 lần). Watcher mới tự kiểm BOM lúc khởi động, mất là dừng + báo.
-- Có thêm `Install-RemoteAccess.ps1` (server điều khiển từ xa, chưa cần thì thôi).
+## Việc phải làm
 
-## 3. Cấu hình + nạp
-1. `config.local.ps1` đã có sau Mot-Lan: kiểm tra đường dẫn omp/agy/opencode bằng `where`, sai thì sửa. Dán token GitHub user đưa vào `$token`, lưu. KHÔNG commit file này.
-2. Chỉ đăng ký thợ đã cài trên máy: `where agy`, `opencode --version`. Thiếu thì chạy `-Workers omp` thôi, đừng đăng ký thợ ma.
-3. Restart toàn bộ watcher đang chạy (kill process → Start task) cho nạp code mới. Watcher nào chưa có mailbox tương ứng (`mailbox-pc0575-agy`) thì báo điều phối tạo, đừng tự bịa mailbox.
+1. Với **từng tệp trong 29 tệp đã khôi phục**: chạy một truy vấn thật qua pipeline RAG đầy đủ (bật `strict_semantic`), kiểm chứng tài liệu:
+   - qua cả 3 cổng vân tay (không rơi `__source_unavailable__`, không bị đánh dấu stale, qua cổng hybrid-safe);
+   - xuất hiện được trong kết quả truy hồi của pipeline.
+2. Đối chứng bắt buộc:
+   - **Âm:** 5 tài liệu thuộc nhóm 511 chưa có tệp — kỳ vọng bị chặn ở cổng unavailable (nếu tài liệu nào "qua" thì đó là phát hiện bất thường, ghi rõ).
+   - **Dương:** 5 tài liệu vốn có tệp sẵn từ đầu — kỳ vọng qua cả 3 cổng.
+3. Báo cáo: bảng kết quả từng tài liệu (mã, cổng nào qua/rớt, ghi chú) + kết luận tổng. Nếu có tệp khôi phục nào rớt ở pipeline thật: dừng ở tài liệu đó, ghi bằng chứng đầy đủ (thông điệp cổng, mã lỗi) và báo điều phối trong mailbox — không tự sửa tệp/index trong vé này.
 
-## 4. Nghiệm thu (báo đúng mẫu)
-- [ ] `[Parser]::ParseFile` 0 lỗi mọi .ps1; BOM còn (3 byte đầu `EF-BB-BF`).
-- [ ] 1 vé opencode test chạy thật: log có `LAUNCH`, process thợ sống >2 phút (đúng template v2, không cờ lạ).
-- [ ] 3 watcher (hoặc số thợ đã đăng ký) poll tươi: `watcher_state*.json` có `updated` mới, không `loi:`/`UNKNOWN-STATUS` mới trong log.
-- [ ] `git status` sạch. Báo cáo: làm gì / thấy gì / bằng chứng (lệnh + output thật).
+## Rào cứng
 
-**Lưu ý:** OMP trên máy này đang chạy vé `LSU-QUALITY-PC0575` (lane RAG đo tiếp từ checkpoint). KHÔNG đụng process/vé của OMP, không restart watcher omp giữa chừng đo.
+- Chỉ-đọc chỉ mục; không ghi/sửa tệp nguồn hay index; không đụng `src/rag_v2*` (WIP của agy) — chỉ chạy pipeline như người dùng cuối.
+- Cần mạng LAN cho bước nào thì tự chuyển theo QUY-UOC và chuyển về sau khi xong.
+- Không merge `main`. Không xóa dữ liệu đã tải ở `local_runs/src_sync`.

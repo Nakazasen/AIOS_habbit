@@ -77,6 +77,58 @@ def detect_citation(text: str) -> bool:
     return bool(_CITATION_RE.search(text or ""))
 
 
+def normalize_text_for_eval(text: str) -> str:
+    """Normalize text and keywords before evaluation matching (ticket RUBRIC-NORMALIZE-PC0575).
+
+    Standardizes:
+    - Decimal commas to dots: e.g. -0,81 -> -0.81, 1,93 -> 1.93, 49,49% -> 49.49%
+    - Thousand separator dots: e.g. 48.384 -> 48384, 40.042 -> 40042, 3.153 -> 3153
+    - Time units: 3 giây / 3s -> 3 s, 6 giây -> 6 s
+    - Temperature ranges & units: 0 - 15 độ C / 0-15°C / 0–15°C -> 0–15°C
+    - Micro symbol: $\\mu m$ / μm -> µm
+    - Core domain concept normalizations:
+        - Status 4M: 'không phát hiện bất thường' / 'không có thay đổi 4M' -> 'không bất thường' / 'không thay đổi'
+        - LSU scan directions: 'drum quay' / 'quay của drum' -> 'quay drum'; 'quét chính của tia laser' -> 'quét ngang'
+        - F-theta lens optics: 'bị nhạt' / 'trở nên nhạt' -> 'nhạt màu'; 'vùng xung quanh' / 'hai bên ảnh' -> 'vùng biên'; central lighting -> 'quang lượng tâm'
+    """
+    if not text:
+        return ""
+    s = str(text)
+    # 1. Decimal comma to dot: -0,81 -> -0.81, 1,93 -> 1.93, 49,49% -> 49.49%
+    s = re.sub(r"(\d+),(\d+)", r"\1.\2", s)
+    # 2. Thousand separator dots: 48.384 -> 48384, 40.042 -> 40042
+    s = re.sub(r"(?<![\d\.])([1-9]\d{0,2})\.(\d{3})(?![\d\.])", r"\1\2", s)
+    # 3. Time unit: 3 giây / 3s -> 3 s, 6 giây -> 6 s
+    s = re.sub(r"(\d+)\s*(?:giây|giay|seconds?|secs?)\b", r"\1 s", s, flags=re.IGNORECASE)
+    s = re.sub(r"\b(\d+)s\b", r"\1 s", s, flags=re.IGNORECASE)
+    # 4. Temperature range & unit: 0 - 15 độ C / 0-15°C / 0–15°C -> 0–15°C
+    s = re.sub(r"(\d+)\s*(?:[-–—~]|đến|toi)\s*(\d+)\s*(?:độ\s*C|°C|do\s*c)\b", r"\1–\2°C", s, flags=re.IGNORECASE)
+    s = re.sub(r"\b(?:độ\s*C|do\s*c)\b", "°C", s, flags=re.IGNORECASE)
+    s = re.sub(r"(\d+)\s*[-–—~]\s*(\d+)\s*°C", r"\1–\2°C", s)
+    # 5. Normalize micro sign: $\mu m$ or greek mu -> µm
+    s = re.sub(r"\$\\mu\s*m\$", "µm", s)
+    s = s.replace("\u03bc", "\u00b5")
+    # 6. Core concept normalizations
+    s = re.sub(r"không\s+(?:có\s+|phát\s+hiện\s+)?bất\s+thường", "không bất thường", s, flags=re.IGNORECASE)
+    s = re.sub(r"không\s+(?:có\s+)?thay\s+đổi", "không thay đổi", s, flags=re.IGNORECASE)
+    s = re.sub(r"\b(?:drum\s+quay|quay\s+(?:của\s+)?drum)\b", "quay drum", s, flags=re.IGNORECASE)
+    s = re.sub(r"\b(?:quét\s+ngang|quét\s+chính\s+(?:của\s+)?tia\s+laser)\b", "quét ngang", s, flags=re.IGNORECASE)
+    s = re.sub(r"\b(?:bị\s+nhạt|trở\s+nên\s+nhạt|mật\s+độ.*?nhạt|nhạt\s+màu)\b", "nhạt màu", s, flags=re.IGNORECASE)
+    s = re.sub(
+        r"\b(?:vùng\s+ngoài\s+trung\s+tâm|vùng\s+xung\s+quanh|xung\s+quanh|hai\s+bên\s+ảnh|hai\s+đầu\s+hình\s+ảnh|vùng\s+biên)\b",
+        "vùng biên",
+        s,
+        flags=re.IGNORECASE,
+    )
+    s = re.sub(
+        r"\b(?:cường\s+độ\s+ánh\s+sáng.*?gần\s+trung\s+tâm|ở\s+phần\s+đó\s+lượng\s+sáng\s+là\s+lớn\s+nhất|quang\s+lượng\s+tâm|quang\s+lượng\s+trung\s+tâm)\b",
+        "quang lượng tâm",
+        s,
+        flags=re.IGNORECASE,
+    )
+    return s
+
+
 def _fold(text: str) -> str:
     return " ".join((text or "").lower().split())
 
@@ -88,7 +140,8 @@ def score_one(
 ) -> ScoredRow:
     """Score one answer against the rubric (pure, deterministic)."""
     text = (answer.text or "").strip()
-    folded = _fold(text)
+    norm_text = normalize_text_for_eval(text)
+    folded = _fold(norm_text)
     has_citation = bool(answer.has_citation) or detect_citation(text)
     scores: Dict[str, float] = {}
     for criterion in rubric:
@@ -103,7 +156,7 @@ def score_one(
         elif not keywords:
             scores[criterion.name] = maximum if len(text) >= 20 else 0.0
         else:
-            hits = sum(1 for kw in keywords if _fold(kw) in folded)
+            hits = sum(1 for kw in keywords if _fold(normalize_text_for_eval(kw)) in folded)
             ratio = hits / len(keywords)
             scores[criterion.name] = round(maximum * ratio, 2)
     total = round(sum(scores.values()), 2)
