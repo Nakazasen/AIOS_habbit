@@ -1,6 +1,9 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
+- `commit`: `91825f5` (báo cáo `index-prod-home.md`; vé này không sửa `src/`/`tests/`)
+- `bao_cao`: `docs/phieu-viec/ket-qua/index-prod-home.md`
+- `ghi_chu`: 2026-10-07 21:52 +07 — XONG chờ duyệt `INDEX-PROD-HOME`: app đọc `C:\AIOS_workspace_chat_rag_v2_production\bge_m3_hybrid\collections\tri_thuc\library.sqlite` (bằng chứng chuỗi cấu hình trong báo cáo §1); file này `quick_check=ok`, 889/889/149.800 khớp mốc, vân tay nội dung khớp 100%, SHA-256 toàn file GIỐNG TỪNG BYTE bản backup đã kiểm — KHÔNG phải file khác, rủi ro bằng 0. Phát hiện thêm: chuỗi vân tay tổng đúng là `fce85b60b783d0a…` (báo cáo cũ sai 1 ký tự vị trí 8). Chỉ-đọc tuyệt đối, không đổi cấu hình, không merge `main`.
 - `ghi_chu`: 2026-10-07 21:20 +07 — Nhận vé `INDEX-PROD-HOME`, vé KHÔNG có cổng gate (trạng thái `moi` + prompt đúng vé, verdict ĐẠT INDEX-VERIFY-HOME 21:22; không rơi nhánh 4-lần/cho-muse). Bắt đầu bước 1: tìm đường dẫn index app thật đang đọc, chưa đụng file index.
 - `ghi_chu`: 2026-10-07 21:28 +07 — Mốc xác định app: `config/workspace_chat_rag_v2.local.json` ghi `runtime.root=C:\AIOS_workspace_chat_rag_v2_production` + `requested_profile=bge_m3_hybrid`; `collections.jsonl` mã `tri_thuc` có `storage_root=""` nên app đọc `C:\AIOS_workspace_chat_rag_v2_production\bge_m3_hybrid\collections\tri_thuc\library.sqlite` (2.942.201.856 B, cùng cỡ bản backup đã kiểm). Đang kiểm chỉ-đọc file này.
 - `ghi_chu`: 2026-10-07 21:45 +07 — Mốc kiểm xong file production: `quick_check=ok`, 889/889/149.800 khớp mốc; vân tay nội dung khớp 100%; SHA-256 toàn file `45eb0e07…` GIỐNG TỪNG BYTE bản backup đã kiểm — app đang đọc đúng file đã kiểm chứng, rủi ro bằng 0. Phát hiện thêm: chuỗi vân tay tổng trong báo cáo cũ sai 1 ký tự (vị trí 8). Đang viết báo cáo.
