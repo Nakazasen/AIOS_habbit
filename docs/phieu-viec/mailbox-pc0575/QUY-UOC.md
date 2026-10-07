@@ -30,3 +30,7 @@ File này chỉ ghi phần RIÊNG của máy công ty KDTVN-PC0575.
 - Nghiệm thu bắt buộc: thợ phải **tự dùng chương trình như người dùng cuối** — tự động hoá thao tác thật trên app đang chạy (mở sổ, mở trò chuyện, hỏi đáp đầu-cuối, đi hết luồng của tính năng) — và ghi vào báo cáo: số đo thật (thời gian mở, thời gian trả lời), ảnh chụp màn hình thật, đáp án thật nhận được.
 - Chạy file test (pytest...) chỉ là phụ trợ để giữ hồi quy, **không thay thế** nghiệm thu sử dụng thật. Vé nào nộp mà chỉ có kết quả test file, không có bằng chứng dùng thật, điều phối sẽ chấm CHƯA ĐẠT.
 - Gặp lỗi khi dùng thật (chậm, treo, xấu, khó hiểu): ghi thành phát hiện trong báo cáo kèm bằng chứng, không lấp liếm bằng kết quả test.
+
+## Phân xử thắng khi vé chờ cổng (điều phối chốt 2026-10-07)
+
+- Khi vé có dòng `- cho-cong: <lý do> | han yyyy-MM-dd HH:mm` còn hạn trong `trang-thai.md`: **luật tự chốt cờ `cho-muse` sau N lượt không tiến triển bị VÔ HIỆU** — thợ không tự đặt cờ, không dừng việc; chỉ heartbeat + kiểm tra cổng theo nhịp của vé. Quá hạn cho-cong thì các luật thường tự áp dụng lại.
