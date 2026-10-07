@@ -4,6 +4,7 @@
 ## Vé hiện tại: RETRIEVAL-ENTITY-PC0575
 
 - Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-07 11:55 +07 — Tiến độ RETRIEVAL-ENTITY: Xác thực bằng chứng thực tế trên pipeline ONNX fp32 (tái lập ca trượt Q0704 do Loi KDTPS.xlsx lấn át). Đang tiến hành áp mã nguồn hoàn chỉnh cho Entity Matching Boost (trần 0.025), Diversity Capping (≤ 3 mảnh/tệp nguồn kèm log) và tách từ khóa ranh giới Latin/CJK.
 - `ghi_chu`: 2026-10-07 11:30 +07 — Bắt đầu triển khai Bước 1 & 2: code Entity Matching Boost có trần và Diversity Capping (tối đa 3 mảnh/tệp nguồn kèm log cảnh báo) trong tầng retrieval/evidence, chuẩn bị nghiệm thu 7/7 câu Nhóm A.
 - `ghi_chu`: 2026-10-07 10:47 +07 — Hoàn thành Bước 0: Đóng dấu bộ đề 50 câu (kèm 4 từ khóa đã chuẩn hóa) và rubric 0–3 vào repo tại tests/fixtures/eval/, kèm tài liệu README giải thích nguồn gốc và bài test test_eval_fixtures_loadable_and_reproducible (10/10 PASS). Bắt đầu Bước 1 & 2: Thiết kế Entity Matching Boost và Diversity Capping.
 - `ghi_chu`: 2026-10-07 10:42 +07 — Tiếp nhận vé `RETRIEVAL-ENTITY-PC0575`: bắt đầu đóng dấu bộ đề 50 câu và rubric/từ khóa chuẩn hoá vào repo (bước 0), sau đó triển khai Entity Matching Boost và Diversity Capping cho retrieval.
