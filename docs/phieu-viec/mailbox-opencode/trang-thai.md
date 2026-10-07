@@ -1,6 +1,7 @@
-# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
+﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
-- Trạng thái: `xong`
+- Trạng thái: `moi`
+- `ghi_chu` (điều phối Muse — PHÁT VÉ): 2026-10-07 ~20:25 +07 — Vé mới `INDEX-VERIFY-HOME` (prompt.md đã thay): kiểm chứng chỉ mục máy nhà CHỈ-ĐỌC theo chuẩn vân tay logic mới (đối chiếu mốc máy công ty: nội dung `87a3626a…`, tổng `fce85b60…`; 889 tài liệu / 149.800 mảnh). Triển khai ngang phép kiểm đã làm ở máy công ty ngày 07/10.
 - `ghi_chu` (verdict Muse): 2026-10-06 ~23:58 +07 — **ĐẠT** vé `RT-ALERT-E2E-HOME` (tích tạm, chờ user nghiệm thu). Kiểm chứng độc lập: báo cáo `ac667bb`, vé không sửa src/tests. Baseline đầu-cuối ĐẠT mục tiêu <5 phút: drift báo ở mẫu thứ 3, xử lý 50 mẫu 0,0031s; HTTP replay 132/132 mất 0 dòng, p95 ~28ms; chuỗi thật 132 điểm → 0 báo giả; 132+drift → đúng 1 thẻ. Đo trên cổng mới trend_alerts.py=`3c7f2f3`. Poll kiểm lại trên VM: cụm 61 passed. hang-cho trống → mailbox đóng (`xong`).
 - `commit`: `ac667bb` (báo cáo `rt-alert-e2e-home.md`; vé này không sửa `src/`/`tests/`)
 - `bao_cao`: `docs/phieu-viec/ket-qua/rt-alert-e2e-home.md`
