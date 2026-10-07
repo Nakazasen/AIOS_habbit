@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import unicodedata
 from collections.abc import Sequence
 from dataclasses import dataclass
 from functools import lru_cache
@@ -57,6 +58,13 @@ _DEFINITION_INTENT_MARKERS = ("báo hiệu", "định nghĩa", "nghĩa là", "l�
 _COMPONENT_BONUS_PER_HIT = 2.0
 _COMPONENT_BONUS_CAP = 8.0
 _DEFINITION_BONUS = 8.0
+# Câu hỏi truy vấn xuất hiện NGUYÊN VĂN (sau chuẩn hoá khoảng trắng/dấu câu) trong
+# câu hỏi của cặp — tín hiệu khớp chắc chắn nhất: phải áp đảo mọi bonus và không
+# ngưỡng nào loại được (vá lỗi recall Q0703/Q1034/Q1827… của vé MATCHER-FIX).
+_VERBATIM_QUESTION_BONUS = 100.0
+# Chỉ bật khớp nguyên văn khi câu chuẩn hoá đủ dài — tránh chuỗi ngắn ("hi", "mã")
+# tình cờ là chuỗi con của nhiều câu hỏi khác.
+_MIN_VERBATIM_QUESTION_LENGTH = 6
 # Từ chức năng dài (>= 4 ký tự) xuất hiện dày đặc — bỏ để không tạo khớp nhiễu.
 _STOPWORDS = frozenset({
     "anh", "bạn", "biết", "các", "cách", "cho", "chưa", "cần", "của", "đâu",
@@ -164,15 +172,35 @@ def _pair_tokens(pair: WireQaPair) -> frozenset[str]:
     return frozenset(_TOKEN_RE.findall(f"{pair.question}\n{pair.answer}".lower()))
 
 
+@lru_cache(maxsize=8192)
+def _normalize_question_text(text: str) -> str:
+    """Chuẩn hoá câu hỏi để so khớp nguyên văn: NFKC, thường hoá, bỏ dấu câu, gộp khoảng trắng.
+
+    Câu hỏi LSU trộn Việt/Trung/Nhật nên chỉ đổi dấu câu thành khoảng trắng (``\\w``
+    giữ nguyên chữ Hán/Kana và chữ có dấu, kể cả khi dính liền thành mạch dài) rồi
+    gộp khoảng trắng — không tách từ, không bỏ chữ/số.
+    """
+    normalized = unicodedata.normalize("NFKC", str(text or "")).lower()
+    normalized = re.sub(r"[^\w\s]+", " ", normalized, flags=re.UNICODE)
+    return " ".join(normalized.split())
+
+
 def select_relevant_pairs(
     question: str,
     pairs: Sequence[WireQaPair],
     *,
     limit: int = MAX_REFERENCE_PAIRS,
 ) -> tuple[WireQaPair, ...]:
-    """Chọn tối đa ``limit`` cặp liên quan nhất (điểm >= ngưỡng; tie-break theo id)."""
+    """Chọn tối đa ``limit`` cặp liên quan nhất (điểm >= ngưỡng; tie-break theo id).
+
+    Điểm = khớp thật (mã/serial 10, từ khóa 1, câu hỏi trùng nguyên văn sau chuẩn
+    hoá 100) + bonus theo ý định. Bonus chỉ cộng khi cặp đã có khớp thật và không
+    bao giờ vượt điểm gốc nên không thể đảo thứ tự liên quan (vá Q0671/Q0658).
+    """
     code_terms, word_terms = _query_terms(question)
-    if not code_terms and not word_terms:
+    question_norm = _normalize_question_text(question)
+    can_match_verbatim = len(question_norm) >= _MIN_VERBATIM_QUESTION_LENGTH
+    if not code_terms and not word_terms and not can_match_verbatim:
         return ()
     q_text = str(question or "").lower()
     component_intent = any(marker in q_text for marker in _COMPONENT_INTENT_MARKERS)
@@ -184,12 +212,24 @@ def select_relevant_pairs(
         score = _CODE_TERM_WEIGHT * len(code_hits) + _WORD_TERM_WEIGHT * len(
             word_terms & _pair_tokens(pair)
         )
-        if component_intent:
-            components = set(_COMPONENT_RE.findall(pair_text))
-            score += min(_COMPONENT_BONUS_CAP, _COMPONENT_BONUS_PER_HIT * len(components))
-        if definition_intent:
-            if any(re.search(re.escape(term) + r"\s*(?:là|nghĩa là)", pair_text) for term in code_terms):
-                score += _DEFINITION_BONUS
+        if can_match_verbatim and question_norm in _normalize_question_text(pair.question):
+            # Câu hỏi người dùng trùng nguyên văn câu hỏi của cặp (sau chuẩn hoá):
+            # giữ cặp bất kể ngưỡng và xếp trên mọi cặp chỉ có bonus.
+            score += _VERBATIM_QUESTION_BONUS
+        if score > 0:
+            bonus = 0.0
+            if component_intent:
+                components = set(_COMPONENT_RE.findall(pair_text))
+                bonus += min(_COMPONENT_BONUS_CAP, _COMPONENT_BONUS_PER_HIT * len(components))
+            if definition_intent:
+                if any(
+                    re.search(re.escape(term) + r"\s*(?:là|nghĩa là)", pair_text)
+                    for term in code_terms
+                ):
+                    bonus += _DEFINITION_BONUS
+            # Bonus chỉ tinh chỉnh giữa các cặp đã có khớp thật: không bao giờ vượt
+            # điểm gốc (chống bonus +8 lấn át cặp đúng 5,0 như Q0671/Q0658).
+            score += min(bonus, score)
         if score >= MIN_MATCH_SCORE:
             scored.append((score, pair))
     scored.sort(key=lambda item: (-item[0], item[1].id))
