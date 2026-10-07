@@ -1,5 +1,6 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
+- `ghi_chu`: 2026-10-08 02:04 +07 — Mốc chạy nền vé `TEST-HEALTH-ROUND2-HOME`: tiến trình pytest toàn bộ đã khởi động tách phiên (cha powershell pid 12292, con pytest pid 9988 đang chạy); log `local_runs/test-health-round2-home/pytest-full.log` + `.err.log` (mới tạo, đang ghi); Python 3.11.14 qua uv OK, đĩa C còn ~11GB / D còn ~42GB. Heartbeat tiếp theo ~15 phút.
 - Trạng thái: `dang-lam`
 - `ghi_chu`: 2026-10-08 02:02 +07 — Nhận vé `TEST-HEALTH-ROUND2-HOME`, cổng MỞ (trạng thái `moi` + prompt đúng vé + verdict ĐẠT SYNTH-COMPOSER-NOISE-FIX-HOME 02:02 phát hành ROUND2; không rơi nhánh 4-lần/cho-muse). Vé chỉ chạy + phân loại, không sửa `src/`/`tests/`, không ghi index, không merge `main`. Bắt đầu bước 1: chạy toàn bộ pytest nền, chưa có kết luận.
 - `ghi_chu`: 2026-10-08 01:57 +07 — kiểm cổng gate lượt mở này: HEAD=origin=03aa06c sạch, `prompt.md` vẫn vé cũ SYNTH-COMPOSER-NOISE-FIX-HOME (đã `xong-cho-duyet` commit 61d113a, báo cáo đủ), không có trạng thái `moi` nên không đủ điều kiện mở vé mới, không code lại; mới 1 lần gate liên tiếp chưa chạm 4 lần nên chưa đặt `cho-muse`, giữ chờ Muse duyệt.
