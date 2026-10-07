@@ -102,15 +102,28 @@ def verify_card_result_path(work_record: Any, raw_result_path: str) -> Optional[
     from aios_habit.workspace_agent_policy import is_safe_artifact_path
 
     allowed_roots = (default_doc_root(),)
-    candidates = []
+    # Trusted backend reference (orchestrator work row): full safe check
+    # (doc root + controlled tmp for tests).
     if work_record is not None and getattr(work_record, "result_ref", None):
-        candidates.append(str(work_record.result_ref))
-    if raw_result_path:
-        candidates.append(str(raw_result_path))
-    for raw in candidates:
-        cand = Path(raw.strip())
+        cand = Path(str(work_record.result_ref).strip())
         if is_safe_artifact_path(cand, allowed_roots=allowed_roots):
             return cand
+    # Untrusted metadata fallback (chat comment): doc-root only, no tmp
+    # fallback — otherwise a forged sibling file under the pytest temp dir
+    # would pass while pretending to be a report.
+    if raw_result_path:
+        try:
+            raw = str(raw_result_path).strip()
+            if raw and ".." not in Path(raw).parts:
+                resolved = Path(raw).resolve()
+                for root in allowed_roots:
+                    try:
+                        if resolved.is_relative_to(Path(root).resolve()):
+                            return Path(raw)
+                    except (ValueError, AttributeError):
+                        continue
+        except Exception:
+            pass
     return None
 
 
