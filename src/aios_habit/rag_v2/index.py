@@ -266,9 +266,33 @@ _LEX_PROBLEM_WORDS = frozenset(
 _NUMPY_SCORE_TIE_BAND = 1e-5
 
 
+def _is_numpy_available() -> bool:
+    """Kiểm tra thư viện numpy có cài đặt và import được không."""
+    try:
+        import numpy  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
+
+
 def numpy_dense_search_enabled() -> bool:
-    """Return whether the in-process numpy dense scan is explicitly enabled."""
-    return os.environ.get(NUMPY_DENSE_FLAG, "").strip().lower() in {"1", "true", "yes", "on"}
+    """Return whether the in-process numpy dense scan is enabled.
+
+    Đường numpy là mặc định khi numpy khả dụng trong môi trường.
+    Biến môi trường AIOS_RAG_V2_NUMPY_DENSE cho phép tắt về đường Python cũ
+    khi đặt giá trị 0, false, no, off (hỗ trợ rollback 1 dòng).
+    Khi numpy không khả dụng: tự rơi về đường Python và ghi log tiếng Việt rõ ràng, không sập.
+    """
+    raw = os.environ.get(NUMPY_DENSE_FLAG, "").strip().lower()
+    if raw in {"0", "false", "no", "off"}:
+        return False
+    if not _is_numpy_available():
+        LOGGER.warning(
+            "Thư viện numpy không khả dụng trong môi trường; tự động chuyển sang đường quét dense tuần tự Python."
+        )
+        return False
+    return True
 
 
 def numpy_dense_max_bytes() -> int:
@@ -310,6 +334,17 @@ class _DenseMatrixCache:
     source_paths: tuple[str, ...]
     source_fingerprints: tuple[str | None, ...]
     privacy_labels: tuple[tuple[str, ...], ...]
+
+
+_PROCESS_DENSE_MATRIX_LOCK = threading.Lock()
+_PROCESS_DENSE_MATRIX_CACHE: dict[tuple[str, str, int], _DenseMatrixCache] = {}
+
+
+def clear_process_dense_matrix_cache() -> None:
+    """Xóa bộ nhớ đệm ma trận dense cấp tiến trình (hỗ trợ kiểm thử và giải phóng RAM)."""
+    with _PROCESS_DENSE_MATRIX_LOCK:
+        _PROCESS_DENSE_MATRIX_CACHE.clear()
+
 
 
 @dataclass(frozen=True)
@@ -2156,7 +2191,9 @@ class LocalChunkIndex:
         try:
             import numpy as np
         except ImportError:
-            LOGGER.warning("rag_v2 numpy dense unavailable: numpy is not installed")
+            LOGGER.warning(
+                "Thư viện numpy không khả dụng trong môi trường; tự động chuyển sang đường quét dense tuần tự Python."
+            )
             return None
         fetch_started = perf_counter()
         rows = self._conn.execute(
@@ -2230,20 +2267,36 @@ class LocalChunkIndex:
             and cached.token == token
         ):
             return cached
-        with self._dense_matrix_lock:
-            cached = self._dense_matrix_cache
-            token = self._index_cache_token()
+
+        db_key = str(self.db_path.resolve()) if hasattr(self, "db_path") and self.db_path else ""
+        cache_key = (db_key, fingerprint, dimension)
+
+        with _PROCESS_DENSE_MATRIX_LOCK:
+            proc_cached = _PROCESS_DENSE_MATRIX_CACHE.get(cache_key)
             if (
-                cached is not None
-                and cached.fingerprint == fingerprint
-                and cached.dimension == dimension
-                and cached.token == token
+                proc_cached is not None
+                and proc_cached.fingerprint == fingerprint
+                and proc_cached.dimension == dimension
+                and proc_cached.token == token
             ):
-                return cached
-            loaded = self._load_dense_matrix_cache(fingerprint, dimension)
-            if loaded is not None:
-                self._dense_matrix_cache = loaded
-            return loaded
+                self._dense_matrix_cache = proc_cached
+                return proc_cached
+
+            with self._dense_matrix_lock:
+                cached = self._dense_matrix_cache
+                token = self._index_cache_token()
+                if (
+                    cached is not None
+                    and cached.fingerprint == fingerprint
+                    and cached.dimension == dimension
+                    and cached.token == token
+                ):
+                    return cached
+                loaded = self._load_dense_matrix_cache(fingerprint, dimension)
+                if loaded is not None:
+                    self._dense_matrix_cache = loaded
+                    _PROCESS_DENSE_MATRIX_CACHE[cache_key] = loaded
+                return loaded
 
     def preload_dense_matrix_cache(self) -> tuple[int, float]:
         """Eagerly load the numpy dense matrix cache (OPT-RAGV2-PYLOOPS V2-A).
@@ -2754,14 +2807,20 @@ class LocalChunkIndex:
     ) -> List[SearchResult]:
         """Return filtered local cosine candidates fused only across query variants."""
         if numpy_dense_search_enabled():
-            numpy_results = self._dense_candidates_numpy(
-                query,
-                limit=limit,
-                options=options or SearchOptions(),
-                ensure_embeddings=ensure_embeddings,
-            )
-            if numpy_results is not None:
-                return numpy_results
+            try:
+                numpy_results = self._dense_candidates_numpy(
+                    query,
+                    limit=limit,
+                    options=options or SearchOptions(),
+                    ensure_embeddings=ensure_embeddings,
+                )
+                if numpy_results is not None:
+                    return numpy_results
+            except Exception as exc:
+                LOGGER.warning(
+                    "Đường quét dense numpy gặp lỗi; tự động chuyển sang đường quét dense tuần tự Python: %s",
+                    exc,
+                )
         python_started = perf_counter()
         backend = self._embedding_backend
         if backend is None:
