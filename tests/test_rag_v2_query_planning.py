@@ -181,7 +181,8 @@ def test_expansion_rejects_control_characters():
 def test_technical_query_intent_classification_diagnosis_and_lookup():
     from aios_habit.rag_v2.query_planning import coerce_query_plan
 
-    # Diagnosis queries (mã lỗi, hiện tượng, nguyên nhân, đối sách)
+    # Technical LSU queries (mã lỗi, hiện tượng, nguyên nhân, đối sách, bảng thông số, dung sai, ngưỡng)
+    # Tất cả các câu hỏi kỹ thuật này đều thuộc diagnosis để kích hoạt ngân sách 10 luận điểm
     diag_queries = [
         "C23とC24ではどのような発生Trendでしたか。",
         "Điểm bất thường được phát hiện ở Jig nào và vị trí Camera nào?",
@@ -190,13 +191,6 @@ def test_technical_query_intent_classification_diagnosis_and_lookup():
         "Tăng thời gian ép từ 3 giây lên 6 giây có hiệu quả không?",
         "SIM追加後のMagenta光路高さとC7620発生率はどうなりましたか。",
         "排查时应先调整Unit还是确认Jig相关性？",
-    ]
-    for q in diag_queries:
-        plan = coerce_query_plan(q)
-        assert plan.intent_category == "diagnosis", f"Query '{q}' should be diagnosis, got {plan.intent_category}"
-
-    # Lookup queries (bảng thông số, giá trị, dung sai, ngưỡng, đơn vị)
-    lookup_queries = [
         "C7620中Magenta相对Black的副扫描色差达到多少会成为NG？",
         "Trong bảng quy đổi Skew, Black, Cyan, Magenta và Yellow lần lượt có giá trị µm và dot bao nhiêu?",
         "Các mục tham khảo số 13–16 có nominal và dung sai thế nào?",
@@ -204,9 +198,22 @@ def test_technical_query_intent_classification_diagnosis_and_lookup():
         "Yellow、Cyan、Magenta分别有多少件？",
         "BeamPosX=3024,6 µm cách hai giới hạn bao nhiêu?",
     ]
-    for q in lookup_queries:
+    for q in diag_queries:
+        plan = coerce_query_plan(q)
+        assert plan.intent_category == "diagnosis", f"Query '{q}' should be diagnosis, got {plan.intent_category}"
+
+    # Pure coordinate / location lookup queries (tra cứu vị trí ô, sheet, tài liệu)
+    coord_lookup_queries = [
+        "Find the supply-instruction location in the document",
+        "Bảng dữ liệu này nằm ở sheet nao?",
+        "Cho biết toa do o của ô tiêu đề",
+        "What is the cell location of this record?",
+        "Extract the source coordinate for the adjustment step",
+    ]
+    for q in coord_lookup_queries:
         plan = coerce_query_plan(q)
         assert plan.intent_category == "lookup", f"Query '{q}' should be lookup, got {plan.intent_category}"
+
 
 
 def test_technical_query_intent_negative_guards():

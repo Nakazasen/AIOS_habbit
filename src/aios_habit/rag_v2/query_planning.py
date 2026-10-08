@@ -27,6 +27,9 @@ _TECHNICAL_CODE_RE = re.compile(r"\b[A-Z]\d{2,5}\b")
 _NG_RE = re.compile(r"\bNG\b", re.IGNORECASE)
 _FOUR_M_RE = re.compile(r"\b4M\b")
 _MA_UNIT_RE = re.compile(r"\b\d+\s*mA\b", re.IGNORECASE)
+_MEASUREMENT_UNIT_RE = re.compile(r"(?:(?:\d+(?:[.,]\d+)?|\b)\s*(?:[µ\u00b5]m|um|mm|dot)\b|\b\d+\s*mA\b)", re.IGNORECASE)
+_TECHNICAL_WORD_RE = re.compile(r"\b(?:beam|jig|lightpath|takt_\w+|errcolor|bowoveradjustment)\b", re.IGNORECASE)
+_VIET_TECHNICAL_RE = re.compile(r"\b(?:loi|hong|bang)\b", re.IGNORECASE)
 _COMMA_CLAUSE_SPLIT_RE = re.compile(r"\s*,\s*(?:and|và|đồng thời)\s+", re.IGNORECASE)
 _BARE_CLAUSE_SPLIT_RE = re.compile(r"\s+(?:and|và|đồng thời)\s+", re.IGNORECASE)
 _QUESTION_CUE_RE = re.compile(
@@ -510,23 +513,50 @@ def _detect_intent_category(query: str) -> tuple[str, tuple[str, ...]]:
     if any(procedure_markers):
         return "procedure", ("query",)
 
-    # 3. Diagnosis markers: chẩn đoán mã lỗi, mã máy, hiện tượng, nguyên nhân, đối sách, bất thường
-    diagnosis_markers = (
+    # 3. Coordinate lookup markers: tra cứu vị trí tài liệu, vị trí ô, workbook/sheet thuần túy
+    coordinate_lookup_markers = (
+        "find the supply-instruction location" in ascii_folded,
+        "sheet nao" in ascii_folded,
+        "toa do o" in ascii_folded,
+        "cell location" in ascii_folded,
+        "source coordinate" in ascii_folded,
+    )
+    if any(coordinate_lookup_markers):
+        return "lookup", ("query",)
+
+    # 4. Technical diagnosis markers: chẩn đoán mã lỗi, mã máy, hiện tượng, nguyên nhân, đối sách,
+    # bảng thông số, dung sai, ngưỡng kỹ thuật, đo kiểm
+    technical_diagnosis_markers = (
         # Tiếng Việt
         "nguyen nhan" in ascii_folded,
         "doi sach" in ascii_folded,
         "bat thuong" in ascii_folded,
         "hien tuong" in ascii_folded,
         "su co" in ascii_folded,
-        "loi" in ascii_folded,
-        "hong" in ascii_folded,
+        bool(_VIET_TECHNICAL_RE.search(ascii_folded)),
         "di thuong" in ascii_folded,
         "khong doc duoc" in ascii_folded,
         "doc khong duoc" in ascii_folded,
         "bao duong" in ascii_folded,
         "tai sao" in ascii_folded,
         "xu ly the nao" in ascii_folded,
-        "hieu qua" in ascii_folded and ("doi sach" in ascii_folded or "tang thoi gian" in ascii_folded or "ep" in ascii_folded),
+        "hieu qua" in ascii_folded,
+        "bang quy doi" in ascii_folded,
+        "bang thong so" in ascii_folded,
+        "nominal" in ascii_folded,
+        "dung sai" in ascii_folded,
+        "tolerance" in ascii_folded,
+        "gioi han" in ascii_folded,
+        "nguong" in ascii_folded,
+        "threshold" in ascii_folded,
+        "gia tri" in ascii_folded,
+        "bao nhieu" in ascii_folded,
+        "ty le" in ascii_folded,
+        "ti le" in ascii_folded,
+        "so luong" in ascii_folded,
+        "pham vi ngay" in ascii_folded,
+        "record dau" in ascii_folded,
+        "phuong phap tinh" in ascii_folded,
         # Tiếng Nhật / Tiếng Trung
         "原因" in original,
         "対策" in original,
@@ -546,8 +576,23 @@ def _detect_intent_category(query: str) -> tuple[str, tuple[str, ...]]:
         "問題" in original,
         "ずれる" in original,
         "なぜ" in original,
-        "比较" in original and "jig" in original.lower(),
-        # Ký hiệu kỹ thuật, mã lỗi, acronyms
+        "比較" in original or "比较" in original,
+        "公差" in original,
+        "規格" in original or "规格" in original,
+        "閾値" in original,
+        "余量" in original,
+        "測定値" in original or "測定" in original,
+        "範囲" in original or "范围" in original,
+        "平均値" in original,
+        "多少" in original,
+        "いくつ" in original,
+        "何件" in original,
+        "何record" in original.lower(),
+        "何serial" in original.lower(),
+        "哪一天" in original,
+        "分別有多少" in original or "分别有多少" in original,
+        "表" in original,
+        # Ký hiệu kỹ thuật, mã lỗi, acronyms, đơn vị
         bool(_NG_RE.search(original)),
         "ng率" in original.lower(),
         "ng rate" in ascii_folded,
@@ -559,82 +604,18 @@ def _detect_intent_category(query: str) -> tuple[str, tuple[str, ...]]:
         "trend" in ascii_folded,
         "errcolor" in ascii_folded,
         "bowoveradjustment" in ascii_folded,
-        bool(_TECHNICAL_CODE_RE.search(original)),
-        bool(_FOUR_M_RE.search(original)),
-        "jig" in ascii_folded,
-    )
-
-    # 4. Lookup markers: tra cứu bảng thông số, giá trị, dung sai, ngưỡng, đơn vị, số lượng
-    lookup_markers = (
-        # Tiếng Việt
-        "bang quy doi" in ascii_folded,
-        "bang thong so" in ascii_folded,
-        "bang" in ascii_folded and ("skew" in ascii_folded or "gia tri" in ascii_folded or "record" in ascii_folded),
-        "nominal" in ascii_folded,
-        "dung sai" in ascii_folded,
-        "tolerance" in ascii_folded,
-        "gioi han" in ascii_folded,
-        "nguong" in ascii_folded,
-        "threshold" in ascii_folded,
-        "gia tri" in ascii_folded,
-        "bao nhieu" in ascii_folded,
-        "ty le" in ascii_folded,
-        "ti le" in ascii_folded,
-        "so luong" in ascii_folded,
-        "pham vi ngay" in ascii_folded,
-        "record dau" in ascii_folded,
-        "phuong phap tinh" in ascii_folded,
-        # Tiếng Nhật / Tiếng Trung
-        "公差" in original,
-        "規格" in original,
-        "规格" in original,
-        "閾値" in original,
-        "余量" in original,
-        "測定値" in original,
-        "測定" in original,
-        "範囲" in original,
-        "范围" in original,
-        "平均値" in original,
-        "多少" in original,
-        "いくつ" in original,
-        "何件" in original,
-        "何record" in original.lower(),
-        "何serial" in original.lower(),
-        "哪一天" in original,
-        "分別有多少" in original or "分别有多少" in original,
-        "表" in original,
-        # Đơn vị & chỉ số đo lường kỹ thuật
-        "dot" in ascii_folded,
-        "µm" in original or "um" in ascii_folded,
-        "mm" in original,
-        bool(_MA_UNIT_RE.search(original)) or ("ma" in ascii_folded and "current" in ascii_folded),
-        "beampos" in ascii_folded,
-        "beam diameter" in ascii_folded,
-        "beam h" in ascii_folded or "beam v" in ascii_folded,
         "lightpath" in ascii_folded,
         "takt_" in ascii_folded,
+        "jig" in ascii_folded,
+        bool(_TECHNICAL_CODE_RE.search(original)),
+        bool(_FOUR_M_RE.search(original)),
+        bool(_TECHNICAL_WORD_RE.search(original)),
+        bool(_MEASUREMENT_UNIT_RE.search(original)),
         "9999.9" in original,
         "999" in original,
     )
-
-    is_diag = any(diagnosis_markers)
-    is_lookup = any(lookup_markers)
-
-    if is_diag and not is_lookup:
+    if any(technical_diagnosis_markers):
         return "diagnosis", ("query",)
-    elif is_lookup and not is_diag:
-        return "lookup", ("query",)
-    elif is_diag and is_lookup:
-        cause_countermeasure_cues = (
-            "nguyen nhan" in ascii_folded, "doi sach" in ascii_folded, "bat thuong" in ascii_folded,
-            "原因" in original, "対策" in original, "trend" in ascii_folded, "なぜ" in original,
-            "hieu qua" in ascii_folded, "nguyên nhân duy nhất" in original.lower(), "hien tuong" in ascii_folded,
-            "bao duong" in ascii_folded, "dang chu y" in ascii_folded, "chu y" in ascii_folded, "van de" in ascii_folded,
-            "問題" in original, "排查" in original, "jig" in ascii_folded and "nao" in ascii_folded,
-        )
-        if any(cause_countermeasure_cues):
-            return "diagnosis", ("query",)
-        return "lookup", ("query",)
 
     return "general", ("query",)
 
