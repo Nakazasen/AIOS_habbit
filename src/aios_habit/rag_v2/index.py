@@ -215,7 +215,7 @@ def _lexical_v2_flags() -> Optional[Dict[str, bool]]:
     Returns None when the master switch is off; otherwise a dict of
     sub-toggle name -> enabled.
     """
-    if os.environ.get(_LEX_V2_MASTER_ENV, "0") != "1":
+    if os.environ.get(_LEX_V2_MASTER_ENV, "1") != "1":
         return None
 
     def _opt(name: str, default: str = "1") -> bool:
@@ -242,6 +242,8 @@ def _lexical_v2_flags() -> Optional[Dict[str, bool]]:
         # Default 0: falls back to the LIKE prefilter when the table is
         # missing, so enabling it early is harmless but useless.
         "CJK_TRIGRAM": _opt("CJK_TRIGRAM", "0"),
+        # (d) Selective FTS terms: prune high-frequency Vietnamese stopwords from FTS match query
+        "SELECTIVE_TERMS": _opt("SELECTIVE_TERMS"),
     }
 
 
@@ -260,6 +262,29 @@ _LEX_PROBLEM_WORDS = frozenset(
         "exception", "symptom", "issue", "lỗi", "sự", "hỏng", "thất",
     }
 )
+_VIETNAMESE_COMMON_STOPWORDS = frozenset(
+    {
+        "và", "của", "có", "là", "được", "trong", "cho", "về", "với", "các", "những", "này",
+        "khi", "để", "từ", "ở", "sau", "trước", "như", "thế", "nào", "gì", "ai", "đâu",
+        "bao", "nhiêu", "ngày", "điểm", "đáng", "chú", "ý",
+        "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+    }
+)
+
+
+def _identifier_literals(query: str) -> tuple[str, ...]:
+    """Extract literal entity strings for fast FTS identifier candidate lookup."""
+    entities = _extract_query_entities(query or "")
+    if entities:
+        return tuple(dict.fromkeys(ent.strip() for ent in entities if ent.strip()))
+    return tuple(
+        dict.fromkeys(
+            m.group(0).strip()
+            for m in _EXACT_IDENTIFIER_RE.finditer(query or "")
+            if m.group(0).strip()
+        )
+    )
+
 # Float32 matmul on this machine disagreed with the Python cosine by at most
 # ~1e-7 on real 1024-d vectors. The band keeps a near-cutoff chunk in the
 # exact-rescore pool so published top-k order stays identical.
@@ -1040,6 +1065,11 @@ class LocalChunkIndex:
                 check_same_thread=sqlite_check_same_thread,
             )
         self._conn.execute("PRAGMA foreign_keys = ON")
+        try:
+            self._conn.execute("PRAGMA cache_size = -262144")
+            self._conn.execute("PRAGMA mmap_size = 2147483648")
+        except sqlite3.Error:
+            pass
         self._conn.row_factory = sqlite3.Row
         self._fts5_requested = enable_fts5
         self._embedding_backend = embedding_backend
@@ -3720,7 +3750,6 @@ class LocalChunkIndex:
         narrow_eligibility = (
             lex_v2 is not None
             and lex_v2["NARROW_ELIGIBILITY"]
-            and not identifier_patterns
         )
         if narrow_eligibility:
             indexed_rows = self._conn.execute(
@@ -3805,9 +3834,7 @@ class LocalChunkIndex:
             if not variant_terms:
                 continue
             rescue_patterns = identifier_patterns if variant.origin == "original" else ()
-            # V2 implements no identifier-rescue path; identifier queries stay
-            # on _candidate_rows so rescue behavior is untouched.
-            if lex_v2 is not None and not rescue_patterns:
+            if lex_v2 is not None:
                 candidate_rows, backend = self._candidate_rows_v2(
                     variant.text,
                     eligible_ids,
@@ -3815,6 +3842,8 @@ class LocalChunkIndex:
                     timings=lex_timings,
                     eligible_complete=eligible_complete,
                     lex_v2=lex_v2,
+                    identifier_patterns=rescue_patterns,
+                    query_plan=query_plan,
                 )
             else:
                 candidate_rows, backend = self._candidate_rows(
@@ -4265,7 +4294,7 @@ class LocalChunkIndex:
         if not cjk_prefilter_enabled():
             return None
         entities = _extract_query_entities(" ".join(terms))
-        generic_stop = {"data", "file", "sheet", "line", "view", "part", "this", "from"}
+        generic_stop = {"data", "file", "sheet", "line", "view", "part", "this", "from", "unit"}
         filtered = [
             term for term in terms
             if term and term.lower() not in generic_stop and (len(term) <= 6 or not _CJK_RE.search(term))
@@ -4296,7 +4325,7 @@ class LocalChunkIndex:
                 for row in self._conn.execute(
                     "SELECT chunk_id FROM chunks WHERE retrievable = 1 AND ("
                     + " OR ".join(clauses)
-                    + ")",
+                    + ") LIMIT 500",
                     parameters,
                 ).fetchall()
             }
@@ -4611,12 +4640,14 @@ class LocalChunkIndex:
         timings: Optional[Dict[str, float]] = None,
         eligible_complete: bool = False,
         lex_v2: Dict[str, bool],
+        identifier_patterns: Sequence[re.Pattern[str]] = (),
+        query_plan: Optional[RetrievalQueryPlan] = None,
     ) -> tuple[List[sqlite3.Row], str]:
         """Phase-B2 candidate path: same results as _candidate_rows.
 
         Works from eligible chunk ids (narrow eligibility) and fetches full
-        rows lazily for candidates only. The identifier-rescue path is NOT
-        replicated here; callers use _candidate_rows for identifier queries.
+        rows lazily for candidates only. Fast identifier-rescue path uses
+        FTS token lookup for instant candidate filtering without full scan.
         Every optimization is gated by its own lex_v2 sub-toggle.
         """
         if not self._fts5_available or not eligible_ids:
@@ -4637,8 +4668,15 @@ class LocalChunkIndex:
             like_ids = self._cjk_like_prefilter_ids(eligible_ids, terms, timings)
             target_ids = like_ids if like_ids is not None else eligible_ids
             return self._fetch_chunk_rows(target_ids), "deterministic_scan"
+        
+        fts_terms = terms
+        if lex_v2.get("SELECTIVE_TERMS", True) and len(terms) > 8:
+            selective = [t for t in terms if t.lower() not in _VIETNAMESE_COMMON_STOPWORDS]
+            if len(selective) >= 2:
+                fts_terms = tuple(selective)
+
         match_query = " OR ".join(
-            f'"{term.replace(chr(34), chr(34) * 2)}"' for term in terms
+            f'"{term.replace(chr(34), chr(34) * 2)}"' for term in fts_terms
         )
         ranked_ids: Optional[List[str]]
         if lex_v2["SKIP_FULL_ELIGIBLE"] and eligible_complete:
@@ -4680,7 +4718,68 @@ class LocalChunkIndex:
             )
             if ranked_ids is None:
                 return self._fetch_chunk_rows(eligible_ids), "deterministic_scan"
-        return self._fetch_chunk_rows(ranked_ids), "fts5_bm25"
+        ranked = self._fetch_chunk_rows(ranked_ids)
+        if not identifier_patterns:
+            return ranked, "fts5_bm25"
+
+        ranked_ids_set = {str(row["chunk_id"]) for row in ranked}
+        rescue_start = perf_counter()
+        literals = _identifier_literals(query)
+        rescue_candidate_ids = set()
+        if literals:
+            rescue_subqueries = []
+            for lit in literals:
+                sub_terms = re.findall(r"\w+", lit)
+                if sub_terms:
+                    rescue_subqueries.append(" OR ".join(f'"{st}"' for st in sub_terms))
+            if rescue_subqueries:
+                rescue_match = " OR ".join(rescue_subqueries)
+                try:
+                    r_rows = self._conn.execute(
+                        """
+                        SELECT f.chunk_id
+                        FROM chunks_fts AS f
+                        JOIN chunks AS c ON c.chunk_id = f.chunk_id AND c.retrievable = 1
+                        WHERE chunks_fts MATCH ?
+                        LIMIT 500
+                        """,
+                        (rescue_match,),
+                    ).fetchall()
+                    rescue_candidate_ids = {str(r["chunk_id"]) for r in r_rows} - ranked_ids_set
+                except sqlite3.OperationalError:
+                    pass
+
+        if not rescue_candidate_ids and len(eligible_ids) <= 1000:
+            rescue_candidate_ids = set(eligible_ids) - ranked_ids_set
+
+        rescue_cand_rows = self._fetch_chunk_rows(list(rescue_candidate_ids))
+        exact_matches = []
+        for r in rescue_cand_rows:
+            match_priority = _identifier_match_priority(
+                str(r["normalized_text"] or ""),
+                identifier_patterns,
+            )
+            if not match_priority[1]:
+                continue
+            candidate = self._score_candidate(r, terms, query_plan=query_plan)
+            if candidate is not None:
+                exact_matches.append((match_priority[0], match_priority[1], candidate[0], r))
+
+        exact_matches.sort(
+            key=lambda item: (
+                -item[0],
+                -item[1],
+                -item[2],
+                str(item[3]["document_id"]),
+                str(item[3]["chunk_id"]),
+            )
+        )
+        ranked.extend(item[3] for item in exact_matches[:_EXACT_IDENTIFIER_QUOTA])
+        if timings is not None:
+            timings["identifier_rescue_ms"] = timings.get("identifier_rescue_ms", 0.0) + (
+                perf_counter() - rescue_start
+            ) * 1000.0
+        return ranked, "fts5_bm25"
 
     @staticmethod
     def _score_candidate_bundle(row: sqlite3.Row) -> Dict[str, Any]:
