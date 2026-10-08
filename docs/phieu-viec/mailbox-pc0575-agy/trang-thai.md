@@ -5,6 +5,7 @@
 - Trạng thái: `dang-lam`
 - `commit`: `0c85f2d8`
 - `bao_cao`: `docs/phieu-viec/ket-qua/rag-remeasure-pc0575.md`
+- `ghi_chu`: 2026-10-08 16:10 +07 — Tiến độ lane RAG: đã hoàn thành 23/50 câu (0 lỗi kỹ thuật; retrieval ấm TB ~7–12s/câu, synthesis ~4–5s/câu, tổng 16.83 điểm, GPA 0.732). Tiến trình nền đang tiếp tục chạy nửa sau trên index chỉ-đọc.
 - `ghi_chu`: 2026-10-08 16:05 +07 — Tiến độ lane RAG: đã hoàn thành 8/50 câu (0 lỗi kỹ thuật; retrieval ấm TB ~10–18s/câu, synthesis ~4–5s/câu, không timeout/treo). Đang tiếp tục chạy các câu tiếp theo trên index chỉ-đọc.
 - `ghi_chu`: 2026-10-08 15:58 +07 — Hoàn thành 100% lane C-Agent (50/50 câu, 0 lỗi kỹ thuật): tổng 146.83 điểm, GPA 2.937, 49/50 câu đạt chuẩn ≥2 (98.0%), 46/50 câu đạt điểm 3 tuyệt đối. Bắt đầu chuyển sang khởi chạy lane RAG (50 câu CPU-only trên index chỉ-đọc với numpy dense + lexical fts tối ưu).
 - `ghi_chu`: 2026-10-08 15:55 +07 — Tiến độ lane C-Agent: đã hoàn thành 45/50 câu (0 lỗi kỹ thuật, 44/45 câu đạt chuẩn ≥2, 41 câu đạt 3 tuyệt đối, GPA 2.930). Tiến trình nền đang tiếp tục chạy 5 câu cuối trên mạng vn-kdwireless.
