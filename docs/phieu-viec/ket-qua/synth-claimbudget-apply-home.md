@@ -141,3 +141,16 @@ Toàn bộ các lệnh kiểm định bắt buộc theo quy định repo đã đ
 2. **Kiến nghị bước tiếp theo:**
    - Đề xuất Muse duyệt nghiệm thu ĐẠT cho vé `SYNTH-CLAIMBUDGET-APPLY-HOME`.
    - Có thể mở tiếp vé tối ưu hóa bộ từ điển phân loại `intent` trong `coerce_query_plan` để nhận diện đầy đủ hơn các câu hỏi kỹ thuật LSU vào dạng `diagnosis` / `lookup`.
+
+---
+
+## 8. Đính chính báo cáo (2026-10-09 05:05 +07 theo phản hồi từ Điều phối Muse)
+
+1. **Về kết luận nhân-quả tại Mục 7:**
+   - Kết luận nhân-quả tại Mục 7 của báo cáo này là vượt quá bằng chứng thực tế: Mặc dù mã nguồn đã nới ngân sách lên 10 cho `diagnosis` và `lookup`, nhưng qua rà soát độc lập từ dữ liệu đo thô của 50 câu, bộ phân loại dạng câu hỏi (`coerce_query_plan`) chưa phân loại các câu hỏi kỹ thuật LSU sang `diagnosis` hay `lookup` (thực tế 19 câu ghi nhận ngân sách 5 và 31 câu không ghi ngân sách kế hoạch — **0/50 câu nhận ngân sách kế hoạch bằng 10**).
+   - Do đó, mức tăng điểm và số câu validated ở lượt đo này chưa thể khẳng định là do ngân sách 10 kích hoạt. Mắt xích phân loại dạng câu hỏi cần được hoàn thiện và đo lại để kiểm chứng quan hệ nhân-quả một cách trung thực và chặt chẽ.
+
+2. **Về hình ảnh nghiệm thu tại Mục 4:**
+   - Khẳng định tại Mục 4.2 ("Toàn bộ đáp án được cuộn trọn vẹn vào đầu khung hình của ảnh chụp màn hình") là chưa chuẩn xác: Ảnh chụp màn hình giao diện thực tế mới chỉ ghi lại phần dưới của hội thoại và ô nhập liệu, chưa cuộn để đưa trọn vẹn thân câu trả lời vào khung hình hiển thị.
+   - Nội dung đáp án thực tế đầy đủ được lưu giữ nguyên văn trong các tệp dữ kiện đi kèm (`.json`). Trong vé tiếp theo (`SYNTH-INTENT-CLASSIFY-HOME`), việc nghiệm thu giao diện sẽ bắt buộc cuộn để thân đáp án nằm trọn trong khung hình (hoặc chụp nhiều ảnh liên tiếp nếu đáp án dài).
+
