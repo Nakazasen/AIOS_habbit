@@ -205,3 +205,125 @@ def test_session_config_is_transient_and_overrides_environment(monkeypatch):
     assert config.model_name == "session-model"
     assert config.timeout_seconds == 12
     assert config.enabled
+
+
+class _ReasoningOnlyHandler(BaseHTTPRequestHandler):
+    """Always answers with reasoning-only output (empty content)."""
+
+    payloads = []
+
+    def do_POST(self):
+        length = int(self.headers.get("Content-Length", "0"))
+        self.__class__.payloads.append(
+            json.loads(self.rfile.read(length).decode("utf-8"))
+        )
+        body = {
+            "choices": [
+                {
+                    "message": {
+                        "content": "",
+                        "reasoning_content": "internal reasoning consumed the budget",
+                    },
+                    "finish_reason": "length",
+                }
+            ]
+        }
+        encoded = json.dumps(body).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(encoded)))
+        self.end_headers()
+        self.wfile.write(encoded)
+
+    def log_message(self, format, *args):
+        return
+
+
+class _ReasoningOnlyThenAnswerHandler(_ReasoningOnlyHandler):
+    """First answer is reasoning-only; the retry gets a real answer."""
+
+    def do_POST(self):
+        length = int(self.headers.get("Content-Length", "0"))
+        self.__class__.payloads.append(
+            json.loads(self.rfile.read(length).decode("utf-8"))
+        )
+        if len(self.__class__.payloads) == 1:
+            body = {
+                "choices": [
+                    {
+                        "message": {
+                            "content": "",
+                            "reasoning_content": "internal reasoning consumed the budget",
+                        },
+                        "finish_reason": "length",
+                    }
+                ]
+            }
+        else:
+            body = {
+                "choices": [
+                    {"message": {"content": "Đáp án thật [1]"}, "finish_reason": "stop"}
+                ]
+            }
+        encoded = json.dumps(body).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(encoded)))
+        self.end_headers()
+        self.wfile.write(encoded)
+
+
+def _serve(handler_cls):
+    handler_cls.payloads = []
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler_cls)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    return server, thread
+
+
+def test_provider_retries_once_with_a_stronger_request_for_reasoning_only_answer():
+    server, thread = _serve(_ReasoningOnlyThenAnswerHandler)
+    try:
+        endpoint = f"http://127.0.0.1:{server.server_port}/v1/chat/completions"
+        result = answer_with_provider(
+            question="Synthetic question?",
+            source_context="Synthetic context",
+            config=_config(endpoint),
+            deterministic_answer="Deterministic fallback",
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    payloads = _ReasoningOnlyThenAnswerHandler.payloads
+    assert result.ok
+    assert not result.used_fallback
+    assert result.answer_text == "Đáp án thật [1]"
+    assert len(payloads) == 2
+    assert payloads[1]["max_tokens"] > payloads[0]["max_tokens"]
+    assert payloads[1]["messages"][0]["content"] != payloads[0]["messages"][0]["content"]
+
+
+def test_provider_reports_reasoning_only_answer_as_format_error_not_network():
+    server, thread = _serve(_ReasoningOnlyHandler)
+    try:
+        endpoint = f"http://127.0.0.1:{server.server_port}/v1/chat/completions"
+        result = answer_with_provider(
+            question="Synthetic question?",
+            source_context="Synthetic context",
+            config=_config(endpoint),
+            deterministic_answer="Deterministic fallback",
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert not result.ok
+    assert result.used_fallback
+    assert result.answer_text == "Deterministic fallback"
+    assert result.safety_status == "fallback_provider_empty_answer"
+    assert "empty answer" in result.error_message
+    assert len(_ReasoningOnlyHandler.payloads) == 2
+    assert "internal reasoning consumed the budget" not in result.answer_text

@@ -183,10 +183,20 @@ class RouterSynthesisProvider:
                 "All synthesis providers failed: %s",
                 "; ".join(reasons) or "no_candidates",
             )
+            error_types = ",".join(
+                sorted(
+                    {
+                        str(a.error_type).strip()
+                        for a in result.attempts
+                        if str(a.error_type).strip()
+                    }
+                )
+            ) or "none"
             raise RuntimeError(
                 f"All synthesis providers failed "
                 f"(terminal={result.terminal_status}, "
-                f"attempts={len(result.attempts)})"
+                f"attempts={len(result.attempts)}, "
+                f"error_types={error_types})"
             )
 
         logger.info(

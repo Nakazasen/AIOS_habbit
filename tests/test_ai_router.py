@@ -81,6 +81,29 @@ def test_timeout_and_bad_answer_handling():
     assert result.attempts[-1].error_type == "bad_response"
 
 
+def test_bridge_empty_answer_message_classifies_as_bad_response():
+    from aios_habit.ai_provider_bridge import EMPTY_ANSWER_ERROR_MESSAGE_VI
+
+    assert classify_provider_error(EMPTY_ANSWER_ERROR_MESSAGE_VI) == "bad_response"
+
+    calls = []
+
+    def client(c, r):
+        calls.append(c.provider_id)
+        if c.provider_id == "gemini":
+            raise RuntimeError(EMPTY_ANSWER_ERROR_MESSAGE_VI)
+        return "answer from groq"
+
+    result = route_answer(
+        req(), [cfg("gemini", "Gemini", 1), cfg("groq", "Groq", 2)], {}, client
+    )
+
+    assert result.answer_text == "answer from groq"
+    assert calls == ["gemini", "groq"]
+    assert result.attempts[0].error_type == "bad_response"
+    assert result.attempts[0].failure_scope == "model"
+
+
 def test_route_summary_vietnamese_and_no_raw_labels():
     result = route_answer(req(), [cfg("groq", "Groq")], {}, lambda c, r: "ok")
     summary = result.route_summary_vi

@@ -564,6 +564,34 @@ def test_provider_synthesis_invalid_output_and_exception_fall_back_locally():
     assert failed.answer == invalid.answer
 
 
+def test_provider_empty_answer_records_format_error_not_network():
+    pack = build_evidence_pack(
+        "Summarize the restart requirement",
+        _make_response([
+            _make_result(
+                "c1",
+                "d1",
+                5.0,
+                "Error code E01 requires system restart.",
+                matched_terms=("restart", "requirement"),
+                privacy_labels=("cloud_safe",),
+            )
+        ]),
+    )
+
+    def empty_provider(_request):
+        raise RuntimeError(
+            "All synthesis providers failed (terminal=local_renderer, "
+            "attempts=1, error_types=bad_response)"
+        )
+
+    result = synthesize_with_provider(pack, empty_provider)
+
+    assert result.provider_used is False
+    assert "provider_empty_answer" in result.limitation_reasons
+    assert "provider_network_error" not in result.limitation_reasons
+
+
 def test_provider_failure_uses_citation_first_fallback_for_compact_evidence():
     pack = build_evidence_pack(
         "Summarize APS",

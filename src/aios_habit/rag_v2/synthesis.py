@@ -990,10 +990,17 @@ def synthesize_with_provider(
     )
     try:
         answer = str(provider(request) or "")
-    except Exception:
+    except Exception as exc:
+        # An empty provider answer is a format problem, not a network problem:
+        # keep the two apart so telemetry and tier failover stay truthful.
+        provider_error = (
+            "provider_empty_answer"
+            if "bad_response" in str(exc)
+            else "provider_network_error"
+        )
         return replace(
             fallback,
-            limitation_reasons=tuple(dict.fromkeys((*fallback.limitation_reasons, "provider_network_error"))),
+            limitation_reasons=tuple(dict.fromkeys((*fallback.limitation_reasons, provider_error))),
             mode=(
                 _PROVIDER_FALLBACK_MODE
                 if not (local.abstained or citation_first_local)

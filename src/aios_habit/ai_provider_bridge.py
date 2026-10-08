@@ -18,6 +18,22 @@ DEFAULT_MAX_CONTEXT_CHARS = 6000
 DEFAULT_MAX_TOKENS = 2048
 MAX_SOURCE_REFS = 5
 
+# Reasoning-capable endpoints (for example DeepSeek thinking models) can spend
+# the whole ``max_tokens`` budget on internal reasoning and return an empty
+# ``content`` field.  One bounded retry asks for a direct answer with a doubled
+# budget; the reasoning ban in ``_post_chat`` still applies, so reasoning text
+# is never used as the user-visible answer.
+EMPTY_ANSWER_RETRY_TOKEN_CEILING = 8192
+EMPTY_ANSWER_ERROR_MESSAGE_VI = "Nguồn AI không trả về nội dung trả lời (empty answer)."
+_EMPTY_ANSWER_RETRY_DIRECTIVE = (
+    "\n\nQUAN TRỌNG: Trả lời TRỰC TIẾP trong nội dung chính; giữ phần suy luận "
+    "nội bộ thật ngắn; tuyệt đối không để nội dung trả lời rỗng."
+)
+
+
+class ProviderEmptyAnswerError(RuntimeError):
+    """Endpoint returned no usable answer content (for example reasoning-only output)."""
+
 
 @dataclass
 class ProviderConfig:
@@ -259,16 +275,12 @@ def _fallback(
     )
 
 
-def _post_chat(config: ProviderConfig, user_prompt: str, max_tokens: Optional[int] = None) -> str:
-    system_prompt = (
-        "Bạn là trợ lý AI cục bộ của AIOS. Chỉ trả lời từ nguồn được cung cấp, "
-        "không bịa dữ kiện, nói rõ khi chưa đủ bằng chứng và giữ dẫn nguồn."
-    )
-    effective_max_tokens = (
-        max_tokens
-        if max_tokens is not None
-        else getattr(config, "max_tokens", DEFAULT_MAX_TOKENS) or DEFAULT_MAX_TOKENS
-    )
+def _post_chat_once(
+    config: ProviderConfig,
+    system_prompt: str,
+    user_prompt: str,
+    max_tokens: int,
+) -> dict[str, Any]:
     payload = {
         "model": config.model_name,
         "messages": [
@@ -276,7 +288,7 @@ def _post_chat(config: ProviderConfig, user_prompt: str, max_tokens: Optional[in
             {"role": "user", "content": user_prompt},
         ],
         "temperature": 0.1,
-        "max_tokens": effective_max_tokens,
+        "max_tokens": max_tokens,
     }
     headers = {
         "Content-Type": "application/json",
@@ -291,27 +303,66 @@ def _post_chat(config: ProviderConfig, user_prompt: str, max_tokens: Optional[in
         method="POST",
     )
     with urllib.request.urlopen(request, timeout=config.timeout_seconds) as response:
-        data = json.loads(response.read().decode("utf-8"))
+        return json.loads(response.read().decode("utf-8"))
+
+
+def _first_choice(data: dict[str, Any]) -> tuple[dict[str, Any], str]:
     choices = data.get("choices") or []
     if not choices:
         raise RuntimeError("Endpoint không trả về lựa chọn nào (choices rỗng).")
-    msg = choices[0].get("message", {}) if choices else {}
+    message = choices[0].get("message", {}) or {}
     finish_reason = str(choices[0].get("finish_reason") or "").strip().lower()
+    return message, finish_reason
+
+
+def _post_chat(config: ProviderConfig, user_prompt: str, max_tokens: Optional[int] = None) -> str:
+    system_prompt = (
+        "Bạn là trợ lý AI cục bộ của AIOS. Chỉ trả lời từ nguồn được cung cấp, "
+        "không bịa dữ kiện, nói rõ khi chưa đủ bằng chứng và giữ dẫn nguồn."
+    )
+    effective_max_tokens = (
+        max_tokens
+        if max_tokens is not None
+        else getattr(config, "max_tokens", DEFAULT_MAX_TOKENS) or DEFAULT_MAX_TOKENS
+    )
+    msg, finish_reason = _first_choice(
+        _post_chat_once(config, system_prompt, user_prompt, effective_max_tokens)
+    )
 
     # CẤM tuyệt đối lấy reasoning / reasoning_content làm câu trả lời cho người dùng!
     # Reasoning là chuỗi suy luận nội bộ (CoT) làm rò rỉ prompt hệ thống và đánh giá an toàn.
-    raw_content = msg.get("content")
-    if raw_content is None:
-        raw_content = ""
-    raw_content = str(raw_content).strip()
+    raw_content = str(msg.get("content") or "").strip()
     if not raw_content:
-        raise RuntimeError("Endpoint không trả về nội dung trả lời (content rỗng).")
+        reasoning_only = bool(
+            str(msg.get("reasoning_content") or msg.get("reasoning") or "").strip()
+        )
+        retry_budget = min(EMPTY_ANSWER_RETRY_TOKEN_CEILING, effective_max_tokens * 2)
+        if (reasoning_only or finish_reason == "length") and retry_budget > effective_max_tokens:
+            # The endpoint spent the whole budget on internal reasoning. Ask
+            # exactly once more for a direct answer, with a larger output
+            # budget and an explicit "answer directly" directive.
+            msg, finish_reason = _first_choice(
+                _post_chat_once(
+                    config,
+                    system_prompt + _EMPTY_ANSWER_RETRY_DIRECTIVE,
+                    user_prompt,
+                    retry_budget,
+                )
+            )
+            raw_content = str(msg.get("content") or "").strip()
+        if not raw_content:
+            raise ProviderEmptyAnswerError(
+                "Endpoint không trả về nội dung trả lời (empty answer, "
+                f"finish_reason={finish_reason or 'none'})."
+            )
 
     from aios_habit.answer_sanitizer import clean_assistant_answer, inspect_truncation
 
     cleaned = clean_assistant_answer(raw_content)
     if not cleaned:
-        raise RuntimeError("Nội dung từ endpoint chỉ chứa suy luận hoặc rò rỉ prompt hệ thống, không có câu trả lời hợp lệ.")
+        raise ProviderEmptyAnswerError(
+            "Nội dung từ endpoint rỗng sau khi lọc (chỉ có suy luận nội bộ hoặc rò rỉ prompt hệ thống)."
+        )
 
     is_trunc, trunc_reason = inspect_truncation(cleaned, finish_reason=finish_reason)
     if is_trunc:
@@ -408,6 +459,26 @@ def answer_with_provider(
             model_name=config.model_name,
             used_fallback=False,
             safety_status="local_provider_ok",
+        )
+    except ProviderEmptyAnswerError:
+        # A distinct format error: the endpoint answered with nothing usable
+        # (reasoning-only or filtered output). It must never be reported as a
+        # network failure, so downstream routing can fail over immediately.
+        if config.provider_type in ("antigravity_if_available", "antigravity_ide_brain"):
+            return ProviderResult(
+                ok=False,
+                answer_text="",
+                provider_name=config.provider_type,
+                model_name=config.model_name,
+                error_message=EMPTY_ANSWER_ERROR_MESSAGE_VI,
+                used_fallback=False,
+                safety_status="fallback_provider_empty_answer",
+            )
+        return _fallback(
+            deterministic_answer,
+            config,
+            EMPTY_ANSWER_ERROR_MESSAGE_VI,
+            "fallback_provider_empty_answer",
         )
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, socket.timeout, OSError, ValueError, RuntimeError) as exc:
         error_detail = type(exc).__name__

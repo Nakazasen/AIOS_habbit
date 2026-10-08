@@ -179,6 +179,25 @@ class TestRouterSynthesisProvider:
             provider(_make_request())
 
     @patch("aios_habit.rag_v2_synthesis_provider.route_answer")
+    def test_fallback_error_message_carries_provider_error_types(self, mock_route):
+        mock_route.return_value = RouterResult(
+            answer_text="",
+            used_provider="Dữ liệu cục bộ",
+            used_model="",
+            used_fallback=True,
+            safety_status="fallback_local",
+            attempts=[
+                RouterAttempt(
+                    "groq", "Groq", "llama-3.1-70b", "failed", "", 120, "bad_response",
+                )
+            ],
+            terminal_status="local_renderer",
+        )
+        provider = RouterSynthesisProvider(provider_configs=MOCK_CONFIGS)
+        with pytest.raises(RuntimeError, match="error_types=bad_response"):
+            provider(_make_request())
+
+    @patch("aios_habit.rag_v2_synthesis_provider.route_answer")
     def test_privacy_filters_cloud_providers(self, mock_route):
         """When evidence is local_only, only trusted_internal providers survive."""
         local_config = RouterProviderConfig(
