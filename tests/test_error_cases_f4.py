@@ -37,8 +37,14 @@ ALL_SOURCES = [
 
 @pytest.fixture(scope="module")
 def conn():
-    for path, _ in ALL_SOURCES:
-        assert path.exists(), f"source file missing: {path}"
+    # TEST-SUITE-HYGIENE-HOME: skip co dieu kien khi tep nguon cua may khac vang mat.
+    # Khi tep co mat, test chay that nhu cu (khong bo qua vo dieu kien).
+    missing = [str(path) for path, _ in ALL_SOURCES if not path.exists()]
+    if missing:
+        pytest.skip(
+            "thieu tep nguon cua may khac (AIOS_DATA_DIR=%s): %s"
+            % (DATA, "; ".join(missing))
+        )
     c = sqlite3.connect(":memory:")
     c.row_factory = sqlite3.Row
     init_glossary(c)
