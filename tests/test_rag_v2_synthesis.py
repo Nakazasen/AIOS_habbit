@@ -1159,7 +1159,8 @@ def test_cross_source_synthesis_marks_missing_facet():
     assert "Còn thiếu:" in result.answer
     assert "Ý 2" in result.answer
 
-def test_provider_limitations_contain_accurate_reasons():
+def test_provider_limitations_contain_accurate_reasons(monkeypatch):
+    monkeypatch.delenv("AIOS_SYNTHESIS_ALLOW_CLOUD_PROVIDERS", raising=False)
     from aios_habit.rag_v2.evidence import PrivacySummary
     from dataclasses import replace
     pack = build_evidence_pack("query", _make_response([_make_result("c1", "d1", 5.0, "Claim 1", matched_terms=("query",))]))
@@ -1686,3 +1687,52 @@ def test_budget_miss_with_fabricated_literal_never_merges():
     assert len(fail_calls) == 1
     assert failed.provider_used is False
     assert failed.mode.startswith("local_")
+
+
+def test_disciplined_citation_contract_format(monkeypatch):
+    """SYNTH-CONTRACT-FREE-HOME: disciplined citation contract variant enforces
+    anti-opener discipline, end-of-line citations, claim budget and mandatory limitations
+    under AIOS_SYNTHESIS_STRICT_CITATION_CONTRACT flag, while preserving legacy contract
+    when disabled."""
+    from dataclasses import replace
+    from aios_habit.rag_v2.synthesis import (
+        disciplined_citation_contract_enabled,
+        format_provider_synthesis_contract,
+        format_provider_synthesis_repair_contract,
+    )
+
+    pack = _make_release_pair_pack()
+    plan = build_synthesis_plan(pack, answer_shape="grounded_summary", max_claims=2)
+
+    # 1. Default / Disabled: legacy behavior 100% intact
+    monkeypatch.delenv("AIOS_SYNTHESIS_STRICT_CITATION_CONTRACT", raising=False)
+    assert disciplined_citation_contract_enabled() is False
+    legacy_contract = format_provider_synthesis_contract(plan)
+    assert "CRITICAL DISCIPLINE RULES" not in legacy_contract
+    assert "Count every factual bullet or paragraph as one material claim: emit at most 2 such lines in total." in legacy_contract
+
+    # 2. Enabled via environment flag
+    monkeypatch.setenv("AIOS_SYNTHESIS_STRICT_CITATION_CONTRACT", "1")
+    assert disciplined_citation_contract_enabled() is True
+    disciplined_contract = format_provider_synthesis_contract(plan)
+
+    assert "CRITICAL DISCIPLINE RULES" in disciplined_contract
+    assert "NO UNCITED OPENERS OR INTROS" in disciplined_contract
+    assert "EVERY FACTUAL LINE MUST END WITH A CITATION" in disciplined_contract
+    assert "STRICT CLAIM BUDGET: Emit at most 2 factual lines in total." in disciplined_contract
+    assert "Prioritize fewer, highly certain lines over many lines" in disciplined_contract
+
+    # 3. Enabled with limitations
+    plan_with_limitations = replace(plan, limitation_reasons=("unsupported_scope",))
+    contract_with_limits = format_provider_synthesis_contract(
+        plan_with_limitations, disciplined_citation=True
+    )
+    assert "MANDATORY FINAL LINE: End with exactly `LIMITATIONS: unsupported_scope`" in contract_with_limits
+
+    # 4. Repair contract includes strict repair discipline hint
+    repair = format_provider_synthesis_repair_contract(
+        plan, "draft", ["provider_answer_uncited_material_claim"], disciplined_citation=True
+    )
+    assert "STRICT REPAIR DISCIPLINE" in repair
+    assert "Delete any uncited opening or conversational sentences" in repair
+
