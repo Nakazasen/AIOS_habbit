@@ -1,6 +1,7 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
 - Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-08 08:46 +07 — Tiến độ Lượt C vé SYNTH-MODEL-AB-HOME: Đang chạy đo Lượt C (poolside/laguna-s-2.1-free) 50 câu RAG LSU CPU-only; đã hoàn thành 12/50 câu vào rows-synth-ab-c.jsonl; ghi nhận câu 4 (Q0708) đạt provider_validated_after_repair thành công; tiếp tục đo các câu 13–50.
 - `ghi_chu`: 2026-10-08 08:40 +07 — Hoàn thành Lượt B & Bắt đầu Lượt C vé SYNTH-MODEL-AB-HOME: Lượt B (ling-3.0-flash-sante:free) xong 50/50 câu: GPA 1.21 (60.67/150), 0/50 validated, 48 fallback, 2 not-called, 4 câu đạt 3.0, 6 câu đạt >=2.0, trễ tb synth siêu nhanh 2.96s (toàn câu 13.01s), 0 lỗi kỹ thuật (rơi an toàn về trích cục bộ khi dính rate-limit nhà cung cấp sau câu 16), $0 credits, băm index khớp 100%. Khởi chạy Lượt C (poolside/laguna-s-2.1-free).
 - `ghi_chu`: 2026-10-08 08:36 +07 — Tiến độ Lượt B vé SYNTH-MODEL-AB-HOME: Đang chạy đo Lượt B (inclusionai/ling-3.0-flash-sante:free) 50 câu RAG LSU CPU-only; đã hoàn thành 37/50 câu vào rows-synth-ab-b.jsonl; ghi nhận từ câu 17 model gặp rate-limit kéo dài từ nhà cung cấp và rơi an toàn về fallback trích cục bộ; đang chạy các câu cuối 38–50.
 - `ghi_chu`: 2026-10-08 08:31 +07 — Tiến độ Lượt B vé SYNTH-MODEL-AB-HOME: Đang chạy đo Lượt B (inclusionai/ling-3.0-flash-sante:free) 50 câu RAG LSU CPU-only; đã hoàn thành 10/50 câu vào rows-synth-ab-b.jsonl; tốc độ tổng hợp rất nhanh (~7-8s/câu); tiếp tục đo các câu 11–50.
