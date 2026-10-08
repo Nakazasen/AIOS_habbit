@@ -1,8 +1,18 @@
-﻿# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
+# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
-## Vé hiện tại: RETRIEVAL-PERF-DIAG-PC0575
+## Vé hiện tại: RETRIEVAL-DENSE-NUMPY-PC0575
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `commit`: `2450bde5`
+- `bao_cao`: `docs/phieu-viec/ket-qua/retrieval-dense-numpy-pc0575.md`
+- `ghi_chu`: 2026-10-08 10:28 +07 — Tiếp nhận vé `RETRIEVAL-DENSE-NUMPY-PC0575`: kiểm tra cổng gate không bị kẹt (vé đã phát hành chính thức, không có điều kiện chờ cổng thứ 3). Bắt đầu Bước 1: Khảo sát vòng đời và cơ chế nạp ma trận dense trong `src/aios_habit/rag_v2/index.py` để thiết kế cache ma trận theo tiến trình và đổi mặc định sang numpy có fallback an toàn.
+- Ticket: `RETRIEVAL-DENSE-NUMPY-PC0575` — [CTY] bật đường dense numpy + cache ma trận RAM (cắt ~105s/câu, parity tuyệt đối). Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt.md`.
+
+---
+
+## Vé trước: RETRIEVAL-PERF-DIAG-PC0575
+
+- Trạng thái: `xong-cho-duyet` (verdict Muse: ĐẠT ~09:45 +07)
 - `ghi_chu` (verdict Muse): 2026-10-08 ~09:45 +07 — **ĐẠT** vé `RETRIEVAL-PERF-DIAG-PC0575` (tích tạm, chờ user nghiệm thu): điều phối đọc toàn văn báo cáo — phân rã 8 chặng trên 3 câu nhóm A khớp dải 225–255s (cold 268,6s; warm 158–160s), 5 giả thuyết đều được kiểm bằng số (bác bỏ nạp-lại-model trong phiên; xác nhận dense Python ~105s = 66% warm; lexical 52–84s; sparse cold 75,5s), và thực nghiệm A/B quyết định: đường numpy đã có sẵn trong code cho 0,48s warm — **nhanh 226 lần, Top 5 khớp 100%**. **Phát hành ngay `RETRIEVAL-DENSE-NUMPY-PC0575`** (prompt.md đã thay — bật đường numpy làm mặc định + cache ma trận RAM, cổng parity Top 15 tuyệt đối trên 10 câu, trượt cổng = dừng). Hàng chờ cập nhật: #2 `RAG-REMEASURE-PC0575` (file queue trong thư mục mailbox này — đo sau khi dense xong để lane rẻ hơn ~100s/câu), #3 `APP-SOURCE-MODEL-PC0575` chặng 1, #4 `SRC-421-RECEIVE-PC0575` (khi gói 421 lên Drive), #5 vé 349 mã URI; điều phối sẽ chèn vé sửa lexical (đề xuất 2 của báo cáo) sau verdict dense.
 - `bao_cao`: `docs/phieu-viec/ket-qua/retrieval-perf-diag-pc0575.md`
 - `ghi_chu`: 2026-10-08 09:35 +07 — Hoàn thành vé `RETRIEVAL-PERF-DIAG-PC0575`: đo phân rã thực tế 8 chặng trên 3 câu nhóm A (Q0704: 268.6s cold, Q0701: 158.1s warm, Q0671: 160.1s warm), xác định định lượng 2 thủ phạm chính gây ra 225–255s: (1) Quét dense tuần tự Python thuần 121.331 vector ngốn ~105s (thực nghiệm đối chứng Numpy BLAS giảm còn 0.48s, tăng tốc 226x, khớp top 5 100%); (2) Chấm điểm ứng viên Lexical FTS5 + diversity cap Python thuần ngốn ~53–84s do hàng nghìn dòng ứng viên từ tệp bảng tính; (3) Nạp lạnh Sparse cache ngốn 75.5s (I/O đọc SQLite 60.6s + JSON 14.4s) ở câu đầu nhưng các câu sau chỉ tốn 0.41s. Model ONNX chỉ nạp 1 lần (9.2s). Đề xuất 3 hướng khắc phục có căn cứ số học đưa thời gian phản hồi về dưới 5 giây. Tuân thủ 100% rào cứng chỉ-đọc (không sửa code, không ghi index). Sẵn sàng bàn giao cho điều phối Muse nghiệm thu.
