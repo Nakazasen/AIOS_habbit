@@ -1,0 +1,12 @@
+{
+  "stt": 1,
+  "id": "Q0699",
+  "loai": "thuc_the_ma_loi",
+  "ten_loai": "Thực thể mã lỗi (C7620)",
+  "question": "C7620中Magenta相对Black的副扫描色差达到多少会成为NG？",
+  "thoi_gian_toan_trinh_giay": 270.74,
+  "model_phuc_vu": "pool Command Code (inclusionai/ling-3.0-flash-sante:free / ling-3.1-flash)",
+  "dap_an_nguyen_van": "smart_toy\n✨ Câu trả lời mới nhất\n\n⚠️ Dịch vụ AI chưa phản hồi. Vui lòng kiểm tra lại kết nối mạng hoặc cấu hình API key.\n\nthumb_up\nthumb_down",
+  "anh_chup": "app-e2e-pool-home-02-cau1-c7620.png",
+  "hoan_thanh": true
+}
