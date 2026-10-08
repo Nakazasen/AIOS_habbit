@@ -47,24 +47,43 @@ def test_domain_document_map_counts() -> None:
 
 
 def test_production_index_specs_retrieval() -> None:
+    # TEST-SUITE-HYGIENE-HOME: ky vong tuyet doi 889 gan voi kho cua may khac.
+    # Chuyen sang quan he dung voi du lieu dau vao cua chinh test: tong so tai
+    # lieu trong kho hien tai + anh xa theo kho hien hanh, khong doi y nghia
+    # loc theo mien (disjoint + auto bao het + tong cac mien = tong kho).
     prod_db = Path("local_runs/workspace_chat_rag_v2_production/bge_m3_hybrid/collections/tri_thuc/library.sqlite")
     if not prod_db.is_file():
         pytest.skip("Production database not present on this machine")
 
     all_specs = load_all_index_specs(prod_db)
-    assert len(all_specs) == 889
+    total = len(all_specs)
+    assert total > 0, "kho production hien tai rong"
 
     lsu_specs = get_specs_for_domain("lsu", prod_db)
-    assert len(lsu_specs) == 92
-
     dtl_specs = get_specs_for_domain("dieu_tra_loi", prod_db)
-    assert len(dtl_specs) == 681
-
     mom_specs = get_specs_for_domain("mom", prod_db)
-    assert len(mom_specs) == 44
-
     auto_specs = get_specs_for_domain("auto", prod_db)
-    assert len(auto_specs) == 889
+
+    lsu_ids = {s.document_id for s in lsu_specs}
+    dtl_ids = {s.document_id for s in dtl_specs}
+    mom_ids = {s.document_id for s in mom_specs}
+    auto_ids = {s.document_id for s in auto_specs}
+    all_ids = {s.document_id for s in all_specs}
+
+    # auto bao het kho hien tai
+    assert auto_ids == all_ids
+    assert len(auto_specs) == total
+    # cac mien roi nhau (moi tai lieu thuoc dung 1 mien)
+    assert not (lsu_ids & dtl_ids)
+    assert not (lsu_ids & mom_ids)
+    assert not (dtl_ids & mom_ids)
+    # cac mien da biet khong vuot tong kho; so con lai la mien tong-hop
+    known = lsu_ids | dtl_ids | mom_ids
+    assert known <= all_ids
+    th_specs = get_specs_for_domain("tong_hop", prod_db)
+    th_ids = {s.document_id for s in th_specs}
+    assert known | th_ids == all_ids
+    assert len(lsu_specs) + len(dtl_specs) + len(mom_specs) + len(th_specs) == total
 
 
 def test_notebook_source_marked_ready_without_enqueue(tmp_path: Path) -> None:

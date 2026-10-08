@@ -764,15 +764,27 @@ class TestAntigravityHealthStatusFSM:
 class TestAntigravityBridgeCallsAndRouting:
     """Stress tests on bridge calling, privacy enforcement, and route_workspace_chat_submission."""
 
-    def test_call_antigravity_bridge_privacy_guard(self) -> None:
-        # Attempt calling public endpoint with local_only privacy mode
+    def test_call_antigravity_bridge_privacy_guard(self, monkeypatch) -> None:
+        # TEST-SUITE-HYGIENE-HOME: quyet dinh chu so huu 2026-09-29 (`941c31c`,
+        # DATA_POLICY.md) da go chan local_only — cau noi phai thu goi thay vi
+        # chan som. Mock transport de test hermetic (khong phu thuoc DNS mang).
+        attempts: list = []
+
+        def fake_urlopen(req, timeout=None):
+            attempts.append(req.full_url)
+            raise OSError("mock: network disabled in test")
+
+        monkeypatch.setattr(
+            "aios_habit.antigravity_bridge.urllib.request.urlopen", fake_urlopen
+        )
         res = call_antigravity_bridge(
             question="Private query?",
             endpoint_url="https://external-api.cloud.com/v1",
             privacy_mode="local_only",
         )
+        assert attempts == ["https://external-api.cloud.com/v1"]
         assert res.ok is False
-        assert "Bị chặn" in res.error_message
+        assert "Bị chặn" not in res.error_message
 
     def test_compress_conversation_context_fail_closed(self) -> None:
         # When direct is not ready

@@ -34,8 +34,28 @@ def mock_llm_env(monkeypatch, provider="openai_compatible", url="http://localhos
     monkeypatch.setenv("AIOS_LLM_LOCALITY", locality)
 
 def test_in_app_qa_blocks_cloud_local_export(monkeypatch):
+    # TEST-SUITE-HYGIENE-HOME: quyet dinh chu so huu 2026-09-29 (`f27081d`,
+    # DATA_POLICY.md) da go chan gui local_only len provider. Cloud + export
+    # local tu dong doi sang cloud_safe (`notebook_qa.py:213`) va an noi dung
+    # local_only trong prompt (khong chan som, khong goi provider that).
     mock_llm_env(monkeypatch, locality="cloud")
-    
+
+    sent_prompt = None
+
+    class MockResponse:
+        def read(self):
+            return b'{"choices": [{"message": {"content": "Mock Answer"}}]}'
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+
+    def mock_urlopen(req, timeout=None):
+        nonlocal sent_prompt
+        body = json.loads(req.data.decode("utf-8"))
+        sent_prompt = body["messages"][1]["content"]
+        return MockResponse()
+
+    monkeypatch.setattr(urllib.request, "urlopen", mock_urlopen)
+
     save_notebook(KnowledgeNotebook(notebook_id="NB1", workspace_id="default", name="NB 1"))
     src = SourceDocument(
         source_id="SRC-1",
@@ -49,12 +69,14 @@ def test_in_app_qa_blocks_cloud_local_export(monkeypatch):
     )
     save_source(src)
     build_notebook_index("NB1")
-    
-    # target=gemini, export_mode=local
+
+    # target=gemini, export_mode=local -> cloud_safe, prompt da an noi dung rieng tu
     res = answer_notebook_question("NB1", "What is the key?", "gemini", "local")
-    assert res.blocked
-    assert "Không thể gửi dữ liệu local_only" in res.block_reason
-    assert "12345" not in res.answer_text
+    assert not res.blocked
+    assert res.answer_text == "Mock Answer"
+    assert res.privacy_mode == "cloud_safe"
+    assert "12345" not in sent_prompt
+    assert "[ĐÃ LOẠI BỎ VÌ RIÊNG TƯ - local_only]" in sent_prompt
 
 def test_in_app_qa_cloud_uses_redacted_prompt(monkeypatch):
     mock_llm_env(monkeypatch, locality="cloud")
