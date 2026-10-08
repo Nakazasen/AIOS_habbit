@@ -966,7 +966,10 @@ class BgeSubprocessWorkerClient:
         except Exception as exc:
             raise SemanticBackendError("bge_worker_persist_query_exception") from exc
         if response.get("status") != "ok":
-            raise SemanticBackendError("bge_worker_query_failed")
+            err = response.get("error", "unknown")
+            err_type = response.get("error_type", "unknown")
+            LOGGER.warning("Persistent worker query failed: %s (type: %s)", err, err_type)
+            raise SemanticBackendError(f"bge_worker_query_failed:{err}")
         query_result = response.get("query_result")
         if not isinstance(query_result, dict):
             raise RuntimeError("invalid_worker_response_schema")
