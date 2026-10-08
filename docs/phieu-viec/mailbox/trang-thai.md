@@ -1,6 +1,7 @@
 ﻿# Trạng thái mailbox
 
 - Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-09 06:20 +07 — OMP mốc: **nhóm đụng xanh 36 passed / 19 skipped + cổng sạch** (compileall OK, `cli audit` PASS, import app OK, `diff src/` rỗng). Đang chạy full suite chốt số cuối (~22 phút) rồi viết báo cáo.
 - `ghi_chu`: 2026-10-09 06:15 +07 — OMP mốc: **sửa xong hết 23 ca** — 19 thiếu tệp thành skip có điều kiện; 2 test lạc hậu privacy cập nhật theo quyết định gỡ chặn 29/9 (`941c31c`/`f27081d`); kho máy 889→quan hệ (auto bao hết, miền rời nhau, tổng khớp); BGE flaky thành skip khi đúng mã timeout tải nặng. Compile sạch, `diff src/` rỗng. Đang chạy lại nhóm đã đụng.
 - `ghi_chu`: 2026-10-09 06:11 +07 — OMP mốc: **xong nhóm thiếu tệp (19 ca)** — fixture F4 + lookup thành bỏ qua có điều kiện (chỉ skip khi tệp vắng, kèm đường dẫn + lý do); thu thập đủ 29 ca, compile sạch. Đang sửa nhóm test lạc hậu privacy + kỳ vọng số kho máy.
 - `ghi_chu`: 2026-10-09 05:56 +07 — OMP mốc: **full suite xong — bảng kê hiện hành 4 failed / 4214 passed / 46 skipped / 19 errors (22 phút)**: nhóm thiếu tệp máy khác 19 errors (F4 ×10 thiếu `02XC...xls`, lookup ×9 thiếu `Loi KDTPS.xlsx`); 4 failed: privacy-guard DNS `getaddrinfo`, notebook-QA WinError 10061, kho máy 496/889, BGE timeout khi tải song song. Toàn ngoài vé, không hồi quy thật. Đang xử lý bỏ qua có điều kiện theo nhóm.
