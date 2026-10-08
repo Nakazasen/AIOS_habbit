@@ -1,6 +1,9 @@
 ﻿# Trạng thái mailbox
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
+- `ghi_chu`: 2026-10-09 01:22 +07 — OMP **XONG → chốt `xong-cho-duyet`** vé `WORKER-TESTS-DIAG-HOME`: cả 3 ca là lỗi phía test/môi trường, **không hồi quy chức năng** — ca1 test lạc hậu sau `ce6212c` (đổi scope notebook→temporary), ca2 budget 5s < truy vấn thật (đổi 60s + thêm phép thử fail-closed), ca3 khóa file tạm ~0,2s sau kill (dọn có retry). Phiên chốt: 3 ca 3 passed (15,58s), 3 tệp 21 passed (117,36s); full suite **8 failed / 4195 passed / 46 skipped / 19 errors** (đúng −3 failed so baseline `4068e02` = 3 ca vé; 8 failed còn lại chạy riêng xác minh toàn ngoài vé). Commit sửa test `ef840aa` + báo cáo `3160a3d`. Cổng: compileall sạch, `cli audit` PASS, import app OK. Rào cứng giữ: không đụng `src/`, không ghi index, không merge `main`. Chờ Muse đối chứng.
+- `commit`: `3160a3d` (báo cáo chốt) + `ef840aa` (sửa 3 test)
+- `bao_cao`: `docs/phieu-viec/ket-qua/worker-tests-diag-home.md` (vé WORKER-TESTS-DIAG-HOME — `xong-cho-duyet` 09/10: 3/3 ca xanh, full suite khớp baseline trừ đúng 3 ca vé; rào cứng giữ nguyên)
 - `ghi_chu`: 2026-10-09 01:05 +07 — OMP mốc: **3 tệp liên quan xanh 21/21 PASS** (117,36s: self_healing 5 + client 5 + worker 11). File lạ `synth-claimbudget-diag-home.md` (untracked, của thợ khác) để nguyên không đụng. Đang chạy full `pytest -q` để chốt số cuối báo cáo.
 - `ghi_chu`: 2026-10-09 00:59 +07 — OMP mốc: **chạy lại 3 ca trong phiên này đều xanh** (3 passed, 15,58s; compileall exit 0, `cli audit` PASS, import app OK). Rào cứng giữ: `diff 8bcc77d..HEAD -- src/` rỗng, chỉ 3 tệp test được sửa. Đang chạy 3 tệp liên quan + full `pytest -q` nền để chốt báo cáo.
 - `ghi_chu`: 2026-10-09 00:52 +07 — OMP **tiếp tục vé `WORKER-TESTS-DIAG-HOME`** (phiên theo lệnh user 00:51), kiểm cổng gate: cổng MỞ (máy h410asrock, HEAD=origin=`af34abd`, prompt.md đúng vé điều tra 3 ca test hạ tầng bộ đọc, trạng thái `dang-lam` tiếp nối mốc 00:56; không dòng cho-cong active, không file `_ticket-moi.md` mới, không dùng nhánh cho-muse, không quay no-op). Báo cáo dở còn thiếu full `pytest -q` (mục 5 còn TODO). Đang chạy full suite để chốt số cuối rồi đóng báo cáo.
