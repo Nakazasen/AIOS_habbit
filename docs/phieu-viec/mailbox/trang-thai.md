@@ -1,6 +1,7 @@
 ﻿# Trạng thái mailbox
 
-- Trạng thái: `xong-cho-duyet`
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-09 ~00:20 +07 — **ĐẠT** vé `AUDIT-ENV-FAILOVER-HOME`. Cấu hình tuyến tổng hợp tại máy nhà nhất quán với cấu hình chốt 3 tầng (đối chiếu tên model thật tại máy; tên model đã công khai trong báo cáo vé cấu hình), không biến sót/trùng/phân mảnh, tệp sao lưu khớp, cờ hợp đồng đang TẮT đúng quyết định. Dữ kiện quan trọng đã chuyển cho vé mở cổng: công tắc cho phép nhà cung cấp bên ngoài vốn đang BẬT sẵn tại máy nhà — điểm chặn còn lại ở đường giao diện là lớp chặn cứng theo nhãn ở cổng điều phối. Phát hành việc phụ tiếp theo: `WORKER-TESTS-DIAG-HOME` (prompt.md đã thay — điều tra 3 ca test hạ tầng bộ đọc đỏ ở cả hai môi trường).
 - `ghi_chu`: 2026-10-09 00:07 +07 — OMP **XONG → chốt `xong-cho-duyet`** vé `AUDIT-ENV-FAILOVER-HOME`: kiểm chỉ-đọc cấu hình tuyến tổng hợp — **NHẤT QUÁN 100%**: chuỗi đúng chốt (chính tầng 1 → dự phòng tầng 2 → tầng 3, đúng thứ tự), không biến tạm/sót/trùng, không tệp môi trường phân mảnh, file sao lưu trước đổi tồn tại và khớp chuỗi cũ 2 tầng; công tắc cho phép bên ngoài đang BẬT (vé mở cổng giao diện chưa chạy — đối chiếu phạm vi sau); cờ hợp đồng trích dẫn nghiêm ngặt TẮT đúng quyết định giữ; không biến nào cần dọn. Báo cáo `docs/phieu-viec/ket-qua/audit-env-failover-home.md` (4641 bytes, quét sạch khóa). Không sửa biến/cấu hình, không chạy đo, không đụng index, không merge `main`. Chờ Muse đối chứng.
 - `commit`: `24f3f41` (mốc kiểm-cấu-hình-xong) + báo cáo audit
 - `bao_cao`: `docs/phieu-viec/ket-qua/audit-env-failover-home.md` (vé AUDIT-ENV-FAILOVER-HOME — `xong-cho-duyet` 09/10: chuỗi 3 tầng khớp chốt, không biến cần dọn; rào cứng giữ nguyên)
