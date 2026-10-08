@@ -1,8 +1,17 @@
-﻿# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
+# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
-## Vé hiện tại: SYNTH-CONTEXT-TOPK-PC0575
+## Vé hiện tại: APP-SOURCE-MODEL-PC0575
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-08 17:30 +07 — Tiếp nhận vé APP-SOURCE-MODEL-PC0575 Chặng 1: cổng mở hợp lệ (Muse phát hành vé Chặng 1 rà soát vòng đời nguồn tài liệu và đề xuất hợp nhất, chỉ-đọc); đặt trạng thái dang-lam theo quy ước; bắt đầu khảo sát mã nguồn và vẽ bản đồ vòng đời tài liệu từ thư viện sổ/chỉ mục đến giao diện.
+- `bao_cao`: `docs/phieu-viec/ket-qua/app-source-model-pc0575.md`
+- Ticket: `APP-SOURCE-MODEL-PC0575` — [CTY] một nguồn sự thật cho tài liệu — gỡ các con số mâu thuẫn (Chặng 1: rà soát + đề xuất). Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt.md`.
+
+---
+
+## Vé trước: SYNTH-CONTEXT-TOPK-PC0575
+
+- Trạng thái: `xong-cho-duyet` (verdict Muse: ĐẠT phần thử nghiệm ~17:35 +07)
 - `ghi_chu` (verdict Muse): 2026-10-08 ~17:35 +07 — **ĐẠT phần thử nghiệm** vé `SYNTH-CONTEXT-TOPK-PC0575` (tích tạm, chờ user nghiệm thu): điều phối đọc toàn văn báo cáo. Tham số hoá đúng (`AIOS_RAG_SYNTH_CONTEXT_TOPK`, mặc định 8, chốt cắt tường minh ở cầu nối, 5/5 test), đo đủ 50 câu, chỉ mục nguyên vẹn, kỷ luật số liệu mean/median đã tuân thủ tốt. Kết quả thật: GPA 0,957 → 0,963 (gần như không đổi); Q0701 được cứu đúng như dự đoán 0 → 3,0 (đích hạng 11 lọt vào ngữ cảnh); nhóm A 3 → 5 điểm. NHƯNG số câu đạt chuẩn giảm 14 → 11 (có câu đang đạt bị tụt do pha loãng ngữ cảnh + 2 ca oan do thước đo: định dạng LaTeX `$48384$` làm regex rubric không khớp, và một câu trước đây đạt nhờ nhắc lại câu hỏi chứa từ khoá). **Quyết định của điều phối: KHÔNG đặt 12 làm mặc định** — lợi ích ròng nằm trong nhiễu dao động của model (26/50 câu đổi điểm giữa hai lần chạy), cái giá mất câu đạt chuẩn là thật; biến cấu hình đã có sẵn để bật 12 theo ca khi cần. Hai hướng có căn cứ hơn được ghi vào hàng chờ sau SOURCE-MODEL: (a) nới ngữ cảnh CÓ ĐIỀU KIỆN — chỉ lên 12 khi có mảnh chứa mã định danh/thực thể của câu hỏi ở hạng 9–12; (b) sửa các ca oan của thước đo (chuẩn hoá định dạng số/LaTeX trước khi khớp rubric). **Phát hành `APP-SOURCE-MODEL-PC0575` chặng 1** (prompt.md đã thay — chỉ đọc: bản đồ vòng đời nguồn + đề xuất hợp nhất về một nguồn sự thật, chờ điều phối duyệt mới code chặng 2). Hàng chờ: #5 `SRC-421-RECEIVE-PC0575` (chờ kênh Drive).
 - `commit`: `c9ef56c6`
 - `bao_cao`: `docs/phieu-viec/ket-qua/synth-context-topk-pc0575.md`
