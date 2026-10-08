@@ -1,9 +1,9 @@
 # Báo cáo vé thăm dò nguồn cho 29 tệp đã khôi phục
 
-- Vé: `SRC-PROBE-PC0575` — thăm dò truy hồi đầu-cuối cho 29 tệp nguồn đã khôi phục.
-- Máy làm: công ty `KDTVN-PC0575`, mạng công ty suốt quá trình đo.
-- Thời gian đo: 2026-10-07 16:20 → 17:08 +07.
-- Trạng thái vé: đang làm (mới xong bao phủ, truy vấn đầy đủ còn kẹt).
+- Vé: `SRC-PROBE-PC0575` — thăm dò truy hồi đầu-cuối cho 29 tệp nguồn đã khôi phục; phần còn lại (mẫu truy vấn đầy đủ 3 tệp) tiếp nhận bởi vé `SRC-PROBE-TAKEOVER-PC0575` — xem mục 11–12.
+- Máy làm: công ty `KDTVN-PC0575` (mục 1–10: mạng công ty suốt quá trình đo).
+- Thời gian đo: 2026-10-07 16:20 → 17:08 +07 (mục 1–10); phần takeover 2026-10-08 08:30 → 09:06 +07 (mục 11–12).
+- Trạng thái vé: **XONG phần máy công ty** — bao phủ 29/29 + đối chứng âm/dương đủ (mục 3) + **mẫu truy vấn đầy đủ 3 tệp đã chạy xong 08/10 08:41→09:04, 3/3 QUA cả ba cổng vân tay (mục 11–12)**; nộp chờ Muse duyệt.
 - Nhánh làm việc: `phieu-viec/rag-fix1`, không gộp nhánh chính.
 - Đầu vào đã đọc: `docs/phieu-viec/ket-qua/src-sync-pc0575.md` mục 7 (29 tệp) và mục 8 (vân tay logic).
 
@@ -115,3 +115,27 @@
 - Máy lúc kiểm vẫn bận: 15 tiến trình `python.exe` còn sống — đúng trường hợp chốt 17:48 dặn chỉ chạy mẫu khi máy rảnh.
 - Quyết định giữ nguyên: hoãn mẫu 3 truy vấn đầy đủ (gồm tệp đã kẹt `wsc-015067b7`, chạy nền tách phiên, ghi nhật ký từng chặng, trần 900 giây mỗi truy vấn) sang cửa máy rảnh. Bao phủ 29/29 + âm 5/5 + dương 5/5 ở mục 3 giữ nguyên giá trị.
 - Rào giữ nguyên: không ghi hay sửa tệp nguồn hay chỉ mục, không đụng `src/rag_v2*`, không gộp nhánh chính.
+
+## 11. Tiếp nhận phần còn lại (vé takeover, 08/10) — mẫu 3 truy vấn đầy đủ: CHẠY XONG
+
+- Nhận vé `SRC-PROBE-TAKEOVER-PC0575` (phân vai user chốt 2026-10-08 ~06:39: OMP máy công ty = thợ phụ). Điều kiện mở đã đủ: máy rảnh — lúc nhận 08:30 chỉ 0 tiến trình nặng, CPU ~5% (khác hẳn 15 tiến trình python của hai lần kẹt 07/10).
+- Cách chạy đúng chốt 17:48: nền tách phiên, mỗi truy vấn một tiến trình riêng, **trần 900 giây/truy vấn**, ghi nhật ký từng chặng; tiến độ sống ở `local_runs/src_probe_takeover/progress.jsonl` (1 dòng/truy vấn, resume được qua ca).
+- Đường chạy ĐÚNG config thật của app khi mở chỉ-đọc: `index_read_only=True` + **`strict_semantic=True` (KHÔNG hạ cổng)** + cổng vân tay nguồn BẬT — biên dạng `bge_m3_hybrid`, thiết bị `cpu`. (Khác các probe cũ trên máy này vốn phải hạ hai cổng — đây là kiểm chứng đường thật.)
+- Ba tệp mẫu: `wsc-015067b7` (tệp từng kẹt; gốc D: `workspace_chat_rag_v2_canary`) + `wsc-0a49389b` + `wsc-149cac9d` (gốc C: `AIOS_workspace_chat_rag_v2_production`) — đúng bộ mẫu dùng xuyên vé.
+
+### Kết quả 3/3 (0 timeout; 392,5–539,6 giây/truy vấn)
+
+| # | Mã tài liệu | Gốc tệp | Mở pipeline | Tổng truy vấn | Cổng 1: không rơi `__source_unavailable__` | Cổng 2: không bị đánh dấu stale | Cổng 3: an toàn sau trộn | Tài liệu đích trong kết quả | Bằng chứng |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | `wsc-015067b7…` (tệp từng kẹt) | D: canary | 10,4s | **407,0s** | QUA (`coverage_valid=true`, 0 bản ghi unavailable) | QUA (`filtered_as_stale_count=0`) | QUA | **Rank 1** (điểm 18,0) | có (1 mảnh) |
+| 2 | `wsc-0a49389b…` | C: production | 10,6s | **392,5s** | QUA (như trên) | QUA (`=0`) | QUA | **Rank 1** (điểm 22,0) | có (1 mảnh) |
+| 3 | `wsc-149cac9d…` | C: production | 8,5s | **539,6s** | QUA (như trên) | QUA (`=0`) | QUA | **Rank 1** (điểm 48,0) | có (1 mảnh) |
+
+- Cả 3: tệp trên đĩa khớp `SHA-256` với vân tay trong chỉ mục (`file_fingerprint_match=true`); coverage đủ dense + sparse cho đúng tài liệu được chọn.
+- Số đo từng chặng (`search_summary` + log worker): nhúng câu hỏi ONNX 0,7–6,2s; **dense 79,5–125,4s**; sparse (chấm điểm) 0,09–0,15s; lexical 20,7–116,0s; fusion/assembly dưới 1ms; tổng hợp cục bộ 2–4ms. Log còn ghi **hai lượt `dense_candidates_ms` mỗi truy vấn** (118,5+108,6 // 112,3+79,0 // 101,3+125,0 giây) và **nạp cache sparse 83–114s** (`fetch_ms` 69–94s + `build_ms` 13–20s); phần thời gian còn lại chưa gắn nhãn stage hết trong một truy vấn — số thô bàn giao `RETRIEVAL-PERF-DIAG-PC0575` (agy).
+- Chỉ-đọc chứng minh: md5 chỉ mục TRƯỚC = SAU = `492C065F8F741AD5C73A900FA6BCDF3E` (2.853.646.336 B, mtime 07/10 11:36:48 nguyên vẹn); `PRAGMA quick_check` = `ok`; đếm giữ nguyên **889 tài liệu / 121.331 mảnh truy hồi / 149.800 mảnh tổng**.
+- Nghệ thuật chạy/đối chiếu (ngoài git): `scratch/src_probe_takeover/{driver,worker,wait,post_check}.py`; bằng chứng thô: `local_runs/src_probe_takeover/{progress.jsonl, run.log, worker_wsc-*.log, worker_wsc-*.json, index_md5.txt}`.
+
+## 12. Kết luận (1 dòng, kèm FP-TOTAL-RECONCILE)
+
+- KẾT LUẬN: cả 3 tệp mẫu — trong đó có tệp từng kẹt `wsc-015067b7` — đi qua TOÀN BỘ đường truy hồi thật với `strict_semantic=True` và ba cổng vân tay BẬT: **3/3 QUA cả ba cổng, tài liệu đích đều Rank 1 trong kết quả + vào bằng chứng, 0 timeout** (hai lần kẹt 07/10 xác nhận do máy bận; nay định lượng được 6,5–9 phút/câu) — điều kiện khép vé theo chốt 17:48 ĐẠT; **FP-TOTAL-RECONCILE:** vân tay logic TỔNG của chỉ mục đã khép với máy nhà = `fce85b608783d0a59545f87042ac2b1b63212bbcdbd8d9dd9948df647b9dbdcf` (chuỗi phía máy nhà chép lệch 1 ký tự; giá trị đúng cuối cùng là chuỗi này; không cần tính lại theo lệnh điều phối).
