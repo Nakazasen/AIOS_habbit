@@ -15,6 +15,7 @@ from aios_habit.rag_answer_composer import StrongModelAnswer, stable_answer_draf
 DEFAULT_ENDPOINT = "http://127.0.0.1:11434/v1/chat/completions"
 DEFAULT_TIMEOUT_SECONDS = 30
 DEFAULT_MAX_CONTEXT_CHARS = 6000
+DEFAULT_MAX_TOKENS = 2048
 MAX_SOURCE_REFS = 5
 
 
@@ -28,6 +29,7 @@ class ProviderConfig:
     timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS
     enabled: bool = False
     max_context_chars: int = DEFAULT_MAX_CONTEXT_CHARS
+    max_tokens: int = DEFAULT_MAX_TOKENS
 
 
 @dataclass
@@ -157,6 +159,12 @@ def load_provider_config_from_env_or_session(
         1000,
         12000,
     )
+    max_tokens = _as_int(
+        session.get("local_ai_max_tokens", os.getenv("AIOS_LOCAL_AI_MAX_TOKENS")),
+        DEFAULT_MAX_TOKENS,
+        256,
+        8192,
+    )
     return ProviderConfig(
         provider_type=provider_type,
         endpoint_url=endpoint,
@@ -166,6 +174,7 @@ def load_provider_config_from_env_or_session(
         timeout_seconds=timeout,
         enabled=enabled,
         max_context_chars=max_context,
+        max_tokens=max_tokens,
     )
 
 
@@ -250,10 +259,15 @@ def _fallback(
     )
 
 
-def _post_chat(config: ProviderConfig, user_prompt: str, max_tokens: int = 700) -> str:
+def _post_chat(config: ProviderConfig, user_prompt: str, max_tokens: Optional[int] = None) -> str:
     system_prompt = (
         "Bạn là trợ lý AI cục bộ của AIOS. Chỉ trả lời từ nguồn được cung cấp, "
         "không bịa dữ kiện, nói rõ khi chưa đủ bằng chứng và giữ dẫn nguồn."
+    )
+    effective_max_tokens = (
+        max_tokens
+        if max_tokens is not None
+        else getattr(config, "max_tokens", DEFAULT_MAX_TOKENS) or DEFAULT_MAX_TOKENS
     )
     payload = {
         "model": config.model_name,
@@ -262,7 +276,7 @@ def _post_chat(config: ProviderConfig, user_prompt: str, max_tokens: int = 700) 
             {"role": "user", "content": user_prompt},
         ],
         "temperature": 0.1,
-        "max_tokens": max_tokens,
+        "max_tokens": effective_max_tokens,
     }
     headers = {
         "Content-Type": "application/json",
@@ -279,17 +293,37 @@ def _post_chat(config: ProviderConfig, user_prompt: str, max_tokens: int = 700) 
     with urllib.request.urlopen(request, timeout=config.timeout_seconds) as response:
         data = json.loads(response.read().decode("utf-8"))
     choices = data.get("choices") or []
+    if not choices:
+        raise RuntimeError("Endpoint không trả về lựa chọn nào (choices rỗng).")
     msg = choices[0].get("message", {}) if choices else {}
-    content = msg.get("content")
-    if content is None:
-        content = ""
-    content = str(content).strip()
-    if not content:
-        reasoning = msg.get("reasoning") or msg.get("reasoning_content") or ""
-        content = str(reasoning).strip()
-    if not content:
-        raise RuntimeError("Endpoint không trả về nội dung trả lời.")
-    return content
+    finish_reason = str(choices[0].get("finish_reason") or "").strip().lower()
+
+    # CẤM tuyệt đối lấy reasoning / reasoning_content làm câu trả lời cho người dùng!
+    # Reasoning là chuỗi suy luận nội bộ (CoT) làm rò rỉ prompt hệ thống và đánh giá an toàn.
+    raw_content = msg.get("content")
+    if raw_content is None:
+        raw_content = ""
+    raw_content = str(raw_content).strip()
+    if not raw_content:
+        raise RuntimeError("Endpoint không trả về nội dung trả lời (content rỗng).")
+
+    from aios_habit.answer_sanitizer import clean_assistant_answer, inspect_truncation
+
+    cleaned = clean_assistant_answer(raw_content)
+    if not cleaned:
+        raise RuntimeError("Nội dung từ endpoint chỉ chứa suy luận hoặc rò rỉ prompt hệ thống, không có câu trả lời hợp lệ.")
+
+    is_trunc, trunc_reason = inspect_truncation(cleaned, finish_reason=finish_reason)
+    if is_trunc:
+        if finish_reason == "length":
+            if len(cleaned) < 250:
+                raise RuntimeError(f"Đáp án quá ngắn do bị cắt cụt bởi giới hạn token ({len(cleaned)} ký tự, finish_reason=length).")
+            cleaned = cleaned.rstrip() + "\n\n[Lưu ý: Câu trả lời bị cắt ngắn do đạt giới hạn độ dài token của mô hình.]"
+        elif trunc_reason in ("dangling_conjunction", "dangling_punctuation"):
+            raise RuntimeError(f"Đáp án bị ngắt quãng giữa câu ({len(cleaned)} ký tự, lý do: {trunc_reason}).")
+
+
+    return cleaned
 
 
 def answer_with_provider(

@@ -1225,6 +1225,15 @@ def route_workspace_chat_submission(
         result = generate_workspace_ai_answer(request, object())
         if was_cancelled():
             return (False, "", None, "Đã dừng yêu cầu AI.")
+
+        from aios_habit.answer_sanitizer import clean_assistant_answer, is_system_prompt_leak
+        if result.ok:
+            cleaned_check = clean_assistant_answer(result.answer_text)
+            if not cleaned_check or is_system_prompt_leak(result.answer_text):
+                LOGGER.warning("Antigravity Bridge phát hiện rò rỉ prompt hệ thống hoặc đáp án rỗng; vô hiệu hóa kết quả router")
+                from dataclasses import replace
+                result = replace(result, ok=False, answer_text="", error_message="Đáp án AI không hợp lệ do chứa rò rỉ prompt hệ thống.")
+
         if not result.ok:
             if _local_fallback_available(local_synthesis):
                 local_answer = str((local_synthesis or {}).get("answer", "") or "").strip()
@@ -1321,9 +1330,10 @@ def route_workspace_chat_submission(
         conversation = load_conversation(conversation_id)
         ui_locale = getattr(conversation, "ui_locale", "vi") if conversation else "vi"
         provider_name = "C-AGENT API" if backend == "cagent_api" else "Nakazasen Router"
+        final_answer = clean_assistant_answer(result.answer_text) or result.answer_text
         trace = build_evidence_trace_from_citations(
             query=question,
-            answer_text=result.answer_text,
+            answer_text=final_answer,
             evidence_items=evidence_items,
             allowed_source_ids=allowed_source_ids,
             notebook_id=notebook_id,
@@ -1343,7 +1353,7 @@ def route_workspace_chat_submission(
             id=assistant_msg_id,
             conversation_id=conversation_id,
             role="assistant",
-            content=result.answer_text,
+            content=final_answer,
             trace_id=trace.trace_id,
         ))
         source_titles = [

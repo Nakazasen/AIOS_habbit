@@ -4,7 +4,14 @@ import re
 from dataclasses import dataclass
 from typing import Any, Tuple
 
-from nakazasen_ai_router import AIRequest, RouterPolicy, create_router_from_env
+try:
+    from nakazasen_ai_router import AIRequest, RouterPolicy, create_router_from_env
+    _ORIGINAL_CREATE_ROUTER_FROM_ENV = create_router_from_env
+except ImportError:
+    AIRequest = None  # type: ignore
+    RouterPolicy = None  # type: ignore
+    create_router_from_env = None  # type: ignore
+    _ORIGINAL_CREATE_ROUTER_FROM_ENV = None
 
 import aios_habit.workspace_paths  # Ensures .env is loaded
 from aios_habit.brain_gateway import SanitizedRouterPayload
@@ -25,7 +32,6 @@ _ROUTER: Any | None = None
 _INTERNAL_HEALTH_STORE: ProviderHealthStore | None = None
 _EQUIPMENT_TOKEN_RE = re.compile(r"\b(?:acr|ctu)\b", re.IGNORECASE)
 
-_ORIGINAL_CREATE_ROUTER_FROM_ENV = create_router_from_env
 USE_LEGACY_ROUTER_FLAG = "AIOS_USE_LEGACY_NAKAZASEN_ROUTER"
 
 
@@ -35,6 +41,8 @@ def _should_use_legacy_router() -> bool:
     if flag in ("1", "true", "yes"):
         return True
     if flag in ("0", "false", "no"):
+        return False
+    if create_router_from_env is None:
         return False
     return create_router_from_env is not _ORIGINAL_CREATE_ROUTER_FROM_ENV
 
@@ -141,6 +149,11 @@ def _outcome_details(outcome: Any, *, query_language: str) -> ResilientRouteOutc
 
 def _generate_via_legacy_router(payload: SanitizedRouterPayload) -> WorkspaceRouterDetailedResult:
     """Fallback delegated route using external nakazasen_ai_router package."""
+    if create_router_from_env is None:
+        LOGGER.error("nakazasen_ai_router package is not installed")
+        route = ResilientRouteOutcome(status=ROUTE_INFRASTRUCTURE_INVALID, error_type="router_not_installed")
+        return WorkspaceRouterDetailedResult(False, "Dịch vụ AI chưa phản hồi. Gói điều hướng chưa được cài đặt.", route)
+
     try:
         router = _get_router()
     except Exception as error:
@@ -155,19 +168,21 @@ def _generate_via_legacy_router(payload: SanitizedRouterPayload) -> WorkspaceRou
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt},
     ]
-    request = AIRequest(
-        prompt=user_prompt,
-        metadata={
-            "messages": messages,
-            "privacy_label": "cloud_safe",
-            "sanitized_by": "aios_habit.brain_gateway",
-            "contains_raw_evidence": False,
-            "contains_confidential_files": False,
-            "task_type": "workspace_chat",
-            "query_language": query_language,
-            "session_scope": "sanitized_workspace_chat",
-        },
-    )
+    req_metadata = {
+        "messages": messages,
+        "privacy_label": "cloud_safe",
+        "sanitized_by": "aios_habit.brain_gateway",
+        "contains_raw_evidence": False,
+        "contains_confidential_files": False,
+        "task_type": "workspace_chat",
+        "query_language": query_language,
+        "session_scope": "sanitized_workspace_chat",
+    }
+    if AIRequest is not None:
+        request = AIRequest(prompt=user_prompt, metadata=req_metadata)
+    else:
+        from types import SimpleNamespace
+        request = SimpleNamespace(prompt=user_prompt, metadata=req_metadata)
 
     try:
         outcome = router.route_outcome(request)
@@ -233,9 +248,15 @@ def _generate_via_internal_router(payload: SanitizedRouterPayload) -> WorkspaceR
                 candidate_score=a.candidate_score,
                 latency_ms=float(a.latency_ms),
             )
-            for a in (result.attempts or [])
+            for a in getattr(result, "attempts", [])
         )
-        if not result.used_fallback and str(result.answer_text or "").strip():
+        from aios_habit.answer_sanitizer import clean_assistant_answer, is_system_prompt_leak
+
+
+        raw_answer = str(result.answer_text or "").strip()
+        cleaned_answer = clean_assistant_answer(raw_answer)
+
+        if not result.used_fallback and cleaned_answer and not is_system_prompt_leak(raw_answer):
             route = ResilientRouteOutcome(
                 status=ROUTE_SUCCESS,
                 attempts=attempts,
@@ -244,9 +265,12 @@ def _generate_via_internal_router(payload: SanitizedRouterPayload) -> WorkspaceR
                 fallback_used=any(a.status == "failed" for a in (result.attempts or [])),
                 telemetry={"query_language": query_language, "attempt_count": len(attempts)},
             )
-            return WorkspaceRouterDetailedResult(True, result.answer_text, route)
+            return WorkspaceRouterDetailedResult(True, cleaned_answer, route)
 
         error_type = result.attempts[-1].error_type if result.attempts else "all_providers_failed"
+        if not cleaned_answer or is_system_prompt_leak(raw_answer):
+            error_type = "system_prompt_leak_or_empty"
+
         route = ResilientRouteOutcome(
             status=ROUTE_RETRY_LATER,
             error_type=error_type,

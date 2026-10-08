@@ -79,10 +79,22 @@ def test_adapter_defaults_to_internal_pool_router(sample_payload, monkeypatch):
 
 
 def test_adapter_legacy_rollback_via_env_flag(sample_payload, monkeypatch):
-    """Setting AIOS_USE_LEGACY_NAKAZASEN_ROUTER=1 rolls back to external nakazasen_ai_router."""
+    """Setting AIOS_USE_LEGACY_NAKAZASEN_ROUTER=1 rolls back to external router via mock without importing package."""
     monkeypatch.setenv("AIOS_USE_LEGACY_NAKAZASEN_ROUTER", "1")
 
-    from nakazasen_ai_router import AIRouteOutcome, AIResult
+    class FakeResult:
+        def __init__(self, text: str, provider_name: str = "external_pkg"):
+            self.text = text
+            self.provider_name = provider_name
+            self.metadata = {}
+
+    class FakeOutcome:
+        def __init__(self, status: str, result: FakeResult):
+            self.status = status
+            self.result = result
+            self.attempts = ()
+            self.error_type = ""
+            self.retry_after_seconds = None
 
     class FakeExternalRouter:
         def __init__(self):
@@ -90,9 +102,9 @@ def test_adapter_legacy_rollback_via_env_flag(sample_payload, monkeypatch):
 
         def route_outcome(self, request):
             self.called = True
-            return AIRouteOutcome(
+            return FakeOutcome(
                 status="success",
-                result=AIResult(text="Trả lời từ router ngoài cũ.", provider_name="external_pkg"),
+                result=FakeResult(text="Trả lời từ router ngoài cũ.", provider_name="external_pkg"),
             )
 
     fake = FakeExternalRouter()
@@ -102,6 +114,35 @@ def test_adapter_legacy_rollback_via_env_flag(sample_payload, monkeypatch):
     assert res.ok is True
     assert res.text == "Trả lời từ router ngoài cũ."
     assert fake.called is True
+
+
+def test_adapter_runs_when_external_router_package_missing(sample_payload, monkeypatch):
+    """Adapter functions cleanly when nakazasen_ai_router is completely unavailable."""
+    monkeypatch.setattr("aios_habit.workspace_chat_router_adapter.create_router_from_env", None)
+    monkeypatch.delenv("AIOS_USE_LEGACY_NAKAZASEN_ROUTER", raising=False)
+
+    def mock_answer_with_provider(*args, **kwargs):
+        from aios_habit.ai_provider_bridge import ProviderResult
+        return ProviderResult(
+            ok=True,
+            answer_text="Đáp án khi không có gói ngoài.",
+            provider_name="openai_compatible_local",
+            model_name="inclusionai/ling-3.1-flash:free",
+            used_fallback=False,
+            safety_status="local_provider_ok",
+        )
+
+    monkeypatch.setattr("aios_habit.ai_router.answer_with_provider", mock_answer_with_provider)
+    res = generate_answer_via_router_detailed(sample_payload)
+    assert res.ok is True
+    assert res.text == "Đáp án khi không có gói ngoài."
+
+    # When legacy is explicitly requested without package installed, returns clean error
+    monkeypatch.setenv("AIOS_USE_LEGACY_NAKAZASEN_ROUTER", "1")
+    res_legacy = generate_answer_via_router_detailed(sample_payload)
+    assert res_legacy.ok is False
+    assert "chưa được cài đặt" in res_legacy.text
+
 
 
 def test_adapter_internal_router_failure_returns_clean_error(sample_payload, monkeypatch):
