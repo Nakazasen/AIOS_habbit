@@ -886,11 +886,16 @@ class RagV2DevPipeline:
         for source in selected:
             allowed_paths.append(str(source.path))
             allowed_documents.append(source.document_id)
-            if source.path.is_file():
-                expected[source.document_id] = _file_fingerprint(source.path)
-            elif self.config.index_read_only:
+            if self.config.index_read_only:
                 db_fp = getattr(self.index, "get_document_fingerprint", lambda d: None)(source.document_id)
-                expected[source.document_id] = db_fp if db_fp else ""
+                if db_fp:
+                    expected[source.document_id] = db_fp
+                elif source.path.is_file():
+                    expected[source.document_id] = _file_fingerprint(source.path)
+                else:
+                    expected[source.document_id] = ""
+            elif source.path.is_file():
+                expected[source.document_id] = _file_fingerprint(source.path)
             else:
                 expected[source.document_id] = "__source_unavailable__"
         # Diversity limits are meaningful only across distinct source documents.

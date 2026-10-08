@@ -1161,7 +1161,18 @@ def test_workspace_chat_ai_answer_via_real_router_failure(monkeypatch):
 def test_generate_answer_via_router_integration_mocked_outcome(monkeypatch):
     from aios_habit.workspace_chat_router_adapter import generate_answer_via_router
     from aios_habit.brain_gateway import SanitizedRouterPayload, SanitizedSourcePayload
-    from nakazasen_ai_router import AIRouteOutcome, AIResult
+    try:
+        from nakazasen_ai_router import AIRouteOutcome, AIResult
+    except ImportError:
+        from dataclasses import dataclass
+        @dataclass
+        class AIResult:
+            text: str
+            provider_name: str
+        @dataclass
+        class AIRouteOutcome:
+            status: str
+            result: Any
 
     class FakeRouter:
         def __init__(self, outcome):
@@ -1177,6 +1188,8 @@ def test_generate_answer_via_router_integration_mocked_outcome(monkeypatch):
     )
     fake_router = FakeRouter(fake_outcome)
 
+    monkeypatch.setenv("AIOS_USE_LEGACY_NAKAZASEN_ROUTER", "1")
+    monkeypatch.setattr("aios_habit.workspace_chat_router_adapter._ROUTER", None)
     monkeypatch.setattr("aios_habit.workspace_chat_router_adapter.create_router_from_env", lambda **k: fake_router)
     payload = SanitizedRouterPayload(
         sanitized_question="Q",
@@ -1224,7 +1237,18 @@ def test_workspace_chat_router_adapter_class_instantiation(monkeypatch):
 def test_workspace_chat_router_creation_enables_network_and_v051_recovery(monkeypatch):
     from aios_habit.workspace_chat_router_adapter import generate_answer_via_router
     from aios_habit.brain_gateway import SanitizedRouterPayload
-    from nakazasen_ai_router import AIRouteOutcome, AIResult
+    try:
+        from nakazasen_ai_router import AIRouteOutcome, AIResult
+    except ImportError:
+        from dataclasses import dataclass
+        @dataclass
+        class AIResult:
+            text: str
+            provider_name: str
+        @dataclass
+        class AIRouteOutcome:
+            status: str
+            result: Any
 
     kwargs_passed = {}
 
@@ -1237,6 +1261,8 @@ def test_workspace_chat_router_creation_enables_network_and_v051_recovery(monkey
 
         return DummyRouter()
 
+    monkeypatch.setenv("AIOS_USE_LEGACY_NAKAZASEN_ROUTER", "1")
+    monkeypatch.setattr("aios_habit.workspace_chat_router_adapter._ROUTER", None)
     monkeypatch.setattr("aios_habit.workspace_chat_router_adapter.create_router_from_env", mock_create_router)
     payload = SanitizedRouterPayload("Q", (), {"source_set_hash": "hash"})
     ok, text = generate_answer_via_router(payload)

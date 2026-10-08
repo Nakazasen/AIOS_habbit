@@ -85,7 +85,7 @@ _PERSIST_PROBE_TIMEOUT_SECONDS = 4.0
 # (báo cáo chẩn đoán bge-worker-diag-home.md), nâng từ 120s lên 360s (6 phút)
 # để client kiên nhẫn chờ worker hoàn tất nạp model.
 _PERSIST_SPAWN_WAIT_SECONDS = 360.0
-_PERSIST_QUERY_CONNECT_SECONDS = 20.0
+_PERSIST_QUERY_CONNECT_SECONDS = float(os.environ.get("AIOS_BGE_PERSIST_CONNECT_TIMEOUT", "60.0"))
 
 
 def _current_interpreter_supports_bge_runtime() -> bool:
@@ -1026,13 +1026,6 @@ class BgeSubprocessWorkerClient:
                         ):
                             self._spawn_persistent_worker(config, pipe_name)
                             spawned = True
-                        if (
-                            not allow_spawn
-                            and not _pipe_instance_available(pipe_name)
-                        ):
-                            raise SemanticBackendError(
-                                "bge_worker_persist_unavailable"
-                            ) from exc
                         if time.monotonic() >= connect_deadline:
                             raise SemanticBackendError(
                                 "bge_worker_persist_unavailable"

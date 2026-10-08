@@ -2945,16 +2945,15 @@ def _run_profile(
                 stored = covered.get(spec.document_id)
                 if stored is None:
                     continue
-                if Path(spec.path).is_file():
+                if pipe_config.index_read_only:
+                    indexed_specs.append(spec)
+                elif Path(spec.path).is_file():
                     try:
                         actual = _file_fingerprint(Path(spec.path))
                         if not stored or actual == stored:
                             indexed_specs.append(spec)
                     except OSError:
-                        if pipe_config.index_read_only:
-                            indexed_specs.append(spec)
-                elif pipe_config.index_read_only:
-                    indexed_specs.append(spec)
+                        pass
             if domain_collection_id:
                 specs = tuple(indexed_specs) if indexed_specs else specs
             elif indexed_specs:

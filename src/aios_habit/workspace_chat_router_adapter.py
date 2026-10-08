@@ -8,8 +8,19 @@ try:
     from nakazasen_ai_router import AIRequest, RouterPolicy, create_router_from_env
     _ORIGINAL_CREATE_ROUTER_FROM_ENV = create_router_from_env
 except ImportError:
-    AIRequest = None  # type: ignore
-    RouterPolicy = None  # type: ignore
+    @dataclass
+    class AIRequest:  # type: ignore
+        prompt: str = ""
+        privacy_label: str = "cloud_safe"
+        metadata: dict | None = None
+
+    @dataclass
+    class RouterPolicy:  # type: ignore
+        require_privacy_label: bool = True
+        task_type: str = "workspace_chat"
+        routing_mode: str = "balanced"
+        max_total_attempts: int = 4
+
     create_router_from_env = None  # type: ignore
     _ORIGINAL_CREATE_ROUTER_FROM_ENV = None
 

@@ -1201,35 +1201,34 @@ def _run_chat_turn_async(
             if unavailable_reason != "deep_search_unavailable" and (
                 _is_worker_startup_reason(unavailable_reason) or not unready_sources
             ):
-                # Lần đầu mở app worker còn lạnh: chờ bộ đọc sẵn sàng đúng một
-                # lần (AIOS_BGE_INIT_TIMEOUT, mặc định 300 s) rồi tự thử lại
-                # một lần trong cùng lượt nền. Người dùng chỉ thấy chờ lâu hơn,
-                # không cần khởi động lại hay bấm lại.
-                if cancellation_event is None or not cancellation_event.is_set():
+                # UI-COLDSTART-WORKER-HOME: Luot hoi khong ket thuc bang thong bao "bam Hoi lai".
+                # Tu cho va tiep tuc den khi ra dap an (khong dung lai bat nguoi dung bam lai).
+                max_warm_deadline = time.monotonic() + float(os.environ.get("AIOS_BGE_INIT_TIMEOUT", "300.0"))
+                while time.monotonic() < max_warm_deadline:
+                    if cancellation_event is not None and cancellation_event.is_set():
+                        return (False, "", None, "Đã dừng yêu cầu AI.")
                     try:
-                        ensure_workspace_chat_worker_warming(blocking=True)
+                        ensure_workspace_chat_worker_warming(blocking=True, timeout_s=45.0)
                     except Exception:
                         pass
-                if cancellation_event is not None and cancellation_event.is_set():
-                    return (False, "", None, "Đã dừng yêu cầu AI.")
-                retry_res = _attempt_retrieval()
-                if cancellation_event is not None and cancellation_event.is_set():
-                    return (False, "", None, "Đã dừng yêu cầu AI.")
-                if retry_res.get("status") != "quality_search_unavailable":
-                    ret_res = retry_res
-                else:
+                    if cancellation_event is not None and cancellation_event.is_set():
+                        return (False, "", None, "Đã dừng yêu cầu AI.")
+                    retry_res = _attempt_retrieval()
+                    if cancellation_event is not None and cancellation_event.is_set():
+                        return (False, "", None, "Đã dừng yêu cầu AI.")
+                    if retry_res.get("status") != "quality_search_unavailable":
+                        ret_res = retry_res
+                        break
                     retry_reason = str(
                         retry_res.get("rag_v2_canary", {}).get("fallback_reason", "")
                     ).casefold()
                     if retry_reason == "domain_block_missing":
                         return (False, "", None, _knowledge_block_missing_message(retry_res, current_ui_locale))
                     if retry_reason == "deep_search_unavailable":
-                        err_msg = t("deep_search_unavailable", locale=current_ui_locale)
-                    elif _is_worker_startup_reason(retry_reason) or not unready_sources:
-                        err_msg = t("worker_warm_auto_retry", locale=current_ui_locale)
-                    else:
-                        err_msg = t("search_sources_preparing", locale=current_ui_locale)
-                    return (False, "", None, err_msg)
+                        return (False, "", None, t("deep_search_unavailable", locale=current_ui_locale))
+                    if not (_is_worker_startup_reason(retry_reason) or not unready_sources):
+                        return (False, "", None, t("search_sources_preparing", locale=current_ui_locale))
+                    time.sleep(2.0)
 
             # no_evidence_found_error
         if ret_res.get("status") == "quality_search_unavailable":
