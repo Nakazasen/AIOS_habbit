@@ -1226,6 +1226,85 @@ def route_workspace_chat_submission(
         if was_cancelled():
             return (False, "", None, "Đã dừng yêu cầu AI.")
         if not result.ok:
+            if _local_fallback_available(local_synthesis):
+                local_answer = str((local_synthesis or {}).get("answer", "") or "").strip()
+                local_citation_ids = [str(c) for c in ((local_synthesis or {}).get("citation_ids") or ())]
+                cited_set = set(local_citation_ids)
+                cited_items = [
+                    item for item in (evidence_items or [])
+                    if str((item or {}).get("citation_id", "")).strip() in cited_set
+                ] if cited_set else list(evidence_items or [])
+                if not cited_items:
+                    cited_items = list(evidence_items or [])
+
+                user_msg = _get_or_create_user_message(conversation_id, user_raw_input, reuse_message_id=user_message_id)
+                assistant_msg_id = f"MSG-{uuid.uuid4().hex[:8].upper()}"
+                from aios_habit.workspace_chat_store import (
+                    load_conversation,
+                    load_conversation_source_selections,
+                    save_evidence_trace,
+                )
+                from aios_habit.evidence_trace import build_evidence_trace_from_citations
+
+                selections = load_conversation_source_selections(conversation_id)
+                allowed_source_ids = [item.source_id for item in selections if item.enabled] if selections else None
+                conversation = load_conversation(conversation_id)
+                ui_locale = getattr(conversation, "ui_locale", "vi") if conversation else "vi"
+
+                trace = build_evidence_trace_from_citations(
+                    query=question,
+                    answer_text=local_answer,
+                    evidence_items=cited_items,
+                    allowed_source_ids=allowed_source_ids,
+                    notebook_id=notebook_id,
+                    conversation_id=conversation_id,
+                    user_message_id=user_msg.id,
+                    assistant_message_id=assistant_msg_id,
+                    ui_locale=ui_locale,
+                    answer_language=answer_language,
+                    provenance={
+                        "operational_mode": LOCAL_GROUNDED_FALLBACK_MODE,
+                        "provider_name": LOCAL_GROUNDED_FALLBACK_PROVIDER,
+                        "model_name": LOCAL_GROUNDED_FALLBACK_MODE,
+                    },
+                )
+                save_evidence_trace(trace)
+                save_message(ChatMessage(
+                    id=assistant_msg_id,
+                    conversation_id=conversation_id,
+                    role="assistant",
+                    content=local_answer,
+                    trace_id=trace.trace_id,
+                ))
+                source_titles = [
+                    (item.get("title", "") if isinstance(item, dict) else getattr(item, "title", ""))
+                    for item in cited_items
+                ]
+                badge = {
+                    "conversation_id": conversation_id,
+                    "type": "ai_answered",
+                    "source_count": len(source_titles),
+                    "source_titles": source_titles,
+                    "ai_source": LOCAL_GROUNDED_FALLBACK_PROVIDER,
+                    "bridge": "Nakazasen Router",
+                    "provider": LOCAL_GROUNDED_FALLBACK_PROVIDER,
+                    "model_tool_name": "",
+                    "verified_model": LOCAL_GROUNDED_FALLBACK_MODE,
+                    "operational_mode": LOCAL_GROUNDED_FALLBACK_MODE,
+                    "retrieval_summary": retrieval_summary,
+                    "evidence_items": evidence_items,
+                    "trace_id": trace.trace_id,
+                    "memory_titles": getattr(result, "memory_titles", ()),
+                    "memory_consent_fingerprint": getattr(result, "memory_consent_fingerprint", ""),
+                    "fallback_used": True,
+                }
+                return (
+                    True,
+                    "Đã trả lời bằng dữ liệu trích xuất cục bộ (dịch vụ AI bên ngoài không phản hồi).",
+                    badge,
+                    None,
+                )
+
             return (False, "", None, result.error_message or "Cầu nối AI không trả về câu trả lời.")
 
         user_msg = _get_or_create_user_message(conversation_id, user_raw_input, reuse_message_id=user_message_id)

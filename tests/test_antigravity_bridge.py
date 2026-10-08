@@ -2631,3 +2631,100 @@ class TestRound4BUserMessageReuse:
         trace = store_mod.load_evidence_trace(badge["trace_id"])
         assert trace is not None
         assert trace.user_message_id == "MSG-MERGED03"
+
+
+def test_nakazasen_router_branch_falls_back_to_local_synthesis_when_provider_fails(tmp_path, monkeypatch):
+    """When router provider fails and local_synthesis is grounded, router branch returns local fallback answer."""
+    import aios_habit.workspace_chat_store as store_mod
+    from aios_habit.antigravity_bridge import route_workspace_chat_submission, LOCAL_GROUNDED_FALLBACK_MODE
+    from aios_habit.workspace_chat_ai_answer import WorkspaceAIAnswerResult
+
+    monkeypatch.setattr(store_mod, "LOCAL_CHAT_DIR", tmp_path)
+    monkeypatch.setattr(store_mod, "MESSAGES_FILE", tmp_path / "messages.jsonl")
+    monkeypatch.setattr(store_mod, "TRACES_FILE", tmp_path / "traces.jsonl")
+    monkeypatch.setattr(store_mod, "CONVERSATIONS_FILE", tmp_path / "conversations.jsonl")
+    monkeypatch.setattr(store_mod, "SOURCE_SELECTIONS_FILE", tmp_path / "selections.jsonl")
+    store_mod.init_chat_store()
+
+    def mock_ai_answer(*args, **kwargs):
+        return WorkspaceAIAnswerResult(
+            ok=False,
+            answer_text="",
+            included_source_titles=(),
+            warnings=(),
+            error_message="Dịch vụ AI chưa phản hồi. Vui lòng kiểm tra lại kết nối mạng.",
+        )
+
+    monkeypatch.setattr("aios_habit.workspace_chat_ai_answer.generate_workspace_ai_answer", mock_ai_answer)
+
+    local_synth = {
+        "answer": "Đây là câu trả lời trích xuất cục bộ [1].",
+        "citation_ids": ["[1]"],
+        "grounded": True,
+        "abstained": False,
+        "answer_mode": "answer",
+        "limitation_reasons": [],
+    }
+
+    ok, msg, badge, err = route_workspace_chat_submission(
+        question="Hỏi về LSU?",
+        evidence_items=[{"source_id": "src1", "citation_id": "[1]", "title": "HDSD"}],
+        packed_sources=(),
+        conversation_id="CONV-ROUTER-FALLBACK",
+        notebook_id="NB-1",
+        retrieval_applied=True,
+        retrieved_sources=(),
+        retrieval_summary="",
+        current_keys=(),
+        chat_history=(),
+        user_raw_input="Hỏi về LSU?",
+        backend="nakazasen_router",
+        local_synthesis=local_synth,
+    )
+
+    assert ok is True
+    assert err is None
+    assert badge is not None
+    assert badge["operational_mode"] == LOCAL_GROUNDED_FALLBACK_MODE
+    assert badge["fallback_used"] is True
+    msgs = store_mod.load_messages("CONV-ROUTER-FALLBACK")
+    asst_msgs = [m for m in msgs if m.role == "assistant"]
+    assert len(asst_msgs) == 1
+    assert "Đây là câu trả lời trích xuất cục bộ" in asst_msgs[0].content
+
+
+def test_nakazasen_router_branch_cancellation_does_not_trigger_fallback(monkeypatch):
+    """When user cancelled, router branch returns cancellation error, not fallback."""
+    from aios_habit.antigravity_bridge import route_workspace_chat_submission
+    import threading
+
+    cancel_evt = threading.Event()
+    cancel_evt.set()
+
+    local_synth = {
+        "answer": "Không nên trả lời câu này vì đã bị hủy.",
+        "citation_ids": ["[1]"],
+        "grounded": True,
+        "abstained": False,
+    }
+
+    ok, msg, badge, err = route_workspace_chat_submission(
+        question="Hỏi về LSU?",
+        evidence_items=[],
+        packed_sources=(),
+        conversation_id="CONV-CANCELLED",
+        notebook_id="NB-1",
+        retrieval_applied=True,
+        retrieved_sources=(),
+        retrieval_summary="",
+        current_keys=(),
+        chat_history=(),
+        user_raw_input="Hỏi về LSU?",
+        backend="nakazasen_router",
+        cancellation_event=cancel_evt,
+        local_synthesis=local_synth,
+    )
+
+    assert ok is False
+    assert err == "Đã dừng yêu cầu AI."
+

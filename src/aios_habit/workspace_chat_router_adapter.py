@@ -1,16 +1,20 @@
 import logging
+import os
 import re
 from dataclasses import dataclass
 from typing import Any, Tuple
 
 from nakazasen_ai_router import AIRequest, RouterPolicy, create_router_from_env
 
+import aios_habit.workspace_paths  # Ensures .env is loaded
 from aios_habit.brain_gateway import SanitizedRouterPayload
+from aios_habit.provider_health import ProviderHealthStore
 from aios_habit.rag_v2.query_planning import detect_query_language
 from aios_habit.resilient_routing import (
     ROUTE_INFRASTRUCTURE_INVALID,
     ROUTE_RETRY_LATER,
     ROUTE_SUCCESS,
+    ResilientRouteAttempt,
     ResilientRouteOutcome,
     redact_delegated_attempt,
     retry_after_from_error,
@@ -18,7 +22,28 @@ from aios_habit.resilient_routing import (
 
 LOGGER = logging.getLogger(__name__)
 _ROUTER: Any | None = None
+_INTERNAL_HEALTH_STORE: ProviderHealthStore | None = None
 _EQUIPMENT_TOKEN_RE = re.compile(r"\b(?:acr|ctu)\b", re.IGNORECASE)
+
+_ORIGINAL_CREATE_ROUTER_FROM_ENV = create_router_from_env
+USE_LEGACY_ROUTER_FLAG = "AIOS_USE_LEGACY_NAKAZASEN_ROUTER"
+
+
+def _should_use_legacy_router() -> bool:
+    """Return True if requested via env or if create_router_from_env is mocked."""
+    flag = os.environ.get(USE_LEGACY_ROUTER_FLAG, "").strip().lower()
+    if flag in ("1", "true", "yes"):
+        return True
+    if flag in ("0", "false", "no"):
+        return False
+    return create_router_from_env is not _ORIGINAL_CREATE_ROUTER_FROM_ENV
+
+
+def _get_internal_health_store() -> ProviderHealthStore:
+    global _INTERNAL_HEALTH_STORE
+    if _INTERNAL_HEALTH_STORE is None:
+        _INTERNAL_HEALTH_STORE = ProviderHealthStore()
+    return _INTERNAL_HEALTH_STORE
 
 
 @dataclass(frozen=True)
@@ -114,13 +139,8 @@ def _outcome_details(outcome: Any, *, query_language: str) -> ResilientRouteOutc
     )
 
 
-def generate_answer_via_router_detailed(payload: SanitizedRouterPayload) -> WorkspaceRouterDetailedResult:
-    """Call a reused delegated router with the Gateway-approved sanitized payload."""
-    if not isinstance(payload, SanitizedRouterPayload):
-        route = ResilientRouteOutcome(status="policy_blocked", error_type="invalid_sanitized_payload")
-        LOGGER.error("Rejected non-sanitized Workspace Chat router payload")
-        return WorkspaceRouterDetailedResult(False, "Yêu cầu gửi AI không hợp lệ. Vui lòng thử lại từ Workspace Chat.", route)
-
+def _generate_via_legacy_router(payload: SanitizedRouterPayload) -> WorkspaceRouterDetailedResult:
+    """Fallback delegated route using external nakazasen_ai_router package."""
     try:
         router = _get_router()
     except Exception as error:
@@ -145,7 +165,6 @@ def generate_answer_via_router_detailed(payload: SanitizedRouterPayload) -> Work
             "contains_confidential_files": False,
             "task_type": "workspace_chat",
             "query_language": query_language,
-            # This identifies the request category only; no source/prompt/session text is retained.
             "session_scope": "sanitized_workspace_chat",
         },
     )
@@ -159,7 +178,7 @@ def generate_answer_via_router_detailed(payload: SanitizedRouterPayload) -> Work
             return WorkspaceRouterDetailedResult(False, "Yêu cầu đã bị chặn vì vượt quá giới hạn ngân sách (budget exceeded).", route)
         return WorkspaceRouterDetailedResult(False, "Dịch vụ AI chưa phản hồi. Vui lòng kiểm tra lại kết nối mạng hoặc cấu hình API key.", route)
     except Exception as error:
-        LOGGER.error("Router route_outcome failed: %s", error)
+        LOGGER.error("Legacy router route_outcome failed: %s", error)
         route = ResilientRouteOutcome(
             status=ROUTE_RETRY_LATER,
             error_type="router_exception",
@@ -167,6 +186,107 @@ def generate_answer_via_router_detailed(payload: SanitizedRouterPayload) -> Work
             telemetry={"query_language": query_language},
         )
         return WorkspaceRouterDetailedResult(False, "Dịch vụ AI chưa phản hồi. Vui lòng thử lại sau.", route)
+
+
+def _generate_via_internal_router(payload: SanitizedRouterPayload) -> WorkspaceRouterDetailedResult:
+    """Internal route using aios_habit.ai_router connected to local/failover Command Code pool."""
+    from aios_habit.ai_router import RouterRequest, provider_configs_from_env, route_answer
+    from aios_habit.safety_modes import SAFETY_MODE_NORMAL
+
+    system_prompt, user_prompt = _build_router_prompts(payload)
+    query_language = detect_query_language(payload.sanitized_question)
+
+    try:
+        configs = provider_configs_from_env()
+    except Exception as error:
+        LOGGER.error("Failed to load provider configs from env: %s", error)
+        route = ResilientRouteOutcome(status=ROUTE_INFRASTRUCTURE_INVALID, error_type="config_load_failed")
+        return WorkspaceRouterDetailedResult(False, "Dịch vụ AI chưa phản hồi. Vui lòng kiểm tra cấu hình API key.", route)
+
+    if not configs:
+        route = ResilientRouteOutcome(status=ROUTE_INFRASTRUCTURE_INVALID, error_type="no_providers_configured")
+        return WorkspaceRouterDetailedResult(False, "Dịch vụ AI chưa phản hồi. Vui lòng kiểm tra cấu hình API key.", route)
+
+    router_request = RouterRequest(
+        question=user_prompt,
+        source_context=system_prompt,
+        deterministic_answer="",
+        max_attempts=4,
+        privacy_label="cloud_safe",
+        safety_mode_label=SAFETY_MODE_NORMAL,
+        task_type="workspace_chat",
+        query_language=query_language,
+    )
+
+    try:
+        health_store = _get_internal_health_store()
+        result = route_answer(router_request, configs, health_state=health_store)
+        attempts = tuple(
+            ResilientRouteAttempt(
+                provider_id=a.provider_id,
+                model_id=a.model_name,
+                key_id_masked=a.key_id_masked,
+                status=a.status,
+                error_type=a.error_type,
+                failure_scope=a.failure_scope,
+                retry_after_seconds=a.retry_after_seconds,
+                candidate_score=a.candidate_score,
+                latency_ms=float(a.latency_ms),
+            )
+            for a in (result.attempts or [])
+        )
+        if not result.used_fallback and str(result.answer_text or "").strip():
+            route = ResilientRouteOutcome(
+                status=ROUTE_SUCCESS,
+                attempts=attempts,
+                effective_provider=result.used_provider,
+                effective_model=result.used_model,
+                fallback_used=any(a.status == "failed" for a in (result.attempts or [])),
+                telemetry={"query_language": query_language, "attempt_count": len(attempts)},
+            )
+            return WorkspaceRouterDetailedResult(True, result.answer_text, route)
+
+        error_type = result.attempts[-1].error_type if result.attempts else "all_providers_failed"
+        route = ResilientRouteOutcome(
+            status=ROUTE_RETRY_LATER,
+            error_type=error_type,
+            attempts=attempts,
+            effective_provider=result.used_provider,
+            effective_model=result.used_model,
+            fallback_used=True,
+            telemetry={"query_language": query_language, "attempt_count": len(attempts)},
+        )
+        return WorkspaceRouterDetailedResult(
+            False,
+            "Dịch vụ AI chưa phản hồi. Vui lòng kiểm tra lại kết nối mạng hoặc cấu hình API key.",
+            route,
+        )
+    except Exception as error:
+        LOGGER.error("Internal router route_answer failed: %s", error)
+        route = ResilientRouteOutcome(
+            status=ROUTE_RETRY_LATER,
+            error_type="router_exception",
+            retry_after_seconds=retry_after_from_error(error),
+            telemetry={"query_language": query_language},
+        )
+        return WorkspaceRouterDetailedResult(False, "Dịch vụ AI chưa phản hồi. Vui lòng thử lại sau.", route)
+
+
+def generate_answer_via_router_detailed(payload: SanitizedRouterPayload) -> WorkspaceRouterDetailedResult:
+    """Call delegated router with the Gateway-approved sanitized payload.
+    
+    Defaults to internal aios_habit.ai_router reading Command Code pool from .env.
+    Falls back to external nakazasen_ai_router if AIOS_USE_LEGACY_NAKAZASEN_ROUTER=1.
+    """
+    if not isinstance(payload, SanitizedRouterPayload):
+        route = ResilientRouteOutcome(status="policy_blocked", error_type="invalid_sanitized_payload")
+        LOGGER.error("Rejected non-sanitized Workspace Chat router payload")
+        return WorkspaceRouterDetailedResult(False, "Yêu cầu gửi AI không hợp lệ. Vui lòng thử lại từ Workspace Chat.", route)
+
+    if _should_use_legacy_router():
+        return _generate_via_legacy_router(payload)
+
+    return _generate_via_internal_router(payload)
 
 
 def generate_answer_via_router(payload: SanitizedRouterPayload) -> Tuple[bool, str]:
