@@ -2,9 +2,10 @@
 
 ## Vé hiện tại: RAG-REMEASURE-PC0575
 
-- Trạng thái: `dang-lam`
-- `commit`: `0c85f2d8`
+- Trạng thái: `xong-cho-duyet`
+- `commit`: `a1bc7cc4`
 - `bao_cao`: `docs/phieu-viec/ket-qua/rag-remeasure-pc0575.md`
+- `ghi_chu`: 2026-10-08 16:35 +07 — Hoàn thành vé RAG-REMEASURE-PC0575 (nộp xong-cho-duyet): (1) Lane C-Agent 50/50 câu đạt 146.83/150 (GPA 2.937, 98.0% đạt chuẩn >=2, 46/50 câu đạt 3 tuyệt đối, vượt xa mục tiêu >=2.5); (2) Lane RAG 50/50 câu đạt 47.83/150 (GPA 0.957, 14 câu đạt chuẩn >=2, 3 câu đạt 3 tuyệt đối, thời gian TB ~15s/câu — tăng tốc hơn 15 lần nhờ dense numpy + lexical fts v2); (3) Phân loại 36 câu RAG dưới chuẩn: 16 câu nhóm D (thiếu nguồn CSV trong index -> mô hình từ chối trung thực, chờ vé SRC-421), 5 câu nhóm A (Q0704 đạt 1.5 rank 5&8, Q0701 rank 11), 3 câu nhóm B, 7 câu nhóm C, 5 câu khác; (4) Bảo toàn cơ sở dữ liệu chỉ-đọc: library.sqlite MD5 trước/sau 492C065F8F741AD5C73A900FA6BCDF3E khớp 100%, 2.853.646.336 bytes bất biến; (5) Các cổng repo PASS: compileall 100%, cli audit PASS, import app OK, 51/51 test rag core PASS. Báo cáo chi tiết nộp tại docs/phieu-viec/ket-qua/rag-remeasure-pc0575.md.
 - `ghi_chu`: 2026-10-08 16:25 +07 — Tiến độ lane RAG: đã hoàn thành 43/50 câu (0 lỗi kỹ thuật; 12 câu đạt chuẩn ≥2, 3 câu đạt 3 tuyệt đối, GPA 0.996). Tiến trình nền đang tiếp tục chạy 7 câu cuối trên index chỉ-đọc.
 - `ghi_chu`: 2026-10-08 16:21 +07 — Tiến độ lane RAG: đã hoàn thành 37/50 câu (0 lỗi kỹ thuật; 11 câu đạt chuẩn ≥2, 2 câu đạt 3 tuyệt đối, GPA 1.022). Tiến trình nền đang tiếp tục chạy 13 câu cuối trên index chỉ-đọc.
 - `ghi_chu`: 2026-10-08 16:14 +07 — Tiến độ lane RAG: đã hoàn thành 33/50 câu (0 lỗi kỹ thuật; 10 câu đạt chuẩn ≥2, 2 câu đạt 3 tuyệt đối, GPA 1.025). Tiến trình nền đang tiếp tục chạy 17 câu cuối trên index chỉ-đọc.
