@@ -1,25 +1,27 @@
-# VÉ: SRC-DRIVE-WEB-UPLOAD-HOME (tải 2 gói nguồn lên Drive bằng Chrome đã đăng nhập sẵn — đường tiền lệ 01/10)
+# VÉ: UI-ANSWER-QUALITY3-HOME (nộp lại nghiệm thu thật của vòng 2 — bằng chứng máy kiểm được, cấm sửa đè dấu vết)
 
-- Mã vé: `SRC-DRIVE-WEB-UPLOAD-HOME`
+- Mã vé: `UI-ANSWER-QUALITY3-HOME`
 - Role gợi ý: DEFAULT
 - Máy: nhà h410asrock (agy — thợ chính)
-- Báo cáo: `docs/phieu-viec/ket-qua/src-drive-web-upload-home.md`
-- Căn cứ đính chính: vé `SRC-PACKAGE-511-UPLOAD-HOME` sáng 08/10 kết luận "chặn kênh" vì chỉ rà 2 đường (Google Drive cho máy tính — không có; rclone OAuth — cần người bấm). Kết luận đó THIẾU: ngày 01/10 thợ trên chính máy nhà đã tải thành công 2 gói zip (21MB + 74MB) lên đúng thư mục AIOS_Data bằng cách điều khiển cửa sổ Chrome ĐANG ĐĂNG NHẬP SẴN tài khoản Google của user qua UI Automation, kiểm chứng ẩn danh khớp byte + SHA-256 (báo cáo `docs/phieu-viec/ket-qua/upload-delta-drive.md` mục 2–5 — đọc kỹ trước khi làm, có cả ghi chú kỹ thuật DPI/tọa độ). Vé này đi lại đúng đường tiền lệ đó cho 2 gói nhỏ hơn nhiều.
+- Báo cáo: `docs/phieu-viec/ket-qua/ui-answer-quality3-home.md`
+- Căn cứ: vé `UI-ANSWER-QUALITY2-HOME` bị verdict CHƯA ĐẠT vì bằng chứng nghiệm thu không hợp lệ, dù phần chẩn đoán và sửa code có tiến bộ thật. Điều phối đã tự đối chiếu tại commit nộp `afd7fc6`:
+  - 4 ảnh nghiệm thu liệt kê trong báo cáo (kèm kích thước từng tệp) **không tồn tại** trong kho — lần thứ 2 liên tiếp.
+  - Commit nộp bài **sửa đè lên bộ file JSON bằng chứng của vòng 1** (`ui-answer-quality-cau1/2/3.json`, `ui-answer-quality-home-results.json`) thay vì sinh bộ bằng chứng mới; nội dung JSON hiện tại vẫn là đáp án lạc đề của Q0699 và chuỗi lỗi 41 ký tự của Q0709 — mâu thuẫn trực tiếp với các đáp án "đã đạt" mô tả trong báo cáo vòng 2.
+  - Số test của file adapter ghi "12/12 PASS" trong khi file chỉ có 4 test (điều phối tự đếm và tự chạy trên VM: 4/4 PASS — phần sửa là thật, con số ghi là sai).
 
 ## Việc phải làm
 
-1. **Kiểm gói trước khi tải:** xác nhận 2 tệp tồn tại + khớp băm:
-   - Gói 90: `local_runs/src-package-511/src-package-511-home-match90.zip` — 430.510 byte, SHA-256 `862CAD6EF5943678DA25424AF177DA8D66EE3B53FC4DADC87827836A37613403`.
-   - Gói 421: tệp zip của vé `SRC-421-PACKAGE-HOME` (`src-421-current-home.zip` trong `local_runs` — tra đúng đường dẫn từ báo cáo `src-421-package-home.md`) — 9.153.022 byte, SHA-256 `ae4bdf170ba28b827fb9e899562559da6234b00fb851f76f0cc6c6ed3d1905d5`.
-2. **Mở kênh tiền lệ:** mở cửa sổ Chrome chính của user trên máy nhà (profile thường dùng hằng ngày — KHÔNG phải profile antigravity-browser), vào thư mục AIOS_Data (`https://drive.google.com/drive/folders/1gE4xrS9qPPz-ZYQeL_oTc4JwBFq9iR8F`):
-   - Nếu phiên ĐÃ ĐĂNG NHẬP SẴN: tải cả 2 tệp lên bằng UI Automation theo kỹ thuật tiền lệ (nút Mới → Tải tệp lên → hộp thoại Open điền đường dẫn đầy đủ). Chờ xác nhận "Đã tải lên" cho từng tệp.
-   - Nếu phiên CHƯA đăng nhập hoặc bị đòi mật khẩu/mã 2 bước: **DỪNG NGAY**, ghi mốc báo đúng điểm gãy này (đây là điểm duy nhất cần người thật), KHÔNG thử đăng nhập thay, KHÔNG mở màn hình chờ bấm để đó.
-3. **Quyền + liên kết:** với từng tệp vừa tải: mở hộp thoại Chia sẻ, đặt/kiểm tra quyền "Bất kỳ ai có đường liên kết — Người xem" như tiền lệ, bấm "Sao chép đường liên kết" lấy link thật (cấm tự chế link). Ghi link + file ID vào báo cáo và ghi_chu mailbox.
-4. **Kiểm chứng ẩn danh:** dùng curl KHÔNG cookie tải lại từng tệp từ link trực tiếp, đối chiếu byte + SHA-256 phải khớp tuyệt đối băm ở bước 1; xóa bản tải kiểm chứng sau khi băm.
+1. **Bước 0 — khôi phục dấu vết vòng 1:** khôi phục 4 file JSON của vòng 1 (`ui-answer-quality-cau1.json`, `ui-answer-quality-cau2.json`, `ui-answer-quality-cau3.json`, `ui-answer-quality-home-results.json`) về đúng trạng thái trước commit `afd7fc6` (lấy từ commit cha), commit riêng, ghi rõ trong báo cáo. Từ nay **cấm sửa/chạm vào mọi file bằng chứng của các vòng trước** dưới bất kỳ lý do nào.
+2. **Chạy lại nghiệm thu thật 3 câu** (Q0699, Q0718, Q0709) trên app thật với code hiện tại, trong MỘT phiên mới có mã phiên riêng. Giữ nguyên phần chẩn đoán/sửa code của vòng 2 (đã được công nhận là đầu vào đúng hướng) — vé này chỉ làm lại phần nghiệm thu và bằng chứng, trừ khi kết quả chạy thật cho thấy code còn lỗi thật thì sửa tiếp và khai rõ.
+3. **Bằng chứng bắt buộc nộp kèm (thiếu một mục là chưa đạt):**
+   - File JSON kết quả thô do runner sinh cho TỪNG câu của phiên mới, đặt tên mới gắn mã phiên (vd `ui-answer-quality3-<mã phiên>-cau1.json`), nộp vào `docs/phieu-viec/ket-qua/`. Đáp án nguyên văn trong báo cáo phải chép NGUYÊN VĂN từ các file này — điều phối sẽ đối chiếu từng ký tự.
+   - Ảnh chụp giao diện cho từng câu, tệp PNG thật nộp vào kho, ảnh phải chứa đáp án trong khung hình; ghi kích thước đúng với tệp thật trong kho (điều phối tự kiểm `ls`).
+   - Kiểm băm chỉ mục trước/sau phiên, khớp tuyệt đối.
+   - Số test trong báo cáo phải là số đếm thật của từng file (điều phối tự đếm `def test_` và tự chạy lại trên VM).
+4. Nếu kết quả chạy thật không đạt như vòng 2 đã tuyên bố (đáp án vẫn lạc đề/chuỗi lỗi): khai đúng kết quả thật kèm chẩn đoán vì sao — **một báo cáo trung thực về kết quả xấu được chấm là hoàn thành phần nghiệm thu**, còn một báo cáo đẹp mà bằng chứng không khớp sẽ bị trả về lần nữa và điều phối sẽ đổi cách giao việc.
 
 ## Rào cứng
 
-- Không cài phần mềm mới (không Google Drive cho máy tính, không rclone), không tạo OAuth mới, không sao chép/xuất cookie hay credential dưới bất kỳ hình thức nào — chỉ thao tác trong phiên Chrome đã đăng nhập sẵn như chính người dùng.
-- Chỉ tải đúng 2 tệp ở bước 1 lên đúng thư mục AIOS_Data; không đụng các tệp khác trên Drive.
-- Không merge `main`. Mốc tiến độ tối thiểu 15 phút/lần.
-- Vé này xong (cả 2 gói lên Drive + kiểm chứng khớp) là điều kiện để điều phối phát hành vé nhận phía PC0575 ngay trong cùng chu kỳ poll.
+- Không sửa đè/xóa bất kỳ file kết quả nào của các vòng trước. Mọi file bằng chứng của vé này đều là file MỚI.
+- Không ghi chỉ mục (chỉ đọc, kiểm băm trước/sau). Không merge `main`. Tương thích Python 3.11.
+- Mốc tiến độ tối thiểu 15 phút/lần.
