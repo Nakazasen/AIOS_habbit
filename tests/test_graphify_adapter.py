@@ -21,6 +21,11 @@ from aios_habit.graphify_adapter import (
     GraphifyCapabilities,
 )
 
+require_graphify = pytest.mark.skipif(
+    not GraphifyAdapter().is_available(),
+    reason="Gói tùy chọn graphifyy==0.9.50 không có trong môi trường",
+)
+
 
 @pytest.fixture
 def temp_workspace(tmp_path: Path) -> Path:
@@ -51,12 +56,14 @@ def sample_graph_json(temp_workspace: Path) -> Path:
     return graph_path
 
 
+@require_graphify
 def test_graphify_adapter_is_available() -> None:
     """Verify is_available returns True in environment with graphify installed."""
     adapter = GraphifyAdapter()
     assert adapter.is_available() is True
 
 
+@require_graphify
 def test_graphify_adapter_capabilities(temp_workspace: Path, sample_graph_json: Path) -> None:
     """Verify get_capabilities and check_capabilities return expected dictionary and dataclass."""
     adapter = GraphifyAdapter(workspace_dir=temp_workspace)
@@ -79,6 +86,7 @@ def test_graphify_adapter_capabilities(temp_workspace: Path, sample_graph_json: 
     assert caps_dict["has_graph_json"] is True
 
 
+@require_graphify
 def test_load_graph_success(temp_workspace: Path, sample_graph_json: Path) -> None:
     """Verify loading graph directly from default workspace path."""
     adapter = GraphifyAdapter(workspace_dir=temp_workspace)
@@ -89,6 +97,7 @@ def test_load_graph_success(temp_workspace: Path, sample_graph_json: Path) -> No
     assert G.number_of_edges() >= 2
 
 
+@require_graphify
 def test_load_graph_custom_path(sample_graph_json: Path) -> None:
     """Verify loading graph from an explicitly specified path."""
     adapter = GraphifyAdapter()
@@ -99,6 +108,7 @@ def test_load_graph_custom_path(sample_graph_json: Path) -> None:
     assert "mod_b" in G.nodes
 
 
+@require_graphify
 def test_load_graph_file_not_found(temp_workspace: Path) -> None:
     """Verify FileNotFoundError when graph.json does not exist."""
     non_existent = temp_workspace / "no_such_file.json"
@@ -108,6 +118,7 @@ def test_load_graph_file_not_found(temp_workspace: Path) -> None:
         adapter.load_graph(graph_path=non_existent)
 
 
+@require_graphify
 def test_build_from_json_dict_and_path(temp_workspace: Path, sample_graph_json: Path) -> None:
     """Verify build_from_json works for both in-memory dict and file path."""
     adapter = GraphifyAdapter(workspace_dir=temp_workspace)
@@ -126,6 +137,7 @@ def test_build_from_json_dict_and_path(temp_workspace: Path, sample_graph_json: 
         adapter.build_from_json(12345)  # type: ignore
 
 
+@require_graphify
 def test_extract_and_build(temp_workspace: Path) -> None:
     """Verify in-process AST extraction on a Python source file."""
     src_file = temp_workspace / "sample_service.py"
@@ -147,6 +159,7 @@ def test_extract_and_build(temp_workspace: Path) -> None:
     assert G.number_of_nodes() > 0
 
 
+@require_graphify
 def test_cluster_and_god_nodes(temp_workspace: Path, sample_graph_json: Path) -> None:
     """Verify in-process community detection and god nodes ranking."""
     adapter = GraphifyAdapter(workspace_dir=temp_workspace)
@@ -165,6 +178,7 @@ def test_cluster_and_god_nodes(temp_workspace: Path, sample_graph_json: Path) ->
         assert "degree" in node_info
 
 
+@require_graphify
 def test_exports_json_html_svg(temp_workspace: Path, sample_graph_json: Path) -> None:
     """Verify in-process export functions to JSON, HTML, and SVG formats."""
     adapter = GraphifyAdapter(workspace_dir=temp_workspace)
