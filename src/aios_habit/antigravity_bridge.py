@@ -40,6 +40,21 @@ DEFAULT_ANTIGRAVITY_HEALTH_URL = os.environ.get(
 )
 DEFAULT_TIMEOUT_SECONDS = 60
 DEFAULT_SIDECAR_STARTUP_TIMEOUT_SECONDS = 8.0
+DEFAULT_SYNTH_CONTEXT_TOPK = 8
+SYNTH_CONTEXT_TOPK_ENV = "AIOS_RAG_SYNTH_CONTEXT_TOPK"
+
+
+def get_synth_context_topk() -> int:
+    """Return configured number of context chunks passed into synthesis prompt."""
+    raw = os.environ.get(SYNTH_CONTEXT_TOPK_ENV, "").strip()
+    if not raw:
+        return DEFAULT_SYNTH_CONTEXT_TOPK
+    try:
+        val = int(raw)
+        return max(1, min(val, 50))
+    except ValueError:
+        return DEFAULT_SYNTH_CONTEXT_TOPK
+
 SIDECAR_DAEMON_PATH = Path(__file__).resolve().parents[2] / "scripts" / "antigravity_sidecar_daemon.py"
 _SIDECAR_START_LOCK = threading.Lock()
 
@@ -1382,8 +1397,9 @@ def route_workspace_chat_submission(
     health = health_status or get_antigravity_bridge_health()
 
     if health.is_direct_ready:
+        synth_topk = get_synth_context_topk()
         context_blocks = []
-        for idx, ev in enumerate(evidence_items, start=1):
+        for idx, ev in enumerate(evidence_items[:synth_topk], start=1):
             if isinstance(ev, dict):
                 title_ev = ev.get("title", f"Nguồn {idx}")
                 snip_ev = ev.get("text", ev.get("snippet", ""))

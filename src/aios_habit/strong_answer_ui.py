@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import sqlite3
 import uuid
@@ -68,14 +68,17 @@ def _evidence_to_chunks(evidence_items: Iterable[EvidenceItem]) -> list[RAGChunk
     return chunks
 
 
-def prepare_local_evidence_answer(question: str, evidence_items: Iterable[EvidenceItem], limit: int = 8) -> StrongAnswerUIPreparation:
+def prepare_local_evidence_answer(question: str, evidence_items: Iterable[EvidenceItem], limit: int | None = None) -> StrongAnswerUIPreparation:
     if not question.strip():
         raise ValueError("question is required")
+    from aios_habit.antigravity_bridge import get_synth_context_topk
+
+    effective_limit = limit if limit is not None else get_synth_context_topk()
     chunks = _evidence_to_chunks(evidence_items)
     conn = sqlite3.connect(":memory:")
     create_rag_search_schema(conn)
     index_rag_chunks(conn, chunks)
-    results = search_rag_chunks(conn, question, limit=limit)
+    results = search_rag_chunks(conn, question, limit=effective_limit)
     pack = build_evidence_pack(question, results)
     local_draft = compose_local_answer(pack)
     intent = extract_query_intent(question)
