@@ -1,6 +1,7 @@
 ﻿# Trạng thái mailbox
 
-- Trạng thái: `xong-cho-duyet`
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-09 ~02:45 +07 — **ĐẠT** vé `BGE-ERROR-CODE-HOME`. Điều phối TỰ chạy trên VM: 2 test nhãn lỗi mới PASS + test đường tắt sổ PASS. Báo cáo làm đúng rào vé: kiểm tra tương thích TRƯỚC khi sửa (không nơi nào trong mã nguồn rẽ nhánh theo mã sập), và phát hiện hệ quả tích cực có thật — giữ mã hết-giờ giúp lớp điều hợp nhận diện đúng lỗi tạm thời và xóa cờ lỗi để lượt hỏi sau được thử lại (trước đây mã bị gập thành tên lớp lỗi chung nên không xóa cờ — một mắt xích của cảnh kẹt phải bấm Hỏi lại). Hành vi đóng an toàn giữ nguyên cả hai đường. Phát hành việc tiếp theo: `SYNTH-DEEPSEEK-PROTOCOL-HOME` (prompt.md đã thay — sửa lỗi giao thức khiến đáp án DeepSeek bị chặn oan, phục vụ tầng dự phòng chất lượng; nguyên tắc không lấy nội dung suy luận làm đáp án giữ nguyên).
 - `ghi_chu`: 2026-10-09 02:33 +07 — OMP **XONG → chốt `xong-cho-duyet`** vé `BGE-ERROR-CODE-HOME`: mục chính ĐẠT (timeout giữ mã `bge_worker_*_timeout`, lỗi khác vẫn mã sập, cả hai đường đóng worker fail-closed); tương thích ĐẠT (không ai rẽ nhánh theo mã sập; mã timeout giúp adapter tự phục hồi đúng hơn); test 3 tệp 23/23 + liên quan 13/13 + filtering 4/4 (trừ 1 ca kho máy 496/889 ngoài vé). Commit code `b0a5fc5` + báo cáo `dfb3541`. Cổng: compileall sạch, `cli audit` PASS, import app OK. Rào cứng giữ: chỉ 1 file src đúng điểm vé + 3 file test, không đổi ngưỡng, không ghi index, không merge `main`. Chờ Muse đối chứng.
 - `commit`: `dfb3541` (báo cáo) + `b0a5fc5` (sửa code + test)
 - `bao_cao`: `docs/phieu-viec/ket-qua/bge-error-code-home.md` (vé BGE-ERROR-CODE-HOME — `xong-cho-duyet` 09/10: giữ mã timeout + test đường tắt sổ; rào cứng giữ nguyên)
