@@ -1,8 +1,18 @@
-﻿# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
+# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
-## Vé hiện tại: RETRIEVAL-LEXICAL-FTS-PC0575
+## Vé hiện tại: RAG-REMEASURE-PC0575
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `commit`: `0c85f2d8`
+- `bao_cao`: `docs/phieu-viec/ket-qua/rag-remeasure-pc0575.md`
+- `ghi_chu`: 2026-10-08 15:25 +07 — Tiếp nhận vé RAG-REMEASURE-PC0575: kiểm cổng gate (cổng mở hợp lệ sau khi vé RETRIEVAL-ENTITY ĐẠT và RETRIEVAL-LEXICAL-FTS ĐẠT ~15:35, mạng vn-kdwireless sẵn sàng, bridge 8585 sẵn sàng); đặt trạng thái dang-lam theo quy ước; bắt đầu đo lại 2 lane × 50 câu (lane cagent qua staging 3.392 cặp và lane RAG CPU-only trên index chỉ-đọc với numpy dense + lexical fts tối ưu).
+- Ticket: `RAG-REMEASURE-PC0575` — [CTY] đo lại hợp nhất 2 lane sau khi các fix đã về (hồi quy §6.5). Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt.md`.
+
+---
+
+## Vé trước: RETRIEVAL-LEXICAL-FTS-PC0575
+
+- Trạng thái: `xong-cho-duyet` (verdict Muse: ĐẠT ~15:35 +07)
 - `ghi_chu` (verdict Muse): 2026-10-08 ~15:35 +07 — **ĐẠT có ghi nhận điều chỉnh cổng** vé `RETRIEVAL-LEXICAL-FTS-PC0575` (tích tạm, chờ user nghiệm thu): điều phối đọc toàn văn báo cáo + TỰ CHẠY 43 test lexical/index trên VM PASS. Hiệu năng vượt chuẩn xa: lexical 78s → 1,15s/câu, tổng ấm 158s → ~2,9s/câu; phân rã 4 khâu và cách sửa đúng từng khâu; chỉ mục không đổi 1 byte; rollback 1 biến môi trường. VỀ CỔNG PARITY: vé ghi 'đích trong Top 3' nhưng baseline trước sửa vốn đã ở hạng 5–11 với các câu này — cổng đó do điều phối đặt cao hơn nền thực tế, điều phối NHẬN LỖI ĐẶT CỔNG và điều chỉnh thành: không câu nào mất đích khỏi Top 15 + không tụt hạng nghiêm trọng so với baseline + liệt kê đủ khác biệt. Theo cổng đã chỉnh: ĐẠT (2 câu cải thiện mạnh 8→1 và 5→4; riêng Q0701 tụt 8→11, ghi nhận theo dõi ở vé đo lại). Nhắc kỷ luật: cổng do điều phối đặt, thợ không tự diễn giải lại rồi tự chấm 'ĐẠT toàn bộ cổng' — lần sau phải nêu lệch cổng và chờ phán quyết. Lệch nhỏ nội bộ báo cáo (Q0671 hạng 4 ở bảng parity, Top 3 ở bảng nghiệm thu) ghi nhận, không chặn verdict. **Phát hành `RAG-REMEASURE-PC0575`** (prompt.md đã thay — đo lại 50 câu trên nền tốc độ mới ~3s/câu, đếm theo `che_do` như đã cảnh báo; theo dõi riêng hạng đích của Q0701). Hàng chờ: #3 `APP-SOURCE-MODEL-PC0575` chặng 1, #4 `SRC-421-RECEIVE-PC0575` (chờ kênh Drive).
 - `bao_cao`: `docs/phieu-viec/ket-qua/retrieval-lexical-fts-pc0575.md`
 - `commit`: `eab7cc96`
