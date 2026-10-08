@@ -1,0 +1,24 @@
+{
+  "session_code": "CONV-OPEN-BC965F",
+  "stt": 1,
+  "id": "Q0699",
+  "loai": "thuc_the_ma_loi",
+  "ten_loai": "Thực thể mã lỗi (C7620)",
+  "question": "C7620中Magenta相对Black的副扫描色差达到多少会成为NG？",
+  "thoi_gian_toan_trinh_giay": 70.01,
+  "model_phuc_vu": "inclusionai/ling-3.1-flash:free",
+  "provenance": {
+    "operational_mode": "external_api",
+    "provider_name": "AI trong máy tương thích OpenAI (inclusionai/ling-3.1-flash:free)",
+    "model_name": "inclusionai/ling-3.1-flash:free"
+  },
+  "dap_an_nguyen_van": "**Tóm tắt:** Theo nguồn cung cấp, lỗi C7620 liên quan đến Magenta so với Black sẽ bị đánh NG khi giá trị lệch màu theo hướng phụ (副走査方向) đạt **70 dot trở lên (≥ 70 dot)** so với Bk [1][2].\n\n**Điều đã xác nhận:**\n- Điều kiện phát sinh C7620 được mô tả: \"色補正後に、 Bk に対する副走査方向の色差値が 70dot 以上\" — tức là sau hiệu chỉnh màu, giá trị lệch màu theo hướng phụ so với Bk từ 70 dot trở lên [1].\n- Slide phân tích ghi rõ \"上限 70 Dot\" (giới hạn trên 70 Dot); máy bình thường có Magenta lệch so với Bk là 64.09 Dot, còn dư khoảng 5.9 Dot so với ngưỡng 70 Dot; khi không còn dư (vượt 70 Dot) thì C7620 phát sinh [2].\n- Trường hợp thực tế ghi nhận C7620 do Regist Calib NG với độ lệch 70.04 [dot] — tuy nhiên trường hợp này được ghi theo \"走査方向\" (hướng quét chính), Magenta bên phải so với K [3], không phải hướng phụ.\n\n**Điểm chưa đủ bằng chứng:**\n- Nguồn không nêu rõ ngưỡng 70 dot này là giá trị tuyệt đối hay có dấu (dương/âm), cũng không nói rõ đơn vị đo lường chi tiết hơn ngoài \"dot\".\n- Nguồn [3] nói về hướng quét chính (走査方向) chứ không phải hướng phụ (副走査方向), nên chỉ dùng làm tham chiếu ngưỡng, không dùng để kết luận trực tiếp cho câu hỏi hướng phụ.\n\n**Việc cần kiểm tra tiếp:**\n- Xác nhận trong tài liệu kỹ thuật chính thức (spec/kiểm tra chuẩn) rằng ngưỡng NG hướng phụ là \"≥ 70 dot\" hay \"> 70 dot\", và áp dụng cho cả bốn góc Beam (-90/-45/+45/+90) hay không.\n- Owner vui lòng kiểm tra lại trước khi sử dụng.\n\n**Nguồn đã dùng:** [1] Sirius 2 _ C7620_報告版 4.pptx (Slide 2); [2] Sirius 2 _ C7620_報告版 4.pptx (Slide 8); [3] Loi KDTPS.xlsx (Sheet: History KDTPS, ô L11433:AC11433).\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng.",
+  "do_dai_ky_tu": 1632,
+  "anh_chup": "ui-localonly-synth-open-home-open-bc965f-02-cau1-q0699.png",
+  "anh_chup_kich_thuoc_bytes": 149295,
+  "hoan_thanh": true,
+  "chat_luong": {
+    "ro_ri_prompt_he_thong": false,
+    "bi_cat_cut_giua_cau": false
+  }
+}

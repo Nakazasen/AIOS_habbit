@@ -1,0 +1,24 @@
+{
+  "session_code": "CONV-OPEN-BC965F",
+  "stt": 3,
+  "id": "Q0709",
+  "loai": "thong_so",
+  "ten_loai": "Thông số (Bảng quy đổi Skew)",
+  "question": "Trong bảng quy đổi Skew, Black, Cyan, Magenta và Yellow lần lượt có giá trị µm và dot bao nhiêu?",
+  "thoi_gian_toan_trinh_giay": 82.05,
+  "model_phuc_vu": "local_grounded_fallback (Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình)",
+  "provenance": {
+    "operational_mode": "local_grounded_fallback",
+    "provider_name": "Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình",
+    "model_name": "local_grounded_fallback"
+  },
+  "dap_an_nguyen_van": "- NTT in tờ hình ảnh LSU SKEW → Scan tờ hình ảnh xuất ra trên máy thực nghiệm → Màn hình PC hiển thị Adjust, yêu cầu điều chỉnh Skew → NTT xoay vít theo yêu cầu, tuy nhiên giá trị điểm M biến đổi bất thường [19]\n- Row 9: Skew:Black [10]\n- Skew:Yellow[um] [11]\n- @ Magenta WR_0x8000.0x1361 v Step Sw [20]\n- QR Code(TW) NIT 152 Feed 1764.5 2557.4 Savelmazge '/ [14]\nLIMITATIONS: incomplete_query_term_coverage, weak_query_term_coverage",
+  "do_dai_ky_tu": 433,
+  "anh_chup": "ui-localonly-synth-open-home-open-bc965f-04-cau3-q0709.png",
+  "anh_chup_kich_thuoc_bytes": 94837,
+  "hoan_thanh": true,
+  "chat_luong": {
+    "ro_ri_prompt_he_thong": false,
+    "bi_cat_cut_giua_cau": false
+  }
+}

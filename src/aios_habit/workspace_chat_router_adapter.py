@@ -250,7 +250,7 @@ def _generate_via_internal_router(payload: SanitizedRouterPayload) -> WorkspaceR
     )
 
     try:
-        health_store = _get_internal_health_store()
+        health_store = ProviderHealthStore()
         result = route_answer(router_request, configs, health_state=health_store)
         attempts = tuple(
             ResilientRouteAttempt(

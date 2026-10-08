@@ -1238,6 +1238,14 @@ def route_workspace_chat_submission(
             consent_memory_fingerprint=consent_memory_fingerprint,
         )
         result = generate_workspace_ai_answer(request, object())
+        LOGGER.info(
+            "BRIDGE NAKAZASEN ROUTER RESULT: ok=%s provider=%s model=%s reason=%s error=%s",
+            result.ok,
+            getattr(result, "effective_provider", ""),
+            getattr(result, "effective_model", ""),
+            result.reason_code,
+            result.error_message,
+        )
         if was_cancelled():
             return (False, "", None, "Đã dừng yêu cầu AI.")
 

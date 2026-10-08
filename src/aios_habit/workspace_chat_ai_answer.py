@@ -676,7 +676,10 @@ def _generate_real_router_answer(
             error_message="Chưa gửi tới AI vì bạn đang ở chế độ Chỉ xem trước trên máy.",
         )
 
-    full_gateway_sources = _to_gateway_sources(request.context_sources)
+    all_context_sources = request.context_sources
+    if request.retrieval_applied and request.retrieved_context_sources:
+        all_context_sources = tuple(request.context_sources) + tuple(request.retrieved_context_sources)
+    full_gateway_sources = _to_gateway_sources(all_context_sources)
     consent = None
     if request.cloud_consent_confirmed:
         consent = OwnerConsent(
