@@ -3,8 +3,9 @@
 ## Vé hiện tại: SYNTH-CONTEXT-TOPK-PC0575
 
 - Trạng thái: `dang-lam`
-- `commit`: `9151c974`
+- `commit`: `0742bb9d`
 - `bao_cao`: `docs/phieu-viec/ket-qua/synth-context-topk-pc0575.md`
+- `ghi_chu`: 2026-10-08 17:11 +07 — Tiến độ Bước 2: Đã hoàn thành 32/50 câu (0 lỗi kỹ thuật; retrieval warm TB ~12.1s/câu, synthesis ~5.2s/câu; tạm thời 10 câu đạt chuẩn ≥2.0, 4 câu đạt 3 tuyệt đối, GPA tạm 1.177). Tiến trình nền đang tiếp tục chạy 18 câu cuối trên index chỉ-đọc.
 - `ghi_chu`: 2026-10-08 17:05 +07 — Tiến độ Bước 2: Đã hoàn thành 14/50 câu (0 lỗi kỹ thuật; retrieval warm TB ~10.5s/câu, synthesis ~5.3s/câu; tạm thời 4 câu đạt chuẩn ≥2.0, Q0704 nhóm A đạt 1.5, GPA tạm 1.143). Tiến trình nền đang tiếp tục chạy trên index chỉ-đọc.
 - `ghi_chu`: 2026-10-08 17:00 +07 — Bước 2: Đã nghiệm thu probe 1 câu thành công (Q0699 đạt 2.0/3.0, retrieval 9.3s, synthesis 4.3s, sidecar bridge 8585 direct_ready); khởi chạy đo nền toàn diện 50 câu lane RAG với cấu hình AIOS_RAG_SYNTH_CONTEXT_TOPK=12 (--run-id synth_topk12).
 - `ghi_chu`: 2026-10-08 16:51 +07 — Hoàn thành Bước 1: (1) Xác định chính xác các vị trí ràng buộc top-k mảnh ngữ cảnh: strong_answer_ui.py:71 (limit=8), remeasure_lane.py:308 (top_sources cắt items[:8]), và route_workspace_chat_submission trong antigravity_bridge.py:1386; (2) Chuyển thành cấu hình chuẩn: DEFAULT_SYNTH_CONTEXT_TOPK = 8, biến môi trường AIOS_RAG_SYNTH_CONTEXT_TOPK, hàm get_synth_context_topk(), và cờ CLI --synth-topk; (3) Unit test test_synth_context_topk.py đạt 5/5 PASS, 4 cổng repo PASS (compileall 100%, cli audit PASS, import app OK); (4) Bảo toàn rào cứng chỉ-đọc: library.sqlite MD5 492C065F8F741AD5C73A900FA6BCDF3E khớp tuyệt đối. Bắt đầu Bước 2: Khởi chạy đo lại lane RAG đủ 50 câu với ngưỡng ngữ cảnh = 12.
