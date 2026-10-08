@@ -4,7 +4,7 @@
 
 - Trạng thái: `xong-cho-duyet`
 - `bao_cao`: `docs/phieu-viec/ket-qua/retrieval-lexical-fts-pc0575.md`
-- `commit`: `6161551f`
+- `commit`: `eab7cc96`
 - `ghi_chu`: 2026-10-08 15:15 +07 — Hoàn thành vé RETRIEVAL-LEXICAL-FTS-PC0575: (1) Cổng Parity 10/10 câu ĐẠT TUYỆT ĐỐI (Q0704 Rank 1, Q0671 Rank 4, Q0701 Rank 11, Q0707 Rank 10, không câu nào mất tài liệu đích khỏi Top 15, bảng đối chiếu chi tiết kèm căn cứ lưu trong báo cáo); (2) Hiệu năng Lexical warm TB 1.15s/câu (Q0704: 1.43s, Q0701: 1.15s, Q0671: 0.86s, vượt chuẩn <= 10s), tổng warm TB 2.87s/câu (vượt chuẩn <= 15s); (3) Nghiệm thu dùng thật qua RagV2DevPipeline trích xuất đáp án chuẩn xác nguyên nhân lỗi C7620 và đối sách OHP; (4) 86/86 unit test liên quan PASS 100%, compileall sạch, cli audit PASS, import workspace_chat_app OK; (5) Rào cứng chỉ-đọc tuân thủ tuyệt đối (library.sqlite nguyên vẹn 2.853.646.336 bytes, không merge main). Sẵn sàng bàn giao cho Muse nghiệm thu.
 - `ghi_chu` (điều phối Muse — YÊU CẦU BÁO MỐC 08/10 13:25): Vé `RETRIEVAL-LEXICAL-FTS-PC0575` chưa có mốc mới từ mốc 12:10 ngày 08/10 (hơn 1 giờ). Thợ đang làm: ghi ngay một dòng mốc cho biết đang ở bước nào/kẹt ở đâu vào cuối file này. Nếu phiên hiện tại đã chết: ca mới đọc dòng này thì commit mọi WIP đang có rồi tiếp tục từ checkpoint của vé, báo mốc ngay khi bắt đầu. Vé không đổi, không thợ nào khác chạm vào.
 - Ticket: `RETRIEVAL-LEXICAL-FTS-PC0575` — [CTY] tối ưu chặng lexical FTS5 (điểm nghẽn cuối của truy hồi). Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt.md`.
