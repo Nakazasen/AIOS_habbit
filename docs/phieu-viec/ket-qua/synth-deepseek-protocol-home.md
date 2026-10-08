@@ -2,7 +2,7 @@
 
 - **Mã vé:** `SYNTH-DEEPSEEK-PROTOCOL-HOME`
 - **Máy thực hiện:** Nhà `h410asrock` (thợ OMP, truy xuất CPU-only).
-- **Thời điểm:** 2026-10-09 02:42 – 04:xx +07.
+- **Thời điểm:** 2026-10-09 02:42 – 04:50 +07.
 - **Căn cứ:** vé `SYNTH-CLAIMBUDGET-DIAG-HOME` phát hiện 34/38 câu DeepSeek "0 lượt gọi" thực ra đã gọi thành công nhưng toàn bộ nội dung dồn vào `reasoning_content`, `content` rỗng; hệ thống ghi nhầm thành lỗi mạng.
 - **Kết quả một câu:** **ĐÃ sửa** — gọi lại đúng một lần với yêu cầu mạnh hơn (ngân sách ×2, trần 8192) và chỉ thị trả lời trực tiếp; nếu vẫn rỗng thì phân loại là **lỗi định dạng riêng** (`bad_response` / `provider_empty_answer`, không còn ghi "lỗi mạng") và chuyển tầng dự phòng ngay. Nguyên tắc an toàn giữ nguyên: tuyệt đối không lấy `reasoning_content` làm đáp án. Đo lại tập con 34 câu: **phục vụ 0/34 → 27/34; qua kiểm định 0/34 → 14/34; tổng điểm 45,18 → 49,18**; chi phí thật 0,195443 đô (trần vé 0,5).
 
@@ -90,7 +90,7 @@ Commit code + test: **`d098073`** (chỉ 7 tệp trên, không đụng tệp kh�
 - `uv run --no-sync --group dev python -m compileall src tests`: sạch.
 - `uv run --no-sync --group dev python -m aios_habit.cli audit`: `"status": "PASS"`.
 - `uv run --no-sync --group dev python -c "import aios_habit.workspace_chat_app"`: OK.
-- Full suite: xem Mục 6 (chạy nền, cập nhật khi xong).
+- Full suite `pytest -q tests/`: **10 failed / 4205 passed / 46 skipped / 19 errors** (27 phút 8 giây). Phân loại đầy đủ ở Mục 6.
 
 ## 4. Smoke thật tại đúng câu từng lỗi (Q0699)
 
@@ -150,7 +150,11 @@ Q0703, Q0850, Q0685, Q0677, Q0633, Q0684, Q0924 — rỗng ở CẢ HAI lượt 
 - **Không merge `main`:** toàn bộ commit nằm trên nhánh `phieu-viec/rag-fix1`.
 - **Không in ký tự nào của khóa truy cập:** script chỉ in endpoint; không có log nào in khóa.
 - **Không đụng lớp lọc an toàn:** cấm lấy `reasoning_content` giữ nguyên; chỉ thêm *dấu hiệu* để quyết định thử lại và mã lỗi riêng.
-- (Chờ full suite xong để chốt dòng full-suite tại đây.)
+- **Full suite (27 phút 8 giây):** 10 failed / 4205 passed / 46 skipped / 19 errors — chạy riêng tái hiện đủ cả 29 ca đỏ, **toàn bộ ngoài phạm vi vé**:
+  - **19 error môi trường (100% thiếu tệp nguồn của máy khác, đường `\home\hatch\workspace\...`):** 10 × `test_error_cases_f4` (thiếu `02XC_自己診断表示一覧表-Iris2020 VN.xls`), 9 × `test_chat_action_error_lookup` (thiếu `Loi KDTPS.xlsx`).
+  - **10 failed, nguyên nhân từng ca:** (a) 3 ca `test_workspace_chat_source_selection_owner_flow` (×2) + `test_large_library_nonblocking_chat` là **bảo vệ chuỗi mã nguồn đã cũ** — đòi chuỗi `query_relevant_sources = ready_sources or ready_in_scope` không còn tồn tại trong `workspace_chat_app.py` (dòng đó bị thay bởi commit `afd7fc6` của vé UI-ANSWER-QUALITY2-HOME, kiểm bằng `git log -S`, không phải vé này); (b) 2 ca `test_rag_v2_opt_pyloops` (preload/prefilter) lệch hành vi truy xuất sau các commit `8a3beb5`/`ce6212c`/`abce118` của vé khác — không đụng gì trong vé này; (c) 5 ca môi trường: antigravity privacy guard (lỗi DNS `getaddrinfo`), notebook QA (không có LLM cục bộ — `WinError 10061`), production index filtering (kho máy 496/889 — ca quen thuộc ngoài vé), `test_bge_subprocess_worker` (`bge_worker_query_timeout` khi máy đang chạy song song), test fixture `yield_rate_check` (logic fixture tự chứa).
+  - Không ca nào chạm các tệp vé sửa (`ai_provider_bridge.py`, `rag_v2_synthesis_provider.py`, `rag_v2/synthesis.py` và 4 tệp test của vé) — 245/245 test vùng vé + lân cận chạy riêng đều xanh.
+  - Số passed tăng so nền cũ (4195 → 4205) gồm 5 test mới của vé này và các test mới của vé khác trên cùng nhánh.
 
 ## 7. Rủi ro tồn dư / ghi nhận
 
