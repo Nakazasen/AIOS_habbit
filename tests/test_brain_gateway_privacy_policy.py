@@ -257,3 +257,63 @@ def test_confidential_plus_public_mixed_strictly_denied():
     
     assert not decision.allowed
     assert decision.reason_code == CONFIDENTIAL_HARD_DENY
+
+def test_local_only_allowed_when_synthesis_opted_in_for_workspace_chat_destination(monkeypatch):
+    from aios_habit.brain_gateway import WORKSPACE_CHAT_EXTERNAL_ROUTER_DESTINATION
+    monkeypatch.setenv("AIOS_SYNTHESIS_ALLOW_CLOUD_PROVIDERS", "1")
+    s = GatewaySource("lsu_1", "notebook", "document", "Tài liệu kỹ thuật LSU", PRIVACY_LOCAL_ONLY, "Nội dung LSU C7620 tại D:\\doc\\c7620.txt và secret key sk-12345678901234567890")
+    req = BrainRequest(
+        question="Cách vận hành C7620?",
+        sources=(s,),
+        consent=None,
+        router_enabled=True,
+        destination=WORKSPACE_CHAT_EXTERNAL_ROUTER_DESTINATION,
+    )
+    gw = BrainGateway()
+    decision = gw.preflight_check(req)
+
+    assert decision.allowed
+    assert decision.reason_code == ROUTER_ALLOWED_OWNER_CONSENT
+    assert decision.next_action == "CALL_ROUTER"
+    assert decision.sanitized_payload is not None
+    assert decision.sanitized_payload.sanitized_sources[0].title == "Tài liệu kỹ thuật LSU"
+    assert "[redacted local_only source" not in decision.sanitized_payload.sanitized_sources[0].text
+    assert "LSU C7620" in decision.sanitized_payload.sanitized_sources[0].text
+    assert "[REDACTED_LOCAL_PATH]" in decision.sanitized_payload.sanitized_sources[0].text
+    assert "[REDACTED_API_KEY]" in decision.sanitized_payload.sanitized_sources[0].text
+
+def test_local_only_denied_when_synthesis_not_opted_in_even_for_workspace_chat_destination(monkeypatch):
+    from aios_habit.brain_gateway import WORKSPACE_CHAT_EXTERNAL_ROUTER_DESTINATION
+    monkeypatch.setenv("AIOS_SYNTHESIS_ALLOW_CLOUD_PROVIDERS", "0")
+    s = GatewaySource("lsu_1", "notebook", "document", "Tài liệu kỹ thuật LSU", PRIVACY_LOCAL_ONLY, "Nội dung LSU C7620")
+    req = BrainRequest(
+        question="Cách vận hành C7620?",
+        sources=(s,),
+        consent=None,
+        router_enabled=True,
+        destination=WORKSPACE_CHAT_EXTERNAL_ROUTER_DESTINATION,
+    )
+    gw = BrainGateway()
+    decision = gw.preflight_check(req)
+
+    assert not decision.allowed
+    assert decision.reason_code == LOCAL_ONLY_HARD_DENY
+    assert decision.next_action == "USE_LOCAL_ONLY"
+
+def test_local_only_denied_for_other_destinations_even_when_synthesis_opted_in(monkeypatch):
+    monkeypatch.setenv("AIOS_SYNTHESIS_ALLOW_CLOUD_PROVIDERS", "1")
+    s = GatewaySource("lsu_1", "notebook", "document", "Tài liệu kỹ thuật LSU", PRIVACY_LOCAL_ONLY, "Nội dung LSU C7620")
+    req = BrainRequest(
+        question="Cách vận hành C7620?",
+        sources=(s,),
+        consent=None,
+        router_enabled=True,
+        destination="mock_router",
+    )
+    gw = BrainGateway()
+    decision = gw.preflight_check(req)
+
+    assert not decision.allowed
+    assert decision.reason_code == LOCAL_ONLY_HARD_DENY
+    assert decision.next_action == "USE_LOCAL_ONLY"
+

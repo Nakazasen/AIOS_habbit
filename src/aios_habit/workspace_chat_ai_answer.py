@@ -84,6 +84,8 @@ class WorkspaceAIAnswerResult:
     outcome_status: str = "not_requested"
     memory_titles: Tuple[str, ...] = ()
     memory_consent_fingerprint: str = ""
+    effective_provider: str = ""
+    effective_model: str = ""
 
 
 _LIMITATION_MARKERS = (
@@ -737,7 +739,12 @@ def _generate_real_router_answer(
             next_action=decision.next_action,
         )
 
-    from aios_habit.workspace_chat_router_adapter import generate_answer_via_router
+    import aios_habit.workspace_chat_router_adapter as _router_adapter
+    from aios_habit.workspace_chat_router_adapter import (
+        generate_answer_via_router,
+        generate_answer_via_router_detailed,
+        _ORIGINAL_GENERATE_ANSWER_VIA_ROUTER,
+    )
 
     outbound_manifest = _build_outbound_manifest(
         decision.sanitized_payload,
@@ -745,7 +752,16 @@ def _generate_real_router_answer(
         source_candidates=source_candidates,
         outbound_sources=outbound_sources,
     )
-    ok, response_text = generate_answer_via_router(decision.sanitized_payload)
+    if _router_adapter.generate_answer_via_router is not _ORIGINAL_GENERATE_ANSWER_VIA_ROUTER:
+        ok, response_text = _router_adapter.generate_answer_via_router(decision.sanitized_payload)
+        effective_provider = ""
+        effective_model = ""
+    else:
+        detailed = generate_answer_via_router_detailed(decision.sanitized_payload)
+        ok = detailed.ok
+        response_text = detailed.text
+        effective_provider = detailed.route.effective_provider if detailed.route else ""
+        effective_model = detailed.route.effective_model if detailed.route else ""
     included_titles = tuple(
         source.title for source in decision.sanitized_payload.sanitized_sources
     )
@@ -771,6 +787,8 @@ def _generate_real_router_answer(
             provider_completion_status="completed",
             grounding_status=grounding_status,
             outcome_status=outcome_status,
+            effective_provider=effective_provider,
+            effective_model=effective_model,
         )
 
     return WorkspaceAIAnswerResult(
@@ -786,6 +804,8 @@ def _generate_real_router_answer(
         provider_completion_status="failed",
         grounding_status="not_assessed_provider_failure",
         outcome_status="provider_error",
+        effective_provider=effective_provider,
+        effective_model=effective_model,
     )
 
 

@@ -192,6 +192,9 @@ def sanitize_text(text: str) -> str:
     text = re.sub(r'(?i)(secret|token|api_key|password|private_key|api-key|apikey)\s*[:=]\s*["\']?[a-zA-Z0-9_\-\.\+@]{8,}["\']?', r'\1=[REDACTED_SECRET]', text)
     return text
 
+from aios_habit.rag_v2.synthesis import cloud_synthesis_opted_in
+
+
 class BrainGateway:
     def preflight_check(self, request: BrainRequest) -> BrainDecision:
         if not request.router_enabled:
@@ -221,8 +224,13 @@ class BrainGateway:
 
         strictest = get_strictest_privacy(request.sources)
 
-        # 1. Hard deny: local_only và confidential
-        if strictest in {PRIVACY_LOCAL_ONLY, PRIVACY_CONFIDENTIAL}:
+        synthesis_opt_in = (
+            cloud_synthesis_opted_in()
+            and request.destination == WORKSPACE_CHAT_EXTERNAL_ROUTER_DESTINATION
+        )
+
+        # 1. Hard deny: local_only và confidential (trừ khi có synthesis cloud opt-in cho Workspace Chat)
+        if strictest in {PRIVACY_LOCAL_ONLY, PRIVACY_CONFIDENTIAL} and not synthesis_opt_in:
             rc = LOCAL_ONLY_HARD_DENY if strictest == PRIVACY_LOCAL_ONLY else CONFIDENTIAL_HARD_DENY
             return BrainDecision(
                 allowed=False,
@@ -326,13 +334,17 @@ class BrainGateway:
             opaque_id = f"source_{idx}"
 
             # Opaque/Sanitized Title
-            if norm_label in {PRIVACY_LOCAL_ONLY, PRIVACY_CONFIDENTIAL, PRIVACY_MACHINE_ONLY, PRIVACY_UNKNOWN}:
+            if norm_label in {PRIVACY_LOCAL_ONLY, PRIVACY_CONFIDENTIAL} and synthesis_opt_in:
+                opaque_title = sanitize_text(s.title)
+            elif norm_label in {PRIVACY_LOCAL_ONLY, PRIVACY_CONFIDENTIAL, PRIVACY_MACHINE_ONLY, PRIVACY_UNKNOWN}:
                 opaque_title = f"Nguồn đã làm sạch {idx}"
             else:
                 opaque_title = sanitize_text(s.title)
 
             # Redacted marker an toàn
-            if has_sensitive_source or norm_label in {PRIVACY_LOCAL_ONLY, PRIVACY_CONFIDENTIAL, PRIVACY_MACHINE_ONLY, PRIVACY_UNKNOWN}:
+            if norm_label in {PRIVACY_LOCAL_ONLY, PRIVACY_CONFIDENTIAL} and synthesis_opt_in:
+                redacted_text = sanitize_text(s.text)
+            elif has_sensitive_source or norm_label in {PRIVACY_LOCAL_ONLY, PRIVACY_CONFIDENTIAL, PRIVACY_MACHINE_ONLY, PRIVACY_UNKNOWN}:
                 if norm_label == PRIVACY_MACHINE_ONLY:
                     redacted_text = f"[redacted machine_only source {idx}]"
                 elif norm_label == PRIVACY_UNKNOWN:

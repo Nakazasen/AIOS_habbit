@@ -1348,7 +1348,10 @@ def route_workspace_chat_submission(
         allowed_source_ids = [item.source_id for item in selections if item.enabled] if selections else None
         conversation = load_conversation(conversation_id)
         ui_locale = getattr(conversation, "ui_locale", "vi") if conversation else "vi"
-        provider_name = "C-AGENT API" if backend == "cagent_api" else "Nakazasen Router"
+        effective_prov = getattr(result, "effective_provider", "")
+        effective_mod = getattr(result, "effective_model", "")
+        provider_name = effective_prov or ("C-AGENT API" if backend == "cagent_api" else "Nakazasen Router")
+        model_name = effective_mod or "configured_by_provider"
         final_answer = clean_assistant_answer(result.answer_text) or result.answer_text
         trace = build_evidence_trace_from_citations(
             query=question,
@@ -1364,7 +1367,7 @@ def route_workspace_chat_submission(
             provenance={
                 "operational_mode": "external_api",
                 "provider_name": provider_name,
-                "model_name": "configured_by_provider",
+                "model_name": model_name,
             },
         )
         save_evidence_trace(trace)
@@ -1387,8 +1390,8 @@ def route_workspace_chat_submission(
             "ai_source": provider_name,
             "bridge": provider_name,
             "provider": provider_name,
-            "model_tool_name": "",
-            "verified_model": "",
+            "model_tool_name": model_name,
+            "verified_model": model_name,
             "operational_mode": "external_api",
             "retrieval_summary": retrieval_summary,
             "evidence_items": evidence_items,

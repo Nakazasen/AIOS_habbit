@@ -333,6 +333,8 @@ def generate_answer_via_router(payload: SanitizedRouterPayload) -> Tuple[bool, s
     detailed = generate_answer_via_router_detailed(payload)
     return detailed.ok, detailed.text
 
+_ORIGINAL_GENERATE_ANSWER_VIA_ROUTER = generate_answer_via_router
+
 
 class WorkspaceChatRouterAdapter:
     def generate_answer(self, payload: SanitizedRouterPayload) -> Tuple[bool, str]:
