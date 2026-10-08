@@ -65,3 +65,51 @@ Danh sách 421 mã lệch kèm băm thực tế + vân tay kỳ vọng: `docs/ph
   3. Sao chép cookie Chrome: không làm — Chrome đang chạy nên tệp khóa, bản sao cũng không giải mã được do mã hóa App-Bound (tiền lệ vé `onnx-upload-drive` đã ghi).
 - Cổng kho chạy lại trong vé này: `compileall src tests` sạch, `cli audit` PASS, `import workspace_chat_app` thành công; không sửa `src/`/`tests/`, không commit tệp zip, không merge `main`.
 - Đề xuất: chạy lại đúng bước tải trong phiên tương tác (màn hình thật, Chrome đưa lên trước được) rồi ghi link tệp trong thư mục `AIOS_Data` (giữ nguyên tên tệp) vào đây; gói đã sẵn ở đường dẫn mục 4.
+
+## 8. Bổ sung: rà soát kênh Drive có sẵn và điểm gãy kỹ thuật (vé `SRC-PACKAGE-511-UPLOAD-HOME` v2, máy nhà 2026-10-08 07:41–07:48 +07)
+
+- **Kết quả nghiệm thu phần tải:** **CHƯA ĐẠT** (do điểm gãy kỹ thuật khách quan — máy nhà không có kênh ổ ảo Drive cục bộ, và không thể xác thực OAuth khi User vắng mặt). Đã hoàn thành 100% việc rà soát và kiểm chứng độc lập theo đúng chỉ đạo của vé.
+- **Xác thực đầu vào:** Tệp `local_runs\src-package-511\src-package-511-home-match90.zip` có kích thước 430.510 byte, SHA-256 `862CAD6EF5943678DA25424AF177DA8D66EE3B53FC4DADC87827836A37613403` khớp tuyệt đối với chỉ đạo của vé. Tệp zip được bảo toàn nguyên vẹn tại thư mục `local_runs/`.
+
+### 8.1. Kết quả kiểm tra kênh Drive có sẵn theo Bước 1 của vé
+
+1. **(a) Tiến trình Google Drive cho máy tính (`GoogleDriveFS.exe`):**
+   - Không có tiến trình `GoogleDriveFS.exe` nào đang chạy trên hệ thống.
+   - Kiểm tra Registry `Uninstall`, Program Files và Services: Không có phần mềm "Google Drive for Desktop" được cài đặt. Thư mục `C:\Program Files\Google\Drive File Stream` chỉ còn tệp tàn dư gỡ cài đặt (`account_export_tool.exe`, `deleteonreboot`), không có bộ nhị phân dịch vụ đồng bộ.
+2. **(b) Ổ ảo (`G:`) hoặc thư mục mirror/stream:**
+   - Hệ thống chỉ có 3 ổ đĩa logic: `C:`, `D:`, `F:`. Hoàn toàn không có ổ `G:` hay bất kỳ ổ ảo/thư mục stream nào của Google Drive.
+3. **Bản chất của biểu tượng "Google Drive" trên Taskbar / khay hệ thống mà User quan sát thấy:**
+   - Kiểm tra kỹ các lối tắt và lệnh tiến trình `Win32_Process`:
+     - Lối tắt: `C:\Users\Admin\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Chrome Apps\Google Drive.lnk` và `C:\Users\Admin\AppData\Roaming\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar\Google Drive.lnk`.
+     - Lệnh chạy: `"C:\Program Files (x86)\Google\Chrome\Application\chrome_proxy.exe" --user-data-dir="C:\Users\Admin\.gemini\antigravity-browser-profile" --profile-directory=Default --app-id=aghbiahbpaijignceidepookljebhfak`.
+     - Tiến trình đang chạy thực tế: Chrome process PID 6376.
+   - **Kết luận:** Biểu tượng mà User nhìn thấy là **Google Drive Chrome Web App (PWA Shortcut)** mở trên trình duyệt Chrome, KHÔNG PHẢI là ứng dụng Google Drive for Desktop mount ổ đĩa hệ điều hành.
+4. **(c) Thư mục `AIOS_Data` qua đường dẫn cục bộ:**
+   - Do Drive chỉ tồn tại dưới dạng ứng dụng web trong Chrome, không có điểm mount hệ thống tệp cục bộ (Local File System), nên không có đường dẫn thư mục `G:\...` hay folder đồng bộ để ghi tệp kiểm tra.
+
+### 8.2. Điểm gãy kỹ thuật và tuân thủ rào cứng Bước 2 (User vắng mặt)
+
+- Theo chỉ đạo nền của vé:
+  - User đi làm, máy nhà bật nhưng không ai tác động được vào máy.
+  - Cấm ghi `cho-cong` chờ user, cấm mở màn hình đăng nhập chờ bấm.
+  - Cấm dùng lại đường Chrome UI Automation đã gãy ở mục 7.
+  - Thợ không nhận, không ghi, không truyền credential qua mailbox/chat.
+- Đánh giá phương án thay thế:
+  - Cài mới Google Drive for Desktop (`GoogleDriveSetup.exe`): Yêu cầu người dùng đăng nhập tài khoản Google và bấm cấp quyền OAuth trên trình duyệt tại máy.
+  - Cài đặt `rclone` và cấu hình Google Drive remote: Bắt buộc luồng xác thực OAuth 2.0 Web Flow (cần người dùng bấm Allow trên trình duyệt).
+  - Không có sẵn file token/refresh-token hay credentials cấu hình trước trên máy.
+- Thực hiện đúng chỉ đạo xử lý của vé:
+  > *"Nếu gặp một bước thật sự không qua được nếu thiếu tương tác người (vd phiên thợ không thấy ổ đồng bộ và mọi đường lập trình đều gãy): DỪNG, ghi vào báo cáo đúng điểm gãy kỹ thuật + đã thử những đường nào, đặt `xong-cho-duyet` với kết luận CHƯA ĐẠT phần đó để điều phối đổi phương án — không đứng chờ."*
+
+### 8.3. Cổng kiểm soát chất lượng hệ thống
+
+- `compileall src tests`: Sạch 100%, không lỗi cú pháp.
+- `cli audit`: Trả về `{"errors": [], "status": "PASS", "warnings": []}`.
+- `import aios_habit.workspace_chat_app`: Thành công (`IMPORT_OK`).
+- Không sửa mã nguồn trong `src/` và `tests/`, không commit tệp zip vào git, không merge `main`.
+
+### 8.4. Đề xuất điều phối
+
+- Gói zip 90 tệp khớp đã sẵn sàng tại `local_runs\src-package-511\src-package-511-home-match90.zip` (430.510 byte, SHA-256 `862CAD6EF5943678DA25424AF177DA8D66EE3B53FC4DADC87827836A37613403`).
+- Đề xuất điều phối: Khi User có mặt tại máy nhà, cài đặt Google Drive for Desktop hoặc cấp quyền một lần cho rclone (hoặc tải gói 430KB này trực tiếp qua giao diện web Chrome Drive PWA đang mở sẵn).
+
