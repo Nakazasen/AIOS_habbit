@@ -1,6 +1,7 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
 - Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-09 03:34 +07 — Tiến độ vé SYNTH-CLAIMBUDGET-APPLY-HOME: Cổng gate thông suốt; Mục 1 đã hoàn thành; tiếp tục Mục 2 khôi phục runner đo xác nhận 50 câu RAG LSU từ câu 20/50 trên Ling 3.1 Flash free CPU-only; băm index 45EB...B7C0 bất biến.
 - `ghi_chu`: 2026-10-09 02:58 +07 — Tiến độ vé SYNTH-CLAIMBUDGET-APPLY-HOME: Bắt đầu Mục 2 khởi chạy runner đo xác nhận 50 câu RAG LSU (do_rag_50_synth_claimbudget_applied.py) trên Ling 3.1 Flash free CPU-only; băm index 45EB...B7C0 bất biến.
 - `ghi_chu`: 2026-10-09 02:49 +07 — Tiến độ vé SYNTH-CLAIMBUDGET-APPLY-HOME: Hoàn thành Mục 1 (nâng ngân sách luận điểm lên 10 cho dạng diagnosis và lookup trong build_synthesis_plan; thêm unit test test_synthesis_plan_claim_budget_expansion_for_diagnosis_and_lookup khẳng định diagnosis/lookup nhận 10, dạng khác giữ nguyên; 54/54 test synthesis PASS, compileall sạch, cli audit PASS, import app OK). Bắt đầu Mục 2 chuẩn bị runner đo xác nhận 50 câu RAG LSU trên Ling 3.1 Flash free CPU-only.
 - `ghi_chu`: 2026-10-09 02:47 +07 — Nhận vé SYNTH-CLAIMBUDGET-APPLY-HOME: Cổng gate thông suốt (đầy đủ điều kiện, cấu hình Ling 3.1 Flash free, không kẹt). Bắt đầu Mục 1 rà soát khâu lập kế hoạch tổng hợp và nâng ngân sách luận điểm lên 10 cho dạng diagnosis/lookup kèm test.
