@@ -156,7 +156,16 @@ checkpoint `rows-budget.jsonl`). 50/50, 0 lỗi kỹ thuật, 0 lỗi mạng.
 - CPU-only (`CUDA_VISIBLE_DEVICES=""`, `AIOS_RETRIEVAL_DEVICE=cpu`).
 - Không tăng `max_claims`, không đổi đếm, không tắt lỗi, không đổi rubric; fail-closed giữ nguyên.
 - Không merge `main`. Commit code riêng (`cb9356d`), commit báo cáo riêng (vé này).
-- Full `pytest -q`: đang chạy nền, bổ sung số khi xong (cụm rộng RAG v2 đã có 402/7 như §3).
+- Full `pytest -q` (phiên 08/10 tại HEAD `f8f2670`, 581,26s): **4150 đạt / 22 lỗi / 37 bỏ qua / 19 error**
+  — cùng mức đỏ như lượt full 07/10 (22/19). Chạy lại riêng nhóm đỏ (`--lf`, 33s): **21 lỗi + 19 error**
+  (ca `test_worker_warming_is_throttled_and_never_raises` xanh khi chạy lại — dao động môi trường/thời điểm, ngoài synthesis).
+  Phân loại tên ca đỏ: **chỉ 1 ca phía synthesis** — `test_provider_limitations_contain_accurate_reasons`
+  (đã đối chứng rớt y hệt trên cây cũ `6dc717d`); ngoài phạm vi vé: **19 error** do thiếu tệp đường máy VM
+  (`\home\hatch\...`: `chat_action_error_lookup` 9 + `error_cases_f4` 10), **9 ca `graphify_adapter`**
+  (gói `graphifyy` chưa cài ở runtime này), **4 ca đóng gói/venv `commit_d`**, và các ca UI/tiện ích thuộc
+  luồng khác (`commit_b` antigravity privacy, `chunk_evaluation` manifest, `bge_subprocess` timeout,
+  `notebook_in_app_qa` mạng LLM tắt, `workspace_chat_ai_answer`, `composer_ui`, `source_selection_owner_flow`).
+  **Không ca nào do diff vé** (`cb9356d` chỉ chạm `synthesis.py` + test của vé).
 
 ## 6. Phụ lục — kiểm chứng lại từ dữ liệu thô + nghiệm thu dùng thật (phiên 08/10)
 
@@ -175,6 +184,6 @@ checkpoint `rows-budget.jsonl`). 50/50, 0 lỗi kỹ thuật, 0 lỗi mạng.
   Bằng chứng kèm: log `tien-trinh-budget.log` (từng câu + dòng chốt `tong=63.84/150 GPA=1.28`),
   `ket-qua-budget.json`, `probe_budget.json` — toàn bộ trên máy nhà (ngoài Git), Muse đối chứng lại được.
 - **Giới hạn trung thực:** phiên 08/10 **không chạy lại lane** — cầu `8585` đã tắt sau lượt đo 07/10
-  (netstat không còn LISTEN; agy đang chiếm CPU cho lane ROUTER của họ), nên số liệu là của lượt đo 07/10
+  (netstat không còn LISTEN; cùng máy còn lane ROUTER của agy chạy song song tới ~07:33), nên số liệu là của lượt đo 07/10
   được kiểm chứng lại từ dữ liệu thô + chạy lại toàn bộ test/cổng tại HEAD 08/10.
   Vé này không đụng UI nên không có ảnh chụp màn hình; bằng chứng là file thô + log trên máy nhà.
