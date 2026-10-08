@@ -5,6 +5,7 @@
 - Trạng thái: `dang-lam`
 - `commit`: `2472dd53`
 - `bao_cao`: `docs/phieu-viec/ket-qua/retrieval-dense-numpy-pc0575.md`
+- `ghi_chu`: 2026-10-08 10:57 +07 — Tiến độ Cổng Parity câu 3/8 (Q0688): ĐẠT (PASS) — Top 15 Chunk IDs trùng khớp 100%, độ lệch điểm 0.00e+00; đường Python 298.5s, đường Numpy 1.317s (tăng tốc 226.6 lần). Đang tiếp tục đo câu 4/8 (Q0671).
 - `ghi_chu`: 2026-10-08 10:52 +07 — Tiến độ Cổng Parity câu 2/8 (Q0701): ĐẠT (PASS) — Top 15 Chunk IDs trùng khớp 100%, độ lệch điểm 0.00e+00; đường Python 286.6s, đường Numpy 1.421s (tăng tốc 201.6 lần). Đang tiếp tục đo câu 3/8 (Q0688).
 - `ghi_chu`: 2026-10-08 10:47 +07 — Tiến độ Cổng Parity câu 1/8 (Q0704): ĐẠT (PASS) — Top 15 Chunk IDs trùng khớp 100%, độ lệch điểm 0.00e+00; đường Python 285.8s, đường Numpy 1.407s (tăng tốc 203.1 lần); RAM ma trận Dense thực tế 357.33 MB (~0.35 GB). Đang tiếp tục đo câu 2/8 (Q0701).
 - `ghi_chu`: 2026-10-08 10:39 +07 — Khởi chạy tiến trình nền đo Cổng Parity Top 15 và Hiệu năng trên chỉ mục thật `library.sqlite`: nạp ma trận Dense Numpy vào RAM, kiểm tra parity 100% trên 7 câu nhóm A + đối chiếu top context đầu-cuối và đo phân rã hiệu năng 3 câu chẩn đoán.
