@@ -1,0 +1,31 @@
+{
+  "mo_ta": "Luot do xac nhan claim budget sau khi ap chinh thuc vao ma nguon",
+  "model": "inclusionai/ling-3.1-flash:free",
+  "tong_diem": 64.17,
+  "so_cau": 50,
+  "gpa": 1.28,
+  "so_validated": 5,
+  "so_fallback": 41,
+  "so_not_called": 4,
+  "so_dat_3": 6,
+  "so_dat_ge_2": 9,
+  "do_tre_tb_cau": 103.21,
+  "do_tre_tb_synth": 94.77,
+  "so_loi_ky_thuat": 0,
+  "credits": 0.0,
+  "sha_truoc": "45eb0e072893f802d71ab201cfbb2b29c36e2b0a31313fa79fc55a025b65b7c0",
+  "sha_sau": "45eb0e072893f802d71ab201cfbb2b29c36e2b0a31313fa79fc55a025b65b7c0",
+  "md5_truoc": "239009676829484049738866329de9f2",
+  "md5_sau": "239009676829484049738866329de9f2",
+  "size_truoc": 2942201856,
+  "size_sau": 2942201856,
+  "index_chi_doc_khop": true,
+  "preload_dense": [
+    121331,
+    9544.764699996449
+  ],
+  "preload_sparse": [
+    121331,
+    26962.497499989695
+  ]
+}

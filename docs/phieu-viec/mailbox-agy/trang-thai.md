@@ -1,6 +1,7 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
 - Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-09 04:36 +07 — Tiến độ vé SYNTH-CLAIMBUDGET-APPLY-HOME: Hoàn thành 100% Mục 2 đo xác nhận 50 câu RAG LSU trên Ling 3.1 Flash free CPU-only (đạt 5/50 validated, 64.17đ, GPA 1.28, vượt cả 2 mốc 5 claims và diag 10 claims; 0 lỗi kỹ thuật; băm index 45EB...B7C0 khớp 100%; đã nộp 2 tệp kết quả thô vào ket-qua/). Bắt đầu Mục 3 nghiệm thu dùng thật trên giao diện Streamlit CPU-only 3 câu LSU.
 - `ghi_chu`: 2026-10-09 04:28 +07 — Tiến độ vé SYNTH-CLAIMBUDGET-APPLY-HOME: Runner đang đo tốt trên Ling 3.1 Flash free CPU-only; đã hoàn thành 46/50 câu (câu 45 Q0680 đạt 3.0đ provider_validated_after_repair, nâng tổng validated lên 5/46 câu, vượt mốc 4 validated của lượt chẩn đoán); đang đo 4 câu cuối (câu 47–50); băm index 45EB...B7C0 bất biến.
 - `ghi_chu`: 2026-10-09 04:22 +07 — Tiến độ vé SYNTH-CLAIMBUDGET-APPLY-HOME: Runner đang đo tốt trên Ling 3.1 Flash free CPU-only; đã hoàn thành 42/50 câu (câu 41–42 hoàn tất); đang đo 8 câu cuối (câu 43–50); băm index 45EB...B7C0 bất biến.
 - `ghi_chu`: 2026-10-09 04:16 +07 — Tiến độ vé SYNTH-CLAIMBUDGET-APPLY-HOME: Runner đang đo tốt trên Ling 3.1 Flash free CPU-only; đã hoàn thành 39/50 câu (câu 38 Q0662 đạt 2.0đ provider_validated, nâng tổng validated lên 4 câu khớp mốc chẩn đoán); đang đo 11 câu cuối (câu 40–50); băm index 45EB...B7C0 bất biến.
