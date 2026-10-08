@@ -91,7 +91,10 @@ def test_adapter_self_healing_reconciles_timeout_errors(tmp_path: Path, monkeypa
 
     timeout_source = WorkspaceAIContextSource(
         source_id="src_timeout_1",
-        source_scope="notebook",
+        # Temporary sources are the ones the ledger still prepares (notebook
+        # sources are pre-indexed production documents and are marked ready
+        # without enqueueing since APP-SOURCE-MODEL-PC0575 chang 2b).
+        source_scope="temporary",
         source_type="plain_text",
         title="Doc with previous timeout",
         privacy_label="local_only",

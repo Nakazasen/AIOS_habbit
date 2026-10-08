@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import tempfile
+import time
 from pathlib import Path
 import pytest
 
@@ -97,14 +98,34 @@ def test_client_enforces_bounded_deep_timeout(monkeypatch, tmp_path: Path) -> No
         client.initialize_worker(config)
         client.prepare_sources([spec], config)
 
-        # Query with tight timeout parameter
+        # A valid budget must clear real lexical-query latency on the target
+        # CPU-only host (measured 2.7-13.6 s/query on h410asrock, 2026-10-09;
+        # the previous 5 s budget failed closed on valid queries).
+        started = time.perf_counter()
         result = client.query(
             question="Deep timeout",
             specs=[spec],
             config=config,
-            timeout_s=5.0,
+            timeout_s=60.0,
             rerank_requested=False,
         )
         assert result is not None
+        assert time.perf_counter() - started < 60.0
+
+        # An impossible budget must fail closed within its bound instead of hanging.
+        started = time.perf_counter()
+        with pytest.raises(
+            SemanticBackendError,
+            match="bge_subprocess_worker_crashed|bge_worker_query_timeout",
+        ):
+            client.query(
+                question="Deep timeout",
+                specs=[spec],
+                config=config,
+                timeout_s=0.001,
+                rerank_requested=False,
+            )
+        assert time.perf_counter() - started < 30.0
+        assert client.is_alive() is False
     finally:
         client.close()

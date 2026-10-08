@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
 import tempfile
+import time
 import pytest
 
 from aios_habit.rag_v2.bge_onnx_backend import BGE_BACKEND_FLAG, ONNX_MODEL_PATH_FLAG
@@ -175,9 +177,26 @@ def test_staging_rebuilds_matching_source_when_semantic_vectors_are_missing(tmp_
     assert staged["retrievable_count"] > 0
 
 
+def _remove_tree_with_retry(path: Path, *, attempts: int = 50, delay_s: float = 0.2) -> None:
+    """Delete a temp tree, tolerating the short Windows handle-release race.
+
+    Killing the worker abruptly leaves the runtime sqlite file locked for a
+    fraction of a second (measured ~0.2 s on h410asrock, 2026-10-09) before the
+    OS releases the handle; deleting immediately raises WinError 5.
+    """
+    for attempt in range(attempts):
+        try:
+            shutil.rmtree(path)
+            return
+        except PermissionError:
+            if attempt == attempts - 1:
+                raise
+            time.sleep(delay_s)
+
+
 def test_bge_subprocess_worker_crash_handling() -> None:
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        tmp_path = Path(tmp_dir)
+    tmp_path = Path(tempfile.mkdtemp(prefix="bge-worker-crash-"))
+    try:
         config = RagV2DevConfig(
             runtime_root=tmp_path / "runtime",
             retrieval_profile="lexical",
@@ -202,6 +221,8 @@ def test_bge_subprocess_worker_crash_handling() -> None:
             assert client.is_alive() is False
         finally:
             client.close()
+    finally:
+        _remove_tree_with_retry(tmp_path)
 
 
 def test_query_never_starts_worker_and_reuses_explicit_worker(monkeypatch, tmp_path) -> None:
