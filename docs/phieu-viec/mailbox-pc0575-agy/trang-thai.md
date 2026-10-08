@@ -3,8 +3,9 @@
 ## Vé hiện tại: SYNTH-CONTEXT-TOPK-PC0575
 
 - Trạng thái: `dang-lam`
-- `commit`: `0742bb9d`
+- `commit`: `269ed301`
 - `bao_cao`: `docs/phieu-viec/ket-qua/synth-context-topk-pc0575.md`
+- `ghi_chu`: 2026-10-08 17:16 +07 — Tiến độ Bước 2: Đã hoàn thành 46/50 câu (0 lỗi kỹ thuật; retrieval warm TB ~14.6s/câu, synthesis ~5.3s/câu; tạm thời 11 câu đạt chuẩn ≥2.0, 5 câu đạt 3 tuyệt đối, GPA tạm 1.004). Tiến trình nền đang tiếp tục chạy 4 câu cuối trên index chỉ-đọc.
 - `ghi_chu`: 2026-10-08 17:11 +07 — Tiến độ Bước 2: Đã hoàn thành 32/50 câu (0 lỗi kỹ thuật; retrieval warm TB ~12.1s/câu, synthesis ~5.2s/câu; tạm thời 10 câu đạt chuẩn ≥2.0, 4 câu đạt 3 tuyệt đối, GPA tạm 1.177). Tiến trình nền đang tiếp tục chạy 18 câu cuối trên index chỉ-đọc.
 - `ghi_chu`: 2026-10-08 17:05 +07 — Tiến độ Bước 2: Đã hoàn thành 14/50 câu (0 lỗi kỹ thuật; retrieval warm TB ~10.5s/câu, synthesis ~5.3s/câu; tạm thời 4 câu đạt chuẩn ≥2.0, Q0704 nhóm A đạt 1.5, GPA tạm 1.143). Tiến trình nền đang tiếp tục chạy trên index chỉ-đọc.
 - `ghi_chu`: 2026-10-08 17:00 +07 — Bước 2: Đã nghiệm thu probe 1 câu thành công (Q0699 đạt 2.0/3.0, retrieval 9.3s, synthesis 4.3s, sidecar bridge 8585 direct_ready); khởi chạy đo nền toàn diện 50 câu lane RAG với cấu hình AIOS_RAG_SYNTH_CONTEXT_TOPK=12 (--run-id synth_topk12).
