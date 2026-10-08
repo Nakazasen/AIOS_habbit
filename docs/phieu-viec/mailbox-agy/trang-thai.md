@@ -1,9 +1,10 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
 - Ticket hiện tại: `TEST-RED5-FIX-HOME` — [NHÀ] khép 5 ca đỏ còn lại + vệ sinh test gói tùy chọn graphify. Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`. Role gợi ý: DEFAULT.
 - `bao_cao`: `docs/phieu-viec/ket-qua/test-red5-fix-home.md`
-- `commit`: `bf823d6`
+- `commit`: `76fda25`
+- `ghi_chu`: 2026-10-08 10:52 +07 — Hoàn thành 100% tất cả các mục tiêu của vé TEST-RED5-FIX-HOME: (1) Khép 5/5 ca đỏ nghi code thật (provider_limitations, phase2i_owner_choice, dieu_huong_chinh_i18n, public_v3_manifest_checksums, app_no_xlsx_reparse) đều PASSED 100%; (2) Vệ sinh gói tùy chọn graphify qua decorator require_graphify (1 passed, 9 skipped sạch sẽ) và desktop_smoke_test PASSED; (3) Đồng bộ uv.lock thành công, uv lock --check và test_uv_lock_check_succeeds PASSED; (4) Cổng chất lượng: 249 passed, 10 skipped, compileall sạch, cli audit status PASS, import workspace_chat_app OK. Chi tiết tại docs/phieu-viec/ket-qua/test-red5-fix-home.md. Đang chờ Muse duyệt.
 - `ghi_chu`: 2026-10-08 10:48 +07 — Tiến độ vé TEST-RED5-FIX-HOME: Hoàn thành 100% Nhóm 2 (vệ sinh gói tùy chọn graphify): (1) Đã gắn decorator require_graphify cho 9 test trong test_graphify_adapter.py (kết quả 1 passed, 9 skipped sạch sẽ có lý do rõ ràng); (2) Cập nhật desktop_smoke_test.py kiểm tra is_available trước khi import graphify, test_clean_machine_smoke_test_runs_successfully đã PASSED. Bắt đầu chuyển sang Nhóm 3 (bảo trì uv.lock).
 - `ghi_chu`: 2026-10-08 10:45 +07 — Tiến độ vé TEST-RED5-FIX-HOME: Hoàn thành 100% Nhóm 1 (5 ca nghi code): (1) test_provider_limitations_contain_accurate_reasons đã xanh sẵn sau dọn env; (2) test_dieu_huong_chinh_co_ten_tieng_viet_nhin_thay bám đúng cấu trúc i18n mới; (3) test_phase2i_owner_choice_mapping_helpers sửa chuỗi vi privacy_choice_local_only khớp hằng; (4) test_public_v3_manifest_checksums_match_files chuẩn hóa LF và .gitattributes chống lệch Windows; (5) test_app_no_xlsx_reparse_in_ai_path khép ranh giới AI path trước khối tương thích. Cả 5/5 ca test Nhóm 1 PASSED. Bắt đầu chuyển sang Nhóm 2.
 - `ghi_chu`: 2026-10-08 10:41 +07 — Nhận vé TEST-RED5-FIX-HOME: Bắt đầu tiếp nhận và xử lý 3 nhóm mục tiêu (Nhóm 1: 5 ca đỏ nghi code; Nhóm 2: skip sạch test gói tùy chọn graphify; Nhóm 3: bảo trì uv.lock). Điều kiện cổng gate thông suốt; bắt đầu khảo sát Nhóm 1.
