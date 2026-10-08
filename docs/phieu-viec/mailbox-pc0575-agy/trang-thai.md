@@ -5,6 +5,7 @@
 - Trạng thái: `dang-lam`
 - `commit`: `2472dd53`
 - `bao_cao`: `docs/phieu-viec/ket-qua/retrieval-dense-numpy-pc0575.md`
+- `ghi_chu`: 2026-10-08 11:21 +07 — CỔNG PARITY 8/8 CÂU ĐẠT TUYỆT ĐỐI (100% PASS): Câu 8/8 (Q0704_perf_diag) ĐẠT (PASS) — Top 15 Chunk IDs trùng khớp 100%, độ lệch điểm 0.00e+00; đường Python 272.9s, đường Numpy 1.117s (tăng tốc 244.2 lần). Toàn bộ 8/8 câu nhóm A + câu chẩn đoán đã vượt qua Cổng Parity bắt buộc. Đang đo phân rã hiệu năng và nghiệm thu dùng thật trên 3 câu chẩn đoán.
 - `ghi_chu`: 2026-10-08 11:16 +07 — Tiến độ Cổng Parity câu 7/8 (Q0668): ĐẠT (PASS) — Top 15 Chunk IDs trùng khớp 100%, độ lệch điểm 0.00e+00; đường Python 263.8s, đường Numpy 1.166s (tăng tốc 226.3 lần). Đang tiếp tục đo câu 8/8 (Q0704_perf_diag).
 - `ghi_chu`: 2026-10-08 11:12 +07 — Tiến độ Cổng Parity câu 6/8 (Q0696): ĐẠT (PASS) — Top 15 Chunk IDs trùng khớp 100%, độ lệch điểm 0.00e+00; đường Python 276.4s, đường Numpy 1.494s (tăng tốc 185.0 lần). Đang tiếp tục đo câu 7/8 (Q0668).
 - `ghi_chu`: 2026-10-08 11:07 +07 — Tiến độ Cổng Parity câu 5/8 (Q0707): ĐẠT (PASS) — Top 15 Chunk IDs trùng khớp 100%, độ lệch điểm 0.00e+00; đường Python 316.0s, đường Numpy 2.182s (tăng tốc 144.8 lần). Đang tiếp tục đo câu 6/8 (Q0696).
