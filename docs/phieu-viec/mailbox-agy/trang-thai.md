@@ -1,6 +1,7 @@
-# Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
+﻿# Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
-- Trạng thái: `xong-cho-duyet`
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-08 ~11:00 +07 — **ĐẠT** vé `TEST-RED5-FIX-HOME` (tích tạm, chờ user nghiệm thu): điều phối đọc báo cáo + tự chạy lại cả 5 ca trên VM — đều PASS (ca provider_limitations chạy lẻ PASS; lần chạy gộp trước đó có 1 lỗi thu thập do va chạm fixture khi chọn lọc, không phải lỗi test). Xử lý đúng nguyên tắc: 1 lỗi code thật (chuỗi i18n tiếng Việt của `privacy_choice_local_only` bị dịch sai nghĩa — đã sửa khớp hằng), 1 lỗi tương thích nền tảng thật (CRLF làm lệch băm fixture trên Windows — vá `.gitattributes` + chuẩn hoá LF), 2 ca test cũ bám mốc/kiến trúc đã đổi (cập nhật có căn cứ, không nới vô cớ), 1 ca rò biến môi trường. Graphify skip sạch có lý do, uv.lock đồng bộ. Chuỗi TEST-HEALTH khép: không còn ca đỏ nghi code thật. **Phát hành `APP-E2E-POOL-HOME`** (prompt.md đã thay — nghiệm thu dùng thật trên app: mở app + hỏi 3 câu qua pool, số đo + ảnh + đáp án thật). Vé DeepSeek (nếu user duyệt) sẽ chen ưu tiên trước vé này.
 - Ticket hiện tại: `TEST-RED5-FIX-HOME` — [NHÀ] khép 5 ca đỏ còn lại + vệ sinh test gói tùy chọn graphify. Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`. Role gợi ý: DEFAULT.
 - `bao_cao`: `docs/phieu-viec/ket-qua/test-red5-fix-home.md`
 - `commit`: `76fda25`
