@@ -1,6 +1,7 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
 - Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-09 03:47 +07 — Tiến độ vé SYNTH-CLAIMBUDGET-APPLY-HOME: Runner đang đo tốt trên Ling 3.1 Flash free CPU-only; đã hoàn thành 23/50 câu (câu 22–23 hoàn tất, Q0632 đạt 1.67đ); đang đo câu 24–50; băm index 45EB...B7C0 bất biến.
 - `ghi_chu`: 2026-10-09 03:41 +07 — Tiến độ vé SYNTH-CLAIMBUDGET-APPLY-HOME: Runner đang đo tốt trên Ling 3.1 Flash free CPU-only; đã hoàn thành 21/50 câu (câu 20–21 hoàn tất, Q0695 đạt 3.0đ); đang đo câu 22–50; băm index 45EB...B7C0 bất biến.
 - `ghi_chu`: 2026-10-09 03:34 +07 — Tiến độ vé SYNTH-CLAIMBUDGET-APPLY-HOME: Cổng gate thông suốt; Mục 1 đã hoàn thành; tiếp tục Mục 2 khôi phục runner đo xác nhận 50 câu RAG LSU từ câu 20/50 trên Ling 3.1 Flash free CPU-only; băm index 45EB...B7C0 bất biến.
 - `ghi_chu`: 2026-10-09 02:58 +07 — Tiến độ vé SYNTH-CLAIMBUDGET-APPLY-HOME: Bắt đầu Mục 2 khởi chạy runner đo xác nhận 50 câu RAG LSU (do_rag_50_synth_claimbudget_applied.py) trên Ling 3.1 Flash free CPU-only; băm index 45EB...B7C0 bất biến.
