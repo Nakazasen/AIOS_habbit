@@ -1,4 +1,4 @@
-# VÉ: SYNTH-CLAIMBUDGET-DIAG-HOME (điều tra ngân sách luận điểm — nút thắt validated của mọi model)
+﻿# VÉ: SYNTH-CLAIMBUDGET-DIAG-HOME (điều tra ngân sách luận điểm — nút thắt validated của mọi model)
 
 - Mã vé: `SYNTH-CLAIMBUDGET-DIAG-HOME`
 - Role gợi ý: PLAN/DEFAULT
@@ -18,3 +18,8 @@
 - Không ghi chỉ mục (kiểm băm trước/sau các lượt đo). Không merge `main`. Cấu hình tạm phải khôi phục nguyên trạng sau đo và xác nhận trong báo cáo.
 - Trần chi phí: lượt đo dùng model free; nếu cần đo biến thể trên DeepSeek thì trần $0,20. Không in bất kỳ ký tự nào của key.
 - Mốc tiến độ tối thiểu 15 phút/lần. Mọi con số phải tái lập được từ file kết quả đính kèm (nộp file rows của lượt đo mới vào kho).
+
+## DỮ KIỆN BỔ SUNG TỪ AUDIT ROWS (điều phối bổ sung 23:28 08/10)
+
+- Lượt đo DeepSeek: **38/50 câu có số lần gọi provider = 0** (10 câu gọi 1 lần, 2 câu gọi 2 lần) — trong khi 43 câu ghi chế độ fallback. Tức là phần lớn ca fallback xảy ra ở tầng QUYẾT ĐỊNH KHÔNG GỌI provider (cổng độ phủ bằng chứng/coverage gate), trước cả khi model sinh đáp án — vé này phải phân rã cả hai tầng: (a) vì sao không được gọi (mã lý do từng câu), (b) trong số câu ĐÃ gọi mà vẫn trượt kiểm định thì claim budget chiếm bao nhiêu. Không kết luận nút thắt chỉ là claim budget khi chưa có bảng phân rã hai tầng này.
+- Cả 3 câu validated của lượt DeepSeek đều mang cờ không-trích-dẫn trong file thô — kiểm tra thêm cờ này có phản ánh đúng đáp án thật không khi làm phân rã.

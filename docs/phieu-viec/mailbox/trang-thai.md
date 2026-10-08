@@ -1,6 +1,7 @@
 ﻿# Trạng thái mailbox
 
-- Trạng thái: `xong-cho-duyet`
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-08 ~23:28 +07 — **ĐẠT** vé `AUDIT-DEEPSEEK-ROWS-HOME`. Bảng đối chiếu khớp toàn bộ báo cáo gốc (tổng điểm 63,18; validated đúng 3 mã câu; phân rã 3/43/4; thời gian, token, chi phí đều khớp) — điều kiện kiểm chứng kèm theo của verdict `SYNTH-DEEPSEEK-AB-HOME` coi như KHÉP hoàn toàn. Phát hành việc phụ tiếp theo: `AUDIT-EMBED-GEMMA-HOME` (prompt.md đã thay). Việc `AUDIT-ENV-FAILOVER` lùi lại sau khi vé áp cấu hình tổng hợp 3 tầng của agy được verdict, tránh kiểm cấu hình đang bị sửa giữa chừng.
 - `ghi_chu`: 2026-10-08 23:21 +07 — OMP **XONG → chốt `xong-cho-duyet`** vé `AUDIT-DEEPSEEK-ROWS-HOME`: đếm lại độc lập 50/50 dòng `rows-synth-deepseek.jsonl` — **KHỚP 100% báo cáo gốc, 0 lệch** (tổng 63,18/GPA 1,26; 3 validated Q0851+Q0620+Q2157 + 43 fallback + 4 not_called Q0824+Q0704+Q0718+Q0668; 10 uncited; 6 câu 3,0 / 7 câu ≥2,0; trễ 25,19/22,42s và 19,37/16,96s; 199.974+104.990=304.964 token; $0,092991; file tổng trùng khớp). Ghi nhận thêm: 3 validated đều uncited=true; 4 not-called co_trich_dan=false; ok 50/50, 0 lỗi kỹ thuật. Báo cáo `docs/phieu-viec/ket-qua/audit-deepseek-rows-home.md`. Chỉ đọc, không sửa dữ liệu/cấu hình, không ghi index, không merge `main`. Chờ Muse đối chứng.
 - `commit`: `6eb6171` (mốc đếm-lại-xong) + báo cáo audit
 - `bao_cao`: `docs/phieu-viec/ket-qua/audit-deepseek-rows-home.md` (vé AUDIT-DEEPSEEK-ROWS-HOME — `xong-cho-duyet` 08/10: khớp 100%, 0 lệch; rào cứng giữ nguyên)
