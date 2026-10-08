@@ -1,6 +1,7 @@
-# Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
+﻿# Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
-- Trạng thái: `xong-cho-duyet`
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-08 ~15:35 +07 — **ĐẠT** vé `INDEX-HASH-DRIFT-TRACE-HOME` (tích tạm, chờ user nghiệm thu): điều phối đọc toàn văn báo cáo, các con số tự khép (149.800 + 8 + 19 = 149.827; 718.311 trang × 4.096 = đúng dung lượng). Kết luận nhánh (b) đúng và có bằng chứng vật lý: dữ liệu đổi thật trên 420 trang — đường chuẩn bị nguồn của giao diện đã cắt 27 mảnh + nhúng + ghi thẳng vào chỉ mục production cho 1 tài liệu C7620 bị vật liệu hoá trùng (`wsc-b9e2ffa072623484b1fa4198`, ghi lúc 13:40:28 trong phiên QUALITY), gốc ở `_pipeline_config` mặc định `read_only=False` không fail-closed. Bản gốc khôi phục đã xác thực còn nguyên trên cùng máy (băm khớp 100% chuẩn đóng dấu). Đóng băng đo app TIẾP TỤC cho tới khi user quyết khôi phục + điều phối gỡ băng. **Phát hành `INDEX-READONLY-GUARD-HOME`** (prompt.md đã thay — khoá cứng chỉ đọc ở đường giao diện: mặc định read_only=True, chặn ghi vào kho production, test bảo vệ; chỉ code + test đơn vị, không chạy app đo). Hàng chờ sau GUARD: vé khôi phục chỉ mục (chờ user duyệt ở chat) → `UI-ANSWER-QUALITY2-HOME`.
 - Ticket hiện tại: `INDEX-HASH-DRIFT-TRACE-HOME` — truy nguyên thay đổi băm của chỉ mục production máy nhà (chỉ đọc tuyệt đối). Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`. Role: PLAN.
 - `bao_cao`: `docs/phieu-viec/ket-qua/index-hash-drift-trace-home.md`
 - `commit`: `f26b3f1`
