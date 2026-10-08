@@ -128,3 +128,19 @@ Thực hiện kiểm thử thực chiến khả năng tự phục hồi của Ro
 8. [`docs/phieu-viec/ket-qua/config-synth-tiers-home-tiers-837434-cau3.json`](file:///D:/Sandbox/AIOS_habbit/docs/phieu-viec/ket-qua/config-synth-tiers-home-tiers-837434-cau3.json) (1.437 bytes) — Dữ liệu đo câu 3.
 9. [`docs/phieu-viec/ket-qua/config-synth-tiers-home-tiers-837434-cau4-failover.json`](file:///D:/Sandbox/AIOS_habbit/docs/phieu-viec/ket-qua/config-synth-tiers-home-tiers-837434-cau4-failover.json) (2.485 bytes) — Dữ liệu ca ép lỗi failover.
 10. [`docs/phieu-viec/ket-qua/config-synth-tiers-home-tiers-837434-results.json`](file:///D:/Sandbox/AIOS_habbit/docs/phieu-viec/ket-qua/config-synth-tiers-home-tiers-837434-results.json) (9.618 bytes) — Tổng hợp kết quả phiên nghiệm thu.
+
+---
+
+## 7. Hướng Dẫn Hoàn Lui Về Cấu Hình 2 Tầng (Rollback Procedure)
+
+Khi cần hoàn lui về cấu hình 2 tầng cũ (loại bỏ Tầng 3 trả phí DeepSeek):
+1. **Chỉnh sửa file `.env`**:
+   - Giữ nguyên `AIOS_LOCAL_AI_MODEL=inclusionai/ling-3.1-flash:free`.
+   - Đặt lại danh sách failover 2 tầng thuần miễn phí:
+     ```bash
+     AIOS_LOCAL_AI_FAILOVER_MODELS=poolside/laguna-s-2.1-free,inclusionai/ling-3.0-flash-sante:free
+     ```
+2. **Khởi động lại ứng dụng:**
+   - Dừng phiên Streamlit / process hiện tại (`Ctrl+C`).
+   - Khởi động lại ứng dụng qua `RUN_AIOS_WORKSPACE_CHAT.bat`.
+   - Hệ thống sẽ tự động chỉ nạp danh sách 2 tầng miễn phí và rơi xuống fallback trích cục bộ nếu cả 2 tầng đều không khả dụng, không gọi tới DeepSeek trả phí.
