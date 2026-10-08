@@ -1,18 +1,25 @@
-# VÉ: CONFIG-SYNTH-TIERS-HOME (áp cấu hình tổng hợp 3 tầng cho go-live theo kết quả đo DeepSeek)
+﻿# VÉ: SYNTH-CLAIMBUDGET-DIAG-HOME (điều tra ngân sách luận điểm — nút thắt validated của mọi model)
 
-- Mã vé: `CONFIG-SYNTH-TIERS-HOME`
-- Role gợi ý: DEFAULT
-- Máy: nhà h410asrock (agy — thợ chính, CPU-only)
-- Báo cáo: `docs/phieu-viec/ket-qua/config-synth-tiers-home.md`
-- Căn cứ: vòng chọn model tổng hợp đã ĐÓNG bằng số đo — nhóm miễn phí GPA ~1,25 (validated 1/50); DeepSeek V4.1 Flash GPA 1,26 (validated 3/50, chi phí ~$0,0018/câu, 0 lỗi kỹ thuật) — không vượt rõ rệt để làm model chính duy nhất, nhưng là tầng dự phòng chất lượng có phí rất rẻ và ổn định. Cấu hình chốt cho bản go-live (điều phối quyết theo số đo): Tầng 1 chính = Ling 3.1 Flash (free); Tầng 2 dự phòng nhanh = Laguna S 2.1 (free); Tầng 3 dự phòng chất lượng có phí = DeepSeek V4.1 Flash; Tầng cuối = trích xuất cục bộ an toàn (giữ nguyên cơ chế hiện có).
+- Mã vé: `SYNTH-CLAIMBUDGET-DIAG-HOME`
+- Role gợi ý: PLAN/DEFAULT
+- Máy: nhà h410asrock (agy — thợ chính, chỉ đọc + đo lại có kiểm soát, CPU-only)
+- Báo cáo: `docs/phieu-viec/ket-qua/synth-claimbudget-diag-home.md`
+- Căn cứ: qua 4 lượt đo trên cùng bộ 50 câu (pool free, từng model free, DeepSeek trả phí), tỉ lệ qua kiểm định trích dẫn (validated) luôn rất thấp (0–3/50) bất kể năng lực model — trong khi đáp án mẫu cho thấy có ca model trả lời ĐÚNG và giàu dữ kiện nhưng bị bộ kiểm định đánh trượt vì `provider_answer_claim_budget_exceeded` (số dòng luận điểm vượt ngân sách cho phép so với số đoạn bằng chứng). Giả thuyết cần kiểm chứng: ngân sách luận điểm (claim budget) của bộ kiểm định đang là nút thắt chính của validated — nếu đúng, đây là đòn bẩy chất lượng lớn nhất còn lại của đường tổng hợp, lớn hơn việc đổi model.
 
 ## Việc phải làm
 
-1. Áp cấu hình chuỗi failover 3 tầng vào cấu hình tuyến tổng hợp đang dùng cho giao diện (ghi rõ tệp/biến đã đổi, giữ bản sao cấu hình trước khi đổi ở dạng không chứa key; tuyệt đối không in bất kỳ ký tự nào của key).
-2. Kiểm chứng bằng dùng thật trên app (CPU-only): khởi động app, hỏi 3 câu thật (1 câu mã lỗi C7620, 1 câu DMT–PMT, 1 câu Skew) — cả 3 phải ra đáp án thật; ghi model phục vụ thật của từng câu từ log/provenance. Thêm 1 kiểm chứng ép lỗi: tạm vô hiệu tầng 1 (sai định danh model ở bản cấu hình thử nghiệm riêng, không đụng cấu hình chính) để xác nhận lượt hỏi tự rơi xuống tầng 2/3 và vẫn ra đáp án — xong khôi phục và xác nhận cấu hình chính nguyên vẹn.
-3. Ghi vào báo cáo: cấu hình cuối cùng (tên model từng tầng, thứ tự), cách hoàn lui về cấu hình 2 tầng free trước đó, kết quả 3 câu + ca ép lỗi.
+1. **Đếm phân rã từ các file kết quả thô đã có** (các lượt đo pool/DeepSeek trên máy nhà): trong các câu bị fallback dù provider có sinh đáp án, bao nhiêu ca do `claim_budget_exceeded`, bao nhiêu do lý do khác (liệt kê đủ các mã lý do + số ca). Nộp bảng phân rã.
+2. **Đọc cơ chế claim budget trong code:** ngân sách được tính thế nào (theo số đoạn bằng chứng? theo ký tự?), ngưỡng hiện tại, và nó bảo vệ khỏi rủi ro gì (luận điểm không có bằng chứng chống lưng). Nêu rõ đánh đổi nếu nới.
+3. **Đo thử có kiểm soát (nếu mục 1 xác nhận claim budget là nhóm lớn nhất):** chạy lại đúng bộ 50 câu với MỘT biến thể ngân sách (nới theo hệ số rõ ràng, cấu hình tạm thời, khôi phục sau khi đo) trên cùng model chính hiện tại (Ling 3.1 free) — so sánh validated/GPA/fallback trước–sau. Nếu nới ngân sách làm validated tăng nhưng xuất hiện luận điểm không bằng chứng (đọc tay 5 đáp án mẫu bị thay đổi), phải khai rõ.
+4. Kết luận + đề xuất dứt khoát: giữ nguyên / nới lên mức cụ thể / thiết kế lại cách tính ngân sách — kèm số đo. Vé này CHỈ chẩn đoán + đo thử tạm thời, KHÔNG áp thay đổi vĩnh viễn vào cấu hình chính.
 
 ## Rào cứng
 
-- Không ghi chỉ mục (kiểm băm trước/sau nếu mở app đo). Không merge `main`. Không đổi rubric/runner/bộ kiểm định.
-- Mốc tiến độ tối thiểu 15 phút/lần. Mọi con số phải đối chiếu được với log đính kèm.
+- Không ghi chỉ mục (kiểm băm trước/sau các lượt đo). Không merge `main`. Cấu hình tạm phải khôi phục nguyên trạng sau đo và xác nhận trong báo cáo.
+- Trần chi phí: lượt đo dùng model free; nếu cần đo biến thể trên DeepSeek thì trần $0,20. Không in bất kỳ ký tự nào của key.
+- Mốc tiến độ tối thiểu 15 phút/lần. Mọi con số phải tái lập được từ file kết quả đính kèm (nộp file rows của lượt đo mới vào kho).
+
+## DỮ KIỆN BỔ SUNG TỪ AUDIT ROWS (điều phối bổ sung 23:28 08/10)
+
+- Lượt đo DeepSeek: **38/50 câu có số lần gọi provider = 0** (10 câu gọi 1 lần, 2 câu gọi 2 lần) — trong khi 43 câu ghi chế độ fallback. Tức là phần lớn ca fallback xảy ra ở tầng QUYẾT ĐỊNH KHÔNG GỌI provider (cổng độ phủ bằng chứng/coverage gate), trước cả khi model sinh đáp án — vé này phải phân rã cả hai tầng: (a) vì sao không được gọi (mã lý do từng câu), (b) trong số câu ĐÃ gọi mà vẫn trượt kiểm định thì claim budget chiếm bao nhiêu. Không kết luận nút thắt chỉ là claim budget khi chưa có bảng phân rã hai tầng này.
+- Cả 3 câu validated của lượt DeepSeek đều mang cờ không-trích-dẫn trong file thô — kiểm tra thêm cờ này có phản ánh đúng đáp án thật không khi làm phân rã.
