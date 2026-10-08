@@ -1,8 +1,9 @@
-# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
+﻿# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
 ## Vé hiện tại: RETRIEVAL-DENSE-NUMPY-PC0575
 
-- Trạng thái: `xong-cho-duyet`
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-08 ~11:55 +07 — **ĐẠT** vé `RETRIEVAL-DENSE-NUMPY-PC0575` (tích tạm, chờ user nghiệm thu): điều phối đọc toàn văn báo cáo + tự chạy 8/8 test numpy dense trên VM PASS + xác nhận code/cache trong `rag_v2/index.py`. Cổng parity tuyệt đối 8/8 (Top 15 trùng 100%, lệch 0,00e+00), dense warm 0,61s/câu (chuẩn ≤2s), tổng warm 158,75 → 80,54s/câu (−49%), RAM ma trận 473,95MB, index không đổi 1 byte, nghiệm thu qua đường app đạt (Q0704 Rank 1). **Phát hành `RETRIEVAL-LEXICAL-FTS-PC0575`** (prompt.md đã thay — lexical giờ là ~95% thời gian còn lại: 71,7–83,8s/câu; vé có cổng parity trên danh sách ngữ cảnh cuối + chụp baseline trước khi sửa). Hàng chờ: #2 `RAG-REMEASURE-PC0575` (chạy sau lexical cho rẻ), #3 `APP-SOURCE-MODEL-PC0575` chặng 1, #4 `SRC-421-RECEIVE-PC0575` (chờ kênh Drive).
 - `commit`: `7fdbcf22`
 - `bao_cao`: `docs/phieu-viec/ket-qua/retrieval-dense-numpy-pc0575.md`
 - `ghi_chu`: 2026-10-08 11:45 +07 — Hoàn thành vé RETRIEVAL-DENSE-NUMPY-PC0575: (1) Cổng Parity 8/8 câu (7 câu nhóm A + 1 câu chẩn đoán) ĐẠT TUYỆT ĐỐI (100% PASS, Top 15 Chunk IDs trùng 100%, độ lệch điểm 0.00e+00, tăng tốc 144x–244x); (2) Cache ma trận Dense Numpy cấp tiến trình giữ trong RAM 473.95 MB (đọc từ cache chỉ mất 0.08–0.16 ms), mặc định bật khi có numpy, rollback 1 dòng bằng AIOS_RAG_V2_NUMPY_DENSE=0, fallback log tiếng Việt an toàn; (3) Đo hiệu năng trên 3 câu chẩn đoán đạt chuẩn chặng dense warm TB 0.61s/câu (Q0704: 0.51s, Q0701: 0.76s, Q0671: 0.56s, <= 2.0s), cắt giảm ~105s/câu, đưa tổng thời gian warm từ ~158s xuống ~80.5s (tiết kiệm TB 78.2s/câu); (4) Nghiệm thu dùng thật qua pipeline: Q0704 Rank 1, Q0671 Rank 3, trích xuất chính xác con số và hiện tượng; (5) Unit test 8/8 PASS, 4 cổng repo PASS (compileall, pytest, cli audit PASS, import app OK); (6) Rào cứng chỉ-đọc tuân thủ tuyệt đối (library.sqlite nguyên vẹn 2.853.646.336 bytes, không merge main). Sẵn sàng bàn giao cho Muse nghiệm thu.
