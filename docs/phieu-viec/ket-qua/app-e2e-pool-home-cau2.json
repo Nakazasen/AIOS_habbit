@@ -1,0 +1,17 @@
+{
+  "stt": 2,
+  "id": "Q0718",
+  "loai": "nguyen_nhan",
+  "ten_loai": "Nguyên nhân (DMT–PMT)",
+  "question": "File có xác nhận chênh lệch DMT–PMT chính là nguyên nhân duy nhất gây NG không?",
+  "thoi_gian_toan_trinh_giay": 315.11,
+  "model_phuc_vu": "verified_gemini_stream",
+  "provenance": {
+    "operational_mode": "direct",
+    "provider_name": "Gemini Web Stream",
+    "model_name": "verified_gemini_stream"
+  },
+  "dap_an_nguyen_van": "smart_toy\n✨ Câu trả lời mới nhất\n\n⚠️ Dịch vụ AI chưa phản hồi. Vui lòng kiểm tra lại kết nối mạng hoặc cấu hình API key.\n\nthumb_up\nthumb_down",
+  "anh_chup": "app-e2e-pool-home-03-cau2-dmt-pmt.png",
+  "hoan_thanh": true
+}
