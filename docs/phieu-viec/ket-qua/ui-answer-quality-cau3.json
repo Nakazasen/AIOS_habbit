@@ -4,7 +4,7 @@
   "loai": "thong_so",
   "ten_loai": "Thông số (Bảng quy đổi Skew)",
   "question": "Trong bảng quy đổi Skew, Black, Cyan, Magenta và Yellow lần lượt có giá trị µm và dot bao nhiêu?",
-  "thoi_gian_toan_trinh_giay": 157.84,
+  "thoi_gian_toan_trinh_giay": 155.66,
   "model_phuc_vu": "local_grounded_fallback (Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình)",
   "provenance": {
     "operational_mode": "local_grounded_fallback",

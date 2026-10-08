@@ -4,15 +4,15 @@
   "loai": "thuc_the_ma_loi",
   "ten_loai": "Thực thể mã lỗi (C7620)",
   "question": "C7620中Magenta相对Black的副扫描色差达到多少会成为NG？",
-  "thoi_gian_toan_trinh_giay": 273.25,
+  "thoi_gian_toan_trinh_giay": 462.0,
   "model_phuc_vu": "local_grounded_fallback (Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình)",
   "provenance": {
     "operational_mode": "local_grounded_fallback",
     "provider_name": "Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình",
     "model_name": "local_grounded_fallback"
   },
-  "dap_an_nguyen_van": "- Đối với nhóm 2, xóa dữ liệu trên SQL và cho nhập lại kho Thành công (OK): 4 thùng (6880%, 7087%, 7573%, 7715%). Thất bại (NG): 2 thùng (10304%; 11406%). [11]\n- STATUS一覧：DM4593（Bit 48～63） Bit HEX桁 （右から） 内容 処置 原本注記 CAM処理失敗 Opcenter状態確認必要 重量_箱入数不一致 重量_重量不一致 Opcenter状態確認必要 重量_処理失敗 Opcenter状態確認必要 入庫保管場所_不一致 Opcenter状態確認必要 入庫保管場所_処理失敗 Opcenter状態確認必要 検査コンテナ_処理失敗 Opcenter状態確認必要 格納方法_検査へ（HOUSE_METHODに書込み） 格納方法_Error Opcenter状態確認必要 格納指示FLG_Error（OK時はHOUSE_ORDERに書込 み） Opcenter状態確認必要 搬送先切換指示_切換え用 搬送先切換指示_Error Opcenter状態確認必要 customMoveStd_処理失敗 Opcenter状態確認必要 MPI-017NG Opcenter状態確認必要 MPI-010NG Result=-1 or ShippingData=2 Opcenter状態確認必要 （定義なし） [12]\n- RFID読取りNG 4200000000000000 [1]\n- NVarChar(255) 以下、実行イメージ <<出庫指示登録時＞＞ ドキュメントID [17]\n- CTU 分岐スタンド コンベア p-Stand [20]\nLIMITATIONS: incomplete_query_term_coverage, weak_query_term_coverage",
-  "do_dai_ky_tu": 830,
+  "dap_an_nguyen_van": "### Tóm tắt:\n### Điều đã xác nhận:\n- Một số mã lỗi như `0201000010000000` (RFID đọc lỗi) hoặc `0205000010000000` (trọng lượng không khớp) được liệt kê trong [1], nhưng không liên quan đến màu sắc Magenta/Black.\n### Điểm chưa đủ bằng chứng:\n### Việc cần kiểm tra tiếp:\nLIMITATIONS: incomplete_query_term_coverage, weak_query_term_coverage",
+  "do_dai_ky_tu": 337,
   "anh_chup": "ui-answer-quality-02-cau1-c7620.png",
   "hoan_thanh": true,
   "chat_luong": {
