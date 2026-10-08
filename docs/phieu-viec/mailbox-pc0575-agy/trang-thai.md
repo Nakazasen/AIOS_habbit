@@ -4,6 +4,7 @@
 
 - Trạng thái: `dang-lam`
 - Ticket: `RETRIEVAL-LEXICAL-FTS-PC0575` — [CTY] tối ưu chặng lexical FTS5 (điểm nghẽn cuối của truy hồi). Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt.md`.
+- `ghi_chu`: 2026-10-08 11:58 +07 — Khảo sát phát hiện điểm nghẽn chính: FTS5 MATCH thuần chỉ tốn ~0.5s nhưng vòng quét identifier rescue và CJK regex duyệt toàn kho 121.331 chunks ngốn ~55s/câu; khởi chạy tiến trình nền đo phân rã 4 khâu (FTS thuần, ứng viên theo nguồn, chấm điểm Python, diversity-cap) và chụp baseline Top 15 ngữ cảnh cuối trên 10 câu (3 câu chẩn đoán + 7 câu nhóm A) trước khi sửa code.
 - `ghi_chu`: 2026-10-08 11:53 +07 — Tiếp nhận vé `RETRIEVAL-LEXICAL-FTS-PC0575`: kiểm tra cổng gate (không kẹt, vé sẵn sàng); bắt đầu Bước 1 phân rã định lượng chặng lexical trên 10 câu (3 câu chẩn đoán + 7 câu nhóm A) và Bước 2 chụp baseline Top 15 ngữ cảnh cuối trước khi sửa code.
 
 ---
