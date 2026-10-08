@@ -63,6 +63,11 @@ from aios_habit.rag_v2.structured_query import (
     query_might_be_structured_excel,
 )
 from aios_habit.workspace_chat_ai_answer import WorkspaceAIContextSource
+from aios_habit.workspace_chat_models import (
+    DEFAULT_COLLECTION_ID,
+    SOURCE_SCOPE_NOTEBOOK,
+    SOURCE_SCOPE_TEMPORARY,
+)
 from aios_habit.workspace_chat_rag_v2_deployment import (
     DeploymentManifestError,
     load_workspace_chat_rag_v2_deployment,
@@ -2107,6 +2112,15 @@ def reconcile_and_enqueue_workspace_chat_sources(
             if mem_entry and mem_entry.get("status") == PREP_STATE_READY:
                 continue
 
+        if getattr(source, "source_scope", "") == SOURCE_SCOPE_NOTEBOOK:
+            # APP-SOURCE-MODEL: Tài liệu notebook trong kho production đã được index sẵn.
+            # Đánh dấu ready tức thì, không đưa vào hàng đợi chuẩn bị lại.
+            with _PREPARATION_LOCK:
+                _PREPARATION_REGISTRY[_preparation_key(resolved, source)] = (
+                    _preparation_entry(resolved, source, PREP_STATE_READY)
+                )
+            continue
+
         if (
             row is not None
             and row.state == PREP_STATE_READY
@@ -2875,7 +2889,32 @@ def _run_profile(
         # source-based collection resolution applies.
         collection_id=domain_collection_id or _collection_id_for_sources(sources),
     )
-    specs, originals = _materialize_sources(sources, config.runtime_root)
+    from aios_habit.rag_v2.pipeline import SourceSpec
+    rag_specs = []
+    rag_originals = {}
+    regular_sources = []
+    for s in sources:
+        if isinstance(s, SourceSpec):
+            rag_specs.append(s)
+            rag_originals[s.document_id] = WorkspaceAIContextSource(
+                source_id=s.source_id,
+                source_scope=SOURCE_SCOPE_NOTEBOOK,
+                source_type="plain_text",
+                title=Path(s.path).name,
+                privacy_label="local_only",
+                text="",
+                included_chars=0,
+                managed_path=str(s.path),
+            )
+        else:
+            regular_sources.append(s)
+    if regular_sources:
+        mat_specs, mat_orig = _materialize_sources(regular_sources, config.runtime_root)
+        rag_specs.extend(mat_specs)
+        rag_originals.update(mat_orig)
+
+    specs = tuple(rag_specs)
+    originals = rag_originals
     if not specs:
         raise ValueError("no_non_empty_sources")
 
@@ -2895,40 +2934,37 @@ def _run_profile(
                     FROM chunks
                     WHERE retrievable = 1
                     GROUP BY document_id
-                    HAVING min_fp = max_fp
-                       AND min_fp IS NOT NULL
-                       AND min_fp != ''
                     """
                 ).fetchall()
-            covered = {str(row[0]): str(row[1]) for row in rows}
+            covered = {str(row[0]): str(row[1] or "") for row in rows}
             indexed_specs = []
             for spec in specs:
                 stored = covered.get(spec.document_id)
-                if not stored:
+                if stored is None:
                     continue
-                try:
-                    actual = _file_fingerprint(Path(spec.path))
-                except OSError:
-                    continue
-                if actual == stored:
+                if Path(spec.path).is_file():
+                    try:
+                        actual = _file_fingerprint(Path(spec.path))
+                        if not stored or actual == stored:
+                            indexed_specs.append(spec)
+                    except OSError:
+                        if pipe_config.index_read_only:
+                            indexed_specs.append(spec)
+                elif pipe_config.index_read_only:
                     indexed_specs.append(spec)
-            # Domain blocks only contain their own documents. Sending the
-            # notebook's other documents makes the worker fail closed with
-            # semantic_index_coverage_incomplete. Legacy search keeps the old
-            # looser filter so an empty fingerprint match cannot hide the
-            # mixed index.
             if domain_collection_id:
-                specs = indexed_specs
+                specs = tuple(indexed_specs) if indexed_specs else specs
             elif indexed_specs:
-                specs = indexed_specs
+                specs = tuple(indexed_specs)
         except Exception:
             pass
     if not specs:
         raise ValueError("no_non_empty_sources")
 
-    sem_state, sem_reason = _semantic_readiness(sources, config)
-    if sem_state != _PREPARATION_READY_STATE:
-        raise RuntimeError(sem_reason or "sources_not_ready")
+    if not pipe_config.index_read_only:
+        sem_state, sem_reason = _semantic_readiness(sources, config)
+        if sem_state != _PREPARATION_READY_STATE:
+            raise RuntimeError(sem_reason or "sources_not_ready")
 
     # A durable index can survive an application restart while the isolated
     # BGE worker cannot.  Re-open that worker once before querying; this only
@@ -3339,6 +3375,16 @@ def _select_domain_route(
             if target is None:
                 return None
             if not _domain_index_ready(config, target):
+                if _domain_index_ready(config, base_collection_id):
+                    # Kho hợp nhất library.sqlite chứa toàn bộ các khối tri thức.
+                    # Lọc phạm vi qua trường document_id trong library.sqlite thay vì tách rời file DB.
+                    return index_domain.DomainRoute(
+                        base_collection_id,
+                        forced,
+                        True,
+                        "người dùng chọn khối %s (lọc qua chỉ mục)" % index_domain.DOMAIN_DISPLAY.get(forced, forced),
+                        detected,
+                    )
                 return index_domain.DomainRoute(
                     base_collection_id,
                     forced,
@@ -3448,11 +3494,29 @@ def retrieve_workspace_chat_evidence(
 
     # Domain routing already picked one block. Search every ready source that
     # lives in that block; the narrow lexical window would hide them.
-    semantic_sources = (
-        sources
-        if domain_collection_id
-        else _retrieval_source_window(question, sources)
-    )
+    from aios_habit import index_domain
+    prod_pipe_cfg = None
+    is_prod_index = False
+    try:
+        prod_pipe_cfg = _pipeline_config(resolved, "bge_m3_hybrid", read_only=True, collection_id=DEFAULT_COLLECTION_ID)
+        is_prod_index = prod_pipe_cfg.index_path.is_file()
+    except Exception:
+        pass
+    has_notebook_sources = any(getattr(s, "source_scope", "") == SOURCE_SCOPE_NOTEBOOK for s in sources)
+    has_forced_domain = bool(forced_domain and str(forced_domain).strip().lower() != "auto")
+    use_prod_domain_specs = bool(is_prod_index and prod_pipe_cfg and (has_notebook_sources or has_forced_domain))
+
+    if use_prod_domain_specs and prod_pipe_cfg:
+        target_domain = forced_domain if has_forced_domain else (domain_route.domain if domain_route else None)
+        domain_specs = index_domain.get_specs_for_domain(target_domain, prod_pipe_cfg.index_path)
+        temp_sources = tuple(s for s in sources if getattr(s, "source_scope", "") == SOURCE_SCOPE_TEMPORARY)
+        semantic_sources = tuple(domain_specs) + temp_sources
+    else:
+        semantic_sources = (
+            sources
+            if domain_collection_id
+            else _retrieval_source_window(question, sources)
+        )
 
     # Scope every retrieval lane before it does any potentially expensive work.
     # In particular, an operational Manual question must not inspect (or ask a
@@ -3466,10 +3530,16 @@ def retrieve_workspace_chat_evidence(
     if pref_str == "deep" and not resolved.adaptive_enabled:
         return _finish(_quality_search_unavailable("deep_search_unavailable"))
 
-    schedule_workspace_chat_source_preparation(semantic_sources, config=resolved)
-    semantic_status, semantic_reason = _semantic_readiness(semantic_sources, resolved)
-    if semantic_status != _PREPARATION_READY_STATE:
-        return _finish(_quality_search_unavailable(semantic_reason or semantic_status))
+    # APP-SOURCE-MODEL: Chỉ chuẩn bị tài liệu tạm (temporary), không lên lịch chuẩn bị lại cho tài liệu production
+    temp_prep_targets = tuple(s for s in semantic_sources if getattr(s, "source_scope", "") == SOURCE_SCOPE_TEMPORARY)
+    if temp_prep_targets:
+        schedule_workspace_chat_source_preparation(temp_prep_targets, config=resolved)
+
+    if not use_prod_domain_specs:
+        schedule_workspace_chat_source_preparation(semantic_sources, config=resolved)
+        semantic_status, semantic_reason = _semantic_readiness(semantic_sources, resolved)
+        if semantic_status != _PREPARATION_READY_STATE:
+            return _finish(_quality_search_unavailable(semantic_reason or semantic_status))
 
     if expansion is None:
         expansion = _maybe_expand_latin_query_for_cjk_corpus(question, semantic_sources)

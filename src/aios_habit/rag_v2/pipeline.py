@@ -670,6 +670,13 @@ class RagV2DevPipeline:
                 ))
                 continue
             if not source.path.is_file():
+                if self.config.index_read_only:
+                    current = self.index.document_state(source.document_id)
+                    if current.get("chunk_count"):
+                        items.append(self._unchanged_item(
+                            source, current.get("source_fingerprint") or "", int(current["chunk_count"])
+                        ))
+                        continue
                 items.append(IngestionItemReport(
                     document_id=source.document_id,
                     source_name=source.path.name,
@@ -854,10 +861,13 @@ class RagV2DevPipeline:
         for source in selected:
             allowed_paths.append(str(source.path))
             allowed_documents.append(source.document_id)
-            db_fp = getattr(self.index, "get_document_fingerprint", lambda d: None)(source.document_id)
-            expected[source.document_id] = (
-                db_fp if db_fp else (_file_fingerprint(source.path) if source.path.is_file() else "__source_unavailable__")
-            )
+            if source.path.is_file():
+                expected[source.document_id] = _file_fingerprint(source.path)
+            elif self.config.index_read_only:
+                db_fp = getattr(self.index, "get_document_fingerprint", lambda d: None)(source.document_id)
+                expected[source.document_id] = db_fp if db_fp else ""
+            else:
+                expected[source.document_id] = "__source_unavailable__"
         # Diversity limits are meaningful only across distinct source documents.
         # For a user-selected single manual, a cap of three can suppress the
         # procedure, prerequisite, and safety chunks needed to answer one

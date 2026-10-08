@@ -2089,6 +2089,7 @@ class LocalChunkIndex:
             document_id
             for document_id, fingerprint in expected.items()
             if document_id in set(selected)
+            and fingerprint != ""
             and actual_fingerprints.get(document_id) != fingerprint
         ))
         documents_complete = not missing_document_ids and not fingerprint_mismatch_document_ids

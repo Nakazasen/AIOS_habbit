@@ -363,3 +363,112 @@ def lookup_ledger_hint(db_path: str | Path, document_id: str) -> Optional[dict[s
         "source_id": str(row[1] or ""),
         "source_fingerprint": str(row[2] or ""),
     }
+
+
+_DOMAIN_DOCUMENT_MAP_CACHE: Optional[dict[str, str]] = None
+_DOMAIN_DOCUMENTS_CACHE: Optional[dict[str, tuple[str, ...]]] = None
+
+
+def load_domain_document_map() -> dict[str, str]:
+    """Load the mapping of document_id -> domain block from the bundled manifest."""
+    global _DOMAIN_DOCUMENT_MAP_CACHE
+    if _DOMAIN_DOCUMENT_MAP_CACHE is not None:
+        return _DOMAIN_DOCUMENT_MAP_CACHE
+
+    map_path = Path(__file__).resolve().parent / "domain_document_map.json"
+    if map_path.is_file():
+        try:
+            import json
+            with open(map_path, "r", encoding="utf-8") as f:
+                _DOMAIN_DOCUMENT_MAP_CACHE = json.load(f)
+                return _DOMAIN_DOCUMENT_MAP_CACHE
+        except Exception:
+            pass
+
+    _DOMAIN_DOCUMENT_MAP_CACHE = {}
+    return _DOMAIN_DOCUMENT_MAP_CACHE
+
+
+def get_domain_document_ids(domain: Optional[str]) -> Optional[tuple[str, ...]]:
+    """Return tuple of document_ids belonging to the given domain block.
+
+    - If ``domain`` is None or 'auto': returns None (search across all documents in index).
+    - If ``domain`` is in ('lsu', 'dieu_tra_loi', 'mom'): returns tuple of matching document_ids.
+    """
+    global _DOMAIN_DOCUMENTS_CACHE
+    if domain is None or str(domain).strip().lower() in ("auto", "all", ""):
+        return None
+
+    norm_domain = str(domain).strip().lower()
+    if _DOMAIN_DOCUMENTS_CACHE is None:
+        doc_map = load_domain_document_map()
+        grouped: dict[str, list[str]] = {d: [] for d in DOMAINS}
+        grouped["tong_hop"] = []
+        for doc_id, dom in doc_map.items():
+            if dom in grouped:
+                grouped[dom].append(doc_id)
+            else:
+                grouped.setdefault(dom, []).append(doc_id)
+        _DOMAIN_DOCUMENTS_CACHE = {d: tuple(sorted(ids)) for d, ids in grouped.items()}
+
+    return _DOMAIN_DOCUMENTS_CACHE.get(norm_domain)
+
+
+_DOMAIN_ALL_SPECS_CACHE: Optional[list[Any]] = None
+
+
+def load_all_index_specs(db_path: Path | str | None = None) -> list[Any]:
+    """Load SourceSpec objects for all documents in library.sqlite (cached)."""
+    global _DOMAIN_ALL_SPECS_CACHE
+    if _DOMAIN_ALL_SPECS_CACHE is not None:
+        return _DOMAIN_ALL_SPECS_CACHE
+
+    from aios_habit.rag_v2.pipeline import SourceSpec
+    if db_path is None:
+        db_path = Path("local_runs/workspace_chat_rag_v2_production/bge_m3_hybrid/collections/tri_thuc/library.sqlite")
+    else:
+        db_path = Path(db_path)
+
+    if not db_path.is_file():
+        _DOMAIN_ALL_SPECS_CACHE = []
+        return _DOMAIN_ALL_SPECS_CACHE
+
+    try:
+        uri = db_path.resolve().as_uri() + "?mode=ro"
+        with sqlite3.connect(uri, uri=True, timeout=10.0) as con:
+            rows = con.execute(
+                "SELECT document_id, MIN(source_path), MIN(source_name) FROM chunks GROUP BY document_id ORDER BY document_id"
+            ).fetchall()
+        specs = [
+            SourceSpec(
+                path=Path(str(r[2] if r[2] else r[1])),
+                source_id=str(r[0]),
+                document_id=str(r[0]),
+                owner_consent=True,
+                language_hints=("vi", "ja", "en"),
+            )
+            for r in rows
+        ]
+        _DOMAIN_ALL_SPECS_CACHE = specs
+        return specs
+    except Exception:
+        _DOMAIN_ALL_SPECS_CACHE = []
+        return _DOMAIN_ALL_SPECS_CACHE
+
+
+def get_specs_for_domain(domain: Optional[str], db_path: Path | str | None = None) -> tuple[Any, ...]:
+    """Return SourceSpecs for a given domain block.
+
+    If domain is None or 'auto', returns all documents in library.sqlite.
+    If domain is 'lsu', returns only LSU documents (92).
+    """
+    all_specs = load_all_index_specs(db_path)
+    if not all_specs:
+        return ()
+
+    allowed_ids = get_domain_document_ids(domain)
+    if allowed_ids is None:
+        return tuple(all_specs)
+
+    allowed_set = set(allowed_ids)
+    return tuple(s for s in all_specs if s.document_id in allowed_set)

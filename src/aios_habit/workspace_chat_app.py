@@ -5103,18 +5103,17 @@ else:
                 enabled_total = enabled_notebook_count + enabled_temp_count
                 ctx_all_sources = _workspace_context_sources(notebook_sources, temp_sources)
 
-                # Only prepare enabled sources on page load or on interactive demand
+                # Only prepare enabled temporary sources on page load or on interactive demand
+                # APP-SOURCE-MODEL: Tài liệu notebook trong kho production đã được lập chỉ mục sẵn, không chuẩn bị lại khi nạp trang.
                 enabled_ctx_sources = tuple(
                     s for s in ctx_all_sources
-                    if selections_map.get((s.source_scope, s.source_id), False)
+                    if s.source_scope == SOURCE_SCOPE_TEMPORARY
+                    and selections_map.get((s.source_scope, s.source_id), False)
                 )
                 if enabled_ctx_sources:
                     schedule_workspace_chat_source_preparation(enabled_ctx_sources)
 
-                # Track only enabled sources. Falling back to all sources here
-                # showed a misleading "0/N" banner (and offered "resume",
-                # which would enqueue every disabled source) after the user
-                # disabled every source (dieutra-banner-0494).
+                # Track only enabled temporary sources for background preparation.
                 tracked_prep_sources = enabled_ctx_sources
                 prep_summary = get_workspace_chat_preparation_summary(tracked_prep_sources)
 
@@ -5149,6 +5148,14 @@ else:
                 # APP-SOURCE-MODEL: Gỡ bỏ progress bar chuẩn bị mâu thuẫn (33/35).
                 # Toàn bộ tài liệu trong chỉ mục sản xuất (889 tài liệu) đã sẵn sàng.
                 # Tài liệu bổ sung tải lên ad-hoc (temporary) được xử lý nền im lặng.
+                @st.fragment(run_every=4.0 if is_preparing else None)
+                def _live_preparation_progress_panel():
+                    live_summary = get_workspace_chat_preparation_summary(tracked_prep_sources)
+                    if is_preparing and live_summary.get("preparation_state") == "ready":
+                        safe_rerun()
+
+                if is_preparing:
+                    _live_preparation_progress_panel()
 
                 with st.expander(
                     t("managing_sources_expander_clean", locale=current_ui_locale),
