@@ -1,0 +1,73 @@
+{
+  "ma_ve": "UI-ANSWER-QUALITY3-HOME",
+  "conversation_id": "CONV-Q3-ED3317",
+  "session_slug": "q3-ed3317",
+  "thoi_gian_mo_app_giay": 39.95,
+  "anh_mo_app": "ui-answer-quality3-q3-ed3317-01-app-ready.png",
+  "anh_mo_app_bytes": 117477,
+  "sha256_truoc": "45EB0E072893F802D71AB201CFBB2B29C36E2B0A31313FA79FC55A025B65B7C0",
+  "sha256_sau": "45EB0E072893F802D71AB201CFBB2B29C36E2B0A31313FA79FC55A025B65B7C0",
+  "sha256_khop": true,
+  "cau_hoi": [
+    {
+      "session_code": "CONV-Q3-ED3317",
+      "stt": 1,
+      "id": "Q0699",
+      "loai": "thuc_the_ma_loi",
+      "ten_loai": "Thực thể mã lỗi (C7620)",
+      "question": "C7620中Magenta相对Black的副扫描色差达到多少会成为NG？",
+      "thoi_gian_toan_trinh_giay": 371.75,
+      "model_phuc_vu": "chưa xác định",
+      "provenance": {},
+      "dap_an_nguyen_van": "⚠️ AIOS đã tự làm nóng bộ đọc và thử lại một lần nhưng chưa xong. Hãy chờ giây lát rồi bấm Hỏi lại, không cần khởi động lại AIOS.",
+      "do_dai_ky_tu": 129,
+      "anh_chup": "ui-answer-quality3-q3-ed3317-02-cau1-q0699.png",
+      "anh_chup_kich_thuoc_bytes": 107738,
+      "hoan_thanh": true,
+      "chat_luong": {
+        "ro_ri_prompt_he_thong": false,
+        "bi_cat_cut_giua_cau": false
+      }
+    },
+    {
+      "session_code": "CONV-Q3-ED3317",
+      "stt": 2,
+      "id": "Q0718",
+      "loai": "nguyen_nhan",
+      "ten_loai": "Nguyên nhân (DMT–PMT)",
+      "question": "File có xác nhận chênh lệch DMT–PMT chính là nguyên nhân duy nhất gây NG không?",
+      "thoi_gian_toan_trinh_giay": 154.62,
+      "model_phuc_vu": "chưa xác định",
+      "provenance": {},
+      "dap_an_nguyen_van": "⚠️ AIOS đã tự làm nóng bộ đọc và thử lại một lần nhưng chưa xong. Hãy chờ giây lát rồi bấm Hỏi lại, không cần khởi động lại AIOS.",
+      "do_dai_ky_tu": 129,
+      "anh_chup": "ui-answer-quality3-q3-ed3317-03-cau2-q0718.png",
+      "anh_chup_kich_thuoc_bytes": 117397,
+      "hoan_thanh": true,
+      "chat_luong": {
+        "ro_ri_prompt_he_thong": false,
+        "bi_cat_cut_giua_cau": false
+      }
+    },
+    {
+      "session_code": "CONV-Q3-ED3317",
+      "stt": 3,
+      "id": "Q0709",
+      "loai": "thong_so",
+      "ten_loai": "Thông số (Bảng quy đổi Skew)",
+      "question": "Trong bảng quy đổi Skew, Black, Cyan, Magenta và Yellow lần lượt có giá trị µm và dot bao nhiêu?",
+      "thoi_gian_toan_trinh_giay": 481.14,
+      "model_phuc_vu": "chưa xác định",
+      "provenance": {},
+      "dap_an_nguyen_van": "smart_toy\n✨ Câu trả lời mới nhất\n\n⚠️ AIOS đã tự làm nóng bộ đọc và thử lại một lần nhưng chưa xong. Hãy chờ giây lát rồi bấm Hỏi lại, không cần khởi động lại AIOS.\n\nthumb_up\nthumb_down",
+      "do_dai_ky_tu": 184,
+      "anh_chup": "ui-answer-quality3-q3-ed3317-04-cau3-q0709.png",
+      "anh_chup_kich_thuoc_bytes": 115084,
+      "hoan_thanh": false,
+      "chat_luong": {
+        "ro_ri_prompt_he_thong": false,
+        "bi_cat_cut_giua_cau": false
+      }
+    }
+  ]
+}

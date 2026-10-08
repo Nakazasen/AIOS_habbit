@@ -1,0 +1,20 @@
+{
+  "session_code": "CONV-Q3-ED3317",
+  "stt": 1,
+  "id": "Q0699",
+  "loai": "thuc_the_ma_loi",
+  "ten_loai": "Thực thể mã lỗi (C7620)",
+  "question": "C7620中Magenta相对Black的副扫描色差达到多少会成为NG？",
+  "thoi_gian_toan_trinh_giay": 371.75,
+  "model_phuc_vu": "chưa xác định",
+  "provenance": {},
+  "dap_an_nguyen_van": "⚠️ AIOS đã tự làm nóng bộ đọc và thử lại một lần nhưng chưa xong. Hãy chờ giây lát rồi bấm Hỏi lại, không cần khởi động lại AIOS.",
+  "do_dai_ky_tu": 129,
+  "anh_chup": "ui-answer-quality3-q3-ed3317-02-cau1-q0699.png",
+  "anh_chup_kich_thuoc_bytes": 107738,
+  "hoan_thanh": true,
+  "chat_luong": {
+    "ro_ri_prompt_he_thong": false,
+    "bi_cat_cut_giua_cau": false
+  }
+}

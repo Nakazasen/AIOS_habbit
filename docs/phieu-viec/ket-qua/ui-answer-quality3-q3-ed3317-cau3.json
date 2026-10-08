@@ -1,0 +1,20 @@
+{
+  "session_code": "CONV-Q3-ED3317",
+  "stt": 3,
+  "id": "Q0709",
+  "loai": "thong_so",
+  "ten_loai": "Thông số (Bảng quy đổi Skew)",
+  "question": "Trong bảng quy đổi Skew, Black, Cyan, Magenta và Yellow lần lượt có giá trị µm và dot bao nhiêu?",
+  "thoi_gian_toan_trinh_giay": 481.14,
+  "model_phuc_vu": "chưa xác định",
+  "provenance": {},
+  "dap_an_nguyen_van": "smart_toy\n✨ Câu trả lời mới nhất\n\n⚠️ AIOS đã tự làm nóng bộ đọc và thử lại một lần nhưng chưa xong. Hãy chờ giây lát rồi bấm Hỏi lại, không cần khởi động lại AIOS.\n\nthumb_up\nthumb_down",
+  "do_dai_ky_tu": 184,
+  "anh_chup": "ui-answer-quality3-q3-ed3317-04-cau3-q0709.png",
+  "anh_chup_kich_thuoc_bytes": 115084,
+  "hoan_thanh": false,
+  "chat_luong": {
+    "ro_ri_prompt_he_thong": false,
+    "bi_cat_cut_giua_cau": false
+  }
+}

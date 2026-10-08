@@ -1,0 +1,20 @@
+{
+  "session_code": "CONV-Q3-ED3317",
+  "stt": 2,
+  "id": "Q0718",
+  "loai": "nguyen_nhan",
+  "ten_loai": "Nguyên nhân (DMT–PMT)",
+  "question": "File có xác nhận chênh lệch DMT–PMT chính là nguyên nhân duy nhất gây NG không?",
+  "thoi_gian_toan_trinh_giay": 154.62,
+  "model_phuc_vu": "chưa xác định",
+  "provenance": {},
+  "dap_an_nguyen_van": "⚠️ AIOS đã tự làm nóng bộ đọc và thử lại một lần nhưng chưa xong. Hãy chờ giây lát rồi bấm Hỏi lại, không cần khởi động lại AIOS.",
+  "do_dai_ky_tu": 129,
+  "anh_chup": "ui-answer-quality3-q3-ed3317-03-cau2-q0718.png",
+  "anh_chup_kich_thuoc_bytes": 117397,
+  "hoan_thanh": true,
+  "chat_luong": {
+    "ro_ri_prompt_he_thong": false,
+    "bi_cat_cut_giua_cau": false
+  }
+}
