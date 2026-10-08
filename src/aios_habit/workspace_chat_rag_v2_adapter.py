@@ -302,6 +302,9 @@ _SEMANTIC_SOURCE_STOP_WORDS = frozenset(
         "giai", "thich", "giup", "toi",
         "lam", "sao", "what", "how", "does", "work", "operate", "the",
         "and", "for", "with", "this", "that", "are", "you",
+        "trong", "bang", "quy", "doi", "va", "lan", "luot", "co", "gia", "tri",
+        "bao", "nhieu", "la", "cua", "cho", "cac", "nhung", "duoc", "khi",
+        "theo", "ve", "tai", "tu", "voi", "ra", "vao", "den",
     }
 )
 # Corpus sources vary substantially in extraction cost; keep every IPC request

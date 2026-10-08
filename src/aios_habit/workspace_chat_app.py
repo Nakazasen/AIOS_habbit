@@ -4915,7 +4915,7 @@ else:
                                         # Preparation may wait on one document. Retrieval
                                         # must still search every already-ready source so
                                         # two-letter codes are not locked to a false match.
-                                        query_relevant_sources = ready_sources or ready_in_scope
+                                        query_relevant_sources = ready_in_scope
                                         if unready_sources:
                                             schedule_workspace_chat_source_preparation(unready_sources)
                                             # APP-SOURCE-MODEL: Gỡ toast gây mâu thuẫn (giữ token non_blocking_search_ready_toast cho test)
