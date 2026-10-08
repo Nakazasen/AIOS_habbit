@@ -1264,7 +1264,7 @@ def test_writer_lease_released_after_prepare_exception(monkeypatch, tmp_path):
     other.release()
 
 
-def _write_coverage_index(path: Path, document_id: str, revision: str) -> None:
+def _write_coverage_index(path: Path, document_id: str, revision: str, *, source_name: str = "") -> None:
     import sqlite3
 
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -1308,8 +1308,8 @@ def _write_coverage_index(path: Path, document_id: str, revision: str) -> None:
             """
         )
         conn.execute(
-            "INSERT INTO chunks (chunk_id, document_id, retrievable) VALUES ('c1', ?, 1)",
-            (document_id,),
+            "INSERT INTO chunks (chunk_id, document_id, source_name, retrievable) VALUES ('c1', ?, ?, 1)",
+            (document_id, source_name),
         )
         conn.execute(
             """INSERT INTO chunk_embeddings
@@ -1492,11 +1492,16 @@ def test_batch_failure_reason_is_opaque_and_deterministic(tmp_path):
 def test_query_config_is_read_only_and_uses_production_index(tmp_path):
     config = _semantic_config(tmp_path)
 
-    preparation = adapter._pipeline_config(config, "bge_m3_hybrid")
+    default_config = adapter._pipeline_config(config, "bge_m3_hybrid")
     query = adapter._pipeline_config(
         config, "bge_m3_hybrid", read_only=True
     )
+    preparation = adapter._pipeline_config(
+        config, "bge_m3_hybrid", read_only=False
+    )
 
+    assert default_config.index_read_only is True
+    assert default_config.ensure_embeddings_on_open is False
     assert preparation.index_read_only is False
     assert preparation.ensure_embeddings_on_open is True
     assert query.index_read_only is True
@@ -2656,8 +2661,8 @@ def _pending_ledger_row(config, source: WorkspaceAIContextSource) -> adapter.Sou
 
 
 def test_drain_reloads_durable_text_only_when_flag_is_on(tmp_path: Path, monkeypatch):
-    from aios_habit.workspace_chat_models import NotebookSource, TemporaryConversationSource
-    from aios_habit.workspace_chat_store import save_notebook_source, save_temporary_source
+    from aios_habit.workspace_chat_models import DocumentNotebook, NotebookSource, TemporaryConversationSource
+    from aios_habit.workspace_chat_store import save_notebook, save_notebook_source, save_temporary_source
 
     config = _enabled_config(tmp_path)
     db_path = adapter._get_ledger_db_path(config)
@@ -2677,6 +2682,11 @@ def test_drain_reloads_durable_text_only_when_flag_is_on(tmp_path: Path, monkeyp
         title="stored.pdf",
         content_preview="stored body",
         content_text="stored body from the temporary record",
+    ))
+    save_notebook(DocumentNotebook(
+        id="mom_opcenter",
+        title="MOM Opcenter",
+        collection_id="mom_collection",
     ))
     save_notebook_source(NotebookSource(
         id="SRC-NOTE",
@@ -2729,3 +2739,166 @@ def test_drain_reloads_durable_text_only_when_flag_is_on(tmp_path: Path, monkeyp
         assert row is not None
         assert row.state == adapter.PREP_STATE_READY
         assert row.last_error == ""
+
+
+def test_prepare_sources_targeting_production_sealed_collection_is_blocked(tmp_path, monkeypatch):
+    import aios_habit.workspace_chat_store as store
+    from aios_habit.workspace_chat_models import DEFAULT_COLLECTION_ID
+
+    store.init_chat_store()
+    shared = tmp_path / "production_shared"
+    store.set_collection_storage_root(DEFAULT_COLLECTION_ID, str(shared))
+
+    config = _semantic_config(tmp_path)
+    source = _source("Nội dung tài liệu production")
+
+    worker_called = []
+    monkeypatch.setattr(
+        adapter._SUBPROCESS_CLIENT,
+        "prepare_staged_source",
+        lambda *args, **kwargs: worker_called.append(args),
+    )
+
+    with pytest.raises(adapter.ReadOnlyIndexViolationError) as exc_info:
+        adapter.prepare_workspace_chat_sources((source,), config=config)
+
+    assert "tri_thuc" in str(exc_info.value).lower()
+    assert worker_called == []
+
+
+def test_prepare_notebook_sources_targeting_tri_thuc_is_blocked(tmp_path, monkeypatch):
+    import aios_habit.workspace_chat_store as store
+    from aios_habit.workspace_chat_models import NotebookSource, DocumentNotebook
+
+    store.init_chat_store()
+    store.save_notebook(DocumentNotebook(id="nb-prod", title="Sổ Tri thức", collection_id="tri_thuc"))
+    store.save_notebook_source(NotebookSource(
+        id="src-nb-1",
+        notebook_id="nb-prod",
+        title="tai_lieu_c7620.pptx",
+        source_type="pptx",
+        content_text="Chi tiết lỗi C7620",
+    ))
+    nb_source = WorkspaceAIContextSource(
+        source_id="src-nb-1",
+        source_scope="notebook",
+        source_type="pptx",
+        title="tai_lieu_c7620.pptx",
+        privacy_label="local_only",
+        text="Chi tiết lỗi C7620",
+        included_chars=18,
+        truncated=False,
+    )
+    config = _semantic_config(tmp_path)
+
+    worker_called = []
+    monkeypatch.setattr(
+        adapter._SUBPROCESS_CLIENT,
+        "prepare_staged_source",
+        lambda *args, **kwargs: worker_called.append(args),
+    )
+
+    with pytest.raises(adapter.ReadOnlyIndexViolationError):
+        adapter.prepare_workspace_chat_sources((nb_source,), config=config)
+
+    assert worker_called == []
+
+
+def test_drain_queue_existing_source_in_sealed_index_marked_ready_without_worker(tmp_path, monkeypatch):
+    import aios_habit.workspace_chat_store as store
+    from aios_habit.workspace_chat_models import DEFAULT_COLLECTION_ID
+
+    store.init_chat_store()
+    shared = tmp_path / "share"
+    store.set_collection_storage_root(DEFAULT_COLLECTION_ID, str(shared))
+    config = _semantic_config(tmp_path)
+    monkeypatch.setattr(adapter, "_expected_backend_fingerprint", lambda config: "fp")
+
+    source = _source("Tài liệu C7620 đã có sẵn trong kho 889.")
+    index_path = shared / store.COLLECTION_RUNTIME_DIRNAME / store.COLLECTION_INDEX_BASENAME
+    _write_coverage_index(index_path, adapter._document_id(source), config.bge_m3_model_revision)
+
+    db_path = adapter._get_ledger_db_path(config)
+    adapter._init_preparation_ledger_db(db_path)
+    adapter._SOURCE_CACHE.clear()
+    adapter._SOURCE_CACHE[(source.source_scope, source.source_id)] = source
+
+    worker_called = []
+    monkeypatch.setattr(
+        adapter._SUBPROCESS_CLIENT,
+        "prepare_staged_source",
+        lambda *args, **kwargs: worker_called.append(args),
+    )
+
+    adapter._upsert_ledger_row(db_path, _pending_ledger_row(config, source))
+    adapter._drain_preparation_queue(config)
+
+    row = adapter._load_ledger_row(db_path, source.source_scope, source.source_id)
+    assert row is not None
+    assert row.state == adapter.PREP_STATE_READY
+    assert worker_called == []
+
+
+def test_drain_queue_unindexed_source_in_sealed_index_marked_failed_without_worker(tmp_path, monkeypatch):
+    import aios_habit.workspace_chat_store as store
+    from aios_habit.workspace_chat_models import DEFAULT_COLLECTION_ID
+
+    store.init_chat_store()
+    shared = tmp_path / "share"
+    store.set_collection_storage_root(DEFAULT_COLLECTION_ID, str(shared))
+    config = _semantic_config(tmp_path)
+    monkeypatch.setattr(adapter, "_expected_backend_fingerprint", lambda config: "fp")
+
+    source = _source("Tài liệu mới toanh không có trong kho 889.")
+    db_path = adapter._get_ledger_db_path(config)
+    adapter._init_preparation_ledger_db(db_path)
+    adapter._SOURCE_CACHE.clear()
+    adapter._SOURCE_CACHE[(source.source_scope, source.source_id)] = source
+
+    worker_called = []
+    monkeypatch.setattr(
+        adapter._SUBPROCESS_CLIENT,
+        "prepare_staged_source",
+        lambda *args, **kwargs: worker_called.append(args),
+    )
+
+    adapter._upsert_ledger_row(db_path, _pending_ledger_row(config, source))
+    adapter._drain_preparation_queue(config)
+
+    row = adapter._load_ledger_row(db_path, source.source_scope, source.source_id)
+    assert row is not None
+    assert row.state == adapter.PREP_STATE_FAILED
+    assert "readonly_index_violation" in row.last_error
+    assert worker_called == []
+
+
+def test_durable_semantic_coverage_matches_existing_889_by_source_name(tmp_path, monkeypatch):
+    import aios_habit.workspace_chat_store as store
+    from aios_habit.workspace_chat_models import DEFAULT_COLLECTION_ID
+
+    store.init_chat_store()
+    shared = tmp_path / "share"
+    store.set_collection_storage_root(DEFAULT_COLLECTION_ID, str(shared))
+    config = _semantic_config(tmp_path)
+    monkeypatch.setattr(adapter, "_expected_backend_fingerprint", lambda config: "fp")
+
+    source = WorkspaceAIContextSource(
+        source_id="wsc-new-runtime-id",
+        source_scope="temporary",
+        source_type="pptx",
+        title="Sirius 2 _ C7620_報告書 4.pptx",
+        privacy_label="local_only",
+        text="Văn bản trích xuất mới có thể lệch hash...",
+        included_chars=40,
+        truncated=False,
+    )
+    index_path = shared / store.COLLECTION_RUNTIME_DIRNAME / store.COLLECTION_INDEX_BASENAME
+    _write_coverage_index(
+        index_path,
+        "doc-c7620",
+        config.bge_m3_model_revision,
+        source_name="Sirius 2 _ C7620_報告書 4.pptx",
+    )
+
+    assert adapter._durable_semantic_coverage_ready(source, config) is True
+

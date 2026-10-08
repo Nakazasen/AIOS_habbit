@@ -72,6 +72,26 @@ LOGGER = logging.getLogger(__name__)
 
 _SUBPROCESS_CLIENT = BgeSubprocessWorkerClient()
 
+
+class ReadOnlyIndexViolationError(RuntimeError):
+    """Raised when an operation attempts to write or prepare sources for a read-only or sealed production index."""
+
+
+def is_production_sealed_collection(collection_id: str | None) -> bool:
+    """Return True if collection_id refers to the sealed production collection ('tri_thuc')."""
+    from aios_habit.workspace_chat_models import DEFAULT_COLLECTION_ID
+    from aios_habit.workspace_chat_store import load_collection
+
+    normalized = str(collection_id or "").strip()
+    if normalized in {DEFAULT_COLLECTION_ID, "tri_thuc"}:
+        return True
+    if not normalized:
+        default = load_collection(DEFAULT_COLLECTION_ID)
+        if default is not None and str(default.storage_root or "").strip():
+            return True
+    return False
+
+
 PREPARATION_LEDGER_TABLE = "source_preparation_ledger"
 PREPARATION_LEDGER_SCHEMA_VERSION = "1.0.0"
 
@@ -638,7 +658,7 @@ def _pipeline_config(
     config: WorkspaceChatRagV2CanaryConfig,
     profile: str,
     *,
-    read_only: bool = False,
+    read_only: bool = True,
     include_reranker: bool = False,
     collection_id: str | None = None,
 ) -> RagV2DevConfig:
@@ -1029,6 +1049,21 @@ def _durable_semantic_coverage_ready(    source: WorkspaceAIContextSource,
                 (document_id,),
             ).fetchone()[0])
             if retrievable <= 0:
+                candidate_title = (getattr(source, "title", "") or "").strip()
+                if candidate_title:
+                    found = connection.execute(
+                        "SELECT document_id FROM chunks WHERE source_name=? AND retrievable=1 LIMIT 1",
+                        (candidate_title,),
+                    ).fetchone()
+                    if found:
+                        matched_doc_id = str(found[0])
+                        retrievable = int(connection.execute(
+                            "SELECT COUNT(*) FROM chunks WHERE document_id=? AND retrievable=1",
+                            (matched_doc_id,),
+                        ).fetchone()[0])
+                        if retrievable > 0:
+                            document_id = matched_doc_id
+            if retrievable <= 0:
                 return False
             params = (document_id, config.bge_m3_model_revision, expected_fingerprint)
             dense = int(connection.execute(_DENSE_COVERAGE_SQL, params).fetchone()[0])
@@ -1385,11 +1420,22 @@ def prepare_workspace_chat_sources(
     if source_timeout_s is not None and float(source_timeout_s) <= 0:
         raise ValueError("source_timeout_s must be positive")
 
+    target_collection_id = _collection_id_for_sources(sources)
+    if is_production_sealed_collection(target_collection_id):
+        raise ReadOnlyIndexViolationError(
+            f"Chặn ghi vào kho production đã đóng dấu '{target_collection_id or 'tri_thuc'}'. "
+            "Chỉ mục production là chỉ đọc tuyệt đối và không nhận nguồn chuẩn bị mới."
+        )
+
     profile = resolved.requested_profile
     pipe_config = _pipeline_config(
         resolved,
         profile,
-        collection_id=_collection_id_for_sources(sources),
+        # Explicit read_only=False: preparing and ingesting source chunks and
+        # embeddings for eligible non-production collections. The sealed
+        # production collection ('tri_thuc') is strictly guarded above.
+        read_only=False,
+        collection_id=target_collection_id,
     )
     started = time.perf_counter()
     with _PREPARATION_LOCK:
@@ -2313,6 +2359,47 @@ def _drain_preparation_queue(config: WorkspaceChatRagV2CanaryConfig) -> None:
                     error_reason="source_text_unavailable",
                 )
                 continue
+
+            target_collection = _collection_id_for_sources((source,))
+            if is_production_sealed_collection(target_collection):
+                # Guard against writing to sealed production collection 'tri_thuc'.
+                # Existing documents from 889 corpus must be recognized as READY without preparation.
+                if _durable_semantic_coverage_ready(source, config):
+                    _commit_preparation_result(
+                        db_path,
+                        item.source_scope,
+                        item.source_id,
+                        PREP_STATE_READY,
+                        model_fingerprint=drain_fingerprint,
+                    )
+                    with _PREPARATION_LOCK:
+                        _PREPARATION_REGISTRY[_preparation_key(config, source)] = (
+                            _preparation_entry(config, source, PREP_STATE_READY)
+                        )
+                    continue
+                else:
+                    err_msg = (
+                        f"readonly_index_violation: cannot prepare sources for sealed production collection "
+                        f"'{target_collection or 'tri_thuc'}'"
+                    )
+                    LOGGER.error(
+                        "rag_v2.drain %s scope=%s source_id=%s",
+                        err_msg,
+                        item.source_scope,
+                        item.source_id,
+                    )
+                    _commit_preparation_result(
+                        db_path,
+                        item.source_scope,
+                        item.source_id,
+                        PREP_STATE_FAILED,
+                        error_reason="readonly_index_violation",
+                    )
+                    with _PREPARATION_LOCK:
+                        _PREPARATION_REGISTRY[_preparation_key(config, source)] = (
+                            _preparation_entry(config, source, PREP_STATE_FAILED, reason=err_msg)
+                        )
+                    continue
 
             with _PREPARATION_LOCK:
                 _PREPARATION_REGISTRY[_preparation_key(config, source)] = (
