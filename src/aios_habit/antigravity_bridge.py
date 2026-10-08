@@ -1250,7 +1250,11 @@ def route_workspace_chat_submission(
                 result = replace(result, ok=False, answer_text="", error_message="Đáp án AI không hợp lệ do chứa rò rỉ prompt hệ thống.")
 
         if not result.ok:
-            if _local_fallback_available(local_synthesis):
+            has_local_answer = bool(
+                isinstance(local_synthesis, Mapping)
+                and str(local_synthesis.get("answer", "") or "").strip()
+            )
+            if _local_fallback_available(local_synthesis) or has_local_answer:
                 local_answer = str((local_synthesis or {}).get("answer", "") or "").strip()
                 local_citation_ids = [str(c) for c in ((local_synthesis or {}).get("citation_ids") or ())]
                 cited_set = set(local_citation_ids)

@@ -2010,6 +2010,16 @@ class LocalChunkIndex:
             "stale_multivector_embedding_count": stale_multivector_count,
         }
 
+    def get_document_fingerprint(self, document_id: str) -> Optional[str]:
+        """Return the stored source fingerprint for an indexed document, if available."""
+        if not document_id:
+            return None
+        row = self._conn.execute(
+            "SELECT source_fingerprint FROM chunks WHERE document_id = ? AND retrievable = 1 AND source_fingerprint IS NOT NULL LIMIT 1",
+            (str(document_id).strip(),),
+        ).fetchone()
+        return str(row[0]).strip() if row and row[0] else None
+
     def verify_selected_document_coverage(
         self,
         document_ids: Sequence[str],

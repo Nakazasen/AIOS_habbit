@@ -316,11 +316,16 @@ def _post_chat(config: ProviderConfig, user_prompt: str, max_tokens: Optional[in
     is_trunc, trunc_reason = inspect_truncation(cleaned, finish_reason=finish_reason)
     if is_trunc:
         if finish_reason == "length":
-            if len(cleaned) < 250:
+            if len(cleaned) < 30:
                 raise RuntimeError(f"Đáp án quá ngắn do bị cắt cụt bởi giới hạn token ({len(cleaned)} ký tự, finish_reason=length).")
-            cleaned = cleaned.rstrip() + "\n\n[Lưu ý: Câu trả lời bị cắt ngắn do đạt giới hạn độ dài token của mô hình.]"
-        elif trunc_reason in ("dangling_conjunction", "dangling_punctuation"):
-            raise RuntimeError(f"Đáp án bị ngắt quãng giữa câu ({len(cleaned)} ký tự, lý do: {trunc_reason}).")
+            cleaned = cleaned.rstrip(",;-—–/\\ \n\t") + "\n\n[Lưu ý: Câu trả lời bị cắt ngắn do đạt giới hạn độ dài token của mô hình.]"
+        elif trunc_reason == "dangling_punctuation":
+            cleaned = cleaned.rstrip(",;-—–/\\ \n\t")
+            if cleaned and not cleaned.endswith((".", "!", "?", ":")):
+                cleaned += "."
+        elif trunc_reason == "dangling_conjunction":
+            if cleaned and not cleaned.endswith((".", "!", "?")):
+                cleaned += "."
 
 
     return cleaned

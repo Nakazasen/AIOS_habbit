@@ -116,14 +116,19 @@ def _build_router_prompts(payload: SanitizedRouterPayload) -> Tuple[str, str]:
 def _get_router() -> Any:
     global _ROUTER
     if _ROUTER is None:
-        _ROUTER = create_router_from_env(
-            enable_network=True,
-            policy=RouterPolicy(
+        policy = (
+            RouterPolicy(
                 require_privacy_label=True,
                 task_type="workspace_chat",
                 routing_mode="balanced",
                 max_total_attempts=4,
-            ),
+            )
+            if RouterPolicy is not None
+            else None
+        )
+        _ROUTER = create_router_from_env(
+            enable_network=True,
+            policy=policy,
         )
     return _ROUTER
 

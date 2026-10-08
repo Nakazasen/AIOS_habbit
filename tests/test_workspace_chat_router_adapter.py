@@ -81,6 +81,7 @@ def test_adapter_defaults_to_internal_pool_router(sample_payload, monkeypatch):
 def test_adapter_legacy_rollback_via_env_flag(sample_payload, monkeypatch):
     """Setting AIOS_USE_LEGACY_NAKAZASEN_ROUTER=1 rolls back to external router via mock without importing package."""
     monkeypatch.setenv("AIOS_USE_LEGACY_NAKAZASEN_ROUTER", "1")
+    monkeypatch.setattr("aios_habit.workspace_chat_router_adapter._ROUTER", None)
 
     class FakeResult:
         def __init__(self, text: str, provider_name: str = "external_pkg"):
@@ -119,7 +120,27 @@ def test_adapter_legacy_rollback_via_env_flag(sample_payload, monkeypatch):
 def test_adapter_runs_when_external_router_package_missing(sample_payload, monkeypatch):
     """Adapter functions cleanly when nakazasen_ai_router is completely unavailable."""
     monkeypatch.setattr("aios_habit.workspace_chat_router_adapter.create_router_from_env", None)
+    monkeypatch.setattr("aios_habit.workspace_chat_router_adapter._ROUTER", None)
     monkeypatch.delenv("AIOS_USE_LEGACY_NAKAZASEN_ROUTER", raising=False)
+    monkeypatch.setenv("AIOS_LOCAL_AI_ENDPOINT", "https://api.commandcode.ai/provider/v1/chat/completions")
+    monkeypatch.setenv("AIOS_LOCAL_AI_API_KEY", "mock")
+    monkeypatch.setenv("AIOS_LOCAL_AI_MODEL", "inclusionai/ling-3.1-flash:free")
+
+    from aios_habit.ai_router import RouterProviderConfig
+    monkeypatch.setattr(
+        "aios_habit.ai_router.provider_configs_from_env",
+        lambda: [
+            RouterProviderConfig(
+                provider_id="openai_compatible_local",
+                display_name_vi="Local AI",
+                endpoint_url="https://api.commandcode.ai/provider/v1/chat/completions",
+                api_key="mock",
+                model_name="inclusionai/ling-3.1-flash:free",
+                enabled=True,
+                api_keys=["mock"],
+            )
+        ],
+    )
 
     def mock_answer_with_provider(*args, **kwargs):
         from aios_habit.ai_provider_bridge import ProviderResult

@@ -223,7 +223,8 @@ def _clean_lines(lines: list[str], *, limit: int = 200) -> list[str]:
     seen: set[str] = set()
     for line in lines:
         text = html.unescape(str(line or ""))
-        text = re.sub(r"<[^>\n]{1,160}>", " ", text)
+        text = re.sub(r"<[^>]+>", " ", text)
+        text = re.sub(r"\bxmlns(?::[\w.-]+)?\s*=\s*(?:\"[^\"]*\"|'[^']*'|\S+)", " ", text, flags=re.IGNORECASE)
         text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]+", " ", text)
         text = re.sub(r"\s+", " ", text).strip()
         if not text:

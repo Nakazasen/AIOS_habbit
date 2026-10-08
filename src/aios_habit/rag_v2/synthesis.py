@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+import html
 import os
 import re
 from typing import Iterable, Protocol, Tuple
@@ -1219,6 +1220,23 @@ def synthesize_evidence(
     )
 
 
+def _clean_raw_fragment_markup(text: str) -> str:
+    """Strip XML/HTML markup, namespace declarations, and decode entities from chunk text."""
+    if not text:
+        return ""
+    if "<" not in text and "&" not in text and "xmlns" not in text.lower():
+        return text
+    decoded = html.unescape(text)
+    # Remove XML processing instructions, comments, doctypes, and tags
+    no_tags = re.sub(r"<\?[^>]*\?>|<!--.*?-->|<!\[CDATA\[.*?\]\]>|<![^>]*>|<[^>]+>", " ", decoded, flags=re.DOTALL)
+    # Remove dangling namespace declarations or attributes if tag delimiters were split
+    no_namespaces = re.sub(r"\bxmlns(?::[\w.-]+)?\s*=\s*(?:\"[^\"]*\"|'[^']*'|\S+)", " ", no_tags, flags=re.IGNORECASE)
+    # Remove XML attribute remnants like a:t="..." or p:sld
+    no_attrs = re.sub(r"\b[A-Za-z_][\w.-]*:[A-Za-z_][\w.-]*\s*=\s*(?:\"[^\"]*\"|'[^']*'|\S+)", " ", no_namespaces)
+    no_noise = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]+", " ", no_attrs)
+    return " ".join(no_noise.split())
+
+
 def _is_fragment_noise(fragment: str) -> bool:
     """Reject generic document chrome and fragments without material information."""
     normalized = " ".join(fragment.split()).strip()
@@ -1227,6 +1245,8 @@ def _is_fragment_noise(fragment: str) -> bool:
     if _FRAGMENT_BOILERPLATE_RE.search(normalized):
         return True
     if _FRAGMENT_FOOTER_RE.search(normalized) and len(normalized) < 90:
+        return True
+    if re.search(r"<\w+[:\s]|xmlns[:=]|schemas\.openxmlformats|http://schemas\.", normalized, re.IGNORECASE):
         return True
     # A split window can cut through a sentence and leave a shard with an
     # unbalanced bracket (for example "ABV(Step1..." cut at "|"). Real claims
@@ -1308,7 +1328,10 @@ def _bounded_fragment_windows(fragment: str) -> Tuple[str, ...]:
 
 def _candidate_fragments(item: EvidenceItem) -> Tuple[str, ...]:
     """Split an excerpt into bounded human-reviewable fragments, never raw sheets."""
-    text = (item.snippet or item.text or "").strip()
+    raw_text = (item.snippet or item.text or "").strip()
+    if not raw_text:
+        return ()
+    text = _clean_raw_fragment_markup(raw_text)
     if not text:
         return ()
     fragments = []

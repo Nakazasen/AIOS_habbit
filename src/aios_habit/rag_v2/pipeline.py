@@ -854,8 +854,9 @@ class RagV2DevPipeline:
         for source in selected:
             allowed_paths.append(str(source.path))
             allowed_documents.append(source.document_id)
+            db_fp = getattr(self.index, "get_document_fingerprint", lambda d: None)(source.document_id)
             expected[source.document_id] = (
-                _file_fingerprint(source.path) if source.path.is_file() else "__source_unavailable__"
+                db_fp if db_fp else (_file_fingerprint(source.path) if source.path.is_file() else "__source_unavailable__")
             )
         # Diversity limits are meaningful only across distinct source documents.
         # For a user-selected single manual, a cap of three can suppress the
