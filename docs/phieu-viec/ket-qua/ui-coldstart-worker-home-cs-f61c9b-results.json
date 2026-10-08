@@ -1,0 +1,85 @@
+{
+  "ma_ve": "UI-COLDSTART-WORKER-HOME",
+  "conversation_id": "CONV-CS-F61C9B",
+  "session_slug": "cs-f61c9b",
+  "thoi_gian_mo_app_giay": 41.7,
+  "anh_mo_app": "ui-coldstart-worker-home-cs-f61c9b-01-app-ready.png",
+  "anh_mo_app_bytes": 117477,
+  "sha256_truoc": "45EB0E072893F802D71AB201CFBB2B29C36E2B0A31313FA79FC55A025B65B7C0",
+  "sha256_sau": "45EB0E072893F802D71AB201CFBB2B29C36E2B0A31313FA79FC55A025B65B7C0",
+  "sha256_khop": true,
+  "cau_hoi": [
+    {
+      "session_code": "CONV-CS-F61C9B",
+      "stt": 1,
+      "id": "Q0699",
+      "loai": "thuc_the_ma_loi",
+      "ten_loai": "Thực thể mã lỗi (C7620)",
+      "question": "C7620中Magenta相对Black的副扫描色差达到多少会成为NG？",
+      "thoi_gian_toan_trinh_giay": 80.2,
+      "model_phuc_vu": "local_grounded_fallback (Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình)",
+      "provenance": {
+        "operational_mode": "local_grounded_fallback",
+        "provider_name": "Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình",
+        "model_name": "local_grounded_fallback"
+      },
+      "dap_an_nguyen_van": "- Theo nguồn [1], lỗi C7620 xảy ra khi sai lệch màu giữa Bk (Black) và Magenta trong hướng phụ (副走査) **đạt hoặc vượt qua 70 dot**. Cụ thể: \"色補正後に、 Bk に対する副走査方向の色差値が 70dot 以上 発生\" → dẫn đến lỗi NG.\n- Nguồn [2] cũng xác nhận ngưỡng này: \"上限 70 Dot\" là mức tối đa cho phép, và sai lệch vượt qua giá trị này sẽ gây lỗi C7620.\n- Nguồn [3] cung cấp một ví dụ thực tế: sai lệch màu Magenta so v�i Black là **70.04 dot** → máy báo lỗi C7620.\nLIMITATIONS: incomplete_query_term_coverage, weak_query_term_coverage",
+      "do_dai_ky_tu": 502,
+      "anh_chup": "ui-coldstart-worker-home-cs-f61c9b-02-cau1-q0699.png",
+      "anh_chup_kich_thuoc_bytes": 125631,
+      "hoan_thanh": true,
+      "chat_luong": {
+        "ro_ri_prompt_he_thong": false,
+        "bi_cat_cut_giua_cau": false
+      }
+    },
+    {
+      "session_code": "CONV-CS-F61C9B",
+      "stt": 2,
+      "id": "Q0718",
+      "loai": "nguyen_nhan",
+      "ten_loai": "Nguyên nhân (DMT–PMT)",
+      "question": "File có xác nhận chênh lệch DMT–PMT chính là nguyên nhân duy nhất gây NG không?",
+      "thoi_gian_toan_trinh_giay": 36.5,
+      "model_phuc_vu": "local_grounded_fallback (Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình)",
+      "provenance": {
+        "operational_mode": "local_grounded_fallback",
+        "provider_name": "Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình",
+        "model_name": "local_grounded_fallback"
+      },
+      "dap_an_nguyen_van": "Các nguồn được cung cấp không đề cập đến \"chênh lệch DMT–PMT\" là một nguyên nhân gây lỗi NG. Tuy nhiên, các tài liệu có xác định nhiều nguyên nhân khác nhau dẫn đến lỗi NG hoặc các bất thường khác trong quá trình sản xuất và vận hành [2], [3], [4], [5], [6].\n*   Lỗi NG có thể phát sinh do chất dính FILAMENT TAPE 9510 19MM ORANGE dính trên Plete Feed Up (File ảnh), với tỷ lệ phát sinh 100% trong một số trường hợp được ghi nhận [2].\n*   Lỗi bong mối hàn có thể do hàn lệch vị trí (dòng điện bị phân tán, không đủ nhiệt độ) hoặc đầu điện cực bị méo (diện tích tiếp xúc và lực ép phân bố không đều, mật độ dòng điện thay đổi) [3].\n*   Lỗi NG cũng có thể do bản thảo bị NG và thao tác đặt lệch giấy [4].\n*   Các mã lỗi như C0180 (Serial No. Không thống nhất) và C0170 (Bất thường billing counter) có thể xảy ra khi lắp bản mạch Main hoặc EEPROM dùng cho thân máy khác [5], [6].\nLIMITATIONS: incomplete_query_term_coverage",
+      "do_dai_ky_tu": 920,
+      "anh_chup": "ui-coldstart-worker-home-cs-f61c9b-03-cau2-q0718.png",
+      "anh_chup_kich_thuoc_bytes": 98732,
+      "hoan_thanh": true,
+      "chat_luong": {
+        "ro_ri_prompt_he_thong": false,
+        "bi_cat_cut_giua_cau": false
+      }
+    },
+    {
+      "session_code": "CONV-CS-F61C9B",
+      "stt": 3,
+      "id": "Q0709",
+      "loai": "thong_so",
+      "ten_loai": "Thông số (Bảng quy đổi Skew)",
+      "question": "Trong bảng quy đổi Skew, Black, Cyan, Magenta và Yellow lần lượt có giá trị µm và dot bao nhiêu?",
+      "thoi_gian_toan_trinh_giay": 55.78,
+      "model_phuc_vu": "local_grounded_fallback (Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình)",
+      "provenance": {
+        "operational_mode": "local_grounded_fallback",
+        "provider_name": "Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình",
+        "model_name": "local_grounded_fallback"
+      },
+      "dap_an_nguyen_van": "- NTT in tờ hình ảnh LSU SKEW → Scan tờ hình ảnh xuất ra trên máy thực nghiệm → Màn hình PC hiển thị Adjust, yêu cầu điều chỉnh Skew → NTT xoay vít theo yêu cầu, tuy nhiên giá trị điểm M biến đổi bất thường [19]\n- Row 9: Skew:Black [10]\n- Skew:Yellow[um] [11]\n- @ Magenta WR_0x8000.0x1361 v Step Sw [20]\n- QR Code(TW) NIT 152 Feed 1764.5 2557.4 Savelmazge '/ [14]\nLIMITATIONS: incomplete_query_term_coverage, weak_query_term_coverage",
+      "do_dai_ky_tu": 433,
+      "anh_chup": "ui-coldstart-worker-home-cs-f61c9b-04-cau3-q0709.png",
+      "anh_chup_kich_thuoc_bytes": 116343,
+      "hoan_thanh": true,
+      "chat_luong": {
+        "ro_ri_prompt_he_thong": false,
+        "bi_cat_cut_giua_cau": false
+      }
+    }
+  ]
+}

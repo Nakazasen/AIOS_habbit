@@ -1,0 +1,24 @@
+{
+  "session_code": "CONV-CS-F61C9B",
+  "stt": 1,
+  "id": "Q0699",
+  "loai": "thuc_the_ma_loi",
+  "ten_loai": "Thực thể mã lỗi (C7620)",
+  "question": "C7620中Magenta相对Black的副扫描色差达到多少会成为NG？",
+  "thoi_gian_toan_trinh_giay": 80.2,
+  "model_phuc_vu": "local_grounded_fallback (Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình)",
+  "provenance": {
+    "operational_mode": "local_grounded_fallback",
+    "provider_name": "Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình",
+    "model_name": "local_grounded_fallback"
+  },
+  "dap_an_nguyen_van": "- Theo nguồn [1], lỗi C7620 xảy ra khi sai lệch màu giữa Bk (Black) và Magenta trong hướng phụ (副走査) **đạt hoặc vượt qua 70 dot**. Cụ thể: \"色補正後に、 Bk に対する副走査方向の色差値が 70dot 以上 発生\" → dẫn đến lỗi NG.\n- Nguồn [2] cũng xác nhận ngưỡng này: \"上限 70 Dot\" là mức tối đa cho phép, và sai lệch vượt qua giá trị này sẽ gây lỗi C7620.\n- Nguồn [3] cung cấp một ví dụ thực tế: sai lệch màu Magenta so v�i Black là **70.04 dot** → máy báo lỗi C7620.\nLIMITATIONS: incomplete_query_term_coverage, weak_query_term_coverage",
+  "do_dai_ky_tu": 502,
+  "anh_chup": "ui-coldstart-worker-home-cs-f61c9b-02-cau1-q0699.png",
+  "anh_chup_kich_thuoc_bytes": 125631,
+  "hoan_thanh": true,
+  "chat_luong": {
+    "ro_ri_prompt_he_thong": false,
+    "bi_cat_cut_giua_cau": false
+  }
+}

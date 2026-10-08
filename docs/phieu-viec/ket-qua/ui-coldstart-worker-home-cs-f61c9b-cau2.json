@@ -1,0 +1,24 @@
+{
+  "session_code": "CONV-CS-F61C9B",
+  "stt": 2,
+  "id": "Q0718",
+  "loai": "nguyen_nhan",
+  "ten_loai": "Nguyên nhân (DMT–PMT)",
+  "question": "File có xác nhận chênh lệch DMT–PMT chính là nguyên nhân duy nhất gây NG không?",
+  "thoi_gian_toan_trinh_giay": 36.5,
+  "model_phuc_vu": "local_grounded_fallback (Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình)",
+  "provenance": {
+    "operational_mode": "local_grounded_fallback",
+    "provider_name": "Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình",
+    "model_name": "local_grounded_fallback"
+  },
+  "dap_an_nguyen_van": "Các nguồn được cung cấp không đề cập đến \"chênh lệch DMT–PMT\" là một nguyên nhân gây lỗi NG. Tuy nhiên, các tài liệu có xác định nhiều nguyên nhân khác nhau dẫn đến lỗi NG hoặc các bất thường khác trong quá trình sản xuất và vận hành [2], [3], [4], [5], [6].\n*   Lỗi NG có thể phát sinh do chất dính FILAMENT TAPE 9510 19MM ORANGE dính trên Plete Feed Up (File ảnh), với tỷ lệ phát sinh 100% trong một số trường hợp được ghi nhận [2].\n*   Lỗi bong mối hàn có thể do hàn lệch vị trí (dòng điện bị phân tán, không đủ nhiệt độ) hoặc đầu điện cực bị méo (diện tích tiếp xúc và lực ép phân bố không đều, mật độ dòng điện thay đổi) [3].\n*   Lỗi NG cũng có thể do bản thảo bị NG và thao tác đặt lệch giấy [4].\n*   Các mã lỗi như C0180 (Serial No. Không thống nhất) và C0170 (Bất thường billing counter) có thể xảy ra khi lắp bản mạch Main hoặc EEPROM dùng cho thân máy khác [5], [6].\nLIMITATIONS: incomplete_query_term_coverage",
+  "do_dai_ky_tu": 920,
+  "anh_chup": "ui-coldstart-worker-home-cs-f61c9b-03-cau2-q0718.png",
+  "anh_chup_kich_thuoc_bytes": 98732,
+  "hoan_thanh": true,
+  "chat_luong": {
+    "ro_ri_prompt_he_thong": false,
+    "bi_cat_cut_giua_cau": false
+  }
+}
