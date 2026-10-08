@@ -1,24 +1,23 @@
-# VÉ: INDEX-RESTORE-HOME (khôi phục chỉ mục production máy nhà từ bản gốc đã đóng dấu)
+# VÉ: UI-ANSWER-QUALITY2-HOME (sửa chất lượng đáp án vòng 2 — chỉ phát hành sau khi có kết luận INDEX-HASH-DRIFT-TRACE)
 
-- Mã vé: `INDEX-RESTORE-HOME`
-- Role gợi ý: DEFAULT (thao tác theo quy trình chặt, không suy diễn)
+- Mã vé: `UI-ANSWER-QUALITY2-HOME`
+- Role gợi ý: PLAN + DEFAULT
 - Máy: nhà h410asrock (agy — thợ chính)
-- Báo cáo: `docs/phieu-viec/ket-qua/index-restore-home.md`
-- Căn cứ: user đã DUYỆT khôi phục tại chat 2026-10-08 ~16:07 +07 (lựa chọn "Khôi phục ngay chỉ mục máy nhà từ bản gốc đã đóng dấu (có sao lưu bản hiện tại trước)"). Nền tảng: báo cáo `index-hash-drift-trace-home.md` (bản gốc khôi phục tại `D:\Sandbox\AIOS_index_split_backup\20261003-2103-pre\bge_m3_hybrid\collections\tri_thuc\library.sqlite`, SHA-256 `45EB0E07…B7C0` khớp 100% chuẩn đóng dấu) + vé `INDEX-READONLY-GUARD-HOME` đã ĐẠT (đường giao diện đã bị khoá ghi).
+- Báo cáo: `docs/phieu-viec/ket-qua/ui-answer-quality2-home.md`
+- Căn cứ: vé `UI-ANSWER-QUALITY-HOME` vòng 1 — chẩn đoán 3 lỗi đã tốt (bridge lấy reasoning_content làm đáp án; max_tokens 700 bị reasoning ăn hết; phạm vi nguồn theo sổ), code sửa đúng hướng, NHƯNG nghiệm thu vòng 1 không đạt: cả 3 câu đều rơi về fallback (0 câu qua pool), Q0699 ra khung rỗng không dựa trên tài liệu C7620 thật, Q0718 còn XML thô `<p:sld...>` và chữ vỡ trong đáp án, Q0709 chỉ là thông báo lỗi 41 ký tự, và 2 test adapter FAIL trên máy không cài gói ngoài (điều phối tự chạy xác nhận tại commit nộp).
 
-## Quy trình bắt buộc (đúng thứ tự, dừng ngay và báo cáo nếu bất kỳ cổng nào không khớp)
+## Việc phải làm
 
-1. **Dừng tiến trình:** dừng toàn bộ Streamlit và BGE persistent worker trên máy nhà; xác nhận không còn tiến trình nào giữ tệp `library.sqlite` (kể cả các tệp phụ `-wal`/`-shm` nếu có — ghi rõ trạng thái của chúng trong báo cáo).
-2. **Sao lưu trạng thái hiện tại (đường quay lui):** chép tệp production hiện tại (băm `B0B873D0…3EE6`) sang thư mục sao lưu mới có dấu thời gian (vd `D:\Sandbox\AIOS_index_backup\20261008-pre-restore\`), kèm kiểm chứng: băm của bản sao lưu phải khớp `B0B873D0…3EE6` và `PRAGMA integrity_check` (mở chỉ đọc) = ok. Không qua được cổng này thì DỪNG, không chép đè.
-3. **Kiểm chứng nguồn khôi phục:** tính lại SHA-256 + dung lượng của tệp nguồn sao lưu gốc; phải khớp tuyệt đối `45EB0E072893F802D71AB201CFBB2B29C36E2B0A31313FA79FC55A025B65B7C0` và 2.942.201.856 byte. Lệch thì DỪNG.
-4. **Dọn hệ quả phụ của tài liệu trùng:** xóa tệp `C:\AIOS_workspace_chat_rag_v2_production\materialized_sources\wsc-b9e2ffa072623484b1fa4198.txt`; xóa bản ghi của `document_id = wsc-b9e2ffa072623484b1fa4198` trong ledger chuẩn bị nguồn (ghi rõ DB ledger nằm ở đâu và đã xóa bao nhiêu dòng).
-5. **Chép khôi phục:** chép tệp nguồn gốc đè lên tệp production đích (sau khi đã xử lý tệp `-wal`/`-shm` của đích nếu còn tồn tại — ghi rõ cách xử lý).
-6. **Kiểm chứng sau khôi phục (mở `mode=ro&immutable=1`):** SHA-256 của tệp đích khớp tuyệt đối `45EB…B7C0`; đếm: 889 tài liệu / 149.800 mảnh / 121.331 mảnh truy hồi được; `integrity_check` = ok.
-7. **Nghiệm thu guard bằng phiên app thật (bằng chứng cuối):** mở app, KHÔNG bật thêm nguồn mới nào, hỏi 1 câu đã biết đáp án trên nguồn có sẵn trong kho; sau phiên, tính lại SHA-256 của tệp production — phải VẪN khớp `45EB…B7C0`. Nếu băm đổi: DỪNG NGAY, báo cáo chi tiết, không chạy thêm phiên nào. (Đây là bằng chứng đầu-cuối rằng khoá chỉ đọc mới đã hiệu lực trên đường thật.)
+1. **Vì sao pool không qua nổi sau khi siết:** đo bằng log lượt gọi thô (không qua sanitizer): với ling-3.1-flash, trường `content` thực tế rỗng bao nhiêu % lượt gọi, sanitizer loại bỏ những gì. Phân biệt dứt khoát: model trả content rỗng thật (→ cần đổi cách gọi/đổi model chính trong pool theo bằng chứng) hay lớp sửa vòng 1 quá tay (→ sửa lớp sửa). Nêu số liệu trước khi sửa.
+2. **Q0699 phải ra đáp án thật:** với nguồn C7620 đã bật, truy hồi phải đưa mảnh đích của `Sirius 2 _ C7620_報告書 4.pptx` vào ngữ cảnh; chẩn đoán vì sao vòng 1 mảnh đích không vào (điểm truy hồi? giới hạn mảnh? fallback cắt đoạn?). Đáp án đạt chuẩn: có nội dung C7620 thật kèm trích dẫn, hoặc abstention đúng cấu trúc có lý do cụ thể — khung rỗng các mục trống là không đạt.
+3. **Làm sạch trích đoạn fallback:** đáp án trích cục bộ không được chứa XML thô (`<p:sld`, `xmlns:...`) hay rác định dạng — xác định khâu trích xuất mảnh đang để lọt và làm sạch ở đúng khâu đó (không lọc che ở tầng hiển thị bằng vài mẫu chuỗi).
+4. **Q0709 phải có đáp án thật** từ bảng quy đổi Skew (hoặc abstention đúng cấu trúc nếu thật sự không có bằng chứng) — thông báo lỗi trần 41 ký tự không tính là đáp án.
+5. **Test adapter phải xanh ở cả hai môi trường:** 2 ca đang FAIL trên VM (`test_adapter_runs_when_external_router_package_missing`, `test_adapter_legacy_rollback_via_env_flag`) phải PASS trên máy không cài gói ngoài VÀ trên máy nhà. Điều phối sẽ tự chạy lại trên VM khi chấm.
+6. **Nghiệm thu lại trên app thật** (chỉ chạy khi điều phối đã gỡ đóng băng chỉ mục sau vé truy nguyên): 3 câu cũ, nộp ĐỦ ẢNH vào repo (các vé trước đều nộp ảnh vào `docs/phieu-viec/ket-qua/` — vòng 1 thiếu ảnh là một lỗi nộp bài), đáp án nguyên văn, thời gian từng câu, kiểm băm chỉ mục trước/sau phải khớp tuyệt đối.
 
 ## Rào cứng
 
-- Không bước nào được bỏ qua sao lưu ở Bước 2; sao lưu xong mới chép đè.
-- Ngoài các thao tác trong quy trình này: không ghi thêm bất cứ thứ gì vào chỉ mục; không sửa code ở vé này.
-- Báo cáo phải ghi: băm + dung lượng ở từng cổng (trước sao lưu / bản sao lưu / nguồn / sau khôi phục / sau phiên app), số đếm 889/149.800/121.331, tình trạng tệp `-wal`/`-shm`, số dòng ledger đã xóa.
-- Không merge `main`. Mốc tiến độ tối thiểu 15 phút/lần.
+- Kỷ luật báo cáo: mọi con số trong báo cáo (số test pass, "sạch", "trọn câu") phải khớp đúng bằng chứng đính kèm — điều phối đối chiếu độc lập từng con số; khai lệch bằng chứng là lỗi nặng nhất của vé này.
+- Không nới bộ kiểm định; không bịa đáp án khi thiếu bằng chứng.
+- Chỉ mục production: chỉ đọc; nếu nghiệm thu cần bật nguồn thì chỉ dùng cách đã được vé truy nguyên băm xác nhận an toàn. Không merge `main`. Tương thích Python 3.11.
+- Vé dài: mốc tối thiểu 15 phút/lần + checkpoint.
