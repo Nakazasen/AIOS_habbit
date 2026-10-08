@@ -5,6 +5,7 @@
 - Trạng thái: `dang-lam`
 - `commit`: `0c85f2d8`
 - `bao_cao`: `docs/phieu-viec/ket-qua/rag-remeasure-pc0575.md`
+- `ghi_chu`: 2026-10-08 15:36 +07 — Tiến độ lane C-Agent: đã hoàn thành 17/50 câu (0 lỗi kỹ thuật, 16/17 câu đạt điểm 3 tuyệt đối, GPA 2.912). Tiến trình nền đang tiếp tục chạy câu tiếp theo trên mạng vn-kdwireless.
 - `ghi_chu`: 2026-10-08 15:32 +07 — Tiến độ lane C-Agent: đã hoàn thành 12/50 câu (0 lỗi kỹ thuật, 11/12 câu đạt điểm 3 tuyệt đối, GPA 2.875). Tiến trình nền đang tiếp tục chạy câu tiếp theo trên mạng vn-kdwireless.
 - `ghi_chu`: 2026-10-08 15:25 +07 — Tiếp nhận vé RAG-REMEASURE-PC0575: kiểm cổng gate (cổng mở hợp lệ sau khi vé RETRIEVAL-ENTITY ĐẠT và RETRIEVAL-LEXICAL-FTS ĐẠT ~15:35, mạng vn-kdwireless sẵn sàng, bridge 8585 sẵn sàng); đặt trạng thái dang-lam theo quy ước; bắt đầu đo lại 2 lane × 50 câu (lane cagent qua staging 3.392 cặp và lane RAG CPU-only trên index chỉ-đọc với numpy dense + lexical fts tối ưu).
 - Ticket: `RAG-REMEASURE-PC0575` — [CTY] đo lại hợp nhất 2 lane sau khi các fix đã về (hồi quy §6.5). Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt.md`.
