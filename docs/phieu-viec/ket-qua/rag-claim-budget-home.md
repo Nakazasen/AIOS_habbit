@@ -1,6 +1,7 @@
 # Báo cáo RAG-CLAIM-BUDGET-HOME — nút thắt `claim_budget_exceeded` + đo lại 50 câu
 
-Ngày: 2026-10-07 (máy nhà `h410asrock`). Trạng thái: `xong-cho-duyet`, chờ Muse đối chứng.
+Ngày đo: 2026-10-07; ngày chốt + kiểm chứng lại: 2026-10-08 (máy nhà `h410asrock`).
+Trạng thái: `xong-cho-duyet` (chốt 08/10), chờ Muse đối chứng.
 Vé: `RAG-CLAIM-BUDGET-HOME` — prompt `docs/phieu-viec/mailbox/prompt.md` (bản xếp hàng `prompt-queue-rag-claim-budget-home.md`).
 
 ## 1. Kết quả điều tra (mục 1 vé — từ dữ liệu lane thật)
@@ -54,6 +55,15 @@ File: `tests/test_rag_v2_synthesis.py` (+83 dòng, 3 test vé):
   cụm rộng `tests/test_rag_v2_*.py`: **402 đạt / 7 lỗi** đúng nhóm vé SYNTH đã phân loại
   (limitations + 3 provider + dev_cli + 2 eval_harness).
 - Cổng repo: Python 3.11 (qua `uv`), `compileall` sạch, `cli audit` PASS (warnings rỗng), import app OK.
+- **Kiểm chứng lại tại HEAD phiên 08/10** (`f8f2670`, sau các commit khác của máy nhà/agy/opencode):
+  code budget nguyên vẹn (đọc trực tiếp 3 đoạn — `budget_rule`, `merge_cited_provider_answer_lines`,
+  móc thuần-budget sau sửa); 3 test vé **xanh**; cụm hẹp synthesis+evidence+provider **102 đạt/1 lỗi lẻ**;
+  cụm rộng `tests/test_rag_v2_*.py` **408 đạt/1 lỗi lẻ**. Lỗi lẻ
+  `test_provider_limitations_contain_accurate_reasons` đã đối chứng trên cây cũ `6dc717d`
+  (worktree tách, chỉ-đọc): rớt **y hệt** → có sẵn (nhóm nhãn privacy), ngoài phạm vi vé,
+  không do `cb9356d` hay commit sau. `synthesis.py` sau vé có thêm thay đổi lọc nhiễu của opencode
+  (`39608db`: cân bằng ngoặc + ưu tiên item một-facet — phía retrieval), không đụng `max_claims`,
+  cách đếm hay điều kiện nén; cổng phiên 08/10 giữ nguyên: compileall sạch, `cli audit` PASS, import app OK.
 
 ## 4. Đo lại 50 câu (mục 5 — đúng điều kiện SYNTH)
 
@@ -147,3 +157,24 @@ checkpoint `rows-budget.jsonl`). 50/50, 0 lỗi kỹ thuật, 0 lỗi mạng.
 - Không tăng `max_claims`, không đổi đếm, không tắt lỗi, không đổi rubric; fail-closed giữ nguyên.
 - Không merge `main`. Commit code riêng (`cb9356d`), commit báo cáo riêng (vé này).
 - Full `pytest -q`: đang chạy nền, bổ sung số khi xong (cụm rộng RAG v2 đã có 402/7 như §3).
+
+## 6. Phụ lục — kiểm chứng lại từ dữ liệu thô + nghiệm thu dùng thật (phiên 08/10)
+
+- **Tính lại toàn bộ số đầu từ `rows-budget.jsonl`** (50/50 hàng thô, ngoài Git, đọc trực tiếp bằng Python):
+  tổng **63,84/150, GPA 1,28**; ≥2: 7, =3: 5; chế độ đúng phân bố 37 fallback + 10 `validated`
+  + 1 `after_repair` + 2 `not_called`; 67 lượt gọi/19 lượt sửa; lỗi theo lượt gọi khớp từng mã:
+  budget **7** (SYNTH 35 → −80%), uncited 62, missing_citations 54, literal 23, facet 2, language 1;
+  `ok=True` cả 50 hàng (0 lỗi kỹ thuật). **Khớp 100% bảng §4.**
+- **Nghiệm thu bằng dùng thật** (đúng tinh thần QUY-UOC 07/10): 50 câu hỏi thật của bộ đề LSU chạy
+  **đầu-cuối qua đúng pipeline trả lời của app** — index production chỉ-đọc
+  (`C:/AIOS_workspace_chat_rag_v2_production/.../tri_thuc`, SHA-256 `45eb0e07…b7c0` khớp trước/sau),
+  hybrid retrieval thật (dense+sparse+lexical, limit=15), gọi `synthesize_with_provider`
+  (cùng hàm app dùng) qua provider thật `openai_compatible_local` (cầu `127.0.0.1:8585`).
+  Đáp án thật + thời gian thật từng câu lưu trong `rows-budget.jsonl` (`dap_an`, `giay_cau`):
+  **TB 15,88s/câu, nhanh nhất 7,66s, chậm nhất 55,58s** (câu đơn giản ~8–15s, câu cần sửa/thử lại lâu hơn).
+  Bằng chứng kèm: log `tien-trinh-budget.log` (từng câu + dòng chốt `tong=63.84/150 GPA=1.28`),
+  `ket-qua-budget.json`, `probe_budget.json` — toàn bộ trên máy nhà (ngoài Git), Muse đối chứng lại được.
+- **Giới hạn trung thực:** phiên 08/10 **không chạy lại lane** — cầu `8585` đã tắt sau lượt đo 07/10
+  (netstat không còn LISTEN; agy đang chiếm CPU cho lane ROUTER của họ), nên số liệu là của lượt đo 07/10
+  được kiểm chứng lại từ dữ liệu thô + chạy lại toàn bộ test/cổng tại HEAD 08/10.
+  Vé này không đụng UI nên không có ảnh chụp màn hình; bằng chứng là file thô + log trên máy nhà.
