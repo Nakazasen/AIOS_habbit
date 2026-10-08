@@ -3,8 +3,9 @@
 ## Vé hiện tại: SYNTH-CONTEXT-TOPK-PC0575
 
 - Trạng thái: `dang-lam`
-- `commit`: `c0c260d2`
+- `commit`: `28b18c6f`
 - `bao_cao`: `docs/phieu-viec/ket-qua/synth-context-topk-pc0575.md`
+- `ghi_chu`: 2026-10-08 17:00 +07 — Bước 2: Đã nghiệm thu probe 1 câu thành công (Q0699 đạt 2.0/3.0, retrieval 9.3s, synthesis 4.3s, sidecar bridge 8585 direct_ready); khởi chạy đo nền toàn diện 50 câu lane RAG với cấu hình AIOS_RAG_SYNTH_CONTEXT_TOPK=12 (--run-id synth_topk12).
 - `ghi_chu`: 2026-10-08 16:51 +07 — Hoàn thành Bước 1: (1) Xác định chính xác các vị trí ràng buộc top-k mảnh ngữ cảnh: strong_answer_ui.py:71 (limit=8), remeasure_lane.py:308 (top_sources cắt items[:8]), và route_workspace_chat_submission trong antigravity_bridge.py:1386; (2) Chuyển thành cấu hình chuẩn: DEFAULT_SYNTH_CONTEXT_TOPK = 8, biến môi trường AIOS_RAG_SYNTH_CONTEXT_TOPK, hàm get_synth_context_topk(), và cờ CLI --synth-topk; (3) Unit test test_synth_context_topk.py đạt 5/5 PASS, 4 cổng repo PASS (compileall 100%, cli audit PASS, import app OK); (4) Bảo toàn rào cứng chỉ-đọc: library.sqlite MD5 492C065F8F741AD5C73A900FA6BCDF3E khớp tuyệt đối. Bắt đầu Bước 2: Khởi chạy đo lại lane RAG đủ 50 câu với ngưỡng ngữ cảnh = 12.
 - `ghi_chu`: 2026-10-08 16:42 +07 — Tiếp nhận vé SYNTH-CONTEXT-TOPK-PC0575: cổng mở hợp lệ (Muse đã verdict ĐẠT phần đo RAG-REMEASURE và phát hành vé mới); đặt trạng thái dang-lam theo quy ước; bắt đầu Bước 1 khảo sát vị trí hardcode top 8 mảnh ngữ cảnh trong pipeline/synthesis và chuyển thành cấu hình có thể điều chỉnh (thử nghiệm 12).
 - Ticket: `SYNTH-CONTEXT-TOPK-PC0575` — [CTY] nâng ngưỡng ngữ cảnh đưa vào tổng hợp từ 8 lên 12 — đo lại lane RAG. Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt.md`.
