@@ -1,9 +1,9 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
 - Trạng thái: `dang-lam`
-- `commit`: `pending-runner-2of50`
+- `commit`: `pending-runner-3of50`
 - `bao_cao`: `docs/phieu-viec/ket-qua/synth-intent-classify-home.md`
-- `ghi_chu`: 2026-10-09 05:31 +07 — Tiến độ vé SYNTH-INTENT-CLASSIFY-HOME: Runner đang đo tốt trên Ling 3.1 Flash free CPU-only; đã đo xong 2/50 câu (100% nhận ngân sách 10 claims=10; câu 1 Q0699 đạt provider_validated_after_repair 2.0đ, bằng chứng nhân-quả thực tế); đang đo câu 3–50; băm index 45EB...B7C0 bất biến.
+- `ghi_chu`: 2026-10-09 05:37 +07 — Tiến độ vé SYNTH-INTENT-CLASSIFY-HOME: Runner đang đo tốt trên Ling 3.1 Flash free CPU-only; đã đo xong 3/50 câu (100% nhận ngân sách 10 claims=10; câu 1 Q0699 đạt provider_validated_after_repair 2.0đ); đang đo câu 4–50; băm index 45EB...B7C0 bất biến.
 - `ghi_chu`: 2026-10-09 05:25 +07 — Tiến độ vé SYNTH-INTENT-CLASSIFY-HOME: Hoàn thành Mục 1 (sửa bộ phân loại query intent trong query_planning.py mở rộng nhận diện technical_diagnosis_markers cho câu hỏi kỹ thuật LSU, dùng word boundaries regex chống match nhầm substring tiếng Anh như 'pump'; phân bố 50 câu LSU đạt 44 diagnosis + 1 cross_source_synthesis = 45/50 câu [90%] nhận ngân sách 10; bảo toàn 3 general + 2 procedure; 80/80 test rag_v2/synthesis/summary_first PASS, compileall sạch, cli audit PASS, import app OK, băm index 45EB...B7C0 bất biến). Bắt đầu Mục 2 chuẩn bị runner đo 50 câu RAG LSU trên Ling 3.1 Flash free CPU-only.
 - `ghi_chu`: 2026-10-09 05:05 +07 — Tiến độ vé SYNTH-INTENT-CLASSIFY-HOME: Hoàn thành Mục 0 (đính chính báo cáo vé trước) và Mục 1 (sửa bộ phân loại query intent trong query_planning.py mở rộng nhận diện diagnosis/lookup cho câu hỏi kỹ thuật LSU, bảo toàn rào kiểm âm general và procedure; tỷ lệ 50 câu LSU từ 0% lên 92% nhận ngân sách 10; 237/237 test PASS, compileall sạch, cli audit PASS, import app OK). Bắt đầu Mục 2 chuẩn bị runner đo lại 50 câu RAG LSU trên Ling 3.1 Flash free CPU-only.
 - `ghi_chu`: 2026-10-09 05:01 +07 — Nhận vé SYNTH-INTENT-CLASSIFY-HOME: Cổng gate thông suốt (chỉ mục SQLite 45EB...B7C0 khớp 100%, 55/55 test synthesis PASS, compileall sạch, cli audit PASS, import app OK). Bắt đầu Mục 0 đính chính báo cáo vé trước và Mục 1 sửa bộ phân loại dạng câu hỏi (mở rộng nhận diện diagnosis/lookup cho câu hỏi kỹ thuật LSU).
