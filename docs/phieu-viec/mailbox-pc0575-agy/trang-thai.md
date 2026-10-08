@@ -1,8 +1,18 @@
-﻿# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
+# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
-## Vé hiện tại: RAG-REMEASURE-PC0575
+## Vé hiện tại: SYNTH-CONTEXT-TOPK-PC0575
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `commit`: `c0c260d2`
+- `bao_cao`: `docs/phieu-viec/ket-qua/synth-context-topk-pc0575.md`
+- `ghi_chu`: 2026-10-08 16:42 +07 — Tiếp nhận vé SYNTH-CONTEXT-TOPK-PC0575: cổng mở hợp lệ (Muse đã verdict ĐẠT phần đo RAG-REMEASURE và phát hành vé mới); đặt trạng thái dang-lam theo quy ước; bắt đầu Bước 1 khảo sát vị trí hardcode top 8 mảnh ngữ cảnh trong pipeline/synthesis và chuyển thành cấu hình có thể điều chỉnh (thử nghiệm 12).
+- Ticket: `SYNTH-CONTEXT-TOPK-PC0575` — [CTY] nâng ngưỡng ngữ cảnh đưa vào tổng hợp từ 8 lên 12 — đo lại lane RAG. Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt.md`.
+
+---
+
+## Vé trước: RAG-REMEASURE-PC0575
+
+- Trạng thái: `xong-cho-duyet` (verdict Muse: ĐẠT phần đo ~16:45 +07)
 - `ghi_chu` (verdict Muse): 2026-10-08 ~16:45 +07 — **ĐẠT phần đo** vé `RAG-REMEASURE-PC0575` (tích tạm, chờ user nghiệm thu): điều phối đọc toàn văn báo cáo + đối chiếu bảng chi tiết 50 câu. Số cốt lõi trung thực và tự nhất quán: **C-Agent GPA 2,937 (146,83/150, 49/50 đạt chuẩn) — VƯỢT mục tiêu ≥2,5**; **lane RAG sinh tươi GPA 0,957 (47,83/150) — CHƯA đạt mục tiêu ≥1,5, báo cáo tự nhận đúng**; chỉ mục nguyên vẹn (MD5 khớp). Phân rã 36 câu dưới chuẩn có giá trị: 15 câu thiếu nguồn (gói 421 chưa về), 5 câu truy hồi trượt, 3 lệch bảng, 7 oan rubric, 6 khác. NHƯNG báo cáo phải SỬA 3 lỗi trình bày (giao OMP sửa kèm audit): (1) tốc độ truy hồi ghi 'trung bình ~11s' là SAI — đó là median; trung bình số học thật của 50 câu là 26,1s (đuôi chậm 89–189s nằm ở nhóm thiếu nguồn) — phải ghi cả hai con số; (2) phân loại §5 liệt kê thừa Q0787 (vốn đạt 2,0) vào nhóm thiếu nguồn và bỏ sót Q2157 (1,0) khỏi nhóm Khác — thành phần đúng: nhóm thiếu nguồn 15 câu, nhóm Khác 6 câu; (3) dòng trạng thái đầu báo cáo ghi 'ĐẠT MỤC TIÊU' trong khi điểm RAG chưa đạt — sửa cho khớp thân báo cáo. Kỷ luật: số liệu trình bày phải là số thật của phép tính được nêu tên. **Phát hành `SYNTH-CONTEXT-TOPK-PC0575`** (prompt.md đã thay — chen trước SOURCE-MODEL: biến ngưỡng ngữ cảnh tổng hợp 8 thành cấu hình, thử 12, đo lại lane RAG 50 câu, so sánh riêng nhóm A; Q0701 đích hạng 11 mất trắng vì bị cắt top 8 là ca phải cứu). Hàng chờ: #4 `APP-SOURCE-MODEL-PC0575` chặng 1, #5 `SRC-421-RECEIVE-PC0575` (chờ kênh Drive).
 - `commit`: `a1bc7cc4`
 - `bao_cao`: `docs/phieu-viec/ket-qua/rag-remeasure-pc0575.md`
