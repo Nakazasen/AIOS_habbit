@@ -1,6 +1,9 @@
 ﻿# Trạng thái mailbox
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
+- `ghi_chu`: 2026-10-09 02:33 +07 — OMP **XONG → chốt `xong-cho-duyet`** vé `BGE-ERROR-CODE-HOME`: mục chính ĐẠT (timeout giữ mã `bge_worker_*_timeout`, lỗi khác vẫn mã sập, cả hai đường đóng worker fail-closed); tương thích ĐẠT (không ai rẽ nhánh theo mã sập; mã timeout giúp adapter tự phục hồi đúng hơn); test 3 tệp 23/23 + liên quan 13/13 + filtering 4/4 (trừ 1 ca kho máy 496/889 ngoài vé). Commit code `b0a5fc5` + báo cáo `dfb3541`. Cổng: compileall sạch, `cli audit` PASS, import app OK. Rào cứng giữ: chỉ 1 file src đúng điểm vé + 3 file test, không đổi ngưỡng, không ghi index, không merge `main`. Chờ Muse đối chứng.
+- `commit`: `dfb3541` (báo cáo) + `b0a5fc5` (sửa code + test)
+- `bao_cao`: `docs/phieu-viec/ket-qua/bge-error-code-home.md` (vé BGE-ERROR-CODE-HOME — `xong-cho-duyet` 09/10: giữ mã timeout + test đường tắt sổ; rào cứng giữ nguyên)
 - `ghi_chu`: 2026-10-09 02:32 +07 — OMP mốc: **báo cáo vé `BGE-ERROR-CODE-HOME` đã lên git** — file `docs/phieu-viec/ket-qua/bge-error-code-home.md` (8KB, không TODO, quét sạch khóa); xác minh nhẹ phiên này: compileall sạch, `cli audit` PASS, 2 test nhãn mới PASS, import app OK. Đang chốt `xong-cho-duyet`.
 - `ghi_chu`: 2026-10-09 02:30 +07 — OMP **tiếp tục vé `BGE-ERROR-CODE-HOME`** (phiên theo lệnh user), kiểm cổng gate: cổng MỞ (máy h410asrock, HEAD=origin=`cd1b8c4`, prompt.md đúng vé giữ mã lỗi hết-giờ + test đường tắt sổ; không dòng cho-cong active, không file watcher tự mở mới, không dùng nhánh cho-muse, không quay no-op). Báo cáo đã viết xong (file untracked); còn thiếu commit báo cáo + chốt. Đang xác minh nhẹ test nhãn + import app.
 - `ghi_chu`: 2026-10-09 02:28 +07 — OMP mốc: **test + cổng xong** — 3 tệp hạ tầng 23/23 PASS (118,56s), test liên quan timeout/persist 13/13 PASS, filtering 4/4 (trừ 1 ca kho máy 496/889 ngoài vé), compileall sạch, `cli audit` PASS, import app OK. Đang viết báo cáo.
