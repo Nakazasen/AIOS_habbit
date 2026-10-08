@@ -1,0 +1,22 @@
+{
+  "stt": 2,
+  "id": "Q0718",
+  "loai": "nguyen_nhan",
+  "ten_loai": "Nguyên nhân (DMT–PMT)",
+  "question": "File có xác nhận chênh lệch DMT–PMT chính là nguyên nhân duy nhất gây NG không?",
+  "thoi_gian_toan_trinh_giay": 94.53,
+  "model_phuc_vu": "local_grounded_fallback (Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình)",
+  "provenance": {
+    "operational_mode": "local_grounded_fallback",
+    "provider_name": "Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình",
+    "model_name": "local_grounded_fallback"
+  },
+  "dap_an_nguyen_van": "- Phân loại lỗi chi tiết: Nhóm 1: Lỗi sai lệch dữ liệu hệ thống (1 thùng - 9702%) Nguyên nhân trên EDI đang tồn tại dữ liệu Lot sản xuất Nhóm 2: Lỗi Camera đọc mã QR ngoại quan các mặt (6 thùng) Hiện trạng: Báo các mã lỗi bắt đầu bằng 0201..., nguyên nhân do Camera không đọc được tem QR dán ở các mặt phụ (Trái/Phải/Trước/Sau) kết hợp lỗi CAM. [7]\n- Nhận thức cần thống nhất: - Việc APS không đổi được thứ tự sản xuất không phải bản thân nó là lỗi của hệ thống đăng ký lịch sử sản xuất. [9]\n- ng , có thể xác nhận cấu t ạo BOM và thông tin revision <p:sld xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" xmlns:p=\"http://schemas.openxmlformats.org/presentationml/2006/main\"> Cách so sánh BOM - Thiết lập so sánh Để so sánh song mã hàng , hãy chia màn hình và mở hang thứ hai . [19]\n- Sơ Đồ ERD Ultimate - Hệ Thống Kho Vận Sơ Đồ ERD Ultimate (Có độ dài Data Type) Cập nhật chính xác giới hạn ký tự (Size) cho từng trường varchar/decimal theo đúng thiết kế hệ thống. [13]\n- Bạn có thể chia file nhỏ hơn nếu cần. [15]\nLIMITATIONS: incomplete_query_term_coverage",
+  "do_dai_ky_tu": 1152,
+  "anh_chup": "ui-answer-quality-03-cau2-dmt-pmt.png",
+  "hoan_thanh": true,
+  "chat_luong": {
+    "ro_ri_prompt_he_thong": false,
+    "bi_cat_cut_giua_cau": false
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "thoi_gian_mo_app_giay": 44.06,
+  "sha256_truoc": "45EB0E072893F802D71AB201CFBB2B29C36E2B0A31313FA79FC55A025B65B7C0",
+  "sha256_sau": "B0B873D040A37796AFBC3CB5723C6636FCDC6C775C6C0A4A745B8BFD3F3E3EE6",
+  "sha256_khop": false,
+  "conversation_id": "CONV-QUALITY-6709BE",
+  "cau_hoi": [
+    {
+      "stt": 1,
+      "id": "Q0699",
+      "loai": "thuc_the_ma_loi",
+      "ten_loai": "Thực thể mã lỗi (C7620)",
+      "question": "C7620中Magenta相对Black的副扫描色差达到多少会成为NG？",
+      "thoi_gian_toan_trinh_giay": 462.0,
+      "model_phuc_vu": "local_grounded_fallback (Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình)",
+      "provenance": {
+        "operational_mode": "local_grounded_fallback",
+        "provider_name": "Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình",
+        "model_name": "local_grounded_fallback"
+      },
+      "dap_an_nguyen_van": "### Tóm tắt:\n### Điều đã xác nhận:\n- Một số mã lỗi như `0201000010000000` (RFID đọc lỗi) hoặc `0205000010000000` (trọng lượng không khớp) được liệt kê trong [1], nhưng không liên quan đến màu sắc Magenta/Black.\n### Điểm chưa đủ bằng chứng:\n### Việc cần kiểm tra tiếp:\nLIMITATIONS: incomplete_query_term_coverage, weak_query_term_coverage",
+      "do_dai_ky_tu": 337,
+      "anh_chup": "ui-answer-quality-02-cau1-c7620.png",
+      "hoan_thanh": true,
+      "chat_luong": {
+        "ro_ri_prompt_he_thong": false,
+        "bi_cat_cut_giua_cau": false
+      }
+    },
+    {
+      "stt": 2,
+      "id": "Q0718",
+      "loai": "nguyen_nhan",
+      "ten_loai": "Nguyên nhân (DMT–PMT)",
+      "question": "File có xác nhận chênh lệch DMT–PMT chính là nguyên nhân duy nhất gây NG không?",
+      "thoi_gian_toan_trinh_giay": 94.53,
+      "model_phuc_vu": "local_grounded_fallback (Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình)",
+      "provenance": {
+        "operational_mode": "local_grounded_fallback",
+        "provider_name": "Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình",
+        "model_name": "local_grounded_fallback"
+      },
+      "dap_an_nguyen_van": "- Phân loại lỗi chi tiết: Nhóm 1: Lỗi sai lệch dữ liệu hệ thống (1 thùng - 9702%) Nguyên nhân trên EDI đang tồn tại dữ liệu Lot sản xuất Nhóm 2: Lỗi Camera đọc mã QR ngoại quan các mặt (6 thùng) Hiện trạng: Báo các mã lỗi bắt đầu bằng 0201..., nguyên nhân do Camera không đọc được tem QR dán ở các mặt phụ (Trái/Phải/Trước/Sau) kết hợp lỗi CAM. [7]\n- Nhận thức cần thống nhất: - Việc APS không đổi được thứ tự sản xuất không phải bản thân nó là lỗi của hệ thống đăng ký lịch sử sản xuất. [9]\n- ng , có thể xác nhận cấu t ạo BOM và thông tin revision <p:sld xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" xmlns:p=\"http://schemas.openxmlformats.org/presentationml/2006/main\"> Cách so sánh BOM - Thiết lập so sánh Để so sánh song mã hàng , hãy chia màn hình và mở hang thứ hai . [19]\n- Sơ Đồ ERD Ultimate - Hệ Thống Kho Vận Sơ Đồ ERD Ultimate (Có độ dài Data Type) Cập nhật chính xác giới hạn ký tự (Size) cho từng trường varchar/decimal theo đúng thiết kế hệ thống. [13]\n- Bạn có thể chia file nhỏ hơn nếu cần. [15]\nLIMITATIONS: incomplete_query_term_coverage",
+      "do_dai_ky_tu": 1152,
+      "anh_chup": "ui-answer-quality-03-cau2-dmt-pmt.png",
+      "hoan_thanh": true,
+      "chat_luong": {
+        "ro_ri_prompt_he_thong": false,
+        "bi_cat_cut_giua_cau": false
+      }
+    },
+    {
+      "stt": 3,
+      "id": "Q0709",
+      "loai": "thong_so",
+      "ten_loai": "Thông số (Bảng quy đổi Skew)",
+      "question": "Trong bảng quy đổi Skew, Black, Cyan, Magenta và Yellow lần lượt có giá trị µm và dot bao nhiêu?",
+      "thoi_gian_toan_trinh_giay": 155.66,
+      "model_phuc_vu": "local_grounded_fallback (Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình)",
+      "provenance": {
+        "operational_mode": "local_grounded_fallback",
+        "provider_name": "Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình",
+        "model_name": "local_grounded_fallback"
+      },
+      "dap_an_nguyen_van": "⚠️ Không thể hoàn tất yêu cầu AI lúc này.",
+      "do_dai_ky_tu": 41,
+      "anh_chup": "ui-answer-quality-04-cau3-skew.png",
+      "hoan_thanh": true,
+      "chat_luong": {
+        "ro_ri_prompt_he_thong": false,
+        "bi_cat_cut_giua_cau": false
+      }
+    }
+  ]
+}

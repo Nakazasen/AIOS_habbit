@@ -1,0 +1,22 @@
+{
+  "stt": 1,
+  "id": "Q0699",
+  "loai": "thuc_the_ma_loi",
+  "ten_loai": "Thực thể mã lỗi (C7620)",
+  "question": "C7620中Magenta相对Black的副扫描色差达到多少会成为NG？",
+  "thoi_gian_toan_trinh_giay": 462.0,
+  "model_phuc_vu": "local_grounded_fallback (Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình)",
+  "provenance": {
+    "operational_mode": "local_grounded_fallback",
+    "provider_name": "Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình",
+    "model_name": "local_grounded_fallback"
+  },
+  "dap_an_nguyen_van": "### Tóm tắt:\n### Điều đã xác nhận:\n- Một số mã lỗi như `0201000010000000` (RFID đọc lỗi) hoặc `0205000010000000` (trọng lượng không khớp) được liệt kê trong [1], nhưng không liên quan đến màu sắc Magenta/Black.\n### Điểm chưa đủ bằng chứng:\n### Việc cần kiểm tra tiếp:\nLIMITATIONS: incomplete_query_term_coverage, weak_query_term_coverage",
+  "do_dai_ky_tu": 337,
+  "anh_chup": "ui-answer-quality-02-cau1-c7620.png",
+  "hoan_thanh": true,
+  "chat_luong": {
+    "ro_ri_prompt_he_thong": false,
+    "bi_cat_cut_giua_cau": false
+  }
+}
