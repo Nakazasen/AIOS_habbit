@@ -40,7 +40,7 @@ class WorkspaceAIContextSource:
     privacy_label: str
     text: str
     included_chars: int
-    truncated: bool
+    truncated: bool = False
     original_chars: int = 0
     managed_path: str = ""
 

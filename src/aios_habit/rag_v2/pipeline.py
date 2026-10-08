@@ -370,6 +370,31 @@ class SourceSpec:
         if not self.document_id:
             object.__setattr__(self, "document_id", _stable_document_id(path))
 
+    @property
+    def title(self) -> str:
+        return Path(self.path).name
+
+    @property
+    def text(self) -> str:
+        return ""
+
+    @property
+    def source_scope(self) -> str:
+        return "notebook"
+
+    @property
+    def source_type(self) -> str:
+        return "plain_text"
+
+    @property
+    def managed_path(self) -> str:
+        return str(self.path)
+
+    @property
+    def privacy_label(self) -> str:
+        return self.privacy_labels[0] if self.privacy_labels else "local_only"
+
+
 
 @dataclass(frozen=True)
 class IngestionItemReport:

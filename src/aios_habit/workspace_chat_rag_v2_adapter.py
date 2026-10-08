@@ -777,18 +777,20 @@ def close_workspace_chat_rag_v2_runtimes() -> None:
 
 
 @functools.lru_cache(maxsize=4096)
-def _document_id(source: WorkspaceAIContextSource) -> str:
+def _document_id(source: Any) -> str:
     """Identify a library document by extracted text, not per-machine source id.
 
     Empty text cannot be matched across machines, so it stays local to
     ``source_scope:source_id``. Filename is never part of the identity.
     """
+    if getattr(source, "document_id", ""):
+        return str(source.document_id).strip()
     if getattr(source, "source_id", "") and str(source.source_id).startswith("wsc-"):
         return str(source.source_id).strip()
-    text_bytes = (source.text or "").strip().encode("utf-8")
+    text_bytes = (getattr(source, "text", "") or "").strip().encode("utf-8")
     if text_bytes:
         return f"wsc-{hashlib.sha256(text_bytes).hexdigest()[:24]}"
-    identity = f"{source.source_scope}:{source.source_id}".encode("utf-8")
+    identity = f"{getattr(source, 'source_scope', '')}:{getattr(source, 'source_id', '')}".encode("utf-8")
     return f"wsc-{hashlib.sha256(identity).hexdigest()[:24]}"
 
 
@@ -2905,6 +2907,7 @@ def _run_profile(
                 text="",
                 included_chars=0,
                 managed_path=str(s.path),
+                truncated=False,
             )
         else:
             regular_sources.append(s)
@@ -3135,7 +3138,7 @@ def _try_structured_excel_evidence(
         if not result.applied or not result.rendered_evidence.strip():
             continue
 
-        title = sanitize_citation_title(source.title)
+        title = sanitize_citation_title(getattr(source, 'title', None) or Path(getattr(source, 'path', '')).name)
         sheets = tuple(dict.fromkeys(p.sheet for p in result.provenance if p.sheet))
         if len(sheets) > 1:
             location = f"Sheets: {', '.join(sheets)}"

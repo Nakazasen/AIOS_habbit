@@ -1,6 +1,7 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
 - Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-08 19:47 +07 — Tiến độ vé UI-ANSWER-QUALITY3-HOME: Phát hiện và xử lý triệt để lỗi SourceSpec thiếu thuộc tính duck-typing (title, text, source_scope, v.v.) và lỗi thiếu tham số truncated=False khi tạo WorkspaceAIContextSource trong adapter. Đã cập nhật pipeline.py, adapter và ai_answer; test adapter xanh 96/96 PASS. Bắt đầu phiên đo nghiệm thu E2E chính thức.
 - `ghi_chu`: 2026-10-08 19:17 +07 — Tiến độ vé UI-ANSWER-QUALITY3-HOME: Đã hoàn tất script đo mới run_app_quality3_e2e.py với mã phiên riêng biệt; bắt đầu khởi chạy runner nghiệm thu sử dụng thật trên Streamlit máy nhà (đo mở app, hỏi đáp 3 câu Q0699, Q0718, Q0709, lưu JSON thô riêng biệt gắn mã phiên, chụp 4 ảnh giao diện có đáp án trong khung nộp kho, kiểm băm SHA-256 chỉ mục 45EB...B7C0).
 - `ghi_chu`: 2026-10-08 19:13 +07 — Hoàn thành Bước 0: Đã khôi phục nguyên vẹn 4 file JSON bằng chứng vòng 1 về trạng thái trước commit afd7fc6 (từ commit cha afd7fc6~1). Đóng băng toàn bộ tệp vòng 1, commit riêng. Bắt đầu chuẩn bị runner nghiệm thu phiên mới cho vòng 3.
 - `ghi_chu`: 2026-10-08 19:12 +07 — Nhận vé UI-ANSWER-QUALITY3-HOME: Bắt đầu Bước 0 (khôi phục 4 file JSON vòng 1 về trước commit afd7fc6 và commit riêng). Tiếp theo chạy nghiệm thu thật 3 câu LSU trên app thật máy nhà với mã phiên mới, lưu JSON thô riêng biệt, chụp ảnh PNG có đáp án trong khung nộp kho, kiểm băm SHA-256 chỉ mục trước/sau.
