@@ -2,6 +2,7 @@ import socket
 from pathlib import Path
 import pytest
 from dataclasses import dataclass
+from typing import Any
 from aios_habit.workspace_chat_ai_answer import (
     PRIVACY_MODE_LOCAL_PREVIEW_ONLY,
     PRIVACY_MODE_CLOUD_ALLOWED,
