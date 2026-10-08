@@ -1,0 +1,24 @@
+{
+  "session_code": "CONV-TIERS-837434",
+  "stt": 3,
+  "id": "Q0709",
+  "loai": "thong_so",
+  "ten_loai": "Thông số (Bảng quy đổi Skew)",
+  "question": "Trong bảng quy đổi Skew, Black, Cyan, Magenta và Yellow lần lượt có giá trị µm và dot bao nhiêu?",
+  "thoi_gian_toan_trinh_giay": 33.5,
+  "model_phuc_vu": "local_grounded_fallback (Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình)",
+  "provenance": {
+    "operational_mode": "local_grounded_fallback",
+    "provider_name": "Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình",
+    "model_name": "local_grounded_fallback"
+  },
+  "dap_an_nguyen_van": "*   **Cyan (C)**: Giá trị Skew Offset là -0.45 µm (trước) và 0 µm (hiện tại) [1], [3], [4].\n*   **Yellow (Y)**: Giá trị Skew Offset là 0 µm (trước) và -0.45 µm (hiện tại) [1], [3], [4].\n*   **Magenta (M)**: Giá trị Skew Offset là 0 µm (trước) và 0 µm (hiện tại) [1], [3], [4].\n*   **Black (K)**: Giá trị Skew Offset là -28 µm (trước) và -28 µm (hiện tại) [1], [3], [4].\nLIMITATIONS: incomplete_query_term_coverage, weak_query_term_coverage",
+  "do_dai_ky_tu": 439,
+  "anh_chup": "config-synth-tiers-home-tiers-837434-04-cau3-q0709.png",
+  "anh_chup_kich_thuoc_bytes": 98730,
+  "hoan_thanh": true,
+  "chat_luong": {
+    "ro_ri_prompt_he_thong": false,
+    "bi_cat_cut_giua_cau": false
+  }
+}

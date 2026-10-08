@@ -1,0 +1,24 @@
+{
+  "session_code": "CONV-TIERS-837434",
+  "stt": 1,
+  "id": "Q0699",
+  "loai": "thuc_the_ma_loi",
+  "ten_loai": "Thực thể mã lỗi (C7620)",
+  "question": "C7620中Magenta相对Black的副扫描色差达到多少会成为NG？",
+  "thoi_gian_toan_trinh_giay": 95.24,
+  "model_phuc_vu": "local_grounded_fallback (Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình)",
+  "provenance": {
+    "operational_mode": "local_grounded_fallback",
+    "provider_name": "Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình",
+    "model_name": "local_grounded_fallback"
+  },
+  "dap_an_nguyen_van": "- 2 Sirius 2 C7620 発生状況 : 調整工程 発生状況：色補正後に、 Bk に対する副走査方向の色差値が 70dot 以上 発生 LINE ： C23/24 ：２月１９日→ NG 率が同じ傾向→同時に上昇 発生色： Magenta 発生状況 :LSU LINE 発生状況： Bowskew 調整治具で調整開始時に、 光路高さがさらにプラス側にずれたため、 Camera -90 が Beam 位置を読み込めない 発生 LINE ： LSU ( Magenta) 例：３月８日生産時に 多発 LOT 5.3.2023 20/90 =22% UNIT NG LOT 4.3.2025 2/84 =2.% UNIT NG LOT 6.3.2025 2/90=2% UNIT NG ２月１９日 [1]\n- Sau đó NTT thực hiện lại thao tác Calibration theo CTTT(0220101) thì màn hình LCD báo C7620 Hiện trạng: NTT thực hiện thao tác đo nồng độ CCC, màn hình PC báo NG nồng độ CCC 100% Black. [4]\n- Row 141: DepthCamP140_LensACavity1_StageAddressBalance:Black[pulse] Row 143: DepthCamM70_LensACavity1_StageAddressBalance:Magenta[pulse] Row 144: DepthCamPM0_LensACavity1_StageAddressBalance:Magenta[pulse] [17]\n- Row 7619: 0.143 [10]\n- ・E0648 Magenta 像高-140、+70 Yellow 像高+140 ・E0699 Black 像高+140 Yellow 像高+140 よろしくお願いします。 [19]\nLIMITATIONS: incomplete_query_term_coverage, weak_query_term_coverage",
+  "do_dai_ky_tu": 945,
+  "anh_chup": "config-synth-tiers-home-tiers-837434-02-cau1-q0699.png",
+  "anh_chup_kich_thuoc_bytes": 98326,
+  "hoan_thanh": true,
+  "chat_luong": {
+    "ro_ri_prompt_he_thong": false,
+    "bi_cat_cut_giua_cau": false
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "session_code": "CONV-TIERS-837434",
+  "stt": 2,
+  "id": "Q0718",
+  "loai": "nguyen_nhan",
+  "ten_loai": "Nguyên nhân (DMT–PMT)",
+  "question": "File có xác nhận chênh lệch DMT–PMT chính là nguyên nhân duy nhất gây NG không?",
+  "thoi_gian_toan_trinh_giay": 37.94,
+  "model_phuc_vu": "local_grounded_fallback (Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình)",
+  "provenance": {
+    "operational_mode": "local_grounded_fallback",
+    "provider_name": "Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình",
+    "model_name": "local_grounded_fallback"
+  },
+  "dap_an_nguyen_van": "Không có nguồn nào trong ngữ cảnh cục bộ đề cập đến thuật ngữ \"DMT\", \"PMT\" hay \"chênh lệch DMT–PMT\", nên chưa đủ bằng chứng để xác nhận rằng chênh lệch DMT–PMT là nguyên nhân duy nhất gây NG [1][2][3][4][5][6].\nCác nguồn hiện có chỉ ghi nhận những nguyên nhân NG khác nhau: bong mối hàn do hàn lệch vị trí hoặc đầu điện cực bị méo [3]; chất dính của FILAMENT TAPE 9510 19MM ORANGE dính trên Plete Feed Up gây 871 pcs NG (302MS93045: 216/216 NG; 302LV93065: 655/655 NG) [2]; lỗi do bản thảo bị NG và thao tác đặt lệch giấy [4]; và các bất thường liên quan Serial No. giữa MAIN và ENGINE không thống nhất (C0180, C0170) [5][6].\nNguồn [1] là tài liệu đào tạo về LSU (Laser Scanner Unit) và quá trình in ảnh điện tử, không nêu nguyên nhân gây NG [1].\nKhông có dòng dữ liệu nào trong các nguồn đã cung cấp chứa thuật ngữ DMT, PMT, hoặc kết luận \"nguyên nhân duy nhất\"; vì vậy không thể kết luận theo hướng khẳng định hay phủ định câu hỏi [1][2][3][4][5][6].\nCần bổ sung tài liệu/file có chứa chính xác thuật ngữ \"DMT\", \"PMT\" và phần kết luận nguyên nhân NG tương ứng để đối chiếu trước khi kết luận [1][2][3][4][5][6].\nLIMITATIONS: incomplete_query_term_coverage",
+  "do_dai_ky_tu": 1157,
+  "anh_chup": "config-synth-tiers-home-tiers-837434-03-cau2-q0718.png",
+  "anh_chup_kich_thuoc_bytes": 98732,
+  "hoan_thanh": true,
+  "chat_luong": {
+    "ro_ri_prompt_he_thong": false,
+    "bi_cat_cut_giua_cau": false
+  }
+}

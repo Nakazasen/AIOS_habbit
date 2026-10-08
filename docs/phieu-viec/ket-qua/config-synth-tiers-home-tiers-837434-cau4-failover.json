@@ -1,0 +1,37 @@
+{
+  "session_code": "CONV-TIERS-837434",
+  "stt": 4,
+  "loai": "kiem_chung_ep_loi_failover",
+  "ten_loai": "Kiểm chứng ép lỗi (Vô hiệu Tầng 1)",
+  "question": "Trong tài liệu C7620, sai lệch màu vượt ngưỡng bao nhiêu dot thì bị NG?",
+  "thoi_gian_toan_trinh_giay": 15.52,
+  "model_phuc_vu": "deepseek/deepseek-v4.1-flash",
+  "attempts": [
+    {
+      "provider_id": "openai_compatible_local",
+      "model_id": "inclusionai/ling-3.1-flash:broken_failover_test",
+      "status": "failed",
+      "error_type": "unknown_error",
+      "latency_ms": 2395.0
+    },
+    {
+      "provider_id": "openai_compatible_local:failover_1",
+      "model_id": "poolside/laguna-s-2.1-free",
+      "status": "failed",
+      "error_type": "rate_limited",
+      "latency_ms": 1044.0
+    },
+    {
+      "provider_id": "openai_compatible_local:failover_2",
+      "model_id": "deepseek/deepseek-v4.1-flash",
+      "status": "success",
+      "error_type": "",
+      "latency_ms": 12073.0
+    }
+  ],
+  "dap_an_nguyen_van": "**Tóm tắt:**  \nTheo NGUỒN 1, trong tài liệu C7620, sai lệch màu giữa Bk và Magenta trong hướng phụ đạt hoặc vượt quá **70 dot** (**70dot 以上**) thì máy phán định lỗi **NG**.\n\n**Điều đã xác nhận:**  \n- Ngưỡng được nêu cho lỗi C7620 là **70 dot** (**70dot 以上**).  \n- Điều kiện áp dụng trong nguồn: sai lệch màu giữa **Bk** và **Magenta** trong **hướng phụ**.  \n- Kết quả khi đạt hoặc vượt ngưỡng: máy phán định lỗi **NG**.  \n- Như vậy, không chỉ khi “vượt” mà khi **đạt hoặc vượt quá 70 dot** đã bị **NG**.\n\n**Điểm chưa đủ bằng chứng:**  \n- Nguồn không nêu ngưỡng cho các cặp màu khác ngoài **Bk** và **Magenta**, hoặc cho hướng khác ngoài **hướng phụ**.  \n- Nguồn không mô tả thêm cách đo hoặc định nghĩa đơn vị **dot** ngoài nội dung đã dẫn.\n\n**Việc cần kiểm tra tiếp:**  \n- Owner nên kiểm tra lại tài liệu C7620 gốc để xác nhận ngưỡng **70 dot** và phạm vi áp dụng cụ thể.  \n- Nếu có nhiều phiên bản tài liệu C7620, cần đối chiếu phiên bản đang áp dụng.\n\n**Nguồn đã dùng:**  \n- NGUỒN 1: Sổ tay vận hành LSU - Mã lỗi C7620.",
+  "do_dai_ky_tu": 1022,
+  "hoan_thanh": true,
+  "fallback_used": true,
+  "cau_hinh_chinh_nguyen_ven": true
+}
