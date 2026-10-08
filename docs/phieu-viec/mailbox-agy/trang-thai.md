@@ -1,7 +1,7 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
 - Trạng thái: `xong-cho-duyet`
-- `commit`: `afc5905`
+- `commit`: `69bf6fb`
 - `bao_cao`: `docs/phieu-viec/ket-qua/src-421-package-home.md`
 - `ghi_chu`: 2026-10-08 10:33 +07 — Hoàn thành 100% các bước đóng gói vé SRC-421-PACKAGE-HOME (chờ Muse duyệt): 1) Định vị 421/421 tệp trong kho canary máy nhà (0 tệp thất lạc); 2) Băm SHA-256 byte hiện tại + đo kích thước toàn bộ 421 tệp (tổng 52.268.967 bytes thô, ~49,85 MB), lập manifest-421.csv; 3) Đóng gói thành công src-421-current-home.zip (9.153.022 bytes, ~8,73 MB, SHA-256: ae4bdf170ba28b827fb9e899562559da6234b00fb851f76f0cc6c6ed3d1905d5), kiểm tra toàn vẹn 421/421 tệp trích xuất khớp 100%; 4) Bước 4 tải Drive chờ kênh theo đúng chỉ đạo phát hành vé của Muse (gói 8,73 MB sẵn sàng trên máy nhà); 5) Cổng chất lượng: compileall sạch, cli audit status PASS, import workspace_chat_app OK. Chi tiết tại docs/phieu-viec/ket-qua/src-421-package-home.md.
 - `ghi_chu`: 2026-10-08 10:31 +07 — Tiếp nhận vé SRC-421-PACKAGE-HOME: kiểm tra cổng gate không bị kẹt (Muse đã phát hành chính thức, chỉ đạo đóng gói + manifest bình thường; phần tải Drive theo kênh user quyết). Bắt đầu Bước 1 & Bước 2: đọc danh sách 421 mã từ src-package-511-lech.csv, định vị tệp trong kho canary máy nhà, tính kích thước và SHA-256 thực tế hiện tại để lập manifest-421.csv.
