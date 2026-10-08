@@ -1,25 +1,23 @@
-# VÉ XẾP HÀNG: EMBED-GEMMA-EVAL-HOME (đánh giá EmbeddingGemma 2 làm embedder thay BGE-M3 — chỉ thí nghiệm bóng)
+# VÉ: SYNTH-CONTRACT-FREE-HOME (thử hợp đồng tổng hợp khắt khe cho model free — mở khoá validated mà không nới kiểm định)
 
-- Mã vé: `EMBED-GEMMA-EVAL-HOME`
-- Role gợi ý: DEFAULT (benchmark/nhúng — máy nhà có GPU)
-- Máy: nhà h410asrock
-- Báo cáo: `docs/phieu-viec/ket-qua/embed-gemma-eval-home.md`
-- Vị trí hàng chờ: #3 mailbox OMP nhà (sau ROUTER-POOL-COMMANDCODE-HOME, SRC-PACKAGE-511-HOME).
+- Mã vé: `SYNTH-CONTRACT-FREE-HOME`
+- Role gợi ý: DEFAULT (code hợp đồng + đo thực nghiệm)
+- Máy: nhà h410asrock (agy — thợ chính)
+- Báo cáo: `docs/phieu-viec/ket-qua/synth-contract-free-home.md`
+- Căn cứ: vé `SYNTH-MODEL-AB-HOME` (báo cáo `synth-model-ab-home.md` §3–§4): cả 3 model free đứng một mình chỉ đạt validated 0–2/50 (Gemini cũ 9/50); lỗi kiểm định chủ đạo là `uncited` + `claim_budget` — model free viết dòng diễn giải không trích dẫn và vượt số dòng cho phép. Giả thuyết của vé này: hợp đồng (contract prompt) hiện tại chưa ép đủ kỷ luật "mỗi dòng là một dữ kiện có trích dẫn" cho phong cách của nhóm model này.
 
-## Bối cảnh
+## Việc phải làm
 
-User giới thiệu EmbeddingGemma 2 (Google, Apache 2.0, ~270M tham số cho text/code, vector 768 chiều cắt được 512/256/128, chạy local nhẹ ~0.5GB RAM cho phần text). Hiện hệ thống dùng BGE-M3: nặng, khởi động worker từng timeout trên máy nhà, encode trên CPU máy công ty rất chậm. Câu hỏi cần trả lời BẰNG SỐ CỦA CHÍNH HỆ THỐNG: đổi sang EmbeddingGemma 2 (chỉ phần text) thì chất lượng tìm kiếm trên kho thật + tốc độ ra sao so với BGE-M3?
-
-## Việc phải làm (thí nghiệm bóng — TUYỆT ĐỐI không đụng chỉ mục production)
-
-1. Kéo model EmbeddingGemma 2 bản text từ Hugging Face (ghi rõ model id + revision), kiểm tra license Apache 2.0 trên model card.
-2. Nhúng lại toàn bộ 149.800 mảnh của kho tri_thuc vào một chỉ mục BÓNG riêng (thư mục local_runs, không ghi đè index thật) trên máy nhà (GPU). Ghi thời gian nhúng toàn phần + kích thước chỉ mục (768d; nếu thuận tay, thêm biến thể 256d Matryoshka để so kích thước/tốc độ).
-3. Chạy cùng bộ đề 50 câu LSU + 7 câu nhóm A thực thể qua chỉ mục bóng: chấm GPA bằng rubric hiện hành + đối chiếu retrieval (tài liệu đích có vào top không) — so trực tiếp với các mốc BGE-M3 đã có (GPA 1,28 bản vá claim-budget ở nhà; 7/7 nhóm A rank 1–2 ở máy công ty).
-4. Đo tốc độ trên cả hai máy nếu có thể: thời gian nạp model + encode 1 câu truy vấn (máy nhà GPU; ước lượng CPU từ số liệu công bố phải ghi rõ là ước lượng, không giả làm số đo).
-5. Kết luận theo số: đạt/ngang/kém BGE-M3 ở chất lượng; nhanh hơn bao nhiêu ở các khâu đã đo; khuyến nghị có/không đáng đổi + chi phí đổi (nhúng lại, kiểm chứng lại) — điều phối quyết theo báo cáo.
+1. Đọc lại hợp đồng hiện tại (`format_provider_synthesis_contract` trong `src/aios_habit/rag_v2/synthesis.py`, gồm phần `budget_rule` đã thêm ở vé CLAIM-BUDGET) + thống kê từ rows của vé A/B: tỉ lệ lượt gọi dính `uncited` / `budget` / `missing_citations` theo từng model.
+2. Thiết kế biến thể hợp đồng "kỷ luật trích dẫn" cho tuyến provider (chỉ thay ĐỢT chữ hướng dẫn, ví dụ: mỗi dòng factual PHẢI kết thúc bằng trích dẫn `[n]`; cấm mọi dòng mở đầu/kết luận không trích dẫn; số dòng tối đa = ngân sách, ghi số cụ thể; ưu tiên ít dòng chắc chắn hơn nhiều dòng). Giữ biến thể sau cờ cấu hình để bật/tắt được (mặc định TẮT cho tới khi có verdict nhận).
+3. Thực nghiệm trên đúng bộ 50 câu + điều kiện của vé A/B (CPU-only, index chỉ đọc, đếm theo `che_do` từ rows, reset health mỗi câu), model chính `ling-3.1-flash:free` (con tốt nhất ở A/B):
+   - Lượt đối chứng: hợp đồng hiện tại (số đã có ở Lượt A của A/B — chạy lại nếu cần tính đồng thời).
+   - Lượt thử: hợp đồng kỷ luật trích dẫn.
+   So: validated, GPA, fallback, lỗi uncited/budget theo lượt gọi, độ trễ.
+4. Nếu lượt thử thắng rõ (validated tăng có ý nghĩa, GPA không giảm): đề xuất bật mặc định cho tuyến pool free trong báo cáo (điều phối duyệt mới đổi mặc định). Nếu không thắng: kết luận thẳng "hợp đồng không phải nút thắt — nút thắt là tuân thủ của model" và dừng, không nới kiểm định.
 
 ## Rào cứng
 
-- Chỉ mục bóng tách biệt hoàn toàn; không ghi/đổi/xoá chỉ mục production; không đổi cấu hình app.
-- Chất lượng chấm trên đúng bộ đề + rubric của hệ thống, không dùng điểm benchmark bên ngoài thay thế.
-- Không merge `main`.
+- CẤM nới kiểm định: không tăng `max_claims`, không đổi cách đếm, không tắt/bớt bất kỳ lỗi kiểm định nào, không đổi rubric. Chỉ được thay chữ hợp đồng hướng dẫn + cờ bật/tắt.
+- Test hồi quy: test hợp đồng hiện có phải xanh; thêm test cho biến thể (hợp đồng chứa đủ các chỉ dẫn kỷ luật; cờ tắt = hành vi cũ nguyên vẹn).
+- Không ghi index (kiểm băm trước/sau), không merge `main`; đo bằng model free ($0 credits).
