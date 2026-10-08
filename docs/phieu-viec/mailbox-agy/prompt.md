@@ -1,23 +1,20 @@
-# VÉ: SYNTH-CONTRACT-FREE-HOME (thử hợp đồng tổng hợp khắt khe cho model free — mở khoá validated mà không nới kiểm định)
+# VÉ: SRC-421-PACKAGE-HOME (đóng gói 421 tệp HIỆN TẠI ở máy nhà + bản kê vân tay mới, tải qua kênh Drive)
 
-- Mã vé: `SYNTH-CONTRACT-FREE-HOME`
-- Role gợi ý: DEFAULT (code hợp đồng + đo thực nghiệm)
-- Máy: nhà h410asrock (agy — thợ chính)
-- Báo cáo: `docs/phieu-viec/ket-qua/synth-contract-free-home.md`
-- Căn cứ: vé `SYNTH-MODEL-AB-HOME` (báo cáo `synth-model-ab-home.md` §3–§4): cả 3 model free đứng một mình chỉ đạt validated 0–2/50 (Gemini cũ 9/50); lỗi kiểm định chủ đạo là `uncited` + `claim_budget` — model free viết dòng diễn giải không trích dẫn và vượt số dòng cho phép. Giả thuyết của vé này: hợp đồng (contract prompt) hiện tại chưa ép đủ kỷ luật "mỗi dòng là một dữ kiện có trích dẫn" cho phong cách của nhóm model này.
+- Mã vé: `SRC-421-PACKAGE-HOME`
+- Role gợi ý: DEFAULT (đóng gói + băm + tải)
+- Máy: nhà h410asrock
+- Báo cáo: `docs/phieu-viec/ket-qua/src-421-package-home.md`
+- Quyết định nền: user chốt 2026-10-08 ~05:54 +07 — xử lý 421 mã lệch băm theo hướng **chép tệp hiện tại sang PC0575 và cập nhật vân tay trong chỉ mục theo bản mới** (không nạp lại, không để nguyên). Căn cứ truy nguồn: báo cáo `src-421-provenance-home.md` (byte gốc lúc nạp đã mất ở mọi kho máy nhà) và danh sách lệch `docs/phieu-viec/ket-qua/src-package-511-lech.csv` (421 dòng).
+- Điều kiện tiên quyết: kênh Drive của vé `SRC-PACKAGE-511-UPLOAD-HOME` đã sống (cùng hàng chờ, vé đó chạy trước). Nếu tới lượt mà kênh chưa sống: ghi mốc chờ vào trang-thai và báo, không tự chế đường khác.
 
 ## Việc phải làm
 
-1. Đọc lại hợp đồng hiện tại (`format_provider_synthesis_contract` trong `src/aios_habit/rag_v2/synthesis.py`, gồm phần `budget_rule` đã thêm ở vé CLAIM-BUDGET) + thống kê từ rows của vé A/B: tỉ lệ lượt gọi dính `uncited` / `budget` / `missing_citations` theo từng model.
-2. Thiết kế biến thể hợp đồng "kỷ luật trích dẫn" cho tuyến provider (chỉ thay ĐỢT chữ hướng dẫn, ví dụ: mỗi dòng factual PHẢI kết thúc bằng trích dẫn `[n]`; cấm mọi dòng mở đầu/kết luận không trích dẫn; số dòng tối đa = ngân sách, ghi số cụ thể; ưu tiên ít dòng chắc chắn hơn nhiều dòng). Giữ biến thể sau cờ cấu hình để bật/tắt được (mặc định TẮT cho tới khi có verdict nhận).
-3. Thực nghiệm trên đúng bộ 50 câu + điều kiện của vé A/B (CPU-only, index chỉ đọc, đếm theo `che_do` từ rows, reset health mỗi câu), model chính `ling-3.1-flash:free` (con tốt nhất ở A/B):
-   - Lượt đối chứng: hợp đồng hiện tại (số đã có ở Lượt A của A/B — chạy lại nếu cần tính đồng thời).
-   - Lượt thử: hợp đồng kỷ luật trích dẫn.
-   So: validated, GPA, fallback, lỗi uncited/budget theo lượt gọi, độ trễ.
-4. Nếu lượt thử thắng rõ (validated tăng có ý nghĩa, GPA không giảm): đề xuất bật mặc định cho tuyến pool free trong báo cáo (điều phối duyệt mới đổi mặc định). Nếu không thắng: kết luận thẳng "hợp đồng không phải nút thắt — nút thắt là tuân thủ của model" và dừng, không nới kiểm định.
+1. Theo danh sách 421 mã trong `src-package-511-lech.csv`, xác định tệp hiện tại tương ứng trong kho canary ở máy nhà (đường dẫn đã có trong các báo cáo SRC trước; mã nào không tìm thấy tệp hiện tại thì ghi riêng vào báo cáo — không đoán).
+2. Với mỗi tệp: tính SHA-256 của byte hiện tại + kích thước. Lập `manifest-421.csv`: mã, đường dẫn tương đối đích (đường dẫn materialized mà chỉ mục PC0575 đang trỏ tới — lấy từ bản kê/báo cáo SRC trước), kích thước, sha256.
+3. Đóng gói: `src-421-current-home.zip` chứa 421 tệp theo cấu trúc đường dẫn tương đối trong manifest + `manifest-421.csv` nằm trong gói. Ghi SHA-256 + kích thước của chính tệp zip vào báo cáo.
+4. Tải gói lên thư mục Drive **AIOS_Data** qua kênh đã cài ở vé UPLOAD; kiểm chứng phía Drive (xuất hiện + đúng kích thước).
 
 ## Rào cứng
 
-- CẤM nới kiểm định: không tăng `max_claims`, không đổi cách đếm, không tắt/bớt bất kỳ lỗi kiểm định nào, không đổi rubric. Chỉ được thay chữ hợp đồng hướng dẫn + cờ bật/tắt.
-- Test hồi quy: test hợp đồng hiện có phải xanh; thêm test cho biến thể (hợp đồng chứa đủ các chỉ dẫn kỷ luật; cờ tắt = hành vi cũ nguyên vẹn).
-- Không ghi index (kiểm băm trước/sau), không merge `main`; đo bằng model free ($0 credits).
+- Chỉ đọc + chép tệp nguồn; không sửa tệp nguồn, không đụng chỉ mục ở máy nhà, không merge `main`.
+- Không nén lẫn 421 tệp này vào gói 90 (hai gói tách bạch, hai manifest tách bạch).
