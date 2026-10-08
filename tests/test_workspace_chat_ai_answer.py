@@ -472,7 +472,12 @@ def test_app_no_xlsx_reparse_in_ai_path():
     # 43. no .xlsx reparse in app AI path
     app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
     # Phase 2H: AI-first flow uses ask_submitted pattern
-    assert "extract_xlsx_text" not in app_source[app_source.find("if ask_submitted"):app_source.find("# Phase 2H: Dán nhanh")]
+    end_marker = app_source.find("# Phase 2H: Dán nhanh")
+    if end_marker == -1:
+        end_marker = app_source.find("def _legacy_excel_uploader_compatibility_dont_call")
+    if end_marker == -1:
+        end_marker = len(app_source)
+    assert "extract_xlsx_text" not in app_source[app_source.find("if ask_submitted"):end_marker]
 
 
 def _build_request_through_packer(

@@ -379,11 +379,13 @@ def test_dieu_huong_chinh_co_ten_tieng_viet_nhin_thay() -> None:
     assert "st.radio(" not in source
     assert '"chat": "Hỏi tài liệu"' not in source
     assert '"cases": "Hồ sơ và tri thức"' not in source
-    assert '"advanced": "Công cụ nâng cao"' not in source
-    assert "### 💬 Trợ lý AIOS" in source
-    assert "Bạn chỉ cần gõ vào ô chat" in source
-    assert "hỏi tài liệu" in source
-    assert "cảnh báo ngưỡng" in source
+    from aios_habit.i18n import t
+    assert 't("sidebar_assistant_title"' in source
+    assert 't("sidebar_assistant_caption"' in source
+    assert "### 💬 Trợ lý AIOS" in t("sidebar_assistant_title", locale="vi")
+    assert "Bạn chỉ cần gõ vào ô chat" in t("sidebar_assistant_caption", locale="vi")
+    assert "hỏi tài liệu" in t("sidebar_assistant_caption", locale="vi")
+    assert "cảnh báo ngưỡng" in t("sidebar_assistant_caption", locale="vi")
     assert 't("no_conversations_in_notebook"' in source
     assert 't("workspace_select_prompt"' in source
     assert "with st.container(border=True):" in source

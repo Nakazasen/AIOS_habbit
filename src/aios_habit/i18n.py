@@ -179,7 +179,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
 
         # Privacy Settings & Notices
         "privacy_choice_sendable": "Có thể gửi nội dung tới AI bên ngoài",
-        "privacy_choice_local_only": "Phân loại nội bộ",
+        "privacy_choice_local_only": "Chỉ dùng trên máy / không gửi AI",
         "privacy_field_label": "Nguồn này được dùng thế nào?",
         "privacy_help_copy": "Chỉ chọn gửi AI ngoài khi nội dung được phép chia sẻ. Bạn vẫn cần bấm Hỏi để gửi.",
         "privacy_editor_label": "Quyền riêng tư nguồn",

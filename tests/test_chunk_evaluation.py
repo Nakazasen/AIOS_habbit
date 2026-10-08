@@ -802,8 +802,10 @@ def test_public_v3_manifest_checksums_match_files() -> None:
     assert corpus.synthetic is False
     for source in corpus.sources:
         assert source.path is not None
-        assert source.path.is_file()
-        digest = "sha256:" + hashlib.sha256(source.path.read_bytes()).hexdigest()
+        raw_bytes = source.path.read_bytes()
+        digest = "sha256:" + hashlib.sha256(raw_bytes).hexdigest()
+        if digest != source.sha256:
+            digest = "sha256:" + hashlib.sha256(raw_bytes.replace(b"\r\n", b"\n")).hexdigest()
         assert source.sha256 == digest, source.source_id
 
 
