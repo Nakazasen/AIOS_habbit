@@ -1,0 +1,29 @@
+{
+  "model": "deepseek/deepseek-v4.1-flash",
+  "che_do_do": "runner hien hanh (ban sao cung cau truc) loc dung 34 cau tung loi dap an rong",
+  "so_cau_subset": 34,
+  "so_cau_da_chay": 34,
+  "before": {
+    "served": 0,
+    "validated": 0,
+    "tong_diem": 45.18
+  },
+  "after": {
+    "served": 27,
+    "validated": 14,
+    "fallback": 20,
+    "not_called": 0,
+    "tong_diem": 49.18,
+    "gpa": 1.45,
+    "so_loi_ky_thuat": 0
+  },
+  "cost_usd": 0.195443,
+  "latency_giay_cau_mean": 54.72,
+  "latency_giay_cau_median": 52.87,
+  "latency_giay_synth_mean": 48.75,
+  "sha_truoc": "45eb0e072893f802d71ab201cfbb2b29c36e2b0a31313fa79fc55a025b65b7c0",
+  "sha_sau": "45eb0e072893f802d71ab201cfbb2b29c36e2b0a31313fa79fc55a025b65b7c0",
+  "size_truoc": 2942201856,
+  "size_sau": 2942201856,
+  "index_chi_doc_khop": true
+}
