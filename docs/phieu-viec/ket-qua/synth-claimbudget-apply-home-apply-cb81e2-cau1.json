@@ -1,0 +1,24 @@
+{
+  "session_code": "CONV-APPLY-CB81E2",
+  "stt": 1,
+  "id": "Q0699",
+  "loai": "thuc_the_ma_loi",
+  "ten_loai": "Thực thể mã lỗi (C7620)",
+  "question": "C7620中Magenta相对Black的副扫描色差达到多少会成为NG？",
+  "thoi_gian_toan_trinh_giay": 249.55,
+  "model_phuc_vu": "inclusionai/ling-3.1-flash:free",
+  "provenance": {
+    "operational_mode": "external_api",
+    "provider_name": "AI trong máy tương thích OpenAI (inclusionai/ling-3.1-flash:free)",
+    "model_name": "inclusionai/ling-3.1-flash:free"
+  },
+  "dap_an_nguyen_van": "## Tóm tắt\n\nTheo nguồn cung cấp, lỗi **C7620** phát sinh (NG) khi giá trị sai lệch màu theo **chiều quét phụ (副走査方向)** của **Magenta** so với **Black (Bk)** đạt **70 dot trở lên (≥ 70 dot)** — tức là vượt quá giới hạn trên (上限) 70 Dot [1][2].\n\n## Điều đã xác nhận\n\n- **Điều kiện NG:** \"色補正後に、 Bk に対する副走査方向の色差値が 70dot 以上\" — sau hiệu chỉnh màu, giá trị sai lệch màu theo chiều quét phụ so với Bk từ 70 dot trở lên [1] (`Sirius 2 _ C7620_報告版 4.pptx`, Slide 2).\n- **Giới hạn trên:** \"上限 70 Dot\". Máy bình thường có Magenta lệch màu so với Bk là **64.09 Dot**, còn dư (余裕) khoảng **5.9 Dot** so với ngưỡng 70 Dot; khi LSU HOUSING có biến động, dư địa này mất đi và vượt 70 Dot → phát sinh C7620 [2] (`Sirius 2 _ C7620_報告版 4.pptx`, Slide 8).\n- Trường hợp thực tế ghi nhận **70.04[dot]** gây C7620 do Regist Calib NG — tuy nhiên đây là sai lệch theo **chiều quét chính (走査方向)**, bên phải của Magenta so với K, không phải chiều quét phụ [3] (`Loi KDTPS.xlsx`, History KDTPS, ô L11433:AC11433).\n\n## Điểm chưa đủ bằng chứng\n\n- Không có nguồn nào nêu rõ ngưỡng dưới (ví dụ: giá trị chính xác bao nhiêu thì OK) ngoài việc xác định \"70 dot 以上\" là NG và \"64.09 Dot\" là mức bình thường của Magenta.\n\n## Việc cần kiểm tra tiếp\n\n- Owner vui lòng kiểm tra lại trực tiếp `Sirius 2 _ C7620_報告版 4.pptx` (Slide 2, Slide 8) để xác nhận ngưỡng áp dụng cho quy trình hiện tại trước khi sử dụng.\n\n**Nguồn đã dùng:** [1] Sirius 2 _ C7620_報告版 4.pptx (Slide 2); [2] Sirius 2 _ C7620_報告版 4.pptx (Slide 8); [3] Loi KDTPS.xlsx (Sheet: History KDTPS, ô L11433:AC11433).\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng.",
+  "do_dai_ky_tu": 1600,
+  "anh_chup": "synth-claimbudget-apply-home-apply-cb81e2-02-cau1-q0699.png",
+  "anh_chup_kich_thuoc_bytes": 111186,
+  "hoan_thanh": true,
+  "chat_luong": {
+    "ro_ri_prompt_he_thong": false,
+    "bi_cat_cut_giua_cau": false
+  }
+}

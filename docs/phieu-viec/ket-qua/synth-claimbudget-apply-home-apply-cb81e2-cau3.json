@@ -1,0 +1,24 @@
+{
+  "session_code": "CONV-APPLY-CB81E2",
+  "stt": 3,
+  "id": "Q0709",
+  "loai": "thong_so",
+  "ten_loai": "Thông số (Bảng quy đổi Skew)",
+  "question": "Trong bảng quy đổi Skew, Black, Cyan, Magenta và Yellow lần lượt có giá trị µm và dot bao nhiêu?",
+  "thoi_gian_toan_trinh_giay": 50.3,
+  "model_phuc_vu": "inclusionai/ling-3.1-flash:free",
+  "provenance": {
+    "operational_mode": "external_api",
+    "provider_name": "AI trong máy tương thích OpenAI (inclusionai/ling-3.1-flash:free)",
+    "model_name": "inclusionai/ling-3.1-flash:free"
+  },
+  "dap_an_nguyen_van": "**Tóm tắt:** Bảng quy đổi Skew (file `sirius2 beam径確認_240202.xlsx`, Sheet18) cho giá trị µm rõ ràng cho cả 4 màu; tuy nhiên cột \"dot\" của Cyan, Magenta, Yellow chỉ chứa công thức chứ không hiển thị kết quả số trong nguồn.\n\n**Điều đã xác nhận** (theo NGUỒN 10, Sheet18, ô W9:Y12 — cột: `skew shift量 > μm` | `dot`):\n\n| Hàng\n\n[Lưu ý: Câu trả lời bị cắt ngắn do đạt giới hạn độ dài token của mô hình.]\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng.",
+  "do_dai_ky_tu": 461,
+  "anh_chup": "synth-claimbudget-apply-home-apply-cb81e2-04-cau3-q0709.png",
+  "anh_chup_kich_thuoc_bytes": 119128,
+  "hoan_thanh": true,
+  "chat_luong": {
+    "ro_ri_prompt_he_thong": false,
+    "bi_cat_cut_giua_cau": false
+  }
+}
