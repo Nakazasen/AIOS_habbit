@@ -2,8 +2,10 @@
 
 ## Vé hiện tại: SRC-PROBE-TAKEOVER-PC0575
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `ghi_chu` (tiến độ OMP — MỐC #1: NHẬN VÉ + HIỆN TRẠNG MÁY RẢNH — KHỞI ĐỘNG MẪU NGAY): 2026-10-08 08:38 +07 — Nhận phiên theo lệnh user. Kiểm cổng gate: watcher tự mở OMP `LAUNCH [omp] 1/4` 08:28:15 (`firstSeenMoi` 08:27:34, `launchStallCount=0`, `escalatedSig=""` — mới 1 lượt, chưa chạm ngưỡng 4); dòng `cho-cong` hạn 23:59 hôm nay còn hiệu lực (log `SKIP-STALL` 08:27:36) ⇒ luật 4-lượt vô hiệu theo QUY-UOC — không lật cờ. Hiện trạng lúc nhận: **máy ĐÃ RẢNH** (CPU 5%; 0 tiến trình python/node/agy còn sống — không còn tiến trình mẫu nền nào của opencode; phiên agy mở 08:28 đã tự thoát sau khi thấy cổng của nó chưa mở); **kết quả mẫu chưa có phần nào** ngoài 2 lần kẹt đã ghi mục 4 báo cáo (chưa có file tiến độ mẫu). Kế tiếp ngay trong phiên: viết bộ chạy mẫu 3 truy vấn đầy đủ (nền tách phiên, trần 900s/truy vấn, log từng chặng, resume theo `progress.jsonl`) rồi khởi động — 3 tệp mẫu: `wsc-015067b7` (tệp từng kẹt, gốc D: canary) + `wsc-0a49389b` + `wsc-149cac9d` (gốc C: production), đúng bộ mẫu dùng xuyên vé. Chỉ-đọc, không ghi chỉ mục, không đụng `src/rag_v2*`, không merge `main`.
 - `ghi_chu` (điều phối Muse — PHÂN VAI MỚI, user chốt 2026-10-08 ~06:39): **OMP = THỢ PHỤ máy công ty** (agy là thợ chính; opencode đóng băng). Vé mới của OMP: `SRC-PROBE-TAKEOVER-PC0575` (prompt.md đã thay) — nhận nốt mẫu truy vấn đầy đủ của SRC-PROBE từ opencode và nộp báo cáo; mốc 'mẫu xong' của vé này mở đường cho PERF-DIAG của agy. Vé `RAG-REMEASURE-PC0575` CHUYỂN hẳn cho agy (nội dung vé đã lưu tại `docs/phieu-viec/mailbox-pc0575-agy/prompt-queue-rag-remeasure-pc0575.md`, phát hành sau PERF-DIAG). Hàng chờ tiếp của OMP công ty: `APP-OPEN-PERF-PC0575` (điều phối phát hành sau takeover; phần 'chuẩn bị' chờ hướng SOURCE-MODEL) + audit báo cáo đo lại của agy.
+- Ticket hiện tại: `SRC-PROBE-TAKEOVER-PC0575` — [CTY] OMP nhận nốt mẫu truy vấn đầy đủ của SRC-PROBE (3 tệp) + nộp báo cáo. Prompt: `docs/phieu-viec/mailbox-pc0575/prompt.md`. Role gợi ý: DEFAULT.
 - cho-cong: cho mau truy van nen cua SRC-PROBE chay xong / may ranh | han 2026-10-08 23:59
 
 
