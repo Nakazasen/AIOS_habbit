@@ -92,7 +92,11 @@ def test_dense_preload_warms_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPat
 
 
 def test_dense_preload_disabled_without_flag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv(NUMPY_DENSE_FLAG, raising=False)
+    # TEST-STALE-GUARDS-HOME: RETRIEVAL-DENSE-NUMPY-PC0575 (commit 1b33f88, verdict
+    # DAT 11:55 08/10) da doi numpy-dense thanh MAC DINH BAT khi co numpy — xoa bien
+    # moi truong khong con tat duoc. Tat dung phai dat co = "0" (duong rollback 1 dong).
+    # Test khang dinh HANH VI hien tai: co=0 -> khong nap; mac dinh (co numpy) -> co nap.
+    monkeypatch.setenv(NUMPY_DENSE_FLAG, "0")
     with _deterministic_index(tmp_path) as index:
         assert index.preload_dense_matrix_cache() == (0, 0.0)
         assert index._dense_matrix_cache is None
@@ -186,9 +190,13 @@ def test_cjk_prefilter_matches_full_scan_on_long_term_queries(tmp_path: Path) ->
 
 
 def test_cjk_prefilter_drops_short_term_only_matches(tmp_path: Path) -> None:
-    # Documents the accepted V1-A2 tradeoff: the prefilter uses the 1-2
-    # longest terms, so a chunk matching only shorter variant terms is not
-    # scored. (The ticket accepts this; the full scan keeps it.)
+    # TEST-STALE-GUARDS-HOME: CJK-PREFILTER-FIX-HOME (commit 195b970) da gop thuc the
+    # voi thuat ngu roi lay 2 cum dai nhat — voi cau hoi cua ve, 2 cum la `nguyen` va
+    # `beam径`: prefilter giu dung 4 manh that, loai `short-only` (chi co Iris LSU).
+    # Tang diem sau do cung loai `short-only` (chi khop `loi`/`iris`/`lsu`, khong vuot
+    # nguong xep hang duong that) — bao cao CJK-PREFILTER-FIX-HOME muc 4 xac nhan ket
+    # qua cuoi: beam-ng, both, nguyen-nhan, metadata-only. Test khang dinh HANH VI
+    # hien tai o ca 2 tang: prefilter loai + full-scan cung loai.
     chunks = _cjk_chunks() + [
         make_chunk(
             "short-only",
@@ -202,10 +210,12 @@ def test_cjk_prefilter_drops_short_term_only_matches(tmp_path: Path) -> None:
     with index_with_chunks(tmp_path / "fullscan", chunks) as index:
         index._cjk_like_prefilter_rows = lambda rows, terms: None  # type: ignore[method-assign]
         full_scan_ids = [chunk_id for chunk_id, _ in _search_signature(index, query)[0]]
+    # Ca 2 tang deu loai short-only: prefilter (khong chua cum dai) + tang diem.
     assert "short-only" not in prefiltered_ids
-    assert "short-only" in full_scan_ids
-    # Everything the prefilter keeps is a subset of the full-scan ranking.
+    assert "short-only" not in full_scan_ids
+    # Prefilter van la tap con cua full-scan (khong giu thua manh nao).
     assert set(prefiltered_ids) <= set(full_scan_ids)
+    assert set(prefiltered_ids) == {"beam-ng", "both", "nguyen-nhan", "metadata-only"}
 
 
 def test_cjk_prefilter_uses_two_longest_terms_deterministically(tmp_path: Path) -> None:

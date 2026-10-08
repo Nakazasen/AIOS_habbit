@@ -172,9 +172,11 @@ def test_app_source_code_guards_for_large_library():
     assert "Câu hỏi quá rộng trong khi các tài liệu đang được chuẩn bị" in app_source
 
     # 5. Verify graceful degradation fallback in retrieval
-    assert "query_relevant_sources = ready_sources or ready_in_scope" in app_source
+    # TEST-STALE-GUARDS-HOME: afd7fc6 (QUALITY2, duoc cong nhan) doi chu dich —
+    # pham vi gioi han chi tim nguon dich (ready_in_scope), khong `or` toan bo.
+    assert "query_relevant_sources = ready_in_scope" in app_source
+    assert "query_relevant_sources = ready_sources or ready_in_scope" not in app_source
     assert "query_relevant_sources = ready_sources" in app_source
-    assert "if query_relevant_sources:" in app_source
     # 6. Banner must track only enabled sources: no fallback to all sources
     # when none are enabled (dieutra-banner-0494 showed a misleading "0/494"
     # banner after the user disabled every source).
