@@ -141,3 +141,53 @@ def test_temporary_source_enqueued_normally(tmp_path: Path, monkeypatch) -> None
         config=config,
     )
     assert statuses.get("temporary:temp_src_1") == adapter.PREP_STATE_PENDING
+
+def test_notebook_short_circuits_while_temporary_enqueues_together(tmp_path: Path, monkeypatch) -> None:
+    """BGE-ERROR-CODE-HOME: one reconcile call — notebook ready instantly, temporary enqueued."""
+    canary_dir = tmp_path / "canary_runtime"
+    config = adapter.WorkspaceChatRagV2CanaryConfig(
+        enabled=True,
+        runtime_root=canary_dir,
+    )
+    db_path = adapter._get_ledger_db_path(config)
+    adapter._init_preparation_ledger_db(db_path)
+    with adapter._PREPARATION_LOCK:
+        adapter._PREPARATION_REGISTRY.clear()
+
+    notebook_source = WorkspaceAIContextSource(
+        source_id="nb_src_joint",
+        source_scope=SOURCE_SCOPE_NOTEBOOK,
+        source_type="plain_text",
+        title="tai_lieu_notebook_chung.txt",
+        privacy_label="local_only",
+        text="Nội dung notebook có sẵn trong production index.",
+        included_chars=50,
+        truncated=False,
+    )
+    temp_source = WorkspaceAIContextSource(
+        source_id="temp_src_joint",
+        source_scope=SOURCE_SCOPE_TEMPORARY,
+        source_type="plain_text",
+        title="tai_lieu_moi_chung.txt",
+        privacy_label="local_only",
+        text="Nội dung người dùng vừa tải lên.",
+        included_chars=32,
+        truncated=False,
+    )
+
+    # Monkeypatch background thread start to avoid spinning up worker
+    monkeypatch.setattr(adapter, "start_workspace_chat_background_drain", lambda *a, **kw: None)
+
+    enqueued = adapter.reconcile_and_enqueue_workspace_chat_sources(
+        (notebook_source, temp_source),
+        config=config,
+    )
+    # Only the temporary source enters the preparation queue
+    assert enqueued == 1
+
+    statuses = adapter.get_workspace_chat_source_preparation_status(
+        (notebook_source, temp_source),
+        config=config,
+    )
+    assert statuses.get("notebook:nb_src_joint") == adapter.PREP_STATE_READY
+    assert statuses.get("temporary:temp_src_joint") == adapter.PREP_STATE_PENDING

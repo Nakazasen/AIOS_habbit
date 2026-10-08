@@ -154,6 +154,75 @@ def test_staged_prepare_enforces_one_deadline_across_worker_calls(monkeypatch, t
     assert calls[0] == ("stage", 1.0)
 
 
+def test_query_ready_preserves_timeout_code_and_stays_fail_closed(monkeypatch, tmp_path) -> None:
+    """BGE-ERROR-CODE-HOME: query timeout keeps its own code, worker still closes."""
+    document = tmp_path / "source.txt"
+    document.write_text("timeout label test", encoding="utf-8")
+    config = RagV2DevConfig(runtime_root=tmp_path / "runtime", retrieval_profile="lexical")
+    spec = SourceSpec(path=document, source_id="safe", document_id="safe-doc")
+    client = BgeSubprocessWorkerClient()
+
+    class AliveProcess:
+        def poll(self):
+            return None
+
+    client._process = AliveProcess()  # type: ignore[assignment]
+    client._active_config = config
+    closed: list[bool] = []
+
+    def send_timeout(request, *, timeout_s, phase):
+        raise SemanticBackendError("bge_worker_query_timeout")
+
+    def record_close(*, preserve_failure: bool = False) -> None:
+        closed.append(True)
+        client._process = None
+        client._active_config = None
+
+    monkeypatch.setattr(client, "_send_request", send_timeout)
+    monkeypatch.setattr(client, "_close_internal", record_close)
+
+    with pytest.raises(SemanticBackendError, match="bge_worker_query_timeout"):
+        client.query_ready("timeout?", [spec], config)
+    assert client._last_failure_reason == "bge_worker_query_timeout"
+    assert closed == [True]
+    assert client.is_alive() is False
+
+
+def test_query_ready_still_maps_non_timeout_to_crash_code(monkeypatch, tmp_path) -> None:
+    """BGE-ERROR-CODE-HOME: non-timeout query errors keep the crash code."""
+    document = tmp_path / "source.txt"
+    document.write_text("crash label test", encoding="utf-8")
+    config = RagV2DevConfig(runtime_root=tmp_path / "runtime", retrieval_profile="lexical")
+    spec = SourceSpec(path=document, source_id="safe", document_id="safe-doc")
+    client = BgeSubprocessWorkerClient()
+
+    class AliveProcess:
+        def poll(self):
+            return None
+
+    client._process = AliveProcess()  # type: ignore[assignment]
+    client._active_config = config
+    closed: list[bool] = []
+
+    def send_broken(request, *, timeout_s, phase):
+        raise OSError("pipe broken")
+
+    def record_close(*, preserve_failure: bool = False) -> None:
+        closed.append(True)
+        client._process = None
+        client._active_config = None
+        if preserve_failure:
+            client._last_failure_reason = "bge_subprocess_worker_crashed"
+
+    monkeypatch.setattr(client, "_send_request", send_broken)
+    monkeypatch.setattr(client, "_close_internal", record_close)
+
+    with pytest.raises(SemanticBackendError, match="bge_subprocess_worker_crashed"):
+        client.query_ready("crash?", [spec], config)
+    assert client._last_failure_reason == "bge_subprocess_worker_crashed"
+    assert closed == [True]
+    assert client.is_alive() is False
+
 def test_staging_rebuilds_matching_source_when_semantic_vectors_are_missing(tmp_path) -> None:
     document = tmp_path / "source.txt"
     document.write_text("Manual Matecon requires ctrlMode one.", encoding="utf-8")

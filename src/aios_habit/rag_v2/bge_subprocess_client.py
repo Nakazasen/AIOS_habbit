@@ -661,8 +661,15 @@ class BgeSubprocessWorkerClient:
             try:
                 res = self._send_request(req, timeout_s=timeout_s, phase="query")
             except Exception as exc:
-                LOGGER.warning("BGE worker query failed/crashed: %s", type(exc).__name__)
-                self._last_failure_reason = "bge_subprocess_worker_crashed"
+                reason = str(exc) if isinstance(exc, SemanticBackendError) else ""
+                if reason.startswith("bge_worker_") and reason.endswith("_timeout"):
+                    # Keep the specific timeout label for diagnosis (timeout is
+                    # not a process crash); behavior stays fail-closed below.
+                    LOGGER.warning("BGE worker query timed out: %s", reason)
+                    self._last_failure_reason = reason
+                else:
+                    LOGGER.warning("BGE worker query failed/crashed: %s", type(exc).__name__)
+                    self._last_failure_reason = "bge_subprocess_worker_crashed"
                 self._close_internal(preserve_failure=True)
                 raise SemanticBackendError(self._last_failure_reason) from exc
 

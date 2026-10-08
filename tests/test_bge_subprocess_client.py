@@ -113,10 +113,11 @@ def test_client_enforces_bounded_deep_timeout(monkeypatch, tmp_path: Path) -> No
         assert time.perf_counter() - started < 60.0
 
         # An impossible budget must fail closed within its bound instead of hanging.
+        # BGE-ERROR-CODE-HOME: the timeout keeps its own code (not the crash code).
         started = time.perf_counter()
         with pytest.raises(
             SemanticBackendError,
-            match="bge_subprocess_worker_crashed|bge_worker_query_timeout",
+            match="bge_worker_query_timeout",
         ):
             client.query(
                 question="Deep timeout",
