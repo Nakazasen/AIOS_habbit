@@ -1,7 +1,9 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
 - Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-08 13:37 +07 — Tiến độ vé UI-ANSWER-QUALITY-HOME: Bắt đầu Bước 2 Nghiệm thu dùng thật 3 câu LSU trên app Streamlit thật (phiên CONV-QUALITY, bật thêm nguồn C7620 wsc-3862a76468aee5575cd502c5, kiểm băm SHA-256 library.sqlite 45EB...B7C0 trước/sau, chụp 4 ảnh giao diện).
 - `ghi_chu`: 2026-10-08 13:32 +07 — Tiến độ vé UI-ANSWER-QUALITY-HOME: Hoàn tất Bước 1 sửa code & test kỹ thuật: (1) Sửa test_workspace_chat_router_adapter.py mock cách ly gói ngoài nakazasen_ai_router di động 100%; (2) Tạo answer_sanitizer.py bóc tách suy luận an toàn/CoT, chặn rò rỉ prompt hệ thống và phát hiện cắt cụt; (3) Nâng max_tokens lên 2048 trong ai_provider_bridge.py, cấm tuyệt đối lấy reasoning_content làm đáp án, kích hoạt fallback trích cục bộ khi rò rỉ/cắt cụt; (4) Cổng kỹ thuật: 142/142 test PASS (5 bộ test liên quan), compileall PASS, audit PASS, import app OK. Chuyển sang Bước 2 nghiệm thu dùng thật 3 câu LSU.
+
 - `ghi_chu`: 2026-10-08 13:26 +07 — Tiến độ vé UI-ANSWER-QUALITY-HOME: Đã chẩn đoán tận gốc 3 lỗi theo trace thật: (1) Lỗi 1 rò rỉ hệ thống do _post_chat lấy reasoning_content làm đáp án khi content rỗng; (2) Lỗi 2 cắt cụt do max_tokens hardcode 700 token chia sẻ với thinking; (3) Lỗi 3 phạm vi nguồn do phiên gán vào 215 nguồn của mom_opcenter không chứa tài liệu C7620. Bắt đầu Bước 1: Sửa test cách ly gói ngoài nakazasen_ai_router và cài đặt các lớp bảo vệ.
 
 - `ghi_chu`: 2026-10-08 13:18 +07 — Nhận vé UI-ANSWER-QUALITY-HOME: Bắt đầu chẩn đoán 3 lỗi chất lượng đáp án theo trace phiên CONV-POOL-B93370 (Lỗi 1 rò rỉ prompt/suy luận câu Q0709, Lỗi 2 cắt cụt câu Q0718, Lỗi 3 phạm vi nguồn câu Q0699) và sửa test cách ly gói ngoài nakazasen_ai_router.
