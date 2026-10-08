@@ -1,0 +1,32 @@
+{
+  "mo_ta": "Luot do bien the claim budget max_claims=10 (he so x2 so voi goc 5)",
+  "model": "inclusionai/ling-3.1-flash:free",
+  "max_claims": 10,
+  "tong_diem": 63.51,
+  "so_cau": 50,
+  "gpa": 1.27,
+  "so_validated": 4,
+  "so_fallback": 42,
+  "so_not_called": 4,
+  "so_dat_3": 6,
+  "so_dat_ge_2": 8,
+  "do_tre_tb_cau": 80.37,
+  "do_tre_tb_synth": 73.84,
+  "so_loi_ky_thuat": 0,
+  "credits": 0.0,
+  "sha_truoc": "45eb0e072893f802d71ab201cfbb2b29c36e2b0a31313fa79fc55a025b65b7c0",
+  "sha_sau": "45eb0e072893f802d71ab201cfbb2b29c36e2b0a31313fa79fc55a025b65b7c0",
+  "md5_truoc": "239009676829484049738866329de9f2",
+  "md5_sau": "239009676829484049738866329de9f2",
+  "size_truoc": 2942201856,
+  "size_sau": 2942201856,
+  "index_chi_doc_khop": true,
+  "preload_dense": [
+    121331,
+    2072.187199999462
+  ],
+  "preload_sparse": [
+    121331,
+    11470.435299997916
+  ]
+}
