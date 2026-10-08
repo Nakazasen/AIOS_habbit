@@ -3,8 +3,9 @@
 ## Vé hiện tại: RETRIEVAL-DENSE-NUMPY-PC0575
 
 - Trạng thái: `dang-lam`
-- `commit`: `cea682c1`
+- `commit`: `23b25f93`
 - `bao_cao`: `docs/phieu-viec/ket-qua/retrieval-dense-numpy-pc0575.md`
+- `ghi_chu`: 2026-10-08 10:47 +07 — Tiến độ Cổng Parity câu 1/8 (Q0704): ĐẠT (PASS) — Top 15 Chunk IDs trùng khớp 100%, độ lệch điểm 0.00e+00; đường Python 285.8s, đường Numpy 1.407s (tăng tốc 203.1 lần); RAM ma trận Dense thực tế 357.33 MB (~0.35 GB). Đang tiếp tục đo câu 2/8 (Q0701).
 - `ghi_chu`: 2026-10-08 10:39 +07 — Khởi chạy tiến trình nền đo Cổng Parity Top 15 và Hiệu năng trên chỉ mục thật `library.sqlite`: nạp ma trận Dense Numpy vào RAM, kiểm tra parity 100% trên 7 câu nhóm A + đối chiếu top context đầu-cuối và đo phân rã hiệu năng 3 câu chẩn đoán.
 - `ghi_chu`: 2026-10-08 10:34 +07 — Hoàn thành Bước 1 & 2: Cài đặt cache ma trận dense cấp tiến trình `_PROCESS_DENSE_MATRIX_CACHE` (khóa luồng `_PROCESS_DENSE_MATRIX_LOCK`), đổi mặc định sang numpy dense khi khả dụng (rollback 1 dòng bằng `AIOS_RAG_V2_NUMPY_DENSE=0`), tự rơi về Python với log tiếng Việt rõ ràng; bộ test `test_rag_v2_numpy_dense.py` đạt 8/8 PASS; compileall sạch. Bắt đầu Bước 3: Đo cổng parity Top 15 tuyệt đối giữa Python scan và Numpy scan trên chỉ mục thật `library.sqlite` (3 câu chẩn đoán + 7 câu nhóm A).
 - `ghi_chu`: 2026-10-08 10:28 +07 — Tiếp nhận vé `RETRIEVAL-DENSE-NUMPY-PC0575`: kiểm tra cổng gate không bị kẹt (vé đã phát hành chính thức, không có điều kiện chờ cổng thứ 3). Bắt đầu Bước 1: Khảo sát vòng đời và cơ chế nạp ma trận dense trong `src/aios_habit/rag_v2/index.py` để thiết kế cache ma trận theo tiến trình và đổi mặc định sang numpy có fallback an toàn.
