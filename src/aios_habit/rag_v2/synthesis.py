@@ -246,10 +246,11 @@ def build_synthesis_plan(
     if max_claims < 1:
         raise ValueError("max_claims must be at least 1")
     normalized_shape = answer_shape.strip().lower() or "grounded_summary"
-    # Architecture and integration questions need enough cited space to represent
-    # hierarchy, interfaces, and distinct flows; other answer types stay compact.
+    # Architecture, integration, diagnosis, and lookup questions need enough cited space
+    # to represent hierarchy, interfaces, distinct flows, symptoms, and exact specifications;
+    # other answer types stay compact.
     effective_max_claims = max_claims
-    if normalized_shape in {"architecture", "integration"}:
+    if normalized_shape in {"architecture", "integration", "diagnosis", "lookup"}:
         effective_max_claims = max(max_claims, 10)
     structural = tuple(item for item in pack.coverage_map if item.facet_id != "query")
     required = tuple(item.facet_id for item in structural if item.status == "covered")

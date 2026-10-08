@@ -201,6 +201,42 @@ def test_validate_provider_diagnosis_answer_pass():
     assert validation.errors == ()
 
 
+def test_synthesis_plan_claim_budget_expansion_for_diagnosis_and_lookup():
+    results = [_make_result("c1", "d1", 5.0, "Sample diagnostic evidence snippet.")]
+    pack = build_evidence_pack("Diagnosis query", _make_response(results))
+
+    # Diagnosis and lookup shapes expand effective budget to 10 when max_claims < 10
+    diag_plan = build_synthesis_plan(pack, answer_shape="diagnosis", max_claims=5)
+    assert diag_plan.max_claims == 10
+
+    lookup_plan = build_synthesis_plan(pack, answer_shape="lookup", max_claims=5)
+    assert lookup_plan.max_claims == 10
+
+    # Architecture and integration shapes maintain existing precedent of expanding to 10
+    arch_plan = build_synthesis_plan(pack, answer_shape="architecture", max_claims=5)
+    assert arch_plan.max_claims == 10
+
+    integ_plan = build_synthesis_plan(pack, answer_shape="integration", max_claims=5)
+    assert integ_plan.max_claims == 10
+
+    # Other shapes keep their requested compact budget
+    summary_plan = build_synthesis_plan(pack, answer_shape="grounded_summary", max_claims=5)
+    assert summary_plan.max_claims == 5
+
+    proc_plan = build_synthesis_plan(pack, answer_shape="procedure", max_claims=5)
+    assert proc_plan.max_claims == 5
+
+    compare_plan = build_synthesis_plan(pack, answer_shape="compare_change", max_claims=5)
+    assert compare_plan.max_claims == 5
+
+    action_plan = build_synthesis_plan(pack, answer_shape="actionable_output", max_claims=5)
+    assert action_plan.max_claims == 5
+
+    # If higher budget is requested, it is respected
+    high_diag_plan = build_synthesis_plan(pack, answer_shape="diagnosis", max_claims=12)
+    assert high_diag_plan.max_claims == 12
+
+
 def test_architecture_composer_is_bounded_cited_and_suppresses_raw_dump():
     query = "Describe the architecture components, data flow, and integration interfaces."
     results = [
