@@ -1002,7 +1002,6 @@ def render_source_library(
     enabled_count = sum(1 for val in selections_map.values() if val)
 
     st.caption(f"📁 **{t('in_notebook', locale=locale)}:** {nb_count} · ⏱️ **{t('temp_in_conversation', locale=locale)}:** {tmp_count}")
-    st.write(t("enabled_sources_count", locale=locale, count=enabled_count))
 
     all_items = []
     for s in notebook_sources:
@@ -1115,7 +1114,6 @@ def render_source_library_summary(notebook_count: int, temporary_count: int, ena
     """Keep the sidebar informative without hiding source-management actions in it."""
     st.subheader(f"📚 {t('source_library', locale=locale)}")
     st.caption(f"{t('in_notebook', locale=locale)}: {notebook_count} · {t('temp_in_conversation', locale=locale)}: {temporary_count}")
-    st.caption(t("enabled_sources_count", locale=locale, count=enabled_count))
     st.info(f"{t('sources_in_use', locale=locale)}: {t('sources_in_use_desc', locale=locale)}")
 
 
@@ -1422,10 +1420,8 @@ def render_document_manager(
 
 
 def render_ai_source_context_summary(enabled_count: int, locale: str = "vi"):
-    """Compact AI source context summary shown near the question area."""
-    if enabled_count > 0:
-        st.info(t("enabled_sources_count", locale=locale, count=enabled_count))
-    else:
+    """Compact AI source context summary shown near the question area (clean single-source-of-truth)."""
+    if enabled_count <= 0:
         st.warning(t("no_sources", locale=locale))
 
 

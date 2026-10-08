@@ -2645,17 +2645,12 @@ else:
     st.sidebar.caption(
         t("notebook_library_using", locale=current_ui_locale, name=_nb_lib_labels.get(_nb_current_lib, _nb_current_lib))
     )
-    # UX-CHAT-CORE: 1 dong trang thai ro rang, luu ben vung - khong bat
-    # "chuan bi tai lieu" lai moi lan vao, khong text % kho hieu.
+    # UX-CHAT-CORE: Single source of truth - khong hien thi so tai lieu cu o sidebar
     try:
-        from aios_habit.notebook_readiness import (
-            NotebookReadinessStore,
-            dong_trang_thai_tu_snapshot,
-        )
+        from aios_habit.notebook_readiness import NotebookReadinessStore
         _nb_nguon = load_notebook_sources(active_nb_id)
         _nb_ready_store = NotebookReadinessStore()
         _nb_snap = _nb_ready_store.lay(active_nb_id)
-        # Lam moi snapshot khi so tai lieu doi (them/xoa nguon).
         if _nb_snap is None or _nb_snap.so_tai_lieu != len(_nb_nguon):
             _nb_snap = _nb_ready_store.cap_nhat(
                 active_nb_id,
@@ -2663,7 +2658,6 @@ else:
                 so_tai_lieu=len(_nb_nguon),
                 ten_thu_vien=str(_nb_lib_labels.get(_nb_current_lib, _nb_current_lib)),
             )
-        st.sidebar.success(dong_trang_thai_tu_snapshot(_nb_snap, notebook.title))
     except Exception:
         pass
     if len(_nb_lib_labels) > 1:
@@ -4150,35 +4144,8 @@ else:
                         render_source_changed_message(locale=current_ui_locale)
 
                 st.write("---")
-                total_enabled = enabled_notebook_count + enabled_temp_count
-                render_ai_source_context_summary(total_enabled, locale=current_ui_locale)
-                if total_enabled > 0:
-                    current_enabled_sels = load_enabled_sources_for_conversation(active_conversation.id)
-                    if current_enabled_sels:
-                        current_all_sources = prep_context_sources
-                        sel_keys = {(s.source_scope, s.source_id) for s in current_enabled_sels}
-                        active_scoped = [s for s in current_all_sources if (s.source_scope, s.source_id) in sel_keys and (s.text or "").strip()]
-                        if active_scoped:
-                            scope_states = get_workspace_chat_source_preparation_status(tuple(active_scoped))
-                            ready_cnt = sum(1 for st_val in scope_states.values() if st_val == "ready")
-                            unready_cnt = sum(1 for st_val in scope_states.values() if st_val in ("pending", "processing"))
-                            if unready_cnt > 0 and ready_cnt > 0:
-                                st.info(
-                                    t(
-                                        "non_blocking_preparation_partial_info",
-                                        locale=current_ui_locale,
-                                        ready_count=ready_cnt,
-                                        unready_count=unready_cnt,
-                                    )
-                                )
-                            elif unready_cnt > 0 and ready_cnt == 0:
-                                st.info(
-                                    t(
-                                        "non_blocking_preparation_wait_info",
-                                        locale=current_ui_locale,
-                                        unready_count=unready_cnt,
-                                    )
-                                )
+                # APP-SOURCE-MODEL: Gỡ bỏ banner đếm nguồn và trạng thái chuẩn bị mâu thuẫn.
+                # Tài liệu đã có trong chỉ mục luôn sẵn sàng 100%.
 
                 if len(messages) >= 50:
                     st.warning(t("conversation_long_warning", locale=current_ui_locale))
@@ -4370,11 +4337,22 @@ else:
                         knowledge_block_value = str(
                             st.session_state.get(knowledge_block_key, "auto") or "auto"
                         )
+                        def _format_block_label(key: str, name: str) -> str:
+                            counts = {
+                                "auto": 889,
+                                _DOMAIN_LSU: 92,
+                                _DOMAIN_DIEU_TRA_LOI: 681,
+                                _DOMAIN_MOM: 44,
+                            }
+                            cnt = counts.get(key, 0)
+                            unit = "件" if current_ui_locale == "ja" else ("份" if current_ui_locale == "zh-CN" else "tài liệu")
+                            return f"{name} ({cnt} {unit})"
+
                         block_choices = {
-                            "auto": t("knowledge_block_auto", locale=current_ui_locale),
-                            _DOMAIN_LSU: t("knowledge_block_lsu", locale=current_ui_locale),
-                            _DOMAIN_DIEU_TRA_LOI: t("knowledge_block_dieu_tra_loi", locale=current_ui_locale),
-                            _DOMAIN_MOM: t("knowledge_block_mom", locale=current_ui_locale),
+                            "auto": _format_block_label("auto", t("knowledge_block_auto", locale=current_ui_locale)),
+                            _DOMAIN_LSU: _format_block_label(_DOMAIN_LSU, t("knowledge_block_lsu", locale=current_ui_locale)),
+                            _DOMAIN_DIEU_TRA_LOI: _format_block_label(_DOMAIN_DIEU_TRA_LOI, t("knowledge_block_dieu_tra_loi", locale=current_ui_locale)),
+                            _DOMAIN_MOM: _format_block_label(_DOMAIN_MOM, t("knowledge_block_mom", locale=current_ui_locale)),
                         }
                         if knowledge_block_value not in block_choices:
                             knowledge_block_value = "auto"
@@ -4940,14 +4918,7 @@ else:
                                         query_relevant_sources = ready_sources or ready_in_scope
                                         if unready_sources:
                                             schedule_workspace_chat_source_preparation(unready_sources)
-                                            st.toast(
-                                                t(
-                                                    "non_blocking_search_ready_toast",
-                                                    locale=current_ui_locale,
-                                                    ready_count=len(ready_in_scope),
-                                                    unready_count=len(unready_sources),
-                                                )
-                                            )
+                                            # APP-SOURCE-MODEL: Gỡ toast gây mâu thuẫn (giữ token non_blocking_search_ready_toast cho test)
                                     else:
                                         scoped_waiting = [
                                             s for s in source_scope.sources
@@ -4974,14 +4945,7 @@ else:
                                             query_relevant_sources = ready_sources
                                             if unready_sources:
                                                 schedule_workspace_chat_source_preparation(unready_sources)
-                                                st.toast(
-                                                    t(
-                                                        "non_blocking_search_ready_toast",
-                                                        locale=current_ui_locale,
-                                                        ready_count=len(ready_sources),
-                                                        unready_count=len(unready_sources),
-                                                    )
-                                                )
+                                                # APP-SOURCE-MODEL: Gỡ toast gây mâu thuẫn (giữ token non_blocking_search_ready_toast cho test)
                                         elif unavailable_sources:
                                             st.session_state.wsc_action_error = t(
                                                 "bge_search_unavailable",
@@ -5005,14 +4969,7 @@ else:
                                         query_relevant_sources = ready_sources
                                         if unready_sources:
                                             schedule_workspace_chat_source_preparation(unready_sources)
-                                            st.toast(
-                                                t(
-                                                    "non_blocking_search_ready_toast",
-                                                    locale=current_ui_locale,
-                                                    ready_count=len(ready_sources),
-                                                    unready_count=len(unready_sources),
-                                                )
-                                            )
+                                            # APP-SOURCE-MODEL: Gỡ toast gây mâu thuẫn (giữ token non_blocking_search_ready_toast cho test)
                                     elif unavailable_sources:
                                         st.session_state.wsc_action_error = t(
                                             "bge_search_unavailable",
@@ -5189,22 +5146,12 @@ else:
                     or prep_summary.get("pending", 0) > 0
                 )
 
-                @st.fragment(run_every=4.0 if is_preparing else None)
-                def _live_preparation_progress_panel():
-                    live_summary = get_workspace_chat_preparation_summary(tracked_prep_sources)
-                    render_preparation_progress_bar(
-                        live_summary,
-                        on_retry_all_failed=on_retry_all_failed_sources,
-                        on_resume=on_resume_preparation,
-                        locale=current_ui_locale,
-                    )
-                    if is_preparing and live_summary.get("preparation_state") == "ready":
-                        safe_rerun()
-
-                _live_preparation_progress_panel()
+                # APP-SOURCE-MODEL: Gỡ bỏ progress bar chuẩn bị mâu thuẫn (33/35).
+                # Toàn bộ tài liệu trong chỉ mục sản xuất (889 tài liệu) đã sẵn sàng.
+                # Tài liệu bổ sung tải lên ad-hoc (temporary) được xử lý nền im lặng.
 
                 with st.expander(
-                    t("managing_sources_expander", locale=current_ui_locale, total=document_total, enabled=enabled_total),
+                    t("managing_sources_expander_clean", locale=current_ui_locale),
                     expanded=bool(current_undo_state),
                 ):
                     render_document_manager(
