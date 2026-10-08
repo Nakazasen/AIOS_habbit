@@ -1,0 +1,9 @@
+# BẢN SAO CẤU HÌNH TUYẾN TỔNG HỢP TRƯỚC KHI ĐỔI (KHÔNG CHỨA BẤT KỲ KEY NÀO)
+# Thời điểm ghi nhận: 2026-10-08 23:17 +07
+# Máy: h410asrock (CPU-only)
+
+AIOS_LOCAL_AI_ENDPOINT=https://api.commandcode.ai/provider/v1/chat/completions
+AIOS_LOCAL_AI_MODEL=inclusionai/ling-3.1-flash:free
+AIOS_LOCAL_AI_FAILOVER_MODELS=poolside/laguna-s-2.1-free,inclusionai/ling-3.0-flash-sante:free
+AIOS_SYNTHESIS_ALLOW_CLOUD_PROVIDERS=1
+AIOS_LOCAL_AI_LOCALITY=cloud
