@@ -1,25 +1,22 @@
-﻿# VÉ: SYNTH-CLAIMBUDGET-DIAG-HOME (điều tra ngân sách luận điểm — nút thắt validated của mọi model)
+# VÉ: UI-LOCALONLY-SYNTH-OPEN-HOME (mở cổng tổng hợp mô hình cho sổ LSU ở đường giao diện — theo quyết định của user)
 
-- Mã vé: `SYNTH-CLAIMBUDGET-DIAG-HOME`
-- Role gợi ý: PLAN/DEFAULT
-- Máy: nhà h410asrock (agy — thợ chính, chỉ đọc + đo lại có kiểm soát, CPU-only)
-- Báo cáo: `docs/phieu-viec/ket-qua/synth-claimbudget-diag-home.md`
-- Căn cứ: qua 4 lượt đo trên cùng bộ 50 câu (pool free, từng model free, DeepSeek trả phí), tỉ lệ qua kiểm định trích dẫn (validated) luôn rất thấp (0–3/50) bất kể năng lực model — trong khi đáp án mẫu cho thấy có ca model trả lời ĐÚNG và giàu dữ kiện nhưng bị bộ kiểm định đánh trượt vì `provider_answer_claim_budget_exceeded` (số dòng luận điểm vượt ngân sách cho phép so với số đoạn bằng chứng). Giả thuyết cần kiểm chứng: ngân sách luận điểm (claim budget) của bộ kiểm định đang là nút thắt chính của validated — nếu đúng, đây là đòn bẩy chất lượng lớn nhất còn lại của đường tổng hợp, lớn hơn việc đổi model.
+- Mã vé: `UI-LOCALONLY-SYNTH-OPEN-HOME`
+- Role gợi ý: DEFAULT
+- Máy: nhà h410asrock (agy — thợ chính, CPU-only khi nghiệm thu)
+- Báo cáo: `docs/phieu-viec/ket-qua/ui-localonly-synth-open-home.md`
+- Căn cứ: verdict vé `CONFIG-SYNTH-TIERS-HOME` ghi nhận: hỏi qua giao diện trên sổ `mom_opcenter` (mang nhãn bảo mật `local_only`) bị cổng chặn cứng không cho gửi dữ liệu ra mô hình bên ngoài — mọi câu đều rơi về trích xuất cục bộ, chuỗi tổng hợp 3 tầng vừa áp không phát huy được trên chính sổ LSU. **User đã quyết lúc 2026-10-08 ~23:52 +07: "Mở cổng tổng hợp cho sổ LSU ở giao diện".** Vé này thực thi quyết định đó tại máy nhà.
 
 ## Việc phải làm
 
-1. **Đếm phân rã từ các file kết quả thô đã có** (các lượt đo pool/DeepSeek trên máy nhà): trong các câu bị fallback dù provider có sinh đáp án, bao nhiêu ca do `claim_budget_exceeded`, bao nhiêu do lý do khác (liệt kê đủ các mã lý do + số ca). Nộp bảng phân rã.
-2. **Đọc cơ chế claim budget trong code:** ngân sách được tính thế nào (theo số đoạn bằng chứng? theo ký tự?), ngưỡng hiện tại, và nó bảo vệ khỏi rủi ro gì (luận điểm không có bằng chứng chống lưng). Nêu rõ đánh đổi nếu nới.
-3. **Đo thử có kiểm soát (nếu mục 1 xác nhận claim budget là nhóm lớn nhất):** chạy lại đúng bộ 50 câu với MỘT biến thể ngân sách (nới theo hệ số rõ ràng, cấu hình tạm thời, khôi phục sau khi đo) trên cùng model chính hiện tại (Ling 3.1 free) — so sánh validated/GPA/fallback trước–sau. Nếu nới ngân sách làm validated tăng nhưng xuất hiện luận điểm không bằng chứng (đọc tay 5 đáp án mẫu bị thay đổi), phải khai rõ.
-4. Kết luận + đề xuất dứt khoát: giữ nguyên / nới lên mức cụ thể / thiết kế lại cách tính ngân sách — kèm số đo. Vé này CHỈ chẩn đoán + đo thử tạm thời, KHÔNG áp thay đổi vĩnh viễn vào cấu hình chính.
+1. **Xác định cơ chế chặn hiện tại** trong code: điểm chặn ở cổng điều phối (hằng số/hành vi kiểu `LOCAL_ONLY_HARD_DENY`) và công tắc chính sách hiện có (biến cho phép tổng hợp qua nhà cung cấp bên ngoài — mặc định tắt, fail-closed, được tôn trọng ở nhiều lớp). Mở cổng **bằng đúng cơ chế công tắc hiện có**, không phá cơ chế nhãn dữ liệu, không sửa nhãn của tài liệu.
+2. **Nêu rõ phạm vi mở thực tế** trong báo cáo: công tắc hiện có mở ở mức nào (toàn cục cho mọi tài liệu mang nhãn trên máy này, hay giới hạn được theo sổ/phiên). Làm đúng phạm vi user đã quyết: đường hỏi đáp qua giao diện trên máy nhà cho sổ LSU. Nếu cơ chế chỉ có mức toàn cục thì khai rõ hệ quả đó, không tự thu hẹp hay mở rộng thêm.
+3. **Áp cấu hình mở cổng tại máy nhà** (ghi lại cấu hình trước khi đổi ở dạng không chứa khóa; nêu cách hoàn lui = tắt công tắc về mặc định).
+4. **Nghiệm thu bằng dùng thật trên giao diện (CPU-only):** khởi động app, mở sổ `mom_opcenter`, hỏi lại 3 câu chuẩn (C7620/Q0699, DMT–PMT/Q0718, Skew/Q0709). Cổng đạt: cả 3 câu có **model phục vụ thật thuộc chuỗi 3 tầng** (bằng chứng provenance/log ghi tên nhà cung cấp + model — không còn rơi về trích cục bộ vì lý do chặn chính sách), đáp án trọn vẹn có trích dẫn, không rò rỉ prompt, không cắt cụt. Ảnh chụp chứa đáp án trọn trong khung + file kết quả có mã phiên riêng như các vé trước. Nếu có câu vẫn rơi về trích cục bộ vì lý do KHÁC (trượt kiểm định, thiếu bằng chứng) thì khai đúng lý do đó — phân biệt rõ "còn bị chặn chính sách" (không được còn) với "bị trượt kiểm định nội dung" (chấp nhận được, khai rõ).
+5. Ghi trong báo cáo: điểm code/cấu hình đã đổi, phạm vi mở, cách hoàn lui, kết quả 3 câu kèm model phục vụ từng câu.
 
 ## Rào cứng
 
-- Không ghi chỉ mục (kiểm băm trước/sau các lượt đo). Không merge `main`. Cấu hình tạm phải khôi phục nguyên trạng sau đo và xác nhận trong báo cáo.
-- Trần chi phí: lượt đo dùng model free; nếu cần đo biến thể trên DeepSeek thì trần $0,20. Không in bất kỳ ký tự nào của key.
-- Mốc tiến độ tối thiểu 15 phút/lần. Mọi con số phải tái lập được từ file kết quả đính kèm (nộp file rows của lượt đo mới vào kho).
-
-## DỮ KIỆN BỔ SUNG TỪ AUDIT ROWS (điều phối bổ sung 23:28 08/10)
-
-- Lượt đo DeepSeek: **38/50 câu có số lần gọi provider = 0** (10 câu gọi 1 lần, 2 câu gọi 2 lần) — trong khi 43 câu ghi chế độ fallback. Tức là phần lớn ca fallback xảy ra ở tầng QUYẾT ĐỊNH KHÔNG GỌI provider (cổng độ phủ bằng chứng/coverage gate), trước cả khi model sinh đáp án — vé này phải phân rã cả hai tầng: (a) vì sao không được gọi (mã lý do từng câu), (b) trong số câu ĐÃ gọi mà vẫn trượt kiểm định thì claim budget chiếm bao nhiêu. Không kết luận nút thắt chỉ là claim budget khi chưa có bảng phân rã hai tầng này.
-- Cả 3 câu validated của lượt DeepSeek đều mang cờ không-trích-dẫn trong file thô — kiểm tra thêm cờ này có phản ánh đúng đáp án thật không khi làm phân rã.
+- Không ghi chỉ mục (kiểm băm SHA-256 trước/sau phiên nghiệm thu). Không merge `main`.
+- Không in bất kỳ ký tự nào của khóa/API key trong báo cáo, log đính kèm hay commit.
+- Chỉ mở cổng cho đường tổng hợp hỏi đáp; không thay đổi các chính sách dữ liệu khác, không gửi dữ liệu ra bất kỳ đích nào ngoài tuyến tổng hợp đã cấu hình.
+- Mốc tiến độ tối thiểu 15 phút/lần. Kích thước file bằng chứng trong báo cáo phải lấy bằng lệnh liệt kê file thật, không gõ tay.
