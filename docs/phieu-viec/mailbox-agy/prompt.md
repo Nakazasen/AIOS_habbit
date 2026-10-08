@@ -1,20 +1,32 @@
-# VÉ: SRC-421-PACKAGE-HOME (đóng gói 421 tệp HIỆN TẠI ở máy nhà + bản kê vân tay mới, tải qua kênh Drive)
+# VÉ: TEST-RED5-FIX-HOME (khép 5 ca đỏ còn lại + vệ sinh test gói tùy chọn graphify)
 
-- Mã vé: `SRC-421-PACKAGE-HOME`
-- Role gợi ý: DEFAULT (đóng gói + băm + tải)
+- Mã vé: `TEST-RED5-FIX-HOME`
+- Role gợi ý: DEFAULT (code + test)
 - Máy: nhà h410asrock
-- Báo cáo: `docs/phieu-viec/ket-qua/src-421-package-home.md`
-- Quyết định nền: user chốt 2026-10-08 ~05:54 +07 — xử lý 421 mã lệch băm theo hướng **chép tệp hiện tại sang PC0575 và cập nhật vân tay trong chỉ mục theo bản mới** (không nạp lại, không để nguyên). Căn cứ truy nguồn: báo cáo `src-421-provenance-home.md` (byte gốc lúc nạp đã mất ở mọi kho máy nhà) và danh sách lệch `docs/phieu-viec/ket-qua/src-package-511-lech.csv` (421 dòng).
-- Điều kiện tiên quyết: kênh Drive của vé `SRC-PACKAGE-511-UPLOAD-HOME` đã sống (cùng hàng chờ, vé đó chạy trước). Nếu tới lượt mà kênh chưa sống: ghi mốc chờ vào trang-thai và báo, không tự chế đường khác.
+- Báo cáo: `docs/phieu-viec/ket-qua/test-red5-fix-home.md`
+- Căn cứ: báo cáo `test-health-round2-home.md` §5. Điều phối đã chạy đối chiếu trên VM (08/10 ~02:50): `dieu_huong` + `phase2i_mapping` đỏ cả trên VM; 3 ca còn lại (manifest, provider_limitations, xlsx_reparse) XANH trên VM — là ca "chỉ đỏ ở máy nhà", phải truy vết khác biệt trạng thái trước khi kết luận.
 
-## Việc phải làm
+## Nguyên tắc
 
-1. Theo danh sách 421 mã trong `src-package-511-lech.csv`, xác định tệp hiện tại tương ứng trong kho canary ở máy nhà (đường dẫn đã có trong các báo cáo SRC trước; mã nào không tìm thấy tệp hiện tại thì ghi riêng vào báo cáo — không đoán).
-2. Với mỗi tệp: tính SHA-256 của byte hiện tại + kích thước. Lập `manifest-421.csv`: mã, đường dẫn tương đối đích (đường dẫn materialized mà chỉ mục PC0575 đang trỏ tới — lấy từ bản kê/báo cáo SRC trước), kích thước, sha256.
-3. Đóng gói: `src-421-current-home.zip` chứa 421 tệp theo cấu trúc đường dẫn tương đối trong manifest + `manifest-421.csv` nằm trong gói. Ghi SHA-256 + kích thước của chính tệp zip vào báo cáo.
-4. Tải gói lên thư mục Drive **AIOS_Data** qua kênh đã cài ở vé UPLOAD; kiểm chứng phía Drive (xuất hiện + đúng kích thước).
+Như vé RED22: mỗi ca kết luận code-sai (sửa code) hoặc test-cũ/trạng-thái-lệch (sửa test/tệp sinh kèm căn cứ) — cấm nới test vô căn cứ, cấm xoá assertion.
 
-## Rào cứng
+## Nhóm 1 — 5 ca nghi code (theo thứ tự)
 
-- Chỉ đọc + chép tệp nguồn; không sửa tệp nguồn, không đụng chỉ mục ở máy nhà, không merge `main`.
-- Không nén lẫn 421 tệp này vào gói 90 (hai gói tách bạch, hai manifest tách bạch).
+1. `test_provider_limitations_contain_accurate_reasons` — thiếu lý do `cloud_privacy_blocked` ở tầng synthesis (đỏ cũ, liên quan chính sách riêng tư: đối chiếu DATA_POLICY hiện hành trước khi quyết code hay test).
+2. `test_dieu_huong_chinh_co_ten_tieng_viet_nhin_thay` — test đòi chuỗi tiêu đề `### 💬 Trợ lý AIOS` (FR-027/SC-015) trong `workspace_chat_app.py`, code hiện không còn: xác định đặc tả còn hiệu lực không (rà spec/ADR liên quan) → còn hiệu lực thì khôi phục tiêu đề đúng chỗ; đã bị thay thế bởi quyết định UX sau thì cập nhật test bám quyết định đó, ghi rõ căn cứ.
+3. `test_phase2i_owner_choice_mapping_helpers` — ánh xạ nhãn owner-choice sai.
+4. `test_public_v3_manifest_checksums_match_files` — băm manifest `corpus_public_v3.json` lệch file `src-quality-process`: xác định manifest là tệp sinh (tạo lại đúng quy trình) hay file đã đổi mà manifest chưa cập nhật; xanh trên VM nên soi khác biệt trạng thái máy nhà trước.
+5. `test_app_no_xlsx_reparse_in_ai_path` — còn gọi `extract_xlsx_text` trong đường AI: xác định đường gọi thật ở máy nhà và xử lý như các ca trên.
+
+## Nhóm 2 — vệ sinh gói tùy chọn (môi trường hoá thành skip sạch)
+
+- 9 test `test_graphify_adapter.py` + 1 smoke phụ thuộc gói tùy chọn `graphifyy==0.9.50` không có trong venv máy nhà: gắn cơ chế bỏ qua sạch khi thiếu gói (theo đúng mẫu các test tùy chọn khác trong repo nếu có), KHÔNG cài gói vào môi trường chính ở vé này. Sau sửa: các test này phải `skipped` có lý do rõ trên máy nhà thay vì fail/error.
+
+## Nhóm 3 — bảo trì nhỏ
+
+- `test_uv_lock_check_succeeds`: đồng bộ lại `uv.lock` theo `pyproject` hiện hành (chạy `uv lock` đúng quy trình repo, commit kèm báo cáo nêu thay đổi chính). Ca timeout cài venv cô lập (môi trường) chỉ phân loại lại, không sửa.
+
+## Kiểm chứng & rào
+
+- Sau mỗi nhóm chạy lại file test liên quan; cuối vé chạy lại toàn bộ các file đã đụng + đối chiếu đỏ trước/sau.
+- Cổng repo: Python 3.11, compileall, `cli audit`, import app. Không ghi index, không merge `main`.
