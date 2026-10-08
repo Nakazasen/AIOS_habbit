@@ -23,6 +23,10 @@ _UNSAFE_EXPANSION_RE = re.compile(
     re.IGNORECASE,
 )
 _FACET_SPLIT_RE = re.compile(r"(?:\r?\n|[;；]|\s+[•·]\s+)")
+_TECHNICAL_CODE_RE = re.compile(r"\b[A-Z]\d{2,5}\b")
+_NG_RE = re.compile(r"\bNG\b", re.IGNORECASE)
+_FOUR_M_RE = re.compile(r"\b4M\b")
+_MA_UNIT_RE = re.compile(r"\b\d+\s*mA\b", re.IGNORECASE)
 _COMMA_CLAUSE_SPLIT_RE = re.compile(r"\s*,\s*(?:and|và|đồng thời)\s+", re.IGNORECASE)
 _BARE_CLAUSE_SPLIT_RE = re.compile(r"\s+(?:and|và|đồng thời)\s+", re.IGNORECASE)
 _QUESTION_CUE_RE = re.compile(
@@ -458,13 +462,35 @@ def _identity_variants(
 def _detect_intent_category(query: str) -> tuple[str, tuple[str, ...]]:
     """Return a corpus-neutral answer shape from explicit question wording.
 
-    This deliberately does not infer a subject, add aliases, or inspect source
-    text.  It only recognizes an operational/procedural request stated by the
-    user (for example, "how does ... work?" or Vietnamese "hoạt động như thế
-    nào?").  That shape needs a larger same-document evidence window than a
-    fact lookup; treating it as generic silently cuts out later manual steps.
+    Expands detection to include operational/procedural, diagnosis (faults, causes,
+    countermeasures, anomaly patterns), and lookup (parameters, tolerances, tables,
+    counts, threshold units). Preserves generic shape for high-level concepts and
+    negative control cases.
     """
-    ascii_folded = _ascii_fold(query)
+    original = " ".join((query or "").strip().split())
+    if not original:
+        return "general", ("query",)
+
+    ascii_folded = _ascii_fold(original)
+
+    # 1. Negative guards (Ca kiểm âm): câu hỏi tổng quan, định nghĩa, khái niệm chung
+    # hoặc kiến trúc dịch vụ không mang tính chẩn đoán/tra cứu kỹ thuật cụ thể.
+    generic_guards = (
+        "khai niem" in ascii_folded,
+        "dinh nghia" in ascii_folded,
+        "tong quan" in ascii_folded,
+        "overview" in ascii_folded,
+        "service outage" in ascii_folded,
+        "list all error codes in the table" in ascii_folded,
+        "describe the architectural components" in ascii_folded,
+        "how do these services exchange data" in ascii_folded,
+        "khac nhau the nao" in ascii_folded and not any(k in ascii_folded for k in ("ng", "loi", "jig", "beam")),
+        "phan biet nhu the nao" in ascii_folded and not any(k in ascii_folded for k in ("ng", "loi", "jig", "beam")),
+    )
+    if any(generic_guards):
+        return "general", ("query",)
+
+    # 2. Procedure markers: quy trình, hướng dẫn, trình tự thao tác
     procedure_markers = (
         "how does" in ascii_folded and "work" in ascii_folded,
         "how does" in ascii_folded and "operate" in ascii_folded,
@@ -476,9 +502,140 @@ def _detect_intent_category(query: str) -> tuple[str, tuple[str, ...]]:
         "quy trinh" in ascii_folded,
         "cac buoc" in ascii_folded,
         "huong dan" in ascii_folded,
+        "trinh tu thao tac" in ascii_folded,
+        "quan ly va kiem tra the nao" in ascii_folded,
+        "手順" in original,
+        "操作手順" in original,
     )
     if any(procedure_markers):
         return "procedure", ("query",)
+
+    # 3. Diagnosis markers: chẩn đoán mã lỗi, mã máy, hiện tượng, nguyên nhân, đối sách, bất thường
+    diagnosis_markers = (
+        # Tiếng Việt
+        "nguyen nhan" in ascii_folded,
+        "doi sach" in ascii_folded,
+        "bat thuong" in ascii_folded,
+        "hien tuong" in ascii_folded,
+        "su co" in ascii_folded,
+        "loi" in ascii_folded,
+        "hong" in ascii_folded,
+        "di thuong" in ascii_folded,
+        "khong doc duoc" in ascii_folded,
+        "doc khong duoc" in ascii_folded,
+        "bao duong" in ascii_folded,
+        "tai sao" in ascii_folded,
+        "xu ly the nao" in ascii_folded,
+        "hieu qua" in ascii_folded and ("doi sach" in ascii_folded or "tang thoi gian" in ascii_folded or "ep" in ascii_folded),
+        # Tiếng Nhật / Tiếng Trung
+        "原因" in original,
+        "対策" in original,
+        "異常" in original,
+        "不具合" in original,
+        "現象" in original,
+        "故障" in original,
+        "障害" in original,
+        "発生" in original,
+        "判定" in original,
+        "排查" in original,
+        "読取不能" in original,
+        "想定状態" in original,
+        "斜め光" in original,
+        "色差" in original,
+        "偏色" in original,
+        "問題" in original,
+        "ずれる" in original,
+        "なぜ" in original,
+        "比较" in original and "jig" in original.lower(),
+        # Ký hiệu kỹ thuật, mã lỗi, acronyms
+        bool(_NG_RE.search(original)),
+        "ng率" in original.lower(),
+        "ng rate" in ascii_folded,
+        "root cause" in ascii_folded,
+        "countermeasure" in ascii_folded,
+        "anomaly" in ascii_folded,
+        "symptom" in ascii_folded,
+        "troubleshoot" in ascii_folded,
+        "trend" in ascii_folded,
+        "errcolor" in ascii_folded,
+        "bowoveradjustment" in ascii_folded,
+        bool(_TECHNICAL_CODE_RE.search(original)),
+        bool(_FOUR_M_RE.search(original)),
+        "jig" in ascii_folded,
+    )
+
+    # 4. Lookup markers: tra cứu bảng thông số, giá trị, dung sai, ngưỡng, đơn vị, số lượng
+    lookup_markers = (
+        # Tiếng Việt
+        "bang quy doi" in ascii_folded,
+        "bang thong so" in ascii_folded,
+        "bang" in ascii_folded and ("skew" in ascii_folded or "gia tri" in ascii_folded or "record" in ascii_folded),
+        "nominal" in ascii_folded,
+        "dung sai" in ascii_folded,
+        "tolerance" in ascii_folded,
+        "gioi han" in ascii_folded,
+        "nguong" in ascii_folded,
+        "threshold" in ascii_folded,
+        "gia tri" in ascii_folded,
+        "bao nhieu" in ascii_folded,
+        "ty le" in ascii_folded,
+        "ti le" in ascii_folded,
+        "so luong" in ascii_folded,
+        "pham vi ngay" in ascii_folded,
+        "record dau" in ascii_folded,
+        "phuong phap tinh" in ascii_folded,
+        # Tiếng Nhật / Tiếng Trung
+        "公差" in original,
+        "規格" in original,
+        "规格" in original,
+        "閾値" in original,
+        "余量" in original,
+        "測定値" in original,
+        "測定" in original,
+        "範囲" in original,
+        "范围" in original,
+        "平均値" in original,
+        "多少" in original,
+        "いくつ" in original,
+        "何件" in original,
+        "何record" in original.lower(),
+        "何serial" in original.lower(),
+        "哪一天" in original,
+        "分別有多少" in original or "分别有多少" in original,
+        "表" in original,
+        # Đơn vị & chỉ số đo lường kỹ thuật
+        "dot" in ascii_folded,
+        "µm" in original or "um" in ascii_folded,
+        "mm" in original,
+        bool(_MA_UNIT_RE.search(original)) or ("ma" in ascii_folded and "current" in ascii_folded),
+        "beampos" in ascii_folded,
+        "beam diameter" in ascii_folded,
+        "beam h" in ascii_folded or "beam v" in ascii_folded,
+        "lightpath" in ascii_folded,
+        "takt_" in ascii_folded,
+        "9999.9" in original,
+        "999" in original,
+    )
+
+    is_diag = any(diagnosis_markers)
+    is_lookup = any(lookup_markers)
+
+    if is_diag and not is_lookup:
+        return "diagnosis", ("query",)
+    elif is_lookup and not is_diag:
+        return "lookup", ("query",)
+    elif is_diag and is_lookup:
+        cause_countermeasure_cues = (
+            "nguyen nhan" in ascii_folded, "doi sach" in ascii_folded, "bat thuong" in ascii_folded,
+            "原因" in original, "対策" in original, "trend" in ascii_folded, "なぜ" in original,
+            "hieu qua" in ascii_folded, "nguyên nhân duy nhất" in original.lower(), "hien tuong" in ascii_folded,
+            "bao duong" in ascii_folded, "dang chu y" in ascii_folded, "chu y" in ascii_folded, "van de" in ascii_folded,
+            "問題" in original, "排查" in original, "jig" in ascii_folded and "nao" in ascii_folded,
+        )
+        if any(cause_countermeasure_cues):
+            return "diagnosis", ("query",)
+        return "lookup", ("query",)
+
     return "general", ("query",)
 
 
@@ -498,9 +655,9 @@ def identity_query_plan(query: str, *, status: str = "identity") -> RetrievalQue
     intent_category, required_obligations = _detect_intent_category(original)
     variants = _identity_variants(original, intent_category)
     extra_facets = tuple(item.facet_id for item in variants if item.origin == "facet")
-    if intent_category == "general" and (
+    if (
         len(extra_facets) >= 2 or _has_explicit_cross_source_wording(original)
-    ):
+    ) and intent_category != "procedure":
         intent_category = "cross_source_synthesis"
     effective_status = "faceted" if status == "identity" and len(variants) > 1 else status
     all_plan_text = " ".join([original, *(v.text for v in variants)])

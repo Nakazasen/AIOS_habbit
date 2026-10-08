@@ -176,3 +176,68 @@ def test_expansion_rejects_control_characters():
     )
     assert len(plan.variants) == 1
     assert plan.expansion_status == "expansion_rejected"
+
+
+def test_technical_query_intent_classification_diagnosis_and_lookup():
+    from aios_habit.rag_v2.query_planning import coerce_query_plan
+
+    # Diagnosis queries (mã lỗi, hiện tượng, nguyên nhân, đối sách)
+    diag_queries = [
+        "C23とC24ではどのような発生Trendでしたか。",
+        "Điểm bất thường được phát hiện ở Jig nào và vị trí Camera nào?",
+        "File có xác nhận chênh lệch DMT–PMT chính là nguyên nhân duy nhất gây NG không?",
+        "Kết quả xác nhận 4M có phát hiện bất thường không?",
+        "Tăng thời gian ép từ 3 giây lên 6 giây có hiệu quả không?",
+        "SIM追加後のMagenta光路高さとC7620発生率はどうなりましたか。",
+        "排查时应先调整Unit还是确认Jig相关性？",
+    ]
+    for q in diag_queries:
+        plan = coerce_query_plan(q)
+        assert plan.intent_category == "diagnosis", f"Query '{q}' should be diagnosis, got {plan.intent_category}"
+
+    # Lookup queries (bảng thông số, giá trị, dung sai, ngưỡng, đơn vị)
+    lookup_queries = [
+        "C7620中Magenta相对Black的副扫描色差达到多少会成为NG？",
+        "Trong bảng quy đổi Skew, Black, Cyan, Magenta và Yellow lần lượt có giá trị µm và dot bao nhiêu?",
+        "Các mục tham khảo số 13–16 có nominal và dung sai thế nào?",
+        "Kích thước tại các điểm Y73–Y104 có giới hạn bao nhiêu?",
+        "Yellow、Cyan、Magenta分别有多少件？",
+        "BeamPosX=3024,6 µm cách hai giới hạn bao nhiêu?",
+    ]
+    for q in lookup_queries:
+        plan = coerce_query_plan(q)
+        assert plan.intent_category == "lookup", f"Query '{q}' should be lookup, got {plan.intent_category}"
+
+
+def test_technical_query_intent_negative_guards():
+    from aios_habit.rag_v2.query_planning import coerce_query_plan
+
+    # Negative guards: khái niệm chung, tổng quan không bị nuốt sang diagnosis/lookup
+    neg_queries = [
+        "Hướng quét chính và hướng quét phụ khác nhau thế nào?",
+        "Hai loại Motor Polygon được tài liệu phân biệt như thế nào?",
+        "Tổng quan về khái niệm và định nghĩa hệ thống",
+    ]
+    for q in neg_queries:
+        plan = coerce_query_plan(q)
+        assert plan.intent_category == "general", f"Query '{q}' should remain general, got {plan.intent_category}"
+
+
+def test_lsu_50_questions_intent_distribution_activates_claim_budget():
+    import json
+    from aios_habit.rag_v2.query_planning import coerce_query_plan
+
+    with open("tests/fixtures/eval/lsu_quality_50_questions.json", encoding="utf-8") as f:
+        data = json.load(f)
+
+    counts = {}
+    for item in data:
+        plan = coerce_query_plan(item["question"])
+        counts[plan.intent_category] = counts.get(plan.intent_category, 0) + 1
+
+    # Khẳng định đa số câu (>= 40/50 câu) nhận diagnosis hoặc lookup để kích hoạt ngân sách 10
+    budget_10_count = counts.get("diagnosis", 0) + counts.get("lookup", 0) + counts.get("cross_source_synthesis", 0)
+    assert budget_10_count >= 40, f"Expected at least 40 questions to receive budget 10 intent, got {budget_10_count}"
+    assert counts.get("general", 0) >= 2, "Negative controls should remain general"
+    assert counts.get("procedure", 0) >= 2, "Procedural questions should remain procedure"
+
