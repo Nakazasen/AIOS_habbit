@@ -4,14 +4,14 @@
   "loai": "nguyen_nhan",
   "ten_loai": "Nguyên nhân (DMT–PMT)",
   "question": "File có xác nhận chênh lệch DMT–PMT chính là nguyên nhân duy nhất gây NG không?",
-  "thoi_gian_toan_trinh_giay": 315.11,
-  "model_phuc_vu": "verified_gemini_stream",
+  "thoi_gian_toan_trinh_giay": 124.88,
+  "model_phuc_vu": "Nakazasen Router (configured_by_provider)",
   "provenance": {
-    "operational_mode": "direct",
-    "provider_name": "Gemini Web Stream",
-    "model_name": "verified_gemini_stream"
+    "operational_mode": "external_api",
+    "provider_name": "Nakazasen Router",
+    "model_name": "configured_by_provider"
   },
-  "dap_an_nguyen_van": "smart_toy\n✨ Câu trả lời mới nhất\n\n⚠️ Dịch vụ AI chưa phản hồi. Vui lòng kiểm tra lại kết nối mạng hoặc cấu hình API key.\n\nthumb_up\nthumb_down",
+  "dap_an_nguyen_van": "Dựa trên các nguồn được cung cấp, file có xác nhận chênh lệch DMT–PMT không phải là nguyên nhân duy nhất gây\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng.",
   "anh_chup": "app-e2e-pool-home-03-cau2-dmt-pmt.png",
   "hoan_thanh": true
 }
