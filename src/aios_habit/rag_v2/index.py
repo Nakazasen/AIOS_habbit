@@ -4902,11 +4902,16 @@ class LocalChunkIndex:
 
     @staticmethod
     def _is_stale(row: sqlite3.Row, options: SearchOptions) -> bool:
+        row_fp = row["source_fingerprint"]
+        if not row_fp:
+            return False
         expected = options.expected_source_fingerprints
         if row["document_id"] in expected:
-            return row["source_fingerprint"] != expected[row["document_id"]]
+            exp = expected[row["document_id"]]
+            return bool(exp and row_fp != exp)
         if row["source_path"] in expected:
-            return row["source_fingerprint"] != expected[row["source_path"]]
+            exp = expected[row["source_path"]]
+            return bool(exp and row_fp != exp)
         return False
 
     @staticmethod

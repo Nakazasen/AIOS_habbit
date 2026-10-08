@@ -582,7 +582,7 @@ class _WorkerSession:
                     routing_reason_codes=routing_reason_codes,
                     policy_version=policy_version,
                 )
-                if query_res.search_response.summary.filtered_as_stale_count:
+                if not getattr(pipeline.config, "index_read_only", False) and query_res.search_response.summary.filtered_as_stale_count:
                     raise RuntimeError("rag_v2_stale_index")
 
                 serialized = _serialize_query_result(query_res)
@@ -623,7 +623,7 @@ class _WorkerSession:
                     routing_reason_codes=routing_reason_codes,
                     policy_version=policy_version,
                 )
-                if query_res.search_response.summary.filtered_as_stale_count:
+                if not getattr(pipeline.config, "index_read_only", False) and query_res.search_response.summary.filtered_as_stale_count:
                     raise RuntimeError("rag_v2_stale_index")
 
                 serialized = _serialize_query_result(query_res)
