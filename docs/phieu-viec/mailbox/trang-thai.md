@@ -1,6 +1,7 @@
 ﻿# Trạng thái mailbox
 
-- Trạng thái: `xong-cho-duyet`
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-09 ~05:55 +07 — **ĐẠT** vé `TEST-STALE-GUARDS-HOME`. Điều phối TỰ chạy lại cả 3 tệp đã sửa trên VM: 79/79 PASS — khớp báo cáo. Cả 5 ca đều truy được commit gốc và xác nhận là thay đổi thiết kế đã duyệt (bản sửa toán tử nuốt nguồn đích, mặc định nạp dày mới, cải tiến bộ lọc trước), không có hồi quy thật; test đã chuyển sang khẳng định hành vi thay vì chuỗi mã nguồn. Tín hiệu toàn bộ suite nay còn khoảng 24 ca đỏ môi trường đã biết. Phát hành việc tiếp theo: `TEST-SUITE-HYGIENE-HOME` (prompt.md đã thay — dọn nốt nhóm ca môi trường bằng bỏ qua có điều kiện kèm lý do, để từ nay ca đỏ mới nào cũng là tín hiệu hồi quy thật).
 - `ghi_chu`: 2026-10-09 05:45 +07 — OMP **XONG → chốt `xong-cho-duyet`** vé `TEST-STALE-GUARDS-HOME`: 5/5 ca dọn xong, **không hồi quy thật** — 3 ca chuỗi do `afd7fc6` QUALITY2 đổi chủ đích (verdict công nhận), preload do `1b33f88` DENSE-NUMPY verdict ĐẠT đổi mặc định bật, prefilter do `195b970` PREFILTER-FIX cải tiến lọc. Chỉ sửa test (commit `fb58bd6` + báo cáo này): 3 tệp đụng **79/79 PASS** (trước 74/79), lân cận **146/146 PASS**, compileall sạch, `cli audit` PASS, import app OK. Rào cứng giữ: `diff -- src/` rỗng, không ghi index, không merge `main`. Chờ Muse đối chứng.
 - `commit`: `fb58bd6` (sửa 5 test) + báo cáo `test-stale-guards-home.md`
 - `bao_cao`: `docs/phieu-viec/ket-qua/test-stale-guards-home.md` (vé TEST-STALE-GUARDS-HOME — `xong-cho-duyet` 09/10: 5/5 test lạc hậu sang khẳng định hành vi; 79/79 + 146/146 PASS; rào cứng giữ nguyên)
