@@ -178,7 +178,7 @@ Tổng cộng: $6 \times 30\text{s} + \text{retries} \approx 180 - 240\text{s}$ 
 ### 4.1. Cấu hình `.env` máy nhà hiện tại
 Tệp `.env` tại máy nhà `h410asrock` đã cấu hình đầy đủ các biến của Pool Command Code:
 - `AIOS_LOCAL_AI_ENDPOINT = https://api.commandcode.org/v1`
-- `AIOS_LOCAL_AI_API_KEY = user_2usJj...` (khóa 93 ký tự đã dán)
+- `AIOS_LOCAL_AI_API_KEY = <đã cấu hình — không ghi giá trị>`
 - `AIOS_LOCAL_AI_MODEL = inclusionai/ling-3.1-flash:free`
 - `AIOS_LOCAL_AI_FAILOVER_MODELS = poolside/laguna-s-2.1-free,inclusionai/ling-3.0-flash-sante:free`
 - `AIOS_SYNTHESIS_ALLOW_CLOUD_PROVIDERS = 1`
