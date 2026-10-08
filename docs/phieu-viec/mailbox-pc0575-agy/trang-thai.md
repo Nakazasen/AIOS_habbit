@@ -3,7 +3,7 @@
 ## Vé hiện tại: SYNTH-CONTEXT-TOPK-PC0575
 
 - Trạng thái: `xong-cho-duyet`
-- `commit`: `da248c18`
+- `commit`: `c9ef56c6`
 - `bao_cao`: `docs/phieu-viec/ket-qua/synth-context-topk-pc0575.md`
 - `ghi_chu`: 2026-10-08 17:22 +07 — Hoàn thành vé SYNTH-CONTEXT-TOPK-PC0575 (nộp xong-cho-duyet): (1) Đã chuyển tham số top-k ngữ cảnh đưa vào tổng hợp thành cấu hình tường minh AIOS_RAG_SYNTH_CONTEXT_TOPK (mặc định 8, hỗ trợ cờ CLI --synth-topk), unit test 5/5 PASS; (2) Đo lại đủ 50/50 câu lane RAG với synth_topk=12 trên cùng chỉ mục library.sqlite chỉ-đọc (MD5 492C065F8F741AD5C73A900FA6BCDF3E nguyên vẹn 100% trước/sau); (3) Điểm số & GPA tiếp tục tăng: 47.83 -> 48.17/150 (GPA 0.957 -> 0.963), số câu đạt điểm 3 tuyệt đối tăng từ 3 lên 5 câu (+66.7%); (4) ĐÍCH THÂN GIẢI CỨU THÀNH CÔNG ca trọng điểm Q0701: từ 0.00 vọt lên 3.00/3.0 điểm tuyệt đối nhờ mảnh Sirius 2 hạng 11 lọt vào ngữ cảnh, trích dẫn [9] chuẩn xác; nâng tổng điểm nhóm A từ 3.0 lên 5.0 (+66.7%); (5) Thời gian tổng hợp (synthesis time) hoàn toàn không bị suy giảm: trung vị 4.79s (so với 4.81s ở top 8), trung bình số học 5.23s (so với 5.14s ở top 8); (6) Đề xuất duy trì ngưỡng 12 làm mặc định mới; 4 cổng repo PASS tuyệt đối. Báo cáo chi tiết nộp tại docs/phieu-viec/ket-qua/synth-context-topk-pc0575.md.
 - `ghi_chu`: 2026-10-08 17:16 +07 — Tiến độ Bước 2: Đã hoàn thành 46/50 câu (0 lỗi kỹ thuật; retrieval warm TB ~14.6s/câu, synthesis ~5.3s/câu; tạm thời 11 câu đạt chuẩn ≥2.0, 5 câu đạt 3 tuyệt đối, GPA tạm 1.004). Tiến trình nền đang tiếp tục chạy 4 câu cuối trên index chỉ-đọc.
