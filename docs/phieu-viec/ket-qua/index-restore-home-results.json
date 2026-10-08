@@ -1,0 +1,23 @@
+{
+  "conversation_id": "CONV-RESTORE-F21480",
+  "thoi_gian_mo_app_giay": 32.36,
+  "cau_hoi": {
+    "id": "Q0718",
+    "ten_loai": "Nguyên nhân (DMT–PMT)",
+    "question": "File có xác nhận chênh lệch DMT–PMT chính là nguyên nhân duy nhất gây NG không?",
+    "thoi_gian_toan_trinh_giay": 381.64,
+    "model_phuc_vu": "Nakazasen Router (configured_by_provider)",
+    "provenance": {
+      "operational_mode": "external_api",
+      "provider_name": "Nakazasen Router",
+      "model_name": "configured_by_provider"
+    },
+    "dap_an_nguyen_van": "**Tóm tắt:** Không. Trong toàn bộ nguồn được cung cấp, không có dữ kiện nào nhắc đến \"chênh lệch DMT–PMT\", cũng không có khẳng định rằng chênh lệch đó là nguyên nhân duy nhất gây NG. Bằng chứng hiện có không đủ để trả lời câu hỏi theo hướng khẳng định.\n\n**Điều đã xác nhận:**\n- \"PMT\" chỉ xuất hiện với tư cách tên cột trong `手順書付シナリオ.xlsx` (cột G2=PMT, J3=PMT – cột đánh dấu giai đoạn xác minh), không phải là một nguyên nhân gây NG [2][12][15].\n- Các nguyên nhân NG được ghi nhận trong `Báo_cáo_lỗi_xuất_kho_AMS.xlsx` là khác:\n  - Nhóm 1 (1 thùng): \"Nguyên nhân trên EDI đang tồn tại dữ liệu Lot sản xuất\"; ORICON ID %9702: \"VendorShippingInfoとの照合NG。あわせて「格納指示FLG_Error」が発生しています\" [3][6][7].\n  - Nhóm 2 (6 thùng): \"Camera không đọc được tem QR dán ở các mặt phụ (Trái/Phải/Trước/Sau) kết hợp lỗi CAM\", mã lỗi bắt đầu bằng 0201...; ORICON ID %10304: \"左側QR照合NG。あわせてCAM処理失敗および格納指示FLG_Errorが発生しています\" [3][6][7].\n- Có thùng ORICON_STATUS = '0000000000000001' (trạng thái OK) vẫn bị đẩy ra cổng NG, và file ghi rõ \"Nguyên nhân đang được điều tra\" [3][6][7].\n\n**Điểm chưa đủ bằng chứng:**\n- Không có đề cập đến \"DMT\", không có bảng/so sánh chênh lệch DMT–PMT, và không có kết luận \"nguyên nhân duy nhất\" trong bất kỳ nguồn nào. Không th\n\n[Lưu ý: Câu trả lời bị cắt ngắn do đạt giới hạn độ dài token của mô hình.]\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng.",
+    "do_dai_ky_tu": 1367,
+    "anh_chup": "index-restore-home-app-session.png",
+    "hoan_thanh": true
+  },
+  "sha256_truoc": "45EB0E072893F802D71AB201CFBB2B29C36E2B0A31313FA79FC55A025B65B7C0",
+  "sha256_sau": "45EB0E072893F802D71AB201CFBB2B29C36E2B0A31313FA79FC55A025B65B7C0",
+  "sha256_khop_tuyet_doi": true
+}
