@@ -2,9 +2,10 @@
 
 ## Vé hiện tại: RETRIEVAL-DENSE-NUMPY-PC0575
 
-- Trạng thái: `dang-lam`
-- `commit`: `2472dd53`
+- Trạng thái: `xong-cho-duyet`
+- `commit`: `afab1a6a`
 - `bao_cao`: `docs/phieu-viec/ket-qua/retrieval-dense-numpy-pc0575.md`
+- `ghi_chu`: 2026-10-08 11:45 +07 — Hoàn thành vé RETRIEVAL-DENSE-NUMPY-PC0575: (1) Cổng Parity 8/8 câu (7 câu nhóm A + 1 câu chẩn đoán) ĐẠT TUYỆT ĐỐI (100% PASS, Top 15 Chunk IDs trùng 100%, độ lệch điểm 0.00e+00, tăng tốc 144x–244x); (2) Cache ma trận Dense Numpy cấp tiến trình giữ trong RAM 473.95 MB (đọc từ cache chỉ mất 0.08–0.16 ms), mặc định bật khi có numpy, rollback 1 dòng bằng AIOS_RAG_V2_NUMPY_DENSE=0, fallback log tiếng Việt an toàn; (3) Đo hiệu năng trên 3 câu chẩn đoán đạt chuẩn chặng dense warm TB 0.61s/câu (Q0704: 0.51s, Q0701: 0.76s, Q0671: 0.56s, <= 2.0s), cắt giảm ~105s/câu, đưa tổng thời gian warm từ ~158s xuống ~80.5s (tiết kiệm TB 78.2s/câu); (4) Nghiệm thu dùng thật qua pipeline: Q0704 Rank 1, Q0671 Rank 3, trích xuất chính xác con số và hiện tượng; (5) Unit test 8/8 PASS, 4 cổng repo PASS (compileall, pytest, cli audit PASS, import app OK); (6) Rào cứng chỉ-đọc tuân thủ tuyệt đối (library.sqlite nguyên vẹn 2.853.646.336 bytes, không merge main). Sẵn sàng bàn giao cho Muse nghiệm thu.
 - `ghi_chu`: 2026-10-08 11:21 +07 — CỔNG PARITY 8/8 CÂU ĐẠT TUYỆT ĐỐI (100% PASS): Câu 8/8 (Q0704_perf_diag) ĐẠT (PASS) — Top 15 Chunk IDs trùng khớp 100%, độ lệch điểm 0.00e+00; đường Python 272.9s, đường Numpy 1.117s (tăng tốc 244.2 lần). Toàn bộ 8/8 câu nhóm A + câu chẩn đoán đã vượt qua Cổng Parity bắt buộc. Đang đo phân rã hiệu năng và nghiệm thu dùng thật trên 3 câu chẩn đoán.
 - `ghi_chu`: 2026-10-08 11:16 +07 — Tiến độ Cổng Parity câu 7/8 (Q0668): ĐẠT (PASS) — Top 15 Chunk IDs trùng khớp 100%, độ lệch điểm 0.00e+00; đường Python 263.8s, đường Numpy 1.166s (tăng tốc 226.3 lần). Đang tiếp tục đo câu 8/8 (Q0704_perf_diag).
 - `ghi_chu`: 2026-10-08 11:12 +07 — Tiến độ Cổng Parity câu 6/8 (Q0696): ĐẠT (PASS) — Top 15 Chunk IDs trùng khớp 100%, độ lệch điểm 0.00e+00; đường Python 276.4s, đường Numpy 1.494s (tăng tốc 185.0 lần). Đang tiếp tục đo câu 7/8 (Q0668).
