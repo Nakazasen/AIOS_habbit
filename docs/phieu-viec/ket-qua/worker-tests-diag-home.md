@@ -69,11 +69,14 @@ Rớt với chuỗi lỗi:
 
 ## 5. Cổng xác minh
 
-- `uv run --no-sync --group dev python -m compileall src tests`: sạch (exit 0).
+- `uv run --no-sync --group dev python -m compileall src tests`: sạch (exit 0, kiểm lại trong phiên chốt).
 - `uv run --no-sync --group dev python -m aios_habit.cli audit`: `"status": "PASS"`, không lỗi, không cảnh báo.
 - Import `aios_habit.workspace_chat_app`: OK.
-- 3 tệp liên quan chạy lại liên tiếp **2 vòng**: vòng 1 **21/21 PASS** (106,05s), vòng 2 **21/21 PASS** (114,65s) — không còn ca đỏ, không chập chờn.
-- Full `pytest -q`: <!-- TODO: fill -->
+- 3 tệp liên quan chạy lại liên tiếp **2 vòng**: vòng 1 **21/21 PASS** (106,05s), vòng 2 **21/21 PASS** (114,65s); phiên chốt chạy lại: 3 ca vé **3 passed** (15,58s) + 3 tệp **21 passed** (117,36s) — không còn ca đỏ, không chập chờn.
+- Full `pytest -q` toàn repo (phiên chốt, 1305,71s ≈ 21,8 phút): **8 failed / 4195 passed / 46 skipped / 19 errors**.
+  - Đối chiếu baseline tại `4068e02` (báo cáo TEST-PORTABLE: 11 failed / 4192 passed / 46 skipped / 19 errors): chênh lệch đúng **−3 failed / +3 passed = chính 3 ca vé đã sửa**; skipped và errors giữ nguyên.
+  - 8 failed còn lại chạy riêng xác minh **8 failed y hệt** (30,45s), toàn ngoài phạm vi vé, trùng nhóm baseline: 2 ca cần mạng; 3 ca khẳng định chuỗi mã nguồn app (chuỗi đã bị gỡ bởi commit khác); 2 ca `rag_v2_opt_pyloops` (kỳ vọng ngược với bản sửa đã duyệt / phụ thuộc môi trường); 1 ca index production (`496 != 889` — index cục bộ trên máy này).
+  - 19 errors giữ nguyên: thiếu dữ liệu theo đường dẫn máy khác `\home\hatch\...` (lỗi môi trường dữ liệu, không phải logic).
 
 ## 6. Phát hiện phụ & đề xuất (không tự sửa)
 
