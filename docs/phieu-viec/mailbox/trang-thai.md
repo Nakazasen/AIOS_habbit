@@ -1,6 +1,7 @@
 ﻿# Trạng thái mailbox
 
 - Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-09 01:05 +07 — OMP mốc: **3 tệp liên quan xanh 21/21 PASS** (117,36s: self_healing 5 + client 5 + worker 11). File lạ `synth-claimbudget-diag-home.md` (untracked, của thợ khác) để nguyên không đụng. Đang chạy full `pytest -q` để chốt số cuối báo cáo.
 - `ghi_chu`: 2026-10-09 00:59 +07 — OMP mốc: **chạy lại 3 ca trong phiên này đều xanh** (3 passed, 15,58s; compileall exit 0, `cli audit` PASS, import app OK). Rào cứng giữ: `diff 8bcc77d..HEAD -- src/` rỗng, chỉ 3 tệp test được sửa. Đang chạy 3 tệp liên quan + full `pytest -q` nền để chốt báo cáo.
 - `ghi_chu`: 2026-10-09 00:52 +07 — OMP **tiếp tục vé `WORKER-TESTS-DIAG-HOME`** (phiên theo lệnh user 00:51), kiểm cổng gate: cổng MỞ (máy h410asrock, HEAD=origin=`af34abd`, prompt.md đúng vé điều tra 3 ca test hạ tầng bộ đọc, trạng thái `dang-lam` tiếp nối mốc 00:56; không dòng cho-cong active, không file `_ticket-moi.md` mới, không dùng nhánh cho-muse, không quay no-op). Báo cáo dở còn thiếu full `pytest -q` (mục 5 còn TODO). Đang chạy full suite để chốt số cuối rồi đóng báo cáo.
 - `ghi_chu`: 2026-10-09 00:15 +07 — OMP **nhận vé `WORKER-TESTS-DIAG-HOME`** (phiên theo lệnh user), kiểm cổng gate: cổng MỞ (máy h410asrock, HEAD=origin=`8bcc77d`, prompt.md đúng vé điều tra 3 ca test hạ tầng bộ đọc, trạng thái `moi` mới sau verdict ĐẠT AUDIT-ENV-FAILOVER-HOME ~00:20; không dòng cho-cong active, không file watcher tự mở mới, không dùng nhánh cho-muse, không quay no-op). Đang chạy lại từng ca lấy traceback.
