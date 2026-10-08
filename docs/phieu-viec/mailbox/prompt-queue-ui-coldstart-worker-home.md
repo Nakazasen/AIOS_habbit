@@ -1,4 +1,4 @@
-# VÉ: UI-COLDSTART-WORKER-HOME (câu hỏi đầu phiên lạnh phải ra đáp án — xử lý đường nạp worker BGE)
+﻿# VÉ: UI-COLDSTART-WORKER-HOME (câu hỏi đầu phiên lạnh phải ra đáp án — xử lý đường nạp worker BGE)
 
 - Mã vé: `UI-COLDSTART-WORKER-HOME`
 - Role gợi ý: DEFAULT
@@ -21,3 +21,12 @@
 - CPU-only cho mọi lần đo (GPU chỉ dành cho embedding/index). Không ghi chỉ mục. Không merge `main`. Tương thích Python 3.11.
 - Không sửa đè/chạm vào bất kỳ file bằng chứng nào của các vòng trước; mọi file của vé này đều mới, gắn mã phiên riêng.
 - Mốc tiến độ tối thiểu 15 phút/lần + checkpoint/resume. Kỷ luật số liệu tuyệt đối: mọi con số phải đối chiếu được với file đính kèm.
+
+## MỤC 0 BẮT BUỘC (điều phối bổ sung 20:55 08/10 sau khi user yêu cầu tra lịch sử): ĐỐI CHIẾU 3 ĐỢT XỬ LÝ TRƯỚC — CẤM LÀM LẠI TỪ ĐẦU
+
+Vấn đề nạp worker đã qua 3 đợt xử lý có verdict, thợ PHẢI đọc trước khi chẩn đoán/sửa (điều phối đã tự kiểm: các hằng số của đợt 3 vẫn còn nguyên trong code hiện tại):
+1. **02/10 tại PC0575 (vé SPEED-COLDSTART-PC0575):** chẩn đoán gốc — thời gian nạp worker thật ~181 giây vượt cửa sổ chờ 120 giây của app (hết giờ thì sinh worker mới, bỏ mặc worker đang nạp); làm nóng nền trỏ SAI collection (chỉ mục legacy thay vì `tri_thuc`). Đã sửa: làm nóng trỏ đúng collection production chỉ-đọc; đồng bộ cửa sổ chờ 300 giây; giữ worker đang nạp cho lần gọi sau; worker sống lâu qua named pipe. Báo cáo: `docs/phieu-viec/ket-qua/speed-coldstart-pc0575.md`.
+2. **06/10:** verdict ĐẠT trong phạm vi khởi động lại app khi worker còn sống (18,6–34 giây); ghi rõ kịch bản worker lạnh hoàn toàn vẫn 130–209 giây, CHƯA đạt và bị để treo từ đó.
+3. **07/10 tại máy nhà (vé BGE-WORKER-DIAG-HOME → BGE-WORKER-FIX-HOME, verdict ĐẠT 23:27):** đo phân rã nạp 246–302 giây trên CPU máy nhà; commit `c338a87` nới trần nạp 300→420 giây và trần chờ sinh worker 120→360 giây, thêm cơ chế tự phục hồi (xoá cờ lỗi để thử lại). Nghiệm thu dùng thật ĐẠT: lượt 1 câu C7620 khởi động worker thành công và trả lời đúng 70dot, lượt 2 worker đã sống nên chỉ 15,25 giây. Báo cáo: `docs/phieu-viec/ket-qua/bge-worker-diag-home.md` và `bge-worker-fix-home.md`.
+
+**Câu hỏi vé này phải trả lời TRƯỚC khi sửa (bằng log worker của phiên vòng 3 và đối chiếu commit):** đường hỏi đã ĐẠT ngày 07/10 vì sao hỏng ngày 08/10? Hai nghi vấn chính phải phân biệt rõ: (i) worker SẬP tiến trình (`bge_subprocess_worker_crashed`) — loại lỗi khác hẳn "nạp chậm", trần chờ dài bao nhiêu cũng không cứu được; (ii) các thay đổi sau 07/10 (bộ lọc khối tri thức của chặng 2 tại PC0575 commit `ce6212c`, các sửa tương thích ở chuỗi vé chất lượng vòng 1–3) đã đổi đường đi của lượt hỏi. Kết luận chẩn đoán phải chỉ rõ: chết vì sập hay vì hết giờ, ở commit/điều kiện nào, và phần nào của 3 đợt trước vẫn còn hiệu lực (không được sửa lại những gì đang đúng).
