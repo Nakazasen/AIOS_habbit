@@ -1,6 +1,7 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
 - Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-09 04:28 +07 — Tiến độ vé SYNTH-CLAIMBUDGET-APPLY-HOME: Runner đang đo tốt trên Ling 3.1 Flash free CPU-only; đã hoàn thành 46/50 câu (câu 45 Q0680 đạt 3.0đ provider_validated_after_repair, nâng tổng validated lên 5/46 câu, vượt mốc 4 validated của lượt chẩn đoán); đang đo 4 câu cuối (câu 47–50); băm index 45EB...B7C0 bất biến.
 - `ghi_chu`: 2026-10-09 04:22 +07 — Tiến độ vé SYNTH-CLAIMBUDGET-APPLY-HOME: Runner đang đo tốt trên Ling 3.1 Flash free CPU-only; đã hoàn thành 42/50 câu (câu 41–42 hoàn tất); đang đo 8 câu cuối (câu 43–50); băm index 45EB...B7C0 bất biến.
 - `ghi_chu`: 2026-10-09 04:16 +07 — Tiến độ vé SYNTH-CLAIMBUDGET-APPLY-HOME: Runner đang đo tốt trên Ling 3.1 Flash free CPU-only; đã hoàn thành 39/50 câu (câu 38 Q0662 đạt 2.0đ provider_validated, nâng tổng validated lên 4 câu khớp mốc chẩn đoán); đang đo 11 câu cuối (câu 40–50); băm index 45EB...B7C0 bất biến.
 - `ghi_chu`: 2026-10-09 04:10 +07 — Tiến độ vé SYNTH-CLAIMBUDGET-APPLY-HOME: Runner đang đo tốt trên Ling 3.1 Flash free CPU-only; đã hoàn thành 34/50 câu (câu 32 Q0696 đạt provider_validated_after_repair; câu 33 Q0633 đạt 2.33đ provider_validated, nâng tổng validated lên 3 câu); đang đo câu 35–50; băm index 45EB...B7C0 bất biến.
