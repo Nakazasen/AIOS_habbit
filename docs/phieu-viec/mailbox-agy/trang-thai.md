@@ -1,8 +1,9 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
 - Trạng thái: `dang-lam`
-- `commit`: `02b1a4b`
+- `commit`: `pending-runner-start`
 - `bao_cao`: `docs/phieu-viec/ket-qua/synth-intent-classify-home.md`
+- `ghi_chu`: 2026-10-09 05:27 +07 — Tiến độ vé SYNTH-INTENT-CLASSIFY-HOME: Bắt đầu Mục 2 khởi chạy runner đo 50 câu RAG LSU (do_rag_50_synth_intent_classify.py) trên Ling 3.1 Flash free CPU-only sau khi chuẩn hóa bộ phân loại kỹ thuật (90% nhận ngân sách 10, plan_max_claims ghi nhận trung thực); băm index 45EB...B7C0 bất biến.
 - `ghi_chu`: 2026-10-09 05:25 +07 — Tiến độ vé SYNTH-INTENT-CLASSIFY-HOME: Hoàn thành Mục 1 (sửa bộ phân loại query intent trong query_planning.py mở rộng nhận diện technical_diagnosis_markers cho câu hỏi kỹ thuật LSU, dùng word boundaries regex chống match nhầm substring tiếng Anh như 'pump'; phân bố 50 câu LSU đạt 44 diagnosis + 1 cross_source_synthesis = 45/50 câu [90%] nhận ngân sách 10; bảo toàn 3 general + 2 procedure; 80/80 test rag_v2/synthesis/summary_first PASS, compileall sạch, cli audit PASS, import app OK, băm index 45EB...B7C0 bất biến). Bắt đầu Mục 2 chuẩn bị runner đo 50 câu RAG LSU trên Ling 3.1 Flash free CPU-only.
 - `ghi_chu`: 2026-10-09 05:05 +07 — Tiến độ vé SYNTH-INTENT-CLASSIFY-HOME: Hoàn thành Mục 0 (đính chính báo cáo vé trước) và Mục 1 (sửa bộ phân loại query intent trong query_planning.py mở rộng nhận diện diagnosis/lookup cho câu hỏi kỹ thuật LSU, bảo toàn rào kiểm âm general và procedure; tỷ lệ 50 câu LSU từ 0% lên 92% nhận ngân sách 10; 237/237 test PASS, compileall sạch, cli audit PASS, import app OK). Bắt đầu Mục 2 chuẩn bị runner đo lại 50 câu RAG LSU trên Ling 3.1 Flash free CPU-only.
 - `ghi_chu`: 2026-10-09 05:01 +07 — Nhận vé SYNTH-INTENT-CLASSIFY-HOME: Cổng gate thông suốt (chỉ mục SQLite 45EB...B7C0 khớp 100%, 55/55 test synthesis PASS, compileall sạch, cli audit PASS, import app OK). Bắt đầu Mục 0 đính chính báo cáo vé trước và Mục 1 sửa bộ phân loại dạng câu hỏi (mở rộng nhận diện diagnosis/lookup cho câu hỏi kỹ thuật LSU).
