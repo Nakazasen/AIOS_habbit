@@ -1,0 +1,38 @@
+{
+  "mo_ta": "Luot do xac nhan sau khi sua bo phan loai intent de kich hoat ngan sach 10",
+  "model": "inclusionai/ling-3.1-flash:free",
+  "tong_diem": 38.5,
+  "so_cau": 50,
+  "gpa": 0.77,
+  "so_validated": 20,
+  "so_fallback": 22,
+  "so_not_called": 8,
+  "so_dat_3": 7,
+  "so_dat_ge_2": 9,
+  "so_cau_claims_10": 44,
+  "phan_bo_intent": {
+    "diagnosis": 44,
+    "general": 3,
+    "procedure": 2,
+    "cross_source_synthesis": 1
+  },
+  "do_tre_tb_cau": 128.85,
+  "do_tre_tb_synth": 119.03,
+  "so_loi_ky_thuat": 0,
+  "credits": 0.0,
+  "sha_truoc": "45eb0e072893f802d71ab201cfbb2b29c36e2b0a31313fa79fc55a025b65b7c0",
+  "sha_sau": "45eb0e072893f802d71ab201cfbb2b29c36e2b0a31313fa79fc55a025b65b7c0",
+  "md5_truoc": "239009676829484049738866329de9f2",
+  "md5_sau": "239009676829484049738866329de9f2",
+  "size_truoc": 2942201856,
+  "size_sau": 2942201856,
+  "index_chi_doc_khop": true,
+  "preload_dense": [
+    121331,
+    2063.007100005052
+  ],
+  "preload_sparse": [
+    121331,
+    11311.337899998762
+  ]
+}

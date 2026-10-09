@@ -1,0 +1,27 @@
+{
+  "session_code": "CONV-INTENT-7E4A1C",
+  "stt": 1,
+  "id": "Q0699",
+  "loai": "thuc_the_ma_loi",
+  "ten_loai": "Thực thể mã lỗi (C7620)",
+  "question": "C7620中Magenta相对Black的副扫描色差达到多少会成为NG？",
+  "thoi_gian_toan_trinh_giay": 375.12,
+  "model_phuc_vu": "inclusionai/ling-3.1-flash:free",
+  "provenance": {
+    "operational_mode": "external_api",
+    "provider_name": "AI trong máy tương thích OpenAI (inclusionai/ling-3.1-flash:free)",
+    "model_name": "inclusionai/ling-3.1-flash:free"
+  },
+  "dap_an_nguyen_van": "**Tóm tắt:** Theo nguồn cung cấp, lỗi C7620 liên quan đến Magenta so với Black được đánh giá NG khi giá trị sai lệch màu theo hướng phụ quét (副走査方向) đối với Bk đạt **70 dot trở lên** (上限 70 Dot) [1][2].\n\n**Điều đã xác nhận:**\n- Slide 2 của `Sirius 2 _ C7620_報告版 4.pptx` ghi rõ hiện trạng: \"色補正後に、 Bk に対する副走査方向の色差値が 70dot 以上\" — tức sau hiệu chỉnh màu, sai lệch màu hướng phụ quét so với Bk từ **70 dot trở lên** thì phát sinh C7620; màu phát sinh là Magenta [1].\n- Slide 8 cùng tệp xác nhận ngưỡng: \"上限 70 Dot\"; Magenta bình thường có giá trị trung bình 64.09 Dot so với Bk, biên an toàn so với上限 70 Dot chỉ còn khoảng 5.9 Dot; khi biên này mất đi và vượt 70 Dot thì C7620 phát sinh [2].\n- Lưu ý phân biệt: bản ghi `Loi KDTPS.xlsx` (History KDTPS, ô L11433:AC11433) nêu một ca C7620 do Regist Calib NG với sai lệch **theo hướng quét chính (走査方向)** bên phải của Magenta so với K là 70.04[dot] — đây là hướng chính quét, không phải hướng phụ quét mà câu hỏi hỏi đến [3].\n\n**Điểm chưa đủ bằng chứng:**\n- Nguồn không nêu rõ liệu ngưỡng 70 dot áp dụng cho \"≥70\" hay \">70\" một cách tuyệt đối; cách diễn đạt là \"70dot 以上\" (từ 70 dot trở lên) và \"上限 70 Dot\" [1][2].\n- Không có dữ liệu trong nguồn về ngưỡng riêng cho các màu khác (Yellow/Cyan) theo hướng phụ quét ngoài bảng so sánh ở Slide 8 [2].\n\n**Việc cần kiểm tra tiếp:**\n- Owner nên kiểm tra lại tài liệu gốc `Sirius 2 _ C7620_報告版 4.pptx` (Slide 2, Slide 8) để xác nhận chính xác ký hiệu đánh giá (≥70 dot) và đơn vị \"Dot\" trước khi áp dụng vào tiêu chuẩn kiểm tra.\n\n**Nguồn đã dùng:** [1] Sirius 2 _ C7620_報告版 4.pptx (Slide 2); [2] Sirius 2 _ C7620_報告版 4.pptx (Slide 8); [3] Loi KDTPS.xlsx (Sheet: History KDTPS, ô L11433:AC11433).\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng.",
+  "do_dai_ky_tu": 1743,
+  "anh_chup": "synth-intent-classify-home-intent-7e4a1c-02-cau1-q0699.png",
+  "danh_sach_anh_chup": [
+    "synth-intent-classify-home-intent-7e4a1c-02-cau1-q0699.png"
+  ],
+  "anh_chup_kich_thuoc_bytes": 193813,
+  "hoan_thanh": true,
+  "chat_luong": {
+    "ro_ri_prompt_he_thong": false,
+    "bi_cat_cut_giua_cau": false
+  }
+}
