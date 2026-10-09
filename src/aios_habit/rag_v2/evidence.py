@@ -18,8 +18,10 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 from .index import SearchResponse, SearchResult, SearchSummary
 from .query_planning import (
     RetrievalQueryPlan,
+    VIETNAMESE_EVIDENCE_STOPWORDS,
     coerce_query_plan,
     extract_content_terms,
+    extract_evidence_terms,
 )
 from .script_family import plan_has_cjk_variants, query_corpus_script_mismatch
 
@@ -417,9 +419,14 @@ def _final_evidence_relevance(
     """Return proportion of query terms supported by final evidence text."""
     if not items:
         return 0.0
-    target_terms = set(
-        query_plan.target_terms or extract_content_terms(query_plan.original_query)
+    raw_target_terms = (
+        query_plan.target_terms or extract_evidence_terms(query_plan.original_query)
     )
+    target_terms = {
+        term.casefold()
+        for term in raw_target_terms
+        if term.casefold() not in VIETNAMESE_EVIDENCE_STOPWORDS
+    }
     if not target_terms:
         return 1.0
     matched_terms = {
@@ -431,7 +438,10 @@ def _final_evidence_relevance(
     # Target support must come from the original query vocabulary. Structural
     # expansion aliases remain useful for recall, but cannot prove an answer.
     for item in items:
-        item_text_tokens = set(extract_content_terms(item.text))
+        item_text_tokens = {
+            token.casefold()
+            for token in extract_evidence_terms(item.text)
+        }
         matched_terms.update(target_terms & item_text_tokens)
     return len(matched_terms) / len(target_terms)
 

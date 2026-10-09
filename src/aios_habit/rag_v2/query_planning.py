@@ -218,6 +218,17 @@ def extract_content_terms(value: str) -> Tuple[str, ...]:
     return tuple(result)
 
 
+VIETNAMESE_EVIDENCE_STOPWORDS: frozenset[str] = frozenset({
+    "ủng", "hộ", "chung", "riêng", "hay", "và", "của", "hoặc",
+})
+
+
+def extract_evidence_terms(value: str) -> Tuple[str, ...]:
+    """Return content terms excluding Vietnamese function/connective words for evidence coverage."""
+    terms = extract_content_terms(value)
+    return tuple(term for term in terms if term.casefold() not in VIETNAMESE_EVIDENCE_STOPWORDS)
+
+
 def extract_target_terms(value: str) -> Tuple[str, ...]:
     """Return literal terms from the user query without semantic rewriting."""
     return extract_content_terms(value)
