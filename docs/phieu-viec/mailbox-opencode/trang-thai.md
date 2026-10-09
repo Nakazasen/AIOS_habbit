@@ -1,8 +1,11 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
+- `commit`: `f53dfc7` (báo cáo `test-nested-guard-scan-home.md` bảng 12 dòng; vé này không sửa `src/`/`tests/`)
+- `bao_cao`: `docs/phieu-viec/ket-qua/test-nested-guard-scan-home.md`
 - `ghi_chu`: 2026-10-09 12:55 +07 — đã nhận vé TEST-NESTED-GUARD-SCAN-HOME, cổng MỞ (trạng thái `moi` + prompt đúng vé + verdict ĐẠT E2E-GUARD 12:56 phát hành vé mới; HEAD=origin=d362d4e sạch theo dõi, Python 3.11.14 OK; 0 file watcher tự mở, không rơi nhánh 4-lần/cho-muse). Vé chỉ đọc + báo cáo, không sửa gì. Bắt đầu bước 1: rà 3 mẫu rủi ro, chưa sửa gì.
 - `ghi_chu`: 2026-10-09 12:58 +07 — mốc rà xong vé `TEST-NESTED-GUARD-SCAN-HOME`: quét 311 tệp tests — subprocess trần cứng chưa bắt hết giờ 6 tệp nhẹ + 1 probe 180s nửa bảo vệ, model/thật đã bỏ qua đủ, số tuyệt đối còn 1 CAO (production 889/149800) + 1 TRUNG BÌNH (bản đồ 889/92/681/44/72) + vài trần tốc độ theo dõi. Kế tiếp: ghi báo cáo + xin duyệt.
+- `ghi_chu`: 2026-10-09 13:00 +07 — xong vé TEST-NESTED-GUARD-SCAN-HOME ở mức chờ duyệt: bảng 12 dòng (tên ca + tệp + mẫu + bảo vệ + mức xử lý); đề xuất sửa riêng mục 1 CAO + mục 2 TRUNG BÌNH sang khẳng định quan hệ, mục 3–5 theo dõi, còn lại không sửa; chỉ đọc, không sửa mã/kiểm thử, không ghi index, không merge `main`.
 
 - Trạng thái: `moi`
 - `ghi_chu` (verdict Muse): 2026-10-09 ~12:56 +07 — **ĐẠT** vé `TEST-E2E-GUARD-HOME` + **PHÁT HÀNH** vé `TEST-NESTED-GUARD-SCAN-HOME` (prompt.md đã thay). Điều phối kiểm chứng độc lập: tự đọc phần thay đổi — chỉ đụng đúng tệp kiểm thử chứa ca đích, hai điều kiện bỏ qua rõ ràng (thiếu thư mục model theo chính hàm tìm model của hệ thống; lượt lồng hết giờ vì tốc độ máy), giữ nguyên trần 300 giây và mọi khẳng định, nhánh tiến trình con cũng được bảo vệ nhất quán. Tự chạy lại ca đích trên máy sạch thiếu model: trước đây ca này đỏ, nay bỏ qua kèm lý do rõ ràng — điều kiện bảo vệ hoạt động đúng như thiết kế. Vé mới là rà soát chỉ đọc: tìm trong toàn bộ thư mục kiểm thử các ca còn lại có cùng mẫu chập chờn (tiến trình con có trần cứng chưa xử lý hết giờ, phụ thuộc tệp/model của máy khác chưa có điều kiện bỏ qua, khẳng định số tuyệt đối gắn với một máy), lập bảng để điều phối quyết phần sửa — vé này không sửa gì.
