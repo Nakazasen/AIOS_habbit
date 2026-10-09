@@ -1,6 +1,7 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
-- Trạng thái: `xong-cho-duyet`
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-09 ~12:56 +07 — **ĐẠT** vé `TEST-E2E-GUARD-HOME` + **PHÁT HÀNH** vé `TEST-NESTED-GUARD-SCAN-HOME` (prompt.md đã thay). Điều phối kiểm chứng độc lập: tự đọc phần thay đổi — chỉ đụng đúng tệp kiểm thử chứa ca đích, hai điều kiện bỏ qua rõ ràng (thiếu thư mục model theo chính hàm tìm model của hệ thống; lượt lồng hết giờ vì tốc độ máy), giữ nguyên trần 300 giây và mọi khẳng định, nhánh tiến trình con cũng được bảo vệ nhất quán. Tự chạy lại ca đích trên máy sạch thiếu model: trước đây ca này đỏ, nay bỏ qua kèm lý do rõ ràng — điều kiện bảo vệ hoạt động đúng như thiết kế. Vé mới là rà soát chỉ đọc: tìm trong toàn bộ thư mục kiểm thử các ca còn lại có cùng mẫu chập chờn (tiến trình con có trần cứng chưa xử lý hết giờ, phụ thuộc tệp/model của máy khác chưa có điều kiện bỏ qua, khẳng định số tuyệt đối gắn với một máy), lập bảng để điều phối quyết phần sửa — vé này không sửa gì.
 - `commit`: `0cc184b` (mốc code 2 skip có điều kiện; báo cáo trong lượt đẩy này)
 - `bao_cao`: `docs/phieu-viec/ket-qua/test-e2e-guard-home.md`
 - `ghi_chu`: 2026-10-09 12:49 +07 — xong vé TEST-E2E-GUARD-HOME ở mức chờ duyệt: chỉ sửa tệp kiểm thử chứa ca e2e (thiếu model → bỏ qua kèm trạng thái; lồng quá 300s → bỏ qua vì máy chậm; giữ trần + mọi khẳng định); chạy riêng ca 1 đạt/20,81s, cả tệp 27 đạt/2 bỏ qua (2 bỏ qua có sẵn, có lý do); compileall sạch, audit PASS, import OK; không sửa mã chạy thật, không ghi index, không merge `main`.
