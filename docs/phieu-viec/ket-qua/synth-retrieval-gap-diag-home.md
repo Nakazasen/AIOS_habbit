@@ -15,7 +15,7 @@
   - Không sửa mã sản phẩm, không hạ ngưỡng cổng kiểm chứng, không ghi vào chỉ mục, không sửa bộ đề/thang chấm, không merge `main`.
 - **Tệp dữ kiện nộp kèm (đo chuẩn hoá qua `git cat-file -s`):**
   - `docs/phieu-viec/ket-qua/ket-qua-synth-retrieval-gap-diag-home.json`: **71.045 bytes**
-  - `docs/phieu-viec/ket-qua/synth-retrieval-gap-diag-home.md`: **23.284 bytes**
+  - `docs/phieu-viec/ket-qua/synth-retrieval-gap-diag-home.md`: **23.282 bytes**
 - **Trạng thái:** `HOÀN THÀNH - NỘP XONG-CHO-DUYET`.
 
 ---
