@@ -5,6 +5,8 @@
 - Trạng thái: `xong`
 - `ghi_chu` (verdict Muse): 2026-10-09 ~09:52 +07 — **ĐẠT** vé `AUDIT-REMEASURE-PC0575`. Điều phối tự đọc báo cáo gốc và kiểm chứng tại chỗ: cả 3 điểm trình bày đã sửa đúng trong tệp báo cáo đo lại (tốc độ ghi rõ trung bình 26,1 giây và trung vị khoảng 11 giây; nhóm Khác đủ 6 câu có Q2157 và nhóm thiếu nguồn còn 15 câu; đầu báo cáo không còn ghi đạt mục tiêu cho lane RAG 0,957). Kiểm toán độc lập khớp: điểm trung bình lane C-Agent 2,9366 và lane RAG 0,9566 tính lại từ tệp thô trùng với báo cáo công bố; tính tương đương của hai báo cáo truy hồi đều khớp; chỉ mục nguyên vẹn. Ghi nhận phát hiện phụ của thợ (nhãn cột phụ của một dòng trong bảng chi tiết chưa nhất quán) — đưa vào lần sửa tài liệu sau, không ảnh hưởng số tổng. Việc tiếp theo cho thợ phụ máy công ty sẽ phát hành khi thợ chính nộp báo cáo chặng 2 (kiểm chứng chéo) và khi máy rảnh cho việc đo mở ứng dụng — hiện thợ chính đang nghiệm thu dùng thật và người dùng đang dùng máy, nên không phát hành việc nặng lúc này.
 
+- `ghi_chu` (điều phối Muse — PHÂN VAI TẠM THỜI theo lệnh user 2026-10-09 ~10:37): Tài khoản Command Code dùng chung đã chạm trần tuần 100% (dự kiến mở lại sau khoảng 1 ngày 4 giờ) — OMP tạm nghỉ vai phụ; opencode tạm thay vai thợ phụ ở cả hai máy trong thời gian này. Việc tiếp theo của OMP sẽ phát hành sau khi trần mở lại.
+
 ## Vé vừa xong: AUDIT-REMEASURE-PC0575
 
 ## Vé hiện tại: AUDIT-REMEASURE-PC0575
