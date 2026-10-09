@@ -1,0 +1,486 @@
+{
+  "ticket": "EVAL-NORMALIZE-FIX-HOME",
+  "timestamp": "2026-10-09 22:45 +07",
+  "files": {
+    "rows-synth-context-entity-home.jsonl": {
+      "mo_ta": "SYNTH-CONTEXT-ENTITY-HOME (Nới thực thể gần nhất)",
+      "so_cau": 50,
+      "tong_diem_truoc": 59.51,
+      "gpa_truoc": 1.19,
+      "tong_diem_sau": 65.84,
+      "gpa_sau": 1.317,
+      "chenh_lech": 6.33,
+      "so_cau_doi_diem": 4,
+      "chi_tiet_thay_doi": [
+        {
+          "id": "Q0699",
+          "cau_hoi": "C7620中Magenta相对Black的副扫描色差达到多少会成为NG？",
+          "diem_truoc": 1.0,
+          "diem_sau": 2.0,
+          "cx_truoc": 0.0,
+          "cx_sau": 1.0,
+          "trich_dan": true,
+          "chenh_lech": 1.0,
+          "tu_khoa_khop": [
+            "70 dot"
+          ],
+          "tong_tu_khoa": [
+            "70 dot",
+            "70 dot以内"
+          ],
+          "ly_do": "Gỡ ca oan định dạng: ['70 dot']"
+        },
+        {
+          "id": "Q0671",
+          "cau_hoi": "Kết quả kiểm tra bằng tấm OHP trước đối sách là bao nhiêu?",
+          "diem_truoc": 1.0,
+          "diem_sau": 3.0,
+          "cx_truoc": 0.0,
+          "cx_sau": 2.0,
+          "trich_dan": true,
+          "chenh_lech": 2.0,
+          "tu_khoa_khop": [
+            "43/98 pcs NG = 43,9%"
+          ],
+          "tong_tu_khoa": [
+            "43/98 pcs NG = 43,9%"
+          ],
+          "ly_do": "Gỡ ca oan định dạng: ['43/98 pcs NG = 43,9%']"
+        },
+        {
+          "id": "Q0677",
+          "cau_hoi": "Tăng thời gian ép từ 3 giây lên 6 giây có hiệu quả không?",
+          "diem_truoc": 1.0,
+          "diem_sau": 3.0,
+          "cx_truoc": 0.0,
+          "cx_sau": 2.0,
+          "trich_dan": true,
+          "chenh_lech": 2.0,
+          "tu_khoa_khop": [
+            "3 s",
+            "6 s"
+          ],
+          "tong_tu_khoa": [
+            "3 s",
+            "6 s"
+          ],
+          "ly_do": "Gỡ ca oan định dạng: ['3 s', '6 s']"
+        },
+        {
+          "id": "Q0652",
+          "cau_hoi": "Hai loại Motor Polygon được tài liệu phân biệt như thế nào?",
+          "diem_truoc": 1.67,
+          "diem_sau": 3.0,
+          "cx_truoc": 0.67,
+          "cx_sau": 2.0,
+          "trich_dan": true,
+          "chenh_lech": 1.33,
+          "tu_khoa_khop": [
+            "48.384",
+            "40.042",
+            "Polygon"
+          ],
+          "tong_tu_khoa": [
+            "48.384",
+            "40.042",
+            "Polygon"
+          ],
+          "ly_do": "Gỡ ca oan định dạng: ['48.384', '40.042', 'Polygon']"
+        }
+      ]
+    },
+    "rows-synth-fallback-citation-fix.jsonl": {
+      "mo_ta": "SYNTH-FALLBACK-CITATION-FIX-HOME (Sửa trích dẫn gần nhất, mốc 1,31)",
+      "so_cau": 50,
+      "tong_diem_truoc": 65.33,
+      "gpa_truoc": 1.307,
+      "tong_diem_sau": 72.33,
+      "gpa_sau": 1.447,
+      "chenh_lech": 7.0,
+      "so_cau_doi_diem": 5,
+      "chi_tiet_thay_doi": [
+        {
+          "id": "Q0699",
+          "cau_hoi": "C7620中Magenta相对Black的副扫描色差达到多少会成为NG？",
+          "diem_truoc": 1.0,
+          "diem_sau": 2.0,
+          "cx_truoc": 0.0,
+          "cx_sau": 1.0,
+          "trich_dan": true,
+          "chenh_lech": 1.0,
+          "tu_khoa_khop": [
+            "70 dot"
+          ],
+          "tong_tu_khoa": [
+            "70 dot",
+            "70 dot以内"
+          ],
+          "ly_do": "Gỡ ca oan định dạng: ['70 dot']"
+        },
+        {
+          "id": "Q0671",
+          "cau_hoi": "Kết quả kiểm tra bằng tấm OHP trước đối sách là bao nhiêu?",
+          "diem_truoc": 1.0,
+          "diem_sau": 3.0,
+          "cx_truoc": 0.0,
+          "cx_sau": 2.0,
+          "trich_dan": true,
+          "chenh_lech": 2.0,
+          "tu_khoa_khop": [
+            "43/98 pcs NG = 43,9%"
+          ],
+          "tong_tu_khoa": [
+            "43/98 pcs NG = 43,9%"
+          ],
+          "ly_do": "Gỡ ca oan định dạng: ['43/98 pcs NG = 43,9%']"
+        },
+        {
+          "id": "Q0677",
+          "cau_hoi": "Tăng thời gian ép từ 3 giây lên 6 giây có hiệu quả không?",
+          "diem_truoc": 1.0,
+          "diem_sau": 3.0,
+          "cx_truoc": 0.0,
+          "cx_sau": 2.0,
+          "trich_dan": true,
+          "chenh_lech": 2.0,
+          "tu_khoa_khop": [
+            "3 s",
+            "6 s"
+          ],
+          "tong_tu_khoa": [
+            "3 s",
+            "6 s"
+          ],
+          "ly_do": "Gỡ ca oan định dạng: ['3 s', '6 s']"
+        },
+        {
+          "id": "Q0630",
+          "cau_hoi": "Hướng quét chính và hướng quét phụ khác nhau thế nào?",
+          "diem_truoc": 2.33,
+          "diem_sau": 3.0,
+          "cx_truoc": 1.33,
+          "cx_sau": 2.0,
+          "trich_dan": true,
+          "chenh_lech": 0.67,
+          "tu_khoa_khop": [
+            "quét ngang",
+            "DRUM",
+            "giấy"
+          ],
+          "tong_tu_khoa": [
+            "quét ngang",
+            "DRUM",
+            "giấy"
+          ],
+          "ly_do": "Gỡ ca oan định dạng: ['quét ngang', 'DRUM', 'giấy']"
+        },
+        {
+          "id": "Q0652",
+          "cau_hoi": "Hai loại Motor Polygon được tài liệu phân biệt như thế nào?",
+          "diem_truoc": 1.67,
+          "diem_sau": 3.0,
+          "cx_truoc": 0.67,
+          "cx_sau": 2.0,
+          "trich_dan": true,
+          "chenh_lech": 1.33,
+          "tu_khoa_khop": [
+            "48.384",
+            "40.042",
+            "Polygon"
+          ],
+          "tong_tu_khoa": [
+            "48.384",
+            "40.042",
+            "Polygon"
+          ],
+          "ly_do": "Gỡ ca oan định dạng: ['48.384', '40.042', 'Polygon']"
+        }
+      ]
+    },
+    "rows-synth-intent-classify.jsonl": {
+      "mo_ta": "SYNTH-INTENT-CLASSIFY-HOME (Phân loại dạng câu hỏi)",
+      "so_cau": 50,
+      "tong_diem_truoc": 38.5,
+      "gpa_truoc": 0.77,
+      "tong_diem_sau": 44.5,
+      "gpa_sau": 0.89,
+      "chenh_lech": 6.0,
+      "so_cau_doi_diem": 4,
+      "chi_tiet_thay_doi": [
+        {
+          "id": "Q0671",
+          "cau_hoi": "Kết quả kiểm tra bằng tấm OHP trước đối sách là bao nhiêu?",
+          "diem_truoc": 1.0,
+          "diem_sau": 3.0,
+          "cx_truoc": 0.0,
+          "cx_sau": 2.0,
+          "trich_dan": true,
+          "chenh_lech": 2.0,
+          "tu_khoa_khop": [
+            "43/98 pcs NG = 43,9%"
+          ],
+          "tong_tu_khoa": [
+            "43/98 pcs NG = 43,9%"
+          ],
+          "ly_do": "Gỡ ca oan định dạng: ['43/98 pcs NG = 43,9%']"
+        },
+        {
+          "id": "Q0677",
+          "cau_hoi": "Tăng thời gian ép từ 3 giây lên 6 giây có hiệu quả không?",
+          "diem_truoc": 1.0,
+          "diem_sau": 3.0,
+          "cx_truoc": 0.0,
+          "cx_sau": 2.0,
+          "trich_dan": true,
+          "chenh_lech": 2.0,
+          "tu_khoa_khop": [
+            "3 s",
+            "6 s"
+          ],
+          "tong_tu_khoa": [
+            "3 s",
+            "6 s"
+          ],
+          "ly_do": "Gỡ ca oan định dạng: ['3 s', '6 s']"
+        },
+        {
+          "id": "Q0630",
+          "cau_hoi": "Hướng quét chính và hướng quét phụ khác nhau thế nào?",
+          "diem_truoc": 2.33,
+          "diem_sau": 3.0,
+          "cx_truoc": 1.33,
+          "cx_sau": 2.0,
+          "trich_dan": true,
+          "chenh_lech": 0.67,
+          "tu_khoa_khop": [
+            "quét ngang",
+            "DRUM",
+            "giấy"
+          ],
+          "tong_tu_khoa": [
+            "quét ngang",
+            "DRUM",
+            "giấy"
+          ],
+          "ly_do": "Gỡ ca oan định dạng: ['quét ngang', 'DRUM', 'giấy']"
+        },
+        {
+          "id": "Q0652",
+          "cau_hoi": "Hai loại Motor Polygon được tài liệu phân biệt như thế nào?",
+          "diem_truoc": 1.67,
+          "diem_sau": 3.0,
+          "cx_truoc": 0.67,
+          "cx_sau": 2.0,
+          "trich_dan": true,
+          "chenh_lech": 1.33,
+          "tu_khoa_khop": [
+            "48.384",
+            "40.042",
+            "Polygon"
+          ],
+          "tong_tu_khoa": [
+            "48.384",
+            "40.042",
+            "Polygon"
+          ],
+          "ly_do": "Gỡ ca oan định dạng: ['48.384', '40.042', 'Polygon']"
+        }
+      ]
+    },
+    "rows-synth-claimbudget-apply.jsonl": {
+      "mo_ta": "SYNTH-CLAIMBUDGET-APPLY-HOME (Áp ngân sách 10)",
+      "so_cau": 50,
+      "tong_diem_truoc": 64.17,
+      "gpa_truoc": 1.283,
+      "tong_diem_sau": 70.5,
+      "gpa_sau": 1.41,
+      "chenh_lech": 6.33,
+      "so_cau_doi_diem": 4,
+      "chi_tiet_thay_doi": [
+        {
+          "id": "Q0699",
+          "cau_hoi": "C7620中Magenta相对Black的副扫描色差达到多少会成为NG？",
+          "diem_truoc": 1.0,
+          "diem_sau": 2.0,
+          "cx_truoc": 0.0,
+          "cx_sau": 1.0,
+          "trich_dan": true,
+          "chenh_lech": 1.0,
+          "tu_khoa_khop": [
+            "70 dot"
+          ],
+          "tong_tu_khoa": [
+            "70 dot",
+            "70 dot以内"
+          ],
+          "ly_do": "Gỡ ca oan định dạng: ['70 dot']"
+        },
+        {
+          "id": "Q0671",
+          "cau_hoi": "Kết quả kiểm tra bằng tấm OHP trước đối sách là bao nhiêu?",
+          "diem_truoc": 1.0,
+          "diem_sau": 3.0,
+          "cx_truoc": 0.0,
+          "cx_sau": 2.0,
+          "trich_dan": true,
+          "chenh_lech": 2.0,
+          "tu_khoa_khop": [
+            "43/98 pcs NG = 43,9%"
+          ],
+          "tong_tu_khoa": [
+            "43/98 pcs NG = 43,9%"
+          ],
+          "ly_do": "Gỡ ca oan định dạng: ['43/98 pcs NG = 43,9%']"
+        },
+        {
+          "id": "Q0677",
+          "cau_hoi": "Tăng thời gian ép từ 3 giây lên 6 giây có hiệu quả không?",
+          "diem_truoc": 1.0,
+          "diem_sau": 3.0,
+          "cx_truoc": 0.0,
+          "cx_sau": 2.0,
+          "trich_dan": true,
+          "chenh_lech": 2.0,
+          "tu_khoa_khop": [
+            "3 s",
+            "6 s"
+          ],
+          "tong_tu_khoa": [
+            "3 s",
+            "6 s"
+          ],
+          "ly_do": "Gỡ ca oan định dạng: ['3 s', '6 s']"
+        },
+        {
+          "id": "Q0652",
+          "cau_hoi": "Hai loại Motor Polygon được tài liệu phân biệt như thế nào?",
+          "diem_truoc": 1.67,
+          "diem_sau": 3.0,
+          "cx_truoc": 0.67,
+          "cx_sau": 2.0,
+          "trich_dan": true,
+          "chenh_lech": 1.33,
+          "tu_khoa_khop": [
+            "48.384",
+            "40.042",
+            "Polygon"
+          ],
+          "tong_tu_khoa": [
+            "48.384",
+            "40.042",
+            "Polygon"
+          ],
+          "ly_do": "Gỡ ca oan định dạng: ['48.384', '40.042', 'Polygon']"
+        }
+      ]
+    },
+    "rows-synth-claimbudget-x2.jsonl": {
+      "mo_ta": "SYNTH-CLAIMBUDGET-DIAG-HOME (Chẩn đoán ngân sách x2)",
+      "so_cau": 50,
+      "tong_diem_truoc": 63.51,
+      "gpa_truoc": 1.27,
+      "tong_diem_sau": 69.84,
+      "gpa_sau": 1.397,
+      "chenh_lech": 6.33,
+      "so_cau_doi_diem": 4,
+      "chi_tiet_thay_doi": [
+        {
+          "id": "Q0699",
+          "cau_hoi": "C7620中Magenta相对Black的副扫描色差达到多少会成为NG？",
+          "diem_truoc": 1.0,
+          "diem_sau": 2.0,
+          "cx_truoc": 0.0,
+          "cx_sau": 1.0,
+          "trich_dan": true,
+          "chenh_lech": 1.0,
+          "tu_khoa_khop": [
+            "70 dot"
+          ],
+          "tong_tu_khoa": [
+            "70 dot",
+            "70 dot以内"
+          ],
+          "ly_do": "Gỡ ca oan định dạng: ['70 dot']"
+        },
+        {
+          "id": "Q0671",
+          "cau_hoi": "Kết quả kiểm tra bằng tấm OHP trước đối sách là bao nhiêu?",
+          "diem_truoc": 1.0,
+          "diem_sau": 3.0,
+          "cx_truoc": 0.0,
+          "cx_sau": 2.0,
+          "trich_dan": true,
+          "chenh_lech": 2.0,
+          "tu_khoa_khop": [
+            "43/98 pcs NG = 43,9%"
+          ],
+          "tong_tu_khoa": [
+            "43/98 pcs NG = 43,9%"
+          ],
+          "ly_do": "Gỡ ca oan định dạng: ['43/98 pcs NG = 43,9%']"
+        },
+        {
+          "id": "Q0677",
+          "cau_hoi": "Tăng thời gian ép từ 3 giây lên 6 giây có hiệu quả không?",
+          "diem_truoc": 1.0,
+          "diem_sau": 3.0,
+          "cx_truoc": 0.0,
+          "cx_sau": 2.0,
+          "trich_dan": true,
+          "chenh_lech": 2.0,
+          "tu_khoa_khop": [
+            "3 s",
+            "6 s"
+          ],
+          "tong_tu_khoa": [
+            "3 s",
+            "6 s"
+          ],
+          "ly_do": "Gỡ ca oan định dạng: ['3 s', '6 s']"
+        },
+        {
+          "id": "Q0652",
+          "cau_hoi": "Hai loại Motor Polygon được tài liệu phân biệt như thế nào?",
+          "diem_truoc": 1.67,
+          "diem_sau": 3.0,
+          "cx_truoc": 0.67,
+          "cx_sau": 2.0,
+          "trich_dan": true,
+          "chenh_lech": 1.33,
+          "tu_khoa_khop": [
+            "48.384",
+            "40.042",
+            "Polygon"
+          ],
+          "tong_tu_khoa": [
+            "48.384",
+            "40.042",
+            "Polygon"
+          ],
+          "ly_do": "Gỡ ca oan định dạng: ['48.384', '40.042', 'Polygon']"
+        }
+      ]
+    },
+    "pc0575-topk-synth-context": {
+      "mo_ta": "SYNTH-CONTEXT-TOPK-PC0575 (Thí nghiệm ngữ cảnh tại máy công ty, mốc 0,957)",
+      "so_cau": 50,
+      "top8_baseline": {
+        "tong_diem": 47.83,
+        "gpa": 0.957,
+        "q0652": 2.0
+      },
+      "top12_truoc_chuan_hoa": {
+        "tong_diem": 48.17,
+        "gpa": 0.963,
+        "q0652": 0.0
+      },
+      "top12_sau_chuan_hoa": {
+        "tong_diem": 50.17,
+        "gpa": 1.003,
+        "q0652": 2.0,
+        "chenh_lech": 2.0,
+        "ly_do_q0652": "Gỡ ca oan định dạng LaTeX math dollar: mô hình trả về $48384$ và $40042$ thay vì 48384 và 40042, sau khi chuẩn hoá loại bỏ $ đã khớp hoàn toàn từ khoá, phục hồi 2.0 điểm."
+      }
+    }
+  }
+}

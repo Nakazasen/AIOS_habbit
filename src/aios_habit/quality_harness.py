@@ -78,14 +78,16 @@ def detect_citation(text: str) -> bool:
 
 
 def normalize_text_for_eval(text: str) -> str:
-    """Normalize text and keywords before evaluation matching (ticket RUBRIC-NORMALIZE-PC0575).
+    """Normalize text and keywords before evaluation matching (ticket EVAL-NORMALIZE-FIX-HOME).
 
     Standardizes:
-    - Decimal commas to dots: e.g. -0,81 -> -0.81, 1,93 -> 1.93, 49,49% -> 49.49%
-    - Thousand separator dots: e.g. 48.384 -> 48384, 40.042 -> 40042, 3.153 -> 3153
+    - Math delimiters: $48384$ -> 48384, $$40042$$ -> 40042, \\(48384\\) -> 48384, `48384` -> 48384
+    - Thousand separators: 48.384 -> 48384, 40.042 -> 40042, 48,384 -> 48384, 40,042 -> 40042
+    - Decimal commas to dots: e.g. -0,81 -> -0.81, 1,93 -> 1.93, 49,49% -> 49.49%, 43,9% -> 43.9%
     - Time units: 3 giây / 3s -> 3 s, 6 giây -> 6 s
     - Temperature ranges & units: 0 - 15 độ C / 0-15°C / 0–15°C -> 0–15°C
     - Micro symbol: $\\mu m$ / μm -> µm
+    - Whitespace around units: 48384vòng/phút -> 48384 vòng/phút, 70dot -> 70 dot
     - Core domain concept normalizations:
         - Status 4M: 'không phát hiện bất thường' / 'không có thay đổi 4M' -> 'không bất thường' / 'không thay đổi'
         - LSU scan directions: 'drum quay' / 'quay của drum' -> 'quay drum'; 'quét chính của tia laser' -> 'quét ngang'
@@ -94,21 +96,40 @@ def normalize_text_for_eval(text: str) -> str:
     if not text:
         return ""
     s = str(text)
-    # 1. Decimal comma to dot: -0,81 -> -0.81, 1,93 -> 1.93, 49,49% -> 49.49%
+
+    # 1. Math / code wrappers removal (LaTeX $48384$, $$48384$$, \(48384\), \[48384\], `48384`)
+    s = re.sub(r"`([^`]+)`", r"\1", s)
+    s = re.sub(r"\${1,2}(.*?)\${1,2}", r"\1", s)
+    s = re.sub(r"\\\((.*?)\\\)", r"\1", s)
+    s = re.sub(r"\\\[(.*?)\\\]", r"\1", s)
+    s = re.sub(r"\$(\d+)", r"\1", s)
+    s = re.sub(r"(\d+)\$", r"\1", s)
+
+    # 2. Number normalizations (thousand separators & decimal commas)
+    # Thousand separator comma: 48,384 -> 48384 (1-3 digits followed by exactly 3 digits)
+    s = re.sub(r"(?<![\d,])([1-9]\d{0,2}),(\d{3})(?![\d,])", r"\1\2", s)
+    # Decimal comma to dot: -0,81 -> -0.81, 1,93 -> 1.93, 49,49% -> 49.49%, 43,9% -> 43.9%
     s = re.sub(r"(\d+),(\d+)", r"\1.\2", s)
-    # 2. Thousand separator dots: 48.384 -> 48384, 40.042 -> 40042
+    # Thousand separator dot: 48.384 -> 48384, 40.042 -> 40042, 3.153 -> 3153
     s = re.sub(r"(?<![\d\.])([1-9]\d{0,2})\.(\d{3})(?![\d\.])", r"\1\2", s)
-    # 3. Time unit: 3 giây / 3s -> 3 s, 6 giây -> 6 s
+
+    # 3. Units and ranges
+    # Time unit: 3 giây / 3s -> 3 s, 6 giây -> 6 s
     s = re.sub(r"(\d+)\s*(?:giây|giay|seconds?|secs?)\b", r"\1 s", s, flags=re.IGNORECASE)
     s = re.sub(r"\b(\d+)s\b", r"\1 s", s, flags=re.IGNORECASE)
-    # 4. Temperature range & unit: 0 - 15 độ C / 0-15°C / 0–15°C -> 0–15°C
+    # Temperature range & unit: 0 - 15 độ C / 0-15°C / 0–15°C -> 0–15°C
     s = re.sub(r"(\d+)\s*(?:[-–—~]|đến|toi)\s*(\d+)\s*(?:độ\s*C|°C|do\s*c)\b", r"\1–\2°C", s, flags=re.IGNORECASE)
     s = re.sub(r"\b(?:độ\s*C|do\s*c)\b", "°C", s, flags=re.IGNORECASE)
     s = re.sub(r"(\d+)\s*[-–—~]\s*(\d+)\s*°C", r"\1–\2°C", s)
-    # 5. Normalize micro sign: $\mu m$ or greek mu -> µm
+    # Normalize micro sign: $\mu m$ or greek mu -> µm
     s = re.sub(r"\$\\mu\s*m\$", "µm", s)
     s = s.replace("\u03bc", "\u00b5")
-    # 6. Core concept normalizations
+
+    # 4. Spacing between number and word/unit (e.g. 48384vòng/phút -> 48384 vòng/phút, 70dot -> 70 dot)
+    s = re.sub(r"(\d+)(vòng/phút|vong/phut|dot|mm|µm|cm|m|kg|pcs|Serial|record|Record|件|笔)\b", r"\1 \2", s, flags=re.IGNORECASE)
+    s = re.sub(r"[ \t]+", " ", s)
+
+    # 5. Core concept normalizations
     s = re.sub(r"không\s+(?:có\s+|phát\s+hiện\s+)?bất\s+thường", "không bất thường", s, flags=re.IGNORECASE)
     s = re.sub(r"không\s+(?:có\s+)?thay\s+đổi", "không thay đổi", s, flags=re.IGNORECASE)
     s = re.sub(r"\b(?:drum\s+quay|quay\s+(?:của\s+)?drum)\b", "quay drum", s, flags=re.IGNORECASE)
@@ -126,7 +147,7 @@ def normalize_text_for_eval(text: str) -> str:
         s,
         flags=re.IGNORECASE,
     )
-    return s
+    return s.strip()
 
 
 def _fold(text: str) -> str:
