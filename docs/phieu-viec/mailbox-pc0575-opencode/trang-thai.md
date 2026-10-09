@@ -1,6 +1,7 @@
 ﻿# Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `ghi_chu` (thợ opencode): 2026-10-09 10:49 +07 — nhận vé `NET-DRIVE-PROBE-PC0575` (pull xong 57aa2a7e, đã đọc prompt + QUY-UOC chung + riêng). Kiểm cổng gate: watcher mới nhất LAUNCH 1/4 lúc 10:44 cho sig cũ, chưa chạm 4 nên giữ `dang-lam`, không đặt cho-muse. Vé đủ điều kiện mở (moi + ticket mới + chưa có báo cáo). Bắt đầu đo mạng + Drive, chỉ đo và ghi.
 - `ghi_chu` (điều phối Muse — MỞ BĂNG TẠM THỜI theo lệnh user 2026-10-09 ~10:37): opencode hoạt động lại, tạm thay vai thợ phụ của OMP ở cả hai máy cho tới khi tài khoản Command Code mở lại trần tuần. **PHÁT HÀNH vé `NET-DRIVE-PROBE-PC0575`** (prompt.md đã thay): điều tra tại máy vì sao đang ở mạng công ty vẫn vào được Google Drive — đo trạng thái mạng, thử tải gói nhỏ đối chiếu băm, chỉ đo và ghi, không đổi cấu hình mạng.
 - `ghi_chu` (điều phối Muse — ĐÓNG BĂNG opencode, user chốt 2026-10-08 ~06:39): **opencode PC0575 tạm ngừng giao việc cho đến khi user liên lạc lại** — trạng thái `xong` ở đầu file để watcher dừng, KHÔNG phải vé hoàn thành. Vé `SRC-PROBE-PC0575` chuyển cho OMP công ty làm nốt (vé `SRC-PROBE-TAKEOVER-PC0575`, mailbox-pc0575). Hàng chờ cũ chuyển: `APP-SOURCE-MODEL-PC0575` → agy công ty; `APP-OPEN-PERF-PC0575` → OMP công ty; `SRC-421-RECEIVE-PC0575` → agy công ty (phát hành khi gói lên Drive).
 
