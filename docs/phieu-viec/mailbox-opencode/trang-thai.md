@@ -1,6 +1,9 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
+- `commit`: `0cc184b` (mốc code 2 skip có điều kiện; báo cáo trong lượt đẩy này)
+- `bao_cao`: `docs/phieu-viec/ket-qua/test-e2e-guard-home.md`
+- `ghi_chu`: 2026-10-09 12:49 +07 — xong vé TEST-E2E-GUARD-HOME ở mức chờ duyệt: chỉ sửa tệp kiểm thử chứa ca e2e (thiếu model → bỏ qua kèm trạng thái; lồng quá 300s → bỏ qua vì máy chậm; giữ trần + mọi khẳng định); chạy riêng ca 1 đạt/20,81s, cả tệp 27 đạt/2 bỏ qua (2 bỏ qua có sẵn, có lý do); compileall sạch, audit PASS, import OK; không sửa mã chạy thật, không ghi index, không merge `main`.
 - `ghi_chu`: 2026-10-09 12:34 +07 — mốc code xong vé `TEST-E2E-GUARD-HOME`: chỉ sửa `tests/test_commit_d_wheel_and_packaging.py` (ngoài: kiểm model trước + bắt `TimeoutExpired` → bỏ qua; trong: `assert model` → bỏ qua kèm trạng thái; giữ trần 300s + mọi khẳng định); `compileall` sạch, diff 1 tệp; model máy nhà `ready` nên kiểm chứng sẽ chạy thật. Kế tiếp: chạy riêng ca + cả tệp.
 - `ghi_chu`: 2026-10-09 12:33 +07 — đã nhận vé TEST-E2E-GUARD-HOME, cổng MỞ (trạng thái `moi` + prompt đúng vé + verdict PHÁT HÀNH 12:40; HEAD=origin=6b1142c sạch theo dõi, Python 3.11.14 OK; 0 file watcher tự mở, không rơi nhánh 4-lần/cho-muse). Vé chỉ sửa tệp kiểm thử chứa ca e2e, không sửa mã chạy thật, không ghi index, không merge `main`. Bắt đầu bước 1: đọc ca + mẫu bỏ qua hygiene, chưa sửa gì.
 
