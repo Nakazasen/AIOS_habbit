@@ -1,0 +1,49 @@
+{
+  "mo_ta": "Luot do 50 cau RAG LSU voi co che noi ngu canh co dieu kien theo thuc the (SYNTH-CONTEXT-ENTITY-HOME)",
+  "model": "inclusionai/ling-3.1-flash:free",
+  "tong_diem": 59.51,
+  "so_cau": 50,
+  "gpa": 1.19,
+  "so_cau_expanded": 22,
+  "so_validated": 3,
+  "so_fallback": 39,
+  "so_not_called": 8,
+  "so_dat_3": 6,
+  "so_dat_ge_2": 8,
+  "so_cau_claims_10": 44,
+  "phan_bo_intent": {
+    "diagnosis": 44,
+    "general": 3,
+    "procedure": 2,
+    "cross_source_synthesis": 1
+  },
+  "thoi_gian_toan_trinh": {
+    "mean": 119.34,
+    "median": 104.66
+  },
+  "thoi_gian_tong_hop": {
+    "mean": 115.6,
+    "median": 100.35
+  },
+  "thoi_gian_truy_hoi": {
+    "mean": 3.73,
+    "median": 3.51
+  },
+  "so_loi_ky_thuat": 0,
+  "credits": 0.0,
+  "sha_truoc": "45eb0e072893f802d71ab201cfbb2b29c36e2b0a31313fa79fc55a025b65b7c0",
+  "sha_sau": "45eb0e072893f802d71ab201cfbb2b29c36e2b0a31313fa79fc55a025b65b7c0",
+  "md5_truoc": "239009676829484049738866329de9f2",
+  "md5_sau": "239009676829484049738866329de9f2",
+  "size_truoc": 2942201856,
+  "size_sau": 2942201856,
+  "index_chi_doc_khop": true,
+  "preload_dense": [
+    121331,
+    2104.4624999922235
+  ],
+  "preload_sparse": [
+    121331,
+    11615.42729998473
+  ]
+}

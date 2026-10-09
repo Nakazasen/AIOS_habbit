@@ -1,0 +1,15 @@
+{
+  "session_code": "CONV-ENTITY-20958ED",
+  "stt": 1,
+  "id": "Q0701",
+  "loai": "ca_giai_cuu_lsu_line",
+  "ten_loai": "Hien tuong LSU Line trong tai lieu C7620 (Ca duoc giai cuu)",
+  "question": "Hiện tượng tại LSU Line được mô tả như thế nào trong tài liệu C7620?",
+  "thoi_gian_toan_trinh_giay": 177.44,
+  "model_phuc_vu": "inclusionai/ling-3.1-flash:free",
+  "dap_an_nguyen_van": "Hiện tượng tại LSU Line được mô tả trong tài liệu C7620 liên quan đến các bất thường về quang học và điều chỉnh của bộ phận LSU, dẫn đến lỗi C7620.\n\n**Tóm tắt**\nHiện tượng tại LSU Line được mô tả là khi điều chỉnh bằng đồ gá điều chỉnh Bowskew, chiều cao đường quang (optical path height) bị lệch\n\n[Lưu ý: Câu trả lời bị cắt ngắn do đạt giới hạn độ dài token của mô hình.]\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng.",
+  "do_dai_ky_tu": 436,
+  "anh_chup": "ui-synth-context-entity-20958ed-02-cau1-q0701.png",
+  "anh_chup_kich_thuoc_bytes": 89912,
+  "hoan_thanh": true
+}
