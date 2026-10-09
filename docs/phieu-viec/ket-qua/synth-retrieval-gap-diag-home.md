@@ -2,7 +2,7 @@
 
 - **Mã vé:** `SYNTH-RETRIEVAL-GAP-DIAG-HOME`
 - **Thợ thực hiện:** agy (máy nhà `h410asrock`, model `gemini-3.8-flash-high`)
-- **Mã commit đang chạy:** `f49befa`
+- **Mã commit đang chạy:** `0ad3937`
 - **Mục tiêu cốt lõi:**
   1. **Sự tồn tại trong chỉ mục:** Tìm trực tiếp trong chỉ mục production `library.sqlite` (chỉ đọc) các mảnh chứa dữ kiện đích của 8 câu bị chặn (`Q0849`, `Q0850`, `Q1034`, `Q0620`, `Q0824`, `Q0828`, `Q0668`, `Q0843`). Kết luận rõ ràng cho từng câu: *dữ kiện có trong chỉ mục* / *có một phần* / *hoàn toàn không có*.
   2. **Hành trình truy hồi:** Chạy đường truy hồi thực tế của từng câu hỏi và ghi lại: mảnh chứa dữ kiện đích (nếu có) xuất hiện ở hạng mấy trong kết quả thô; có qua được khâu lọc theo khối tri thức (domain filtering), khâu sắp xếp lại (scoring/reranking), và cửa sổ ngữ cảnh hay không; khâu cụ thể nào đã loại nó ra kèm con số (điểm số, thứ hạng trước và sau mỗi khâu).
@@ -13,8 +13,8 @@
   - Chỉ mục production: `C:\AIOS_workspace_chat_rag_v2_production\bge_m3_hybrid\collections\tri_thuc\library.sqlite` (dung lượng 2.942.201.856 bytes, mã băm SHA-256 `45EB0E072893F802D71AB201CFBB2B29C36E2B0A31313FA79FC55A025B65B7C0`).
   - Toàn bộ chẩn đoán chạy chỉ đọc, chỉ dùng bộ xử lý trung tâm (CPU-only).
   - Không sửa mã sản phẩm, không hạ ngưỡng cổng kiểm chứng, không ghi vào chỉ mục, không sửa bộ đề/thang chấm, không merge `main`.
-- **Tệp dữ kiện nộp kèm:**
-  - `docs/phieu-viec/ket-qua/ket-qua-synth-retrieval-gap-diag-home.json`
+- **Tệp dữ kiện nộp kèm (đo chuẩn hoá qua `git cat-file -s`):**
+  - `docs/phieu-viec/ket-qua/ket-qua-synth-retrieval-gap-diag-home.json`: **71.045 bytes**
   - `docs/phieu-viec/ket-qua/synth-retrieval-gap-diag-home.md`
 - **Trạng thái:** `HOÀN THÀNH - NỘP XONG-CHO-DUYET`.
 
