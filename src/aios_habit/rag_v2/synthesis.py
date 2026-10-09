@@ -814,6 +814,8 @@ def _citation_first_fallback(
     claims: list[GroundedClaim] = []
     facet_sections = _facet_sections_for_shape(answer_shape, pack)
     obligation_sections = _sections_for_shape(answer_shape)
+    active_obligations = set(obligation_sections.values()) if obligation_sections else set()
+    active_facets = set(facet_sections.values()) if facet_sections else set()
     fallback_items = _ordered_synthesis_items(
         pack.items,
         query=pack.query,
@@ -838,12 +840,18 @@ def _citation_first_fallback(
                 fragment,
                 query_terms=query_terms,
             )
+        matched_obs = (obligation_id,) if obligation_id else tuple(
+            o for o in item.matched_obligations if o in active_obligations
+        )
+        matched_facs = (facet_id,) if facet_id else tuple(
+            f for f in item.matched_query_facets if f in active_facets
+        )
         claims.append(GroundedClaim(
             text=fragment,
             citation_ids=(item.citation_id,),
             evidence_ids=(item.evidence_id,),
-            obligation_ids=(obligation_id,) if obligation_id else item.matched_obligations,
-            facet_ids=(facet_id,) if facet_id else item.matched_query_facets,
+            obligation_ids=matched_obs,
+            facet_ids=matched_facs,
         ))
         selected_texts.append(fragment)
         return True
@@ -868,7 +876,10 @@ def _citation_first_fallback(
     # tagged for a structured section, return a compact, clearly labelled evidence
     # note under the required markers so users can still inspect valid citations.
     if not claims and fallback_items:
-        add(fallback_items[0])
+        for item in fallback_items:
+            add(item)
+            if len(claims) >= max_claims:
+                break
     if not claims:
         return _abstention(pack, (*pack.insufficiency_reasons, "no_citation_first_fallback_claims"))
 
@@ -898,7 +909,8 @@ def _citation_first_fallback(
 
     unscoped_claims = [
         claim for claim in claims
-        if not claim.facet_ids and not claim.obligation_ids
+        if not any(f in active_facets for f in claim.facet_ids)
+        and not any(o in active_obligations for o in claim.obligation_ids)
     ]
     if unscoped_claims and (facet_sections or obligation_sections):
         rendered = "\n".join((

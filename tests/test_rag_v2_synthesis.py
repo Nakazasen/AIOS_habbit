@@ -1800,3 +1800,58 @@ def test_disciplined_citation_contract_format(monkeypatch):
     assert "STRICT REPAIR DISCIPLINE" in repair
     assert "Delete any uncited opening or conversational sentences" in repair
 
+
+def test_citation_first_fallback_diagnosis_without_section_match_preserves_citations_and_verbatim_text():
+    from aios_habit.quality_harness import detect_citation
+    from aios_habit.rag_v2.synthesis import _citation_first_fallback, synthesize_with_provider
+
+    pack = build_evidence_pack(
+        "C23 C24 loi gi",
+        _make_response([
+            _make_result("c1", "d1", 5.0, "Day la bang mo ta loi C23 C24 cho LSU can chu y.", matched_terms=("c23", "c24", "loi", "gi")),
+            _make_result("c2", "d2", 4.5, "Magenta bi lech trong thoi gian dai.", matched_terms=("c23", "c24", "loi", "gi")),
+        ]),
+    )
+    for item in pack.items:
+        object.__setattr__(item, "matched_obligations", ("query",))
+
+    result = _citation_first_fallback(pack, answer_shape="diagnosis", max_claims=5)
+    assert result.abstained is False
+    assert result.grounded is True
+    assert result.mode == "local_citation_first_provider_fallback"
+    assert "SYMPTOMS:" in result.answer
+    assert "CHECKS:" in result.answer
+    assert "ACTIONS:" in result.answer
+    assert "- No grounded evidence retrieved for this section." in result.answer
+    assert "CITED_EVIDENCE_WITHOUT_SECTION_ASSIGNMENT:" in result.answer
+    assert "Day la bang mo ta loi C23 C24 cho LSU can chu y. [1]" in result.answer
+    assert "Magenta bi lech trong thoi gian dai. [2]" in result.answer
+    assert result.citation_ids == ("[1]", "[2]")
+    assert detect_citation(result.answer) is True
+
+
+def test_citation_first_fallback_diagnosis_with_section_match_preserves_existing_structure():
+    from aios_habit.quality_harness import detect_citation
+    from aios_habit.rag_v2.synthesis import _citation_first_fallback
+
+    pack = build_evidence_pack(
+        "C23 C24 loi gi",
+        _make_response([
+            _make_result("c1", "d1", 5.0, "Day la bang mo ta loi C23 C24 cho LSU can chu y.", matched_terms=("c23", "c24", "loi", "gi")),
+        ]),
+    )
+    for item in pack.items:
+        object.__setattr__(item, "matched_obligations", ("problem",))
+
+    result = _citation_first_fallback(pack, answer_shape="diagnosis", max_claims=5)
+    assert result.abstained is False
+    assert result.grounded is True
+    assert result.mode == "local_citation_first_provider_fallback"
+    assert "SYMPTOMS:\n- Day la bang mo ta loi C23 C24 cho LSU can chu y. [1]" in result.answer
+    assert "CHECKS:\n- No grounded evidence retrieved for this section." in result.answer
+    assert "ACTIONS:\n- No grounded evidence retrieved for this section." in result.answer
+    assert "CITED_EVIDENCE_WITHOUT_SECTION_ASSIGNMENT:" not in result.answer
+    assert result.citation_ids == ("[1]",)
+    assert detect_citation(result.answer) is True
+
+
