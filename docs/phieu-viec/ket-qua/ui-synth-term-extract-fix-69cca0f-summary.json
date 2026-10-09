@@ -1,0 +1,61 @@
+{
+  "session_slug": "term-fix-69cca0f",
+  "commit_hash": "69cca0fec4acc9e857bb40d1ba7b5b70ed57bed3",
+  "commit_short": "69cca0f",
+  "thoi_gian_chay": "2026-10-10T00:50:44.638161",
+  "sha256_index_before": "45EB0E072893F802D71AB201CFBB2B29C36E2B0A31313FA79FC55A025B65B7C0",
+  "size_before": 2942201856,
+  "cau_hoi": [
+    {
+      "session_code": "CONV-6034EFB8",
+      "stt": 1,
+      "id": "Q0695",
+      "loai": "ca_oan_go_thanh_cong",
+      "ten_loai": "Ca oan go thanh cong (loi chung 1004 va 1035)",
+      "question": "Dữ liệu hiện tại ủng hộ lỗi chung của 1004 và 1035 hay riêng?",
+      "thoi_gian_toan_trinh_giay": 113.98,
+      "model_phuc_vu": "inclusionai/ling-3.1-flash:free",
+      "dap_an_nguyen_van": "**Tóm tắt**\nDữ liệu hiện tại ủng hộ việc các lỗi của JIG 2ND-1004 và JIG 2ND-1035 là riêng biệt, không phải lỗi chung. Khi một JIG gặp sự cố, JIG còn lại thường được sử dụng để điều chỉnh thành công hoặc làm tham chiếu, cho thấy các vấn đề phát sinh không đồng nhất giữa hai thiết bị.\n\n**Điều đã xác nhận**\n\n*   **Lỗi riêng của JIG 2ND-1035:**\n    *   JIG 2ND-1035 gặp lỗi ERROR 2211 - BOW WRENCH EJECT ERROR do motor điều chỉnh bow bị kẹt sau thời gian dài sử dụng. Khi đó, Unit bị lỗi trên 2ND-1035 được kiểm tra trên JIG 2ND-1004 và xác nhận OK [1].\n    *   JIG 2ND-1035 hiển thị lỗi Error -4518 (Bow/skew Caculate Error) khi điều chỉnh màu C, Y. Trong trường\n\n[Lưu ý: Câu trả lời bị cắt ngắn do đạt giới hạn độ dài token của mô hình.]\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng.",
+      "do_dai_ky_tu": 802,
+      "anh_chup": "ui-synth-term-extract-fix-69cca0f-02-cau1-q0695.png",
+      "anh_chup_kich_thuoc_bytes": 90595,
+      "hoan_thanh": true
+    },
+    {
+      "session_code": "CONV-ENTITY-20958ED",
+      "stt": 2,
+      "id": "Q0718",
+      "loai": "nguyen_nhan_dmt_pmt",
+      "ten_loai": "Phan tich nguyen nhan (DMT-PMT)",
+      "question": "File có xác nhận chênh lệch DMT–PMT chính là nguyên nhân duy nhất gây NG không?",
+      "thoi_gian_toan_trinh_giay": 8.09,
+      "model_phuc_vu": "inclusionai/ling-3.1-flash:free",
+      "dap_an_nguyen_van": "Dựa trên các nguồn được cung cấp, giá trị µm và dot cho Skew, Black, Cyan, Magenta và Yellow như sau:\n\n**Điều đã xác nhận**\n*   **Skew:Black:**\n    *   µm: 0 [1]\n    *   dot: 0 [1]\n*   **Skew:Cyan:**\n    *   µm: -34 [1]\n    *   dot: -0.9729268292682925 [3] (được tính từ công thức =X10/42 trong [1])\n*   **Skew:Magenta:**\n    *   µm: 81 [1]\n    *   dot: 1.0687804878048779 [3] (được tính từ công thức =X11/42 trong [1])\n*   **Skew:Yellow:**\n    *   µm: 125 [1]\n    *   dot: 2.7060975609756106 [3] (được tính từ công thức =X12/42 trong [1])\n\n**Nguồn đã dùng**\n[1] sirius2 beam径確認_240202.xlsx (Sheet: Sheet18, ô W9:Y12)\n[3] sirius2 beam径確認_240202.xlsx (Sheet: Sheet18)\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng.",
+      "do_dai_ky_tu": 730,
+      "anh_chup": "ui-synth-term-extract-fix-69cca0f-03-cau2-q0718.png",
+      "anh_chup_kich_thuoc_bytes": 98930,
+      "hoan_thanh": true
+    },
+    {
+      "session_code": "CONV-ENTITY-20958ED",
+      "stt": 3,
+      "id": "Q0709",
+      "loai": "thong_so_skew",
+      "ten_loai": "Thong so (Bang quy doi Skew)",
+      "question": "Trong bảng quy đổi Skew, Black, Cyan, Magenta và Yellow lần lượt có giá trị µm và dot bao nhiêu?",
+      "thoi_gian_toan_trinh_giay": 9.24,
+      "model_phuc_vu": "inclusionai/ling-3.1-flash:free",
+      "dap_an_nguyen_van": "Dựa trên các nguồn được cung cấp, giá trị µm và dot cho Skew, Black, Cyan, Magenta và Yellow như sau:\n\n**Điều đã xác nhận**\n*   **Skew:Black:**\n    *   µm: 0 [1]\n    *   dot: 0 [1]\n*   **Skew:Cyan:**\n    *   µm: -34 [1]\n    *   dot: -0.9729268292682925 [3] (được tính từ công thức =X10/42 trong [1])\n*   **Skew:Magenta:**\n    *   µm: 81 [1]\n    *   dot: 1.0687804878048779 [3] (được tính từ công thức =X11/42 trong [1])\n*   **Skew:Yellow:**\n    *   µm: 125 [1]\n    *   dot: 2.7060975609756106 [3] (được tính từ công thức =X12/42 trong [1])\n\n**Nguồn đã dùng**\n[1] sirius2 beam径確認_240202.xlsx (Sheet: Sheet18, ô W9:Y12)\n[3] sirius2 beam径確認_240202.xlsx (Sheet: Sheet18)\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng.",
+      "do_dai_ky_tu": 730,
+      "anh_chup": "ui-synth-term-extract-fix-69cca0f-04-cau3-q0709.png",
+      "anh_chup_kich_thuoc_bytes": 92591,
+      "hoan_thanh": true
+    }
+  ],
+  "thoi_gian_mo_app_giay": 17.5,
+  "anh_app_ready": "ui-synth-term-extract-fix-69cca0f-01-app-ready.png",
+  "anh_app_ready_bytes": 80472,
+  "sha256_index_after": "45EB0E072893F802D71AB201CFBB2B29C36E2B0A31313FA79FC55A025B65B7C0",
+  "size_after": 2942201856,
+  "sha256_match": true
+}

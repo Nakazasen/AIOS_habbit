@@ -1,0 +1,15 @@
+{
+  "session_code": "CONV-ENTITY-20958ED",
+  "stt": 3,
+  "id": "Q0709",
+  "loai": "thong_so_skew",
+  "ten_loai": "Thong so (Bang quy doi Skew)",
+  "question": "Trong bảng quy đổi Skew, Black, Cyan, Magenta và Yellow lần lượt có giá trị µm và dot bao nhiêu?",
+  "thoi_gian_toan_trinh_giay": 9.24,
+  "model_phuc_vu": "inclusionai/ling-3.1-flash:free",
+  "dap_an_nguyen_van": "Dựa trên các nguồn được cung cấp, giá trị µm và dot cho Skew, Black, Cyan, Magenta và Yellow như sau:\n\n**Điều đã xác nhận**\n*   **Skew:Black:**\n    *   µm: 0 [1]\n    *   dot: 0 [1]\n*   **Skew:Cyan:**\n    *   µm: -34 [1]\n    *   dot: -0.9729268292682925 [3] (được tính từ công thức =X10/42 trong [1])\n*   **Skew:Magenta:**\n    *   µm: 81 [1]\n    *   dot: 1.0687804878048779 [3] (được tính từ công thức =X11/42 trong [1])\n*   **Skew:Yellow:**\n    *   µm: 125 [1]\n    *   dot: 2.7060975609756106 [3] (được tính từ công thức =X12/42 trong [1])\n\n**Nguồn đã dùng**\n[1] sirius2 beam径確認_240202.xlsx (Sheet: Sheet18, ô W9:Y12)\n[3] sirius2 beam径確認_240202.xlsx (Sheet: Sheet18)\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng.",
+  "do_dai_ky_tu": 730,
+  "anh_chup": "ui-synth-term-extract-fix-69cca0f-04-cau3-q0709.png",
+  "anh_chup_kich_thuoc_bytes": 92591,
+  "hoan_thanh": true
+}

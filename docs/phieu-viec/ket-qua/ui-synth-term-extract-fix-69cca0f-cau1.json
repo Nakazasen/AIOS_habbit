@@ -1,0 +1,15 @@
+{
+  "session_code": "CONV-6034EFB8",
+  "stt": 1,
+  "id": "Q0695",
+  "loai": "ca_oan_go_thanh_cong",
+  "ten_loai": "Ca oan go thanh cong (loi chung 1004 va 1035)",
+  "question": "Dữ liệu hiện tại ủng hộ lỗi chung của 1004 và 1035 hay riêng?",
+  "thoi_gian_toan_trinh_giay": 113.98,
+  "model_phuc_vu": "inclusionai/ling-3.1-flash:free",
+  "dap_an_nguyen_van": "**Tóm tắt**\nDữ liệu hiện tại ủng hộ việc các lỗi của JIG 2ND-1004 và JIG 2ND-1035 là riêng biệt, không phải lỗi chung. Khi một JIG gặp sự cố, JIG còn lại thường được sử dụng để điều chỉnh thành công hoặc làm tham chiếu, cho thấy các vấn đề phát sinh không đồng nhất giữa hai thiết bị.\n\n**Điều đã xác nhận**\n\n*   **Lỗi riêng của JIG 2ND-1035:**\n    *   JIG 2ND-1035 gặp lỗi ERROR 2211 - BOW WRENCH EJECT ERROR do motor điều chỉnh bow bị kẹt sau thời gian dài sử dụng. Khi đó, Unit bị lỗi trên 2ND-1035 được kiểm tra trên JIG 2ND-1004 và xác nhận OK [1].\n    *   JIG 2ND-1035 hiển thị lỗi Error -4518 (Bow/skew Caculate Error) khi điều chỉnh màu C, Y. Trong trường\n\n[Lưu ý: Câu trả lời bị cắt ngắn do đạt giới hạn độ dài token của mô hình.]\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng.",
+  "do_dai_ky_tu": 802,
+  "anh_chup": "ui-synth-term-extract-fix-69cca0f-02-cau1-q0695.png",
+  "anh_chup_kich_thuoc_bytes": 90595,
+  "hoan_thanh": true
+}
