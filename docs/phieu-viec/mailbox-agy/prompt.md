@@ -1,22 +1,18 @@
-# VÉ: SYNTH-CONTEXT-ENTITY-HOME (nới ngữ cảnh có điều kiện theo thực thể cho các mảnh hạng 9–12)
+# VÉ: EVAL-NORMALIZE-FIX-HOME (sửa ca oan của thước đo: chuẩn hoá đáp án trước khi khớp thang chấm)
 
-- Mã vé: `SYNTH-CONTEXT-ENTITY-HOME`
+- Mã vé: `EVAL-NORMALIZE-FIX-HOME`
 - Role gợi ý: DEFAULT (agy — thợ chính, máy nhà h410asrock)
-- Báo cáo: `docs/phieu-viec/ket-qua/synth-context-entity-home.md`
-- Bối cảnh: mặc định hiện tại của hệ thống là đưa 8 mảnh ngữ cảnh vào khâu tổng hợp (`DEFAULT_SYNTH_CONTEXT_TOPK = 8` trong `src/aios_habit/antigravity_bridge.py`, điểm cắt tại khoảng dòng 1415–1417). Thí nghiệm trước đây tại máy công ty (báo cáo `docs/phieu-viec/ket-qua/synth-context-topk-pc0575.md`) cho thấy nới vô điều kiện lên 12 mảnh gần như hòa vốn: 11 câu tăng tổng cộng +11,84 điểm (điển hình câu `Q0701` từ 0 lên 3 điểm tuyệt đối nhờ mảnh hạng 11 chứa đúng thực thể cần thiết), nhưng 15 câu giảm tổng cộng −11,50 điểm, trong đó một nhóm giảm vì nhiễu ngữ cảnh — thêm mảnh hạng thấp khiến mô hình thận trọng quá mức và trả lời "không đủ dữ kiện" ở các câu mang tính tổng quát. Kết luận rút ra: chỉ nên nới khi mảnh hạng 9–12 thực sự chứa thực thể cụ thể mà câu hỏi cần.
+- Báo cáo: `docs/phieu-viec/ket-qua/eval-normalize-fix-home.md`
+- Bối cảnh: báo cáo thí nghiệm ngữ cảnh tại máy công ty (`docs/phieu-viec/ket-qua/synth-context-topk-pc0575.md`, mục phân tích các câu giảm điểm) đã chỉ ra một nhóm câu mất điểm oan vì thước đo chứ không phải vì đáp án sai. Điển hình câu `Q0652`: mô hình trả lời đúng hoàn toàn nội dung phân biệt hai loại động cơ, nhưng viết số vòng quay trong cặp ký hiệu toán học dạng `$48384$` thay vì `48384`, khiến biểu thức khớp từ khoá của thang chấm không nhận ra và chấm 0 điểm. Đây là lỗi ở khâu so khớp của bộ chấm, làm méo mọi con số đo chất lượng từ trước tới nay.
 
 ## Việc phải làm
 
-1. Áp cơ chế nới có điều kiện trong đường tổng hợp: giữ nguyên 8 mảnh đầu; xét tiếp các mảnh hạng 9–12 và chỉ đưa thêm mảnh nào chứa ít nhất một thực thể cụ thể khớp với câu hỏi — ví dụ mã lỗi hoặc mã máy dạng chữ-số, tên riêng hoặc mã tài liệu xuất hiện trong câu hỏi, hoặc con số kèm đơn vị mà câu hỏi nhắc tới. Câu hỏi mang tính tổng quát không chứa thực thể cụ thể thì giữ nguyên 8 mảnh như hiện tại. Cơ chế phải có cờ tắt bằng biến môi trường để quay về hành vi cũ mà không sửa mã, và phải ghi vết trong dữ kiện đo mỗi câu có nới hay không, nới thêm mảnh nào.
-2. Viết kiểm thử đơn vị cho cơ chế chọn lọc: mảnh hạng 9–12 có thực thể khớp thì được đưa vào; không khớp thì bị loại; cờ tắt hoạt động; thứ tự và đánh số trích dẫn của các mảnh gốc không đổi.
-3. Đo lại đủ 50 câu bằng đúng bộ đề và thang chấm hiện hành, tại máy nhà, chỉ dùng bộ xử lý trung tâm, chuỗi mô hình đã chốt (mô hình miễn phí làm chính theo cấu hình go-live hiện tại của máy). So sánh từng câu với mốc gần nhất (tổng 65,33 trên 150, điểm trung bình 1,31 — dữ kiện ở `docs/phieu-viec/ket-qua/rows-synth-fallback-citation-fix.jsonl`): báo rõ số câu tăng, số câu giữ nguyên, số câu giảm và tổng điểm mới; tách riêng nhóm câu được nới ngữ cảnh để thấy hiệu quả thật của cơ chế.
-4. Nghiệm thu dùng thật: mở ứng dụng ở chế độ chỉ dùng bộ xử lý trung tâm, hỏi 3 câu qua giao diện (ít nhất 1 câu thuộc nhóm từng được cứu nhờ mảnh hạng cao trong thí nghiệm trước), nộp đáp án nguyên văn và ảnh chứa đáp án trong khung hình. Ghi rõ mã commit đang chạy.
-
-## Lưu ý thực tế về tài khoản mô hình
-
-Tài khoản dùng chung hiện đang ở gần trần tuần và trần tháng. Các lượt gọi mô hình lẻ tẻ có thể bị từ chối tạm thời: khi gặp, ghi mốc vào trang trạng thái, chờ một nhịp rồi chạy tiếp phần còn lại bằng khả năng chạy tiếp của trình đo — không bỏ dở vé, không đổi sang mô hình trả phí ngoài chuỗi đã chốt.
+1. Tìm đúng khâu so khớp đáp án với thang chấm trong mã đo hiện hành. Bổ sung bước chuẩn hoá phía đáp án trước khi khớp: loại bỏ ký hiệu bọc toán học (dấu `$` và các ký hiệu tương tự), chuẩn hoá dấu phân cách nghìn và dấu thập phân trong con số, chuẩn hoá khoảng trắng thừa. Nguyên tắc: chuẩn hoá chỉ được thay đổi hình thức trình bày, không được thay đổi nội dung số học — hai con số khác nhau về giá trị vẫn phải không khớp sau chuẩn hoá.
+2. Viết kiểm thử đơn vị cho bước chuẩn hoá, gồm cả ca dương tính (đáp án đúng bị oan vì định dạng thì sau chuẩn hoá phải khớp) và ca âm tính (đáp án sai về giá trị số thì sau chuẩn hoá vẫn không khớp).
+3. Kiểm chứng không cần gọi mô hình: chấm lại toàn bộ các tệp dữ kiện đo đã có (ít nhất tệp của lượt sửa trích dẫn gần nhất và tệp của thí nghiệm ngữ cảnh tại máy công ty) bằng bộ chấm sau sửa. Báo cáo: tổng điểm trước và sau ở từng tệp, danh sách các câu đổi điểm kèm lý do đổi (ca oan được gỡ hay thay đổi khác), và xác nhận không có câu nào đổi điểm ngoài nhóm ca oan định dạng.
+4. Ghi rõ trong báo cáo: từ nay các con số đo chất lượng phải được hiểu là đã qua chuẩn hoá này; các mốc lịch sử (1,31 tại máy nhà, 0,957 tại máy công ty) là số chưa chuẩn hoá và sẽ được điều phối đối chiếu lại khi cần.
 
 ## Rào cứng
 
-- Không ghi vào chỉ mục production. Không đổi bộ đề và thang chấm. Không merge `main`.
-- Mốc tiến độ tối thiểu 15 phút/lần, kèm điểm kiểm để ngắt giữa chừng vẫn chạy tiếp được.
+- Chỉ sửa khâu chuẩn hoá của bộ chấm: không đổi nội dung thang chấm, không đổi đáp án mẫu, không đổi bộ đề. Không ghi vào chỉ mục production. Không merge `main`.
+- Mốc tiến độ tối thiểu 15 phút/lần.
