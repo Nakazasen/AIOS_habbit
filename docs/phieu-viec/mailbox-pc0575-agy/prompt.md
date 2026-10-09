@@ -1,17 +1,19 @@
-# VÉ: STAGE2-TRUTH-PC0575 (đính chính báo cáo chặng 2 theo đúng dữ kiện đã nộp)
+# VÉ: APP-OPEN-DIAG-PC0575 (phân rã và xử lý thời gian mở sổ 2–3 phút — phản ánh trực tiếp của user)
 
-- Mã vé: `STAGE2-TRUTH-PC0575`
-- Role gợi ý: DEFAULT (agy — thợ chính, máy công ty KDTVN-PC0575)
-- Phạm vi: chỉ sửa tài liệu báo cáo và chụp bổ sung ảnh; không sửa mã, không ghi chỉ mục.
-- Bối cảnh: vé bổ sung bằng chứng đã nộp đủ tệp thật, nhưng điều phối kiểm chứng độc lập phát hiện phần chữ trong báo cáo vẫn chưa khớp với chính dữ kiện đã nộp. Vé này đính chính ba điểm đó cho xong, để hồ sơ chặng 2 trung thực tuyệt đối trước khi sang việc chẩn đoán mở sổ.
+- Mã vé: `APP-OPEN-DIAG-PC0575`
+- Role gợi ý: DEFAULT
+- Máy: công ty KDTVN-PC0575 (agy — thợ chính, CPU-only)
+- Báo cáo: `docs/phieu-viec/ket-qua/app-open-diag-pc0575.md`
+- Căn cứ: user tự đo tại máy công ty tối 08/10/2026 kèm ảnh chụp: app khởi động lại lúc 19:06 (log Uvicorn trong ảnh), sau đó **bấm vào sổ MOM mất khoảng 2–3 phút mới vào được**; trước đó bấm vào sổ LSU cũng chậm như hôm qua. Đây là số đo dùng thật của người dùng cuối trên phiên app MỚI (đã loại trừ lý do "phiên cũ chưa nạp code") — mức 120–180 giây cho một thao tác mở sổ là không chấp nhận được (mục tiêu trải nghiệm đã chốt: mở sổ/gõ được câu hỏi trong vài giây). Vé chặng 2 của `APP-SOURCE-MODEL-PC0575` vừa tắt chuẩn bị tự động nhưng thời gian mở không cải thiện ở mức user cảm nhận được → thủ phạm nằm ở khâu khác, phải phân rã bằng số đo chứ không đoán.
 
 ## Việc phải làm
 
-1. **Đính chính thời gian phản hồi của 3 câu hỏi thật:** trong phần chính của báo cáo `app-source-model-pc0575-stage2.md`, các con số 3,80 / 5,14 / 3,95 giây không có dữ kiện nào chống lưng. Thay bằng số thật trong tệp dữ kiện phiên đã nộp (466,47 giây; 126,26 giây; 75,87 giây), ghi rõ đây là số đo của phiên bổ sung ngày 09/10/2026 và phần chính trước đây ghi sai. Nếu phân tích được thời gian gồm những phần chờ nào (nạp tiến trình nền, chờ dịch vụ trả lời) thì ghi thêm; chưa phân tích được thì ghi thẳng là chưa phân tích được — không ghi con số không có nguồn.
-2. **Đính chính phần mô tả ảnh và chụp bổ sung:** viết lại phần mô tả hai ảnh đã nộp cho khớp nội dung thật trong ảnh (ảnh sổ LSU là một phiên trò chuyện đang mở, có ô nhập và bộ chọn khối tri thức, không có dòng trạng thái kho trong ảnh; ảnh sổ MOM là trang sổ chưa có ô nhập trong ảnh). Chụp bổ sung một ảnh có dòng trạng thái kho thật cho sổ LSU — dữ kiện đo thao tác thật cho thấy dòng này xuất hiện khi mở sổ, hãy chụp đúng vùng có dòng đó.
-3. **Sửa kích thước tệp dữ kiện 3 câu trong báo cáo** cho khớp số đo trên bản đã nộp vào kho (22.906 byte), và rà lại mọi kích thước tệp khác được nhắc trong báo cáo theo đúng kỷ luật: đo trên bản đã nộp sau khi commit.
+1. **Đo phân rã (bắt buộc trước khi sửa):** gắn mốc thời gian (log có timestamp từng bước) cho toàn bộ đường mở sổ, đo riêng: (a) bấm vào sổ MOM — lần mở đầu tiên sau khi khởi động lại app (lạnh); (b) bấm vào sổ MOM lần thứ hai (ấm); (c) bấm vào sổ LSU (NB-E35A7BEE) lần đầu và lần hai. Từng lần phải tách được thời gian của các khâu: tải/khởi tạo trang, liệt kê cuộc trò chuyện, đọc metadata sổ, chuẩn bị/phạm vi nguồn, nạp mô hình/worker nền (nếu bị kích hoạt khi mở sổ), truy vấn cơ sở dữ liệu hội thoại, các khâu khác phát hiện được. Nộp bảng phân rã: khâu nào ăn bao nhiêu giây, khâu nào chiếm phần lớn trong 120–180 giây.
+2. **Sửa đúng khâu chiếm phần lớn** theo bằng chứng ở bước 1 (ví dụ minh hoạ hướng, không áp đặt: trì hoãn nạp việc nặng tới lúc hỏi câu đầu thay vì lúc mở sổ; bộ nhớ đệm có kiểm chứng cho metadata/đếm theo khối; bỏ quét lặp toàn kho mỗi lần mở). Mỗi thay đổi phải có test hồi quy và ghi rõ cơ chế hoàn lui.
+3. **Đo lại đúng thao tác của user** sau khi sửa: khởi động lại app → bấm sổ MOM → bấm sổ LSU, ghi số giây từng lần (lạnh/ấm) kèm ảnh chụp có nội dung sổ trong khung. Cổng đạt của vé: lần mở ấm ≤ 10 giây cho cả hai sổ; lần mở lạnh có bảng phân rã khép kín (tổng các khâu khớp thời gian toàn trình ±20%) và nếu vẫn > 30 giây thì nêu rõ phần còn lại là gì + đề xuất vé tiếp theo — không ghi "đã nhanh" khi số đo chưa đạt.
 
 ## Rào cứng
 
-- Chỉ sửa tài liệu và chụp ảnh: không sửa mã chạy thật, không ghi chỉ mục, không merge `main`.
-- Mọi con số ghi vào báo cáo phải có nguồn dữ kiện trong kho chỉ được đích danh.
+- Không ghi chỉ mục (MD5 trước/sau mọi phiên đo phải khớp). Không thay đổi hành vi hỏi đáp/truy hồi; phạm vi chỉ ở đường mở sổ/nạp trang.
+- Không merge `main`. Tương thích Python 3.11. Mốc tiến độ tối thiểu 15 phút/lần + checkpoint/resume.
+- Mọi con số trong báo cáo phải tái lập được từ log phân rã đính kèm (nộp file log thô vào `docs/phieu-viec/ket-qua/`).

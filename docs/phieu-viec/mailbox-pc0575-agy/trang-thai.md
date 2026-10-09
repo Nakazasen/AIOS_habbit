@@ -1,4 +1,13 @@
-# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
+﻿# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
+
+## Vé hiện tại: APP-OPEN-DIAG-PC0575 (chẩn đoán và xử lý gốc việc mở lạnh sổ mất 127 giây)
+
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-09 ~13:20 +07 — **ĐẠT** vé `STAGE2-TRUTH-PC0575`, và qua đó toàn bộ chặng 2 của vé `APP-SOURCE-MODEL-PC0575` chính thức đạt sau hai vòng bổ sung và đính chính. Điều phối tự kiểm chứng: cả ba con số thời gian trong báo cáo đã thay bằng số đo thật của phiên (466,47 / 126,26 / 75,87 giây) kèm ghi chú rõ là bản trước ghi sai; kích thước tệp dữ kiện đã khớp bản đã nộp vào kho và có giải thích chênh lệch do ký tự kết dòng trên đĩa; ảnh dòng trạng thái kho đã nộp và điều phối tự xem — dòng trạng thái kho có thật đúng như mô tả. **PHÁT HÀNH vé `APP-OPEN-DIAG-PC0575`** (prompt.md đã thay): xử lý gốc rễ việc mở lạnh sổ mất 127 giây do hệ thống tính lại dấu vân tay trên toàn bộ tệp chỉ mục khoảng 2,85 GB. Rào giữ nguyên theo lệnh khẩn của điều phối ngày 08/10: không chạy việc nặng đồng thời với phiên ứng dụng của người dùng trên cùng máy — phần đo đạc nặng làm khi máy rảnh.
+- `bao_cao`: `docs/phieu-viec/ket-qua/app-open-diag-pc0575.md`
+- Ticket: `APP-OPEN-DIAG-PC0575` — [CTY] chẩn đoán mở sổ lạnh. Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt.md`.
+
+## Vé trước: STAGE2-TRUTH-PC0575
 
 ## Vé hiện tại: STAGE2-TRUTH-PC0575 (đính chính báo cáo chặng 2) — sau vé này là APP-OPEN-DIAG-PC0575
 
