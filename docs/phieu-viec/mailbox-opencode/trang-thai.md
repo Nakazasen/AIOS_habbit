@@ -1,7 +1,7 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
 - Trạng thái: `xong-cho-duyet`
-- `commit`: `08fa749` (báo cáo `test-suite-confirm-home.md`; vé này không sửa `src/`/`tests/`)
+- `commit`: `ee878d8` (báo cáo `test-suite-confirm-home.md`; vé này không sửa `src/`/`tests/`)
 - `bao_cao`: `docs/phieu-viec/ket-qua/test-suite-confirm-home.md`
 - `ghi_chu`: 2026-10-09 12:45 +07 — XONG chờ duyệt `TEST-SUITE-CONFIRM-HOME`: toàn bộ 4.285 lượt (~79,6 phút) — 4.218 đạt, 66 bỏ qua, 0 lỗi, 1 ca đỏ duy nhất `test_packaged_desktop_e2e_rag_to_atlas` (lượt pytest lồng BGE quá trần 300s dưới tải máy nặng; đã ghi flaky trong `b0-form.md`, chạy riêng xanh 139,5s — không phải hồi quy code). Skip khớp tuyệt đối mốc dọn dẹp 66. Cổng: compileall sạch, audit PASS, import OK; không ghi index, không merge `main`.
 - Trạng thái: `dang-lam`
