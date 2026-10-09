@@ -1,4 +1,14 @@
-# Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
+﻿# Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
+
+## Vé hiện tại: SYNTH-EVIDENCE-GATE-AUDIT-HOME (rà ngưỡng cổng kiểm chứng bằng chứng)
+
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-09 ~22:52 +07 — **ĐẠT** vé `EVAL-NORMALIZE-FIX-HOME` + **PHÁT HÀNH** vé `SYNTH-EVIDENCE-GATE-AUDIT-HOME` (prompt.md đã thay). Điều phối kiểm chứng độc lập: tự đọc phần sửa mã — thay đổi chỉ nằm ở khâu chuẩn hoá đáp án trước khi khớp thang chấm (gỡ bọc ký hiệu toán học, chuẩn hoá dấu phân cách nghìn và phẩy thập phân, khoảng trắng giữa số và đơn vị), không đụng nội dung thang chấm, đáp án mẫu, bộ đề hay chỉ mục; tự chạy lại tệp kiểm thử của bộ chấm trên máy sạch: 11 ca đạt, gồm ca âm tính bảo toàn giá trị số học; tự cộng lại từ dữ kiện chi tiết từng câu: khớp tuyệt đối ở cả 5 tệp dữ kiện (lượt sửa trích dẫn tăng đúng 7,00 điểm, lượt nới ngữ cảnh tăng đúng 6,33 điểm) và không có câu nào giảm điểm sau chuẩn hoá ở bất kỳ tệp nào — xác nhận chuẩn hoá chỉ gỡ oan định dạng, không nới lỏng nội dung. Kết quả được công nhận: mốc chất lượng của lượt sửa trích dẫn sau chuẩn hoá là 72,33 trên 150 (điểm trung bình 1,447), lượt nới ngữ cảnh là 65,84 (1,317); thứ tự hai lượt không đổi nên phân định về cơ chế nới ở verdict trước giữ nguyên. Từ nay mọi con số chất lượng phải được hiểu theo thước đo đã chuẩn hoá này.
+- `bao_cao`: `docs/phieu-viec/ket-qua/synth-evidence-gate-audit-home.md`
+- Ticket: `SYNTH-EVIDENCE-GATE-AUDIT-HOME` — [NHÀ] rà ngưỡng cổng kiểm chứng. Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`.
+- `hang-cho`: (trống — đây là vé cuối của hàng chờ hiện tại; điều phối xếp việc tiếp theo theo kết quả của vé này).
+
+## Vé trước: EVAL-NORMALIZE-FIX-HOME
 
 ## Vé hiện tại: EVAL-NORMALIZE-FIX-HOME (sửa ca oan của thước đo)
 

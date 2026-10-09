@@ -1,18 +1,22 @@
-# VÉ: EVAL-NORMALIZE-FIX-HOME (sửa ca oan của thước đo: chuẩn hoá đáp án trước khi khớp thang chấm)
+# VÉ: SYNTH-EVIDENCE-GATE-AUDIT-HOME (rà ngưỡng độ phủ từ khoá của cổng kiểm chứng bằng chứng cho câu chẩn đoán ngắn)
 
-- Mã vé: `EVAL-NORMALIZE-FIX-HOME`
-- Role gợi ý: DEFAULT (agy — thợ chính, máy nhà h410asrock)
-- Báo cáo: `docs/phieu-viec/ket-qua/eval-normalize-fix-home.md`
-- Bối cảnh: báo cáo thí nghiệm ngữ cảnh tại máy công ty (`docs/phieu-viec/ket-qua/synth-context-topk-pc0575.md`, mục phân tích các câu giảm điểm) đã chỉ ra một nhóm câu mất điểm oan vì thước đo chứ không phải vì đáp án sai. Điển hình câu `Q0652`: mô hình trả lời đúng hoàn toàn nội dung phân biệt hai loại động cơ, nhưng viết số vòng quay trong cặp ký hiệu toán học dạng `$48384$` thay vì `48384`, khiến biểu thức khớp từ khoá của thang chấm không nhận ra và chấm 0 điểm. Đây là lỗi ở khâu so khớp của bộ chấm, làm méo mọi con số đo chất lượng từ trước tới nay.
+- Mã vé: `SYNTH-EVIDENCE-GATE-AUDIT-HOME`
+- Role gợi ý: PLAN (agy — thợ chính, máy nhà h410asrock)
+- Báo cáo: `docs/phieu-viec/ket-qua/synth-evidence-gate-audit-home.md`
+- Bối cảnh: báo cáo điều tra `docs/phieu-viec/ket-qua/synth-intent-audit-home.md` đã xác định một nhóm câu không được gọi mô hình vì cổng kiểm chứng bằng chứng chặn trước (cơ chế chặn đóng kín tại `synthesis.py`, khoảng dòng 954–955). Cổng này là chủ đích an toàn — thà không trả lời còn hơn trả lời thiếu bằng chứng — nên không được nới bừa. Đề xuất thứ hai của báo cáo điều tra là rà lại ngưỡng độ phủ từ khoá của cổng đối với các câu chẩn đoán ngắn: câu hỏi chẩn đoán thường ngắn, ít từ khoá, nên có thể đang bị chặn oan dù bằng chứng truy hồi được là đủ dùng.
 
 ## Việc phải làm
 
-1. Tìm đúng khâu so khớp đáp án với thang chấm trong mã đo hiện hành. Bổ sung bước chuẩn hoá phía đáp án trước khi khớp: loại bỏ ký hiệu bọc toán học (dấu `$` và các ký hiệu tương tự), chuẩn hoá dấu phân cách nghìn và dấu thập phân trong con số, chuẩn hoá khoảng trắng thừa. Nguyên tắc: chuẩn hoá chỉ được thay đổi hình thức trình bày, không được thay đổi nội dung số học — hai con số khác nhau về giá trị vẫn phải không khớp sau chuẩn hoá.
-2. Viết kiểm thử đơn vị cho bước chuẩn hoá, gồm cả ca dương tính (đáp án đúng bị oan vì định dạng thì sau chuẩn hoá phải khớp) và ca âm tính (đáp án sai về giá trị số thì sau chuẩn hoá vẫn không khớp).
-3. Kiểm chứng không cần gọi mô hình: chấm lại toàn bộ các tệp dữ kiện đo đã có (ít nhất tệp của lượt sửa trích dẫn gần nhất và tệp của thí nghiệm ngữ cảnh tại máy công ty) bằng bộ chấm sau sửa. Báo cáo: tổng điểm trước và sau ở từng tệp, danh sách các câu đổi điểm kèm lý do đổi (ca oan được gỡ hay thay đổi khác), và xác nhận không có câu nào đổi điểm ngoài nhóm ca oan định dạng.
-4. Ghi rõ trong báo cáo: từ nay các con số đo chất lượng phải được hiểu là đã qua chuẩn hoá này; các mốc lịch sử (1,31 tại máy nhà, 0,957 tại máy công ty) là số chưa chuẩn hoá và sẽ được điều phối đối chiếu lại khi cần.
+1. Đo phân bố thực tế từ các tệp dữ kiện đo đã có: với mọi câu từng bị cổng chặn, trích độ phủ từ khoá đã tính, độ dài câu hỏi, và bằng chứng truy hồi được đi kèm. Phân nhóm: câu chẩn đoán ngắn và các nhóm còn lại.
+2. Chấm lại bằng tay có căn cứ một mẫu đại diện trong nhóm bị chặn: với từng câu mẫu, đọc bằng chứng truy hồi được và kết luận bằng chứng đó đủ hay không đủ để trả lời có trích dẫn. Đây là căn cứ duy nhất để bàn về ngưỡng — không suy luận từ độ phủ một mình.
+3. Mô phỏng trên dữ kiện có sẵn: nếu hạ ngưỡng độ phủ cho nhóm câu chẩn đoán ngắn xuống các mức ứng viên thì có bao nhiêu câu được thả, và trong số đó bao nhiêu câu thuộc nhóm "bằng chứng đủ" theo bước 2, bao nhiêu câu thuộc nhóm "bằng chứng không đủ". Chỉ đề xuất mức ngưỡng khi mô phỏng cho thấy không thả lọt câu thiếu bằng chứng trong mẫu đã rà.
+4. Nếu và chỉ nếu bước 3 cho kết quả sạch: áp thay đổi ngưỡng cho đúng nhóm câu chẩn đoán ngắn, kèm kiểm thử bảo vệ (câu thiếu bằng chứng vẫn bị chặn; câu đủ bằng chứng được thả) và cờ hoàn lui bằng biến môi trường. Sau khi áp, đo lại đủ 50 câu tại máy nhà, chỉ dùng bộ xử lý trung tâm, và so sánh từng câu với mốc gần nhất tại thời điểm vé chạy. Nếu bước 3 không sạch: không áp gì cả, báo cáo kết luận giữ nguyên ngưỡng kèm dữ kiện.
+
+## Lưu ý thực tế về tài khoản mô hình
+
+Tài khoản dùng chung đang ở gần trần tuần và trần tháng. Nếu lượt đo ở bước 4 gặp lượt gọi bị từ chối tạm thời: ghi mốc, chờ một nhịp rồi chạy tiếp bằng khả năng chạy tiếp của trình đo, không bỏ dở vé và không đổi sang mô hình ngoài chuỗi đã chốt.
 
 ## Rào cứng
 
-- Chỉ sửa khâu chuẩn hoá của bộ chấm: không đổi nội dung thang chấm, không đổi đáp án mẫu, không đổi bộ đề. Không ghi vào chỉ mục production. Không merge `main`.
-- Mốc tiến độ tối thiểu 15 phút/lần.
+- Cổng kiểm chứng là cơ chế an toàn đóng kín: mọi thay đổi phải có dữ kiện mô phỏng chống lưng và khả năng hoàn lui, như mô tả ở trên. Không ghi vào chỉ mục production. Không đổi bộ đề và thang chấm. Không merge `main`.
+- Mốc tiến độ tối thiểu 15 phút/lần, kèm điểm kiểm để chạy tiếp được.
