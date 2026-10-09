@@ -3525,7 +3525,9 @@ def retrieve_workspace_chat_evidence(
             if has_forced_domain
             else (domain_route.domain if domain_route and getattr(domain_route, "applied", False) else None)
         )
-        domain_specs = index_domain.get_specs_for_domain(target_domain, prod_pipe_cfg.index_path)
+        domain_specs = index_domain.get_specs_for_domain(
+            target_domain, prod_pipe_cfg.index_path, question=question
+        )
         temp_sources = tuple(s for s in sources if getattr(s, "source_scope", "") == SOURCE_SCOPE_TEMPORARY)
         semantic_sources = tuple(domain_specs) + temp_sources
     else:

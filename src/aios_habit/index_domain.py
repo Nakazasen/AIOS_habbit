@@ -18,7 +18,7 @@ import re
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Mapping, NamedTuple, Optional, Sequence
+from typing import Any, Callable, Mapping, NamedTuple, Optional, Sequence, Set
 
 DOMAIN_LSU = "lsu"
 DOMAIN_DIEU_TRA_LOI = "dieu_tra_loi"
@@ -456,11 +456,110 @@ def load_all_index_specs(db_path: Path | str | None = None) -> list[Any]:
         return _DOMAIN_ALL_SPECS_CACHE
 
 
-def get_specs_for_domain(domain: Optional[str], db_path: Path | str | None = None) -> tuple[Any, ...]:
-    """Return SourceSpecs for a given domain block.
+CROSS_DOMAIN_EXACT_IDENTIFIER_ENV_VAR = "AIOS_RAG_CROSS_DOMAIN_EXACT_IDENTIFIER"
+
+_EXACT_MECHANICAL_ID_PATTERNS = (
+    re.compile(r"\b[gpdcwesGPDCHWES]\d{1,2}\b"),
+    re.compile(r"\b3[vV]2[a-zA-Z0-9_-]+\b"),
+    re.compile(r"\b30[23][a-zA-Z0-9_-]+\b"),
+    re.compile(r"\b7[pP][a-zA-Z0-9_-]+\b"),
+    re.compile(r"\b[kK][tT][dD][-_]\d+\b"),
+    re.compile(r"\b[cC]\d{4}\b"),
+    re.compile(r"\b[fF]\d{3}\b"),
+    re.compile(r"\b[jJ][aA][mM]\d{3,4}\b"),
+)
+
+
+def cross_domain_exact_identifier_enabled() -> bool:
+    """Feature flag for cross-domain search on exact identifiers (default enabled)."""
+    return str(os.environ.get(CROSS_DOMAIN_EXACT_IDENTIFIER_ENV_VAR, "1")).strip().lower() in {
+        "1", "true", "yes", "on"
+    }
+
+
+def extract_exact_mechanical_identifiers(text: str) -> tuple[str, ...]:
+    """Extract mechanical identifiers (datum points, part codes, error codes)."""
+    if not text:
+        return ()
+    found = []
+    seen = set()
+    for pat in _EXACT_MECHANICAL_ID_PATTERNS:
+        for m in pat.finditer(text):
+            tok = m.group(0).strip()
+            key = tok.lower()
+            if key not in seen:
+                seen.add(key)
+                found.append(tok)
+    return tuple(found)
+
+
+def _find_cross_domain_candidate_documents(
+    db_path: Path | str,
+    exact_identifiers: Sequence[str],
+    question: Optional[str] = None,
+    max_extra_docs: int = 5,
+) -> tuple[str, ...]:
+    """Find documents containing exact mechanical identifiers via FTS5 in library.sqlite."""
+    if not exact_identifiers:
+        return ()
+    try:
+        path = Path(db_path)
+        if not path.is_file():
+            return ()
+        uri = path.resolve().as_uri() + "?mode=ro"
+        with sqlite3.connect(uri, uri=True, timeout=5.0) as con:
+            con.execute("PRAGMA query_only=ON")
+            clauses = []
+            params = []
+            for tok in exact_identifiers:
+                clauses.append(
+                    "d1.document_id IN (SELECT document_id FROM chunks WHERE chunk_id IN (SELECT chunk_id FROM chunks_fts WHERE chunks_fts MATCH ?))"
+                )
+                params.append(f'"{tok}"')
+
+            if question:
+                q_low = question.lower()
+                spec_terms = []
+                if "nominal" in q_low:
+                    spec_terms.extend(['"nominal"', '"kích thước"'])
+                if "giới hạn" in q_low or "giới" in q_low:
+                    spec_terms.extend(['"giới hạn"', '"dung sai"'])
+                if "dung sai" in q_low:
+                    spec_terms.append('"dung sai"')
+                if "kích thước" in q_low:
+                    spec_terms.append('"kích thước"')
+                if spec_terms:
+                    clauses.append(
+                        "d1.document_id IN (SELECT document_id FROM chunks WHERE chunk_id IN (SELECT chunk_id FROM chunks_fts WHERE chunks_fts MATCH ?))"
+                    )
+                    params.append(" OR ".join(spec_terms))
+
+            sql = f"""
+                SELECT d1.document_id, COUNT(DISTINCT d1.chunk_id) as hits
+                FROM chunks d1
+                WHERE {" AND ".join(clauses)}
+                GROUP BY d1.document_id
+                ORDER BY hits DESC
+                LIMIT ?
+            """
+            params.append(max_extra_docs)
+            rows = con.execute(sql, tuple(params)).fetchall()
+            return tuple(str(r[0]) for r in rows)
+    except Exception:
+        return ()
+
+
+def get_specs_for_domain(
+    domain: Optional[str],
+    db_path: Path | str | None = None,
+    question: Optional[str] = None,
+) -> tuple[Any, ...]:
+    """Return SourceSpecs for a given domain block, optionally adding exact-identifier cross-domain specs.
 
     If domain is None or 'auto', returns all documents in library.sqlite.
-    If domain is 'lsu', returns only LSU documents (92).
+    If domain is 'lsu', returns LSU documents (92), plus controlled cross-domain documents
+    if the question contains exact mechanical identifiers (e.g. g1/g2, part codes) and
+    cross-domain rescue is enabled.
     """
     all_specs = load_all_index_specs(db_path)
     if not all_specs:
@@ -471,4 +570,17 @@ def get_specs_for_domain(domain: Optional[str], db_path: Path | str | None = Non
         return tuple(all_specs)
 
     allowed_set = set(allowed_ids)
+    if (
+        question
+        and cross_domain_exact_identifier_enabled()
+        and db_path is not None
+    ):
+        exact_ids = extract_exact_mechanical_identifiers(question)
+        if exact_ids:
+            extra_doc_ids = _find_cross_domain_candidate_documents(
+                db_path, exact_ids, question=question
+            )
+            for extra_id in extra_doc_ids:
+                allowed_set.add(extra_id)
+
     return tuple(s for s in all_specs if s.document_id in allowed_set)

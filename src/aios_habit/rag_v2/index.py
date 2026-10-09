@@ -66,8 +66,8 @@ _SPECIAL_ENTITY_RES = (
     re.compile(r"\b(?:1035|1004)\b"),
     re.compile(r"(?<!\w)[A-Za-z][A-Za-z0-9]*(?:[_-][A-Za-z0-9]+)+(?!\w)"),
 )
-MAX_ENTITY_BOOST = 0.025
-_EXACT_IDENTIFIER_QUOTA = 8
+MAX_ENTITY_BOOST = 0.060
+_EXACT_IDENTIFIER_QUOTA = 16
 
 
 def _extract_query_entities(query: str) -> tuple[str, ...]:
@@ -96,6 +96,7 @@ def _compute_entity_boost(
     source_name_lower = (source_name or "").lower()
     source_path_lower = (source_path or "").lower()
     prefix_text_lower = (text or "")[:500].lower()
+    text_lower = (text or "").lower()
     for entity in entities:
         ent_lower = entity.lower()
         ent_stem = ent_lower.replace(" tape", "").replace(" line", "").strip()
@@ -103,6 +104,8 @@ def _compute_entity_boost(
             boost += 0.015
         elif ent_lower in prefix_text_lower or (len(ent_stem) >= 3 and ent_stem in prefix_text_lower):
             boost += 0.008
+        elif re.search(rf"(?<!\w){re.escape(ent_lower)}(?!\w)", text_lower):
+            boost += 0.018
     return min(boost, MAX_ENTITY_BOOST)
 
 
@@ -138,7 +141,7 @@ def _identifier_match_priority(
     matches = tuple(pattern.search(text or "") is not None for pattern in patterns)
     if not matches:
         return 0, 0
-    return int(matches[-1]), sum(matches)
+    return sum(matches), int(matches[-1])
 
 
 def _tokens(value: str) -> List[str]:
@@ -4496,7 +4499,14 @@ class LocalChunkIndex:
                 str(item[3]["chunk_id"]),
             )
         )
-        ranked.extend(item[3] for item in exact_matches[:_EXACT_IDENTIFIER_QUOTA])
+        rescued_per_doc: Dict[str, int] = {}
+        for item in exact_matches:
+            if sum(rescued_per_doc.values()) >= _EXACT_IDENTIFIER_QUOTA:
+                break
+            doc_id = str(item[3]["document_id"])
+            if rescued_per_doc.get(doc_id, 0) < 3:
+                ranked.append(item[3])
+                rescued_per_doc[doc_id] = rescued_per_doc.get(doc_id, 0) + 1
         if timings is not None:
             timings["identifier_rescue_ms"] = timings.get("identifier_rescue_ms", 0.0) + (
                 perf_counter() - rescue_start
@@ -4785,7 +4795,14 @@ class LocalChunkIndex:
                 str(item[3]["chunk_id"]),
             )
         )
-        ranked.extend(item[3] for item in exact_matches[:_EXACT_IDENTIFIER_QUOTA])
+        rescued_per_doc: Dict[str, int] = {}
+        for item in exact_matches:
+            if sum(rescued_per_doc.values()) >= _EXACT_IDENTIFIER_QUOTA:
+                break
+            doc_id = str(item[3]["document_id"])
+            if rescued_per_doc.get(doc_id, 0) < 3:
+                ranked.append(item[3])
+                rescued_per_doc[doc_id] = rescued_per_doc.get(doc_id, 0) + 1
         if timings is not None:
             timings["identifier_rescue_ms"] = timings.get("identifier_rescue_ms", 0.0) + (
                 perf_counter() - rescue_start
@@ -5093,6 +5110,8 @@ class LocalChunkIndex:
             title_hits = 0
             prefix_hits = 0
             prefix_lower = (text or "")[:500].lower()
+            text_lower = (text or "").lower()
+            body_hits = 0
             for ent in entities:
                 ent_lower = ent.lower()
                 ent_stem = ent_lower.replace(" tape", "").replace(" line", "").strip()
@@ -5100,10 +5119,19 @@ class LocalChunkIndex:
                     title_hits += 1
                 elif ent_lower in prefix_lower or (len(ent_stem) >= 3 and ent_stem in prefix_lower):
                     prefix_hits += 1
+                elif re.search(rf"(?<!\w){re.escape(ent_lower)}(?!\w)", text_lower):
+                    body_hits += 1
             if title_hits:
                 signals["entity_title_match"] = min(3.0 * float(title_hits), 4.0)
             if prefix_hits:
                 signals["entity_prefix_match"] = min(1.5 * float(prefix_hits), 2.0)
+            if body_hits:
+                signals["exact_entity_body_boost"] = min(3.5 * float(body_hits), 7.0)
+
+            query_lower = query_text.lower()
+            if any(k in query_lower for k in ("nominal", "dung sai", "giới hạn", "kích thước")):
+                if any(k in text_lower for k in ("+0.", "-0.", "dung sai", "=e", "nominal", "kích thước")):
+                    signals["exact_spec_tolerance_boost"] = 3.0
 
         if target_matches:
             signals["target_term_match_count"] = float(len(target_matches))

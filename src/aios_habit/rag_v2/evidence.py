@@ -443,6 +443,26 @@ def _final_evidence_relevance(
             for token in extract_evidence_terms(item.text)
         }
         matched_terms.update(target_terms & item_text_tokens)
+
+    # Mechanical engineering sheet term equivalences:
+    # 'nominal' corresponds to 'kích thước' / 'kích thước đo'
+    # 'giới' / 'hạn' corresponds to 'dung sai' / tolerance limits
+    if "nominal" in target_terms and "nominal" not in matched_terms:
+        for item in items:
+            t_low = (item.text or "").lower()
+            if "kích thước" in t_low or "kích thước đo" in t_low or ("=e" in t_low and ("+0." in t_low or "-0." in t_low or "±" in t_low)):
+                matched_terms.add("nominal")
+                break
+    if ("giới" in target_terms or "hạn" in target_terms) and not ({"giới", "hạn"} <= matched_terms):
+        for item in items:
+            t_low = (item.text or "").lower()
+            if "dung sai" in t_low or "=e" in t_low or "+0." in t_low:
+                if "giới" in target_terms:
+                    matched_terms.add("giới")
+                if "hạn" in target_terms:
+                    matched_terms.add("hạn")
+                break
+
     return len(matched_terms) / len(target_terms)
 
 
