@@ -1,0 +1,96 @@
+{
+  "ticket": "SRC-RECEIVE-2GOI-PC0575",
+  "git_commit": "d5dc35069207733d8c2a3c56d9f4c0b051504647",
+  "timestamp": "2026-10-09 21:30:19 +07:00",
+  "machine": "KDTVN-PC0575",
+  "status_line_expected": "library.sqlite · 889 tài liệu · 149.800 mảnh · mã caf65577e2a5",
+  "questions": [
+    {
+      "id": "CAU_1_GOI421_JAM4212",
+      "title": "Câu 1 (Mới - Gói 421): Mã lỗi kẹt giấy JAM4212 máy Iris2024-C33",
+      "question": "Theo báo cáo điều tra KTD-2026-06-0647 trên máy Iris2024-C33, hiện tượng và nguyên nhân gây ra mã lỗi kẹt giấy JAM4212 là gì?",
+      "target_document": "KTD-2026-06-0647-Iris2024-C33-A-JAM4212.xlsx",
+      "domain": "auto",
+      "elapsed_seconds": 969.76,
+      "image_file": "src-receive-2goi-cau1.png",
+      "ok": true,
+      "trace_id": "trc_ae21b3f97dd2",
+      "evidence_count": 1,
+      "top_evidences": [
+        {
+          "document_id": "",
+          "title": "wsc-2d528c22ed8a8466fba9c9bd.txt",
+          "location_info": "",
+          "score": 39.5,
+          "snippet": "mục lục 10. Khôi phục lỗi (khởi động lại) Chương này mô tả quy trình khắc phục khi xảy ra lỗi AGV. [Chính sách cơ bản kh"
+        }
+      ],
+      "verbatim_answer": "Tôi đã xem xét nội dung nguồn được cung cấp, nhưng thông tin không đủ để trả lời câu hỏi của bạn.\n\nNguồn hiện tại chỉ chứa thông tin chung về quy trình khôi phục lỗi AGV và cách hiển thị mã lỗi trên màn hình, nhưng không có:\n\n- Báo cáo điều tra KTD-2026-06-0647\n- Thông tin về máy Iris2024-C33  \n- Chi tiết về mã lỗi kẹt giấy JAM4212\n- Hiện tượng và nguyên nhân cụ thể gây ra lỗi này\n\nĐể trả lời chính xác câu hỏi về hiện tượng và nguyên nhân gây ra mã lỗi JAM4212 theo báo cáo KTD-2026-06-0647, cần có thêm nguồn thông tin chứa nội dung báo cáo điều tra đó.\n\nVui lòng kiểm tra lại và cung cấp thêm nguồn thông tin liên quan trước khi sử dụng.\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng."
+    },
+    {
+      "id": "CAU_2_GOI421_C3100",
+      "title": "Câu 2 (Mới - Gói 421): Mã lỗi C3100 máy Iris2024-C33",
+      "question": "Theo báo cáo điều tra KTD-2026-06-0527 trên máy Iris2024-C33, nguyên nhân và biện pháp xử lý đối với mã lỗi C3100 là gì?",
+      "target_document": "KTD-2026-06-0527-Iris2024-C33-A1.2-C3100.xlsx",
+      "domain": "auto",
+      "elapsed_seconds": 252.83,
+      "image_file": "src-receive-2goi-cau2.png",
+      "ok": true,
+      "trace_id": "trc_adde683415b0",
+      "evidence_count": 2,
+      "top_evidences": [
+        {
+          "document_id": "",
+          "title": "wsc-ef0d393c086c7f07627ca8b8.txt",
+          "location_info": "",
+          "score": 0.2671403369146914,
+          "snippet": "010503 | C24=30C5 | E24=0 B25=C3A02010504 | C25=30C5 | E25=0 B26=C3A02010505 | C26=30C5 | E26=0 B27=C3A02010601 | C27=30"
+        },
+        {
+          "document_id": "",
+          "title": "wsc-ab150f1186115f64ca93a65d.txt",
+          "location_info": "",
+          "score": 0.2229149798541843,
+          "snippet": "設定＞ F24=・Resource：ExistingLine_Resource_C33（Location：ERPLocation「30C3」） F25=・Resource Group：ExistingLine_ResourceGroup_C"
+        }
+      ],
+      "verbatim_answer": "Dựa trên nội dung nguồn được cung cấp, tôi không tìm thấy thông tin về báo cáo điều tra KTD-2026-06-0527 trên máy Iris2024-C33, cũng như không có thông tin về nguyên nhân và biện pháp xử lý đối với mã lỗi C3100.\n\nCác nguồn hiện tại chỉ chứa:\n- NGUỒN 1 (wsc-ef0d393c086c7f07627ca8b8.txt): Dữ liệu kỹ thuật với các mã B, C, E\n- NGUỒN 2 (wsc-ab150f1186115f64ca93a65d.txt): Thông tin cấu hình master cho các dây chuyền hiện có (C33, C34, C35)\n\n**Chưa đủ thông tin** để trả lời câu hỏi về báo cáo điều tra KTD-2026-06-0527 và mã lỗi C3100.\n\nVui lòng kiểm tra lại và cung cấp thêm nguồn tài liệu có chứa báo cáo điều tra KTD-2026-06-0527 trước khi sử dụng thông tin này.\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng."
+    },
+    {
+      "id": "CAU_3_CU_C7620",
+      "title": "Câu 3 (Cũ - Hồi quy): Mã lỗi C7620 máy Sirius 2",
+      "question": "Mã lỗi C7620 trên dòng máy Sirius 2 là lỗi gì, nguyên nhân và cách khắc phục theo tài liệu?",
+      "target_document": "Sirius 2 _ C7620_報告版 4.pptx",
+      "domain": "lsu",
+      "elapsed_seconds": 83.39,
+      "image_file": "src-receive-2goi-cau3.png",
+      "ok": true,
+      "trace_id": "trc_f35e31ca5cdc",
+      "evidence_count": 3,
+      "top_evidences": [
+        {
+          "document_id": "",
+          "title": "wsc-b4f7ba061c5c7e3bb4b84eb3.txt",
+          "location_info": "",
+          "score": 0.4832210811126807,
+          "snippet": "©2026 KYOCERA Document Solutions Inc. ⑨2nd削除 Pro. C21_生産品目-06 Comp Op. C21-1 -06 Parts C0 └ └ 組立BOP Step └ Pro._WC1_Y0 -"
+        },
+        {
+          "document_id": "",
+          "title": "wsc-b4f7ba061c5c7e3bb4b84eb3.txt",
+          "location_info": "",
+          "score": 0.4667944777201795,
+          "snippet": "©2026 KYOCERA Document Solutions Inc. ②部品追加削除／RPS版数UP Pro. C21_生産品目 -02 Comp Op. C21-1 -02 Parts C0 └ └ 組立BOP Step └ Pro"
+        },
+        {
+          "document_id": "",
+          "title": "wsc-b4f7ba061c5c7e3bb4b84eb3.txt",
+          "location_info": "",
+          "score": 0.4638110362236164,
+          "snippet": "©2026 KYOCERA Document Solutions Inc. ⑧2nd追加 Pro. C21_生産品目-05 Comp Op. C21-1 -05 Parts C0 └ └ 組立BOP Step └ Pro._WC1_Y0 -"
+        }
+      ],
+      "verbatim_answer": "Dựa trên nội dung các nguồn được cung cấp, tôi không tìm thấy thông tin về mã lỗi C7620 trên dòng máy Sirius 2.\n\nCác nguồn hiện tại chỉ chứa thông tin về:\n- Tài liệu từ KYOCERA Document Solutions Inc. năm 2026\n- Các quy trình sản xuất và quản lý BOP (Bill of Process)\n- Thông tin về parts, components và resource management\n- Các thao tác thêm/xóa parts và cập nhật phiên bản RPS\n\n**Chưa đủ thông tin** để trả lời câu hỏi về mã lỗi C7620 trên dòng máy Sirius 2, bao gồm nguyên nhân và cách khắc phục.\n\nVui lòng kiểm tra lại và cung cấp thêm tài liệu có chứa thông tin về mã lỗi C7620 và dòng máy Sirius 2 để có thể trả lời chính xác câu hỏi của bạn.\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng."
+    }
+  ]
+}
