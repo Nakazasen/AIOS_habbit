@@ -1,8 +1,9 @@
-﻿# Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
+# Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
 ## Vé hiện tại: EVAL-NORMALIZE-FIX-HOME (sửa ca oan của thước đo)
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-09 21:33 +07 — Nhận vé EVAL-NORMALIZE-FIX-HOME: Cổng gate thông suốt (vé chấm lại offline trên các tệp dữ kiện đo đã có, không cần gọi mô hình). Bắt đầu Mục 1 tìm và rà soát mã nguồn khâu so khớp đáp án với thang chấm.
 - `ghi_chu` (verdict Muse): 2026-10-09 ~21:40 +07 — **ĐẠT phần cơ chế — CHƯA ĐẠT mục tiêu tăng điểm** vé `SYNTH-CONTEXT-ENTITY-HOME` + **PHÁT HÀNH** vé `EVAL-NORMALIZE-FIX-HOME` (prompt.md đã thay). Điều phối tự đếm lại từ hai tệp dữ kiện thô và khớp tuyệt đối với báo cáo: tổng điểm 59,51 so với mốc 65,33 (giảm 5,82; điểm trung bình 1,31 xuống 1,19). Phân nhóm theo vết ghi nới trong dữ kiện: nhóm 22 câu được nới ròng −0,66 điểm (0 câu tăng, 1 câu giảm, 21 câu giữ nguyên); nhóm 28 câu không nới ròng −5,16 điểm (0 câu tăng, 4 câu giảm, 24 câu giữ nguyên). Phân định của điều phối: cơ chế nới có điều kiện vận hành đúng thiết kế — chọn đúng câu có thực thể, ghi vết đầy đủ từng câu, bảo toàn ca chống nhiễu, và không gây hại cho nhóm được nới; nhưng mục tiêu tăng điểm chưa đạt ở lượt đo này. Vì nhóm không hề thay đổi ngữ cảnh cũng giảm hơn 5 điểm, dao động tự nhiên của mô hình miễn phí hiện đủ lớn để nuốt các hiệu quả cỡ vài điểm — từ nay kết luận chất lượng có biên chênh tương đương phải dựa trên đo lặp ít nhất 2 lượt, không kết luận từ một lượt. Không hoàn lui cơ chế (vô hại, có cờ tắt, lợi ích ở ca trọng điểm đã quan sát lặp lại ở cả hai máy). Vé sửa thước đo được phát hành ngay vì nó tách được phần điểm mất oan vì định dạng khỏi dao động thật, trên chính các tệp dữ kiện đã có.
 - `bao_cao`: `docs/phieu-viec/ket-qua/eval-normalize-fix-home.md`
 - Ticket: `EVAL-NORMALIZE-FIX-HOME` — [NHÀ] sửa ca oan của thước đo. Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`.
