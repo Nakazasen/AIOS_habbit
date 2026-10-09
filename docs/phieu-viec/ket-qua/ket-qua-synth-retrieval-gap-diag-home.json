@@ -1,0 +1,1761 @@
+{
+  "ticket": "SYNTH-RETRIEVAL-GAP-DIAG-HOME",
+  "timestamp": "2026-10-10 04:41 +07",
+  "index_path": "C:\\AIOS_workspace_chat_rag_v2_production\\bge_m3_hybrid\\collections\\tri_thuc\\library.sqlite",
+  "index_size_bytes": 2942201856,
+  "index_sha256": "45EB0E072893F802D71AB201CFBB2B29C36E2B0A31313FA79FC55A025B65B7C0",
+  "tong_quan": {
+    "so_cau_chan_doan": 8,
+    "nhom_a_du_lieu_khong_co_trong_kho": {
+      "so_luong": 7,
+      "danh_sach": [
+        "Q0849",
+        "Q0850",
+        "Q1034",
+        "Q0620",
+        "Q0824",
+        "Q0828",
+        "Q0843"
+      ],
+      "ty_le": "87.5%",
+      "diem_bi_khoa": 21.0,
+      "kha_nang_lay_lai_bang_sua_ma": 0.0,
+      "ket_luan": "Trần điểm bị giới hạn bởi dữ liệu nguồn, sửa mã RAG không có tác dụng cho nhóm này."
+    },
+    "nhom_b_va_c_du_lieu_co_nhung_bi_loc_va_xep_hang_thap": {
+      "so_luong": 1,
+      "danh_sach": [
+        "Q0668"
+      ],
+      "ty_le": "12.5%",
+      "diem_bi_khoa": 3.0,
+      "kha_nang_lay_lai_bang_sua_ma": 3.0,
+      "ket_luan": "Tệp nguồn 3V2ND19040-MOUNT LD BLOCK LOT 18.8.2026.xlsx có trong kho (82 chunks, chunk fb98fb34... chứa đủ 13.81 +0.12/-0.05 g2). Bị loại bởi khâu lọc khối tri thức (do gán nhãn dieu_tra_loi) và FTS bị từ nhiễu đẩy xuống hạng #602/#658."
+    }
+  },
+  "chi_tiet_8_cau": {
+    "Q0849": {
+      "existence_in_index": {
+        "source_matches": {
+          "2026_08_Error_BowOverAdjust.csv": [],
+          "BowOverAdjust": []
+        },
+        "target_term_matches": {
+          "3153": 97,
+          "3.153": 4,
+          "2026/08/01": 0,
+          "2026/08/25": 2,
+          "1252": 153,
+          "1.252": 2,
+          "BowOverAdjustment": 0
+        },
+        "combined_matches": {
+          "3153 + 1252": 5,
+          "3.153 + 1.252": 1,
+          "2026/08/01 + 2026/08/25": 0
+        },
+        "sample_snippets": [
+          {
+            "chunk_id": "21424966aece6504e7aae82a4d244294527290b829e8f4122b771e4d9729a84d",
+            "document_id": "wsc-921d7a6025bee08cedda051d",
+            "source_name": "tổng hợp dữ liệu dán tape.xlsx",
+            "snippet": "Sheet: Dữ liệu\nSelNo > E9L119174234 | Date > 2021-03-09 00:00:00 | Time > 08:04:36 | JigNo > #1 | FinTest > OK | FinLD1M140Hs > 86 | FinLD1M50Hs > 85 | FinLD1P50Hs > 83 | FinLD1P130Hs > 83 | FinLD1M140Vs > 96 | FinLD1M50Vs > 95 | FinLD1P50Vs > 90 | FinLD1P130Vs > 94 | FinM140Pitch > 42.8992840769276 | FinM50Pitch > 44.5991372111565 | FinP50Pitch > 43.6867892882686 | FinP130Pitch > 42.1579409332251",
+            "matched_combo": "3153 + 1252"
+          },
+          {
+            "chunk_id": "999b00acfc3c0993760fc407d978f44e4252f2367b4da6b35be954a2463f1eae",
+            "document_id": "wsc-921d7a6025bee08cedda051d",
+            "source_name": "tổng hợp dữ liệu dán tape.xlsx",
+            "snippet": "Sheet: Dữ liệu\nSelNo > E9L119174234 | Date > 2021-03-09 00:00:00 | Time > 08:04:36 | JigNo > #1 | FinTest > OK | FinLD1M140Hs > 86 | FinLD1M50Hs > 85 | FinLD1P50Hs > 83 | FinLD1P130Hs > 83 | FinLD1M140Vs > 96 | FinLD1M50Vs > 95 | FinLD1P50Vs > 90 | FinLD1P130Vs > 94 | FinM140Pitch > 42.8992840769276 | FinM50Pitch > 44.5991372111565 | FinP50Pitch > 43.6867892882686 | FinP130Pitch > 42.1579409332251",
+            "matched_combo": "3153 + 1252"
+          },
+          {
+            "chunk_id": "9681a5af23335e0acb17f450743f7f453024e90ecf3dc6ef7fcad7b37c2fe334",
+            "document_id": "wsc-921d7a6025bee08cedda051d",
+            "source_name": "tổng hợp dữ liệu dán tape.xlsx",
+            "snippet": "Sheet: Dữ liệu\nSelNo > E9L119174234 | Date > 2021-03-09 00:00:00 | Time > 08:04:36 | JigNo > #1 | FinTest > OK | FinLD1M140Hs > 86 | FinLD1M50Hs > 85 | FinLD1P50Hs > 83 | FinLD1P130Hs > 83 | FinLD1M140Vs > 96 | FinLD1M50Vs > 95 | FinLD1P50Vs > 90 | FinLD1P130Vs > 94 | FinM140Pitch > 42.8992840769276 | FinM50Pitch > 44.5991372111565 | FinP50Pitch > 43.6867892882686 | FinP130Pitch > 42.1579409332251",
+            "matched_combo": "3153 + 1252"
+          },
+          {
+            "chunk_id": "69e514cf5d52b9bb1ba02c3db843943db3c847003484e4af8fc5a8e1a207cbd7",
+            "document_id": "wsc-921d7a6025bee08cedda051d",
+            "source_name": "tổng hợp dữ liệu dán tape.xlsx",
+            "snippet": "Sheet: Dữ liệu\nSelNo > E9L119174234 | Date > 2021-03-09 00:00:00 | Time > 08:04:36 | JigNo > #1 | FinTest > OK | FinLD1M140Hs > 86 | FinLD1M50Hs > 85 | FinLD1P50Hs > 83 | FinLD1P130Hs > 83 | FinLD1M140Vs > 96 | FinLD1M50Vs > 95 | FinLD1P50Vs > 90 | FinLD1P130Vs > 94 | FinM140Pitch > 42.8992840769276 | FinM50Pitch > 44.5991372111565 | FinP50Pitch > 43.6867892882686 | FinP130Pitch > 42.1579409332251",
+            "matched_combo": "3153 + 1252"
+          },
+          {
+            "chunk_id": "5896a8f15cf7561eb3d42d812e4a4b2f23f7808709f200a978a7378fb3203843",
+            "document_id": "wsc-2340acdb03f71fc0a04fd77f",
+            "source_name": "dữ liệu tổng hợp.xlsx",
+            "snippet": "Sheet: Sheet2\nSelNo | Date | Time | JigNo | FinTest | FinLD1M140Hs | FinLD1M50Hs | FinLD1P50Hs | FinLD1P130Hs | FinLD1M140Vs | FinLD1M50Vs | FinLD1P50Vs | FinLD1P130Vs | FinM140Pitch | FinM50Pitch | FinP50Pitch | FinP130Pitch | LD1YpM140 | LD1YpM50 | LD1YpP50 | LD1YpP50 (2) | Bow | Skew | FinVolt | FinCurrent | Xy_X | Xy_Y | Xy_Xfirst | Xy_Yfirst | FinCol_X | FinCol_Y | FinCol_P | # | FinLD2M140Hs",
+            "matched_combo": "3153 + 1252"
+          },
+          {
+            "chunk_id": "21424966aece6504e7aae82a4d244294527290b829e8f4122b771e4d9729a84d",
+            "document_id": "wsc-921d7a6025bee08cedda051d",
+            "source_name": "tổng hợp dữ liệu dán tape.xlsx",
+            "snippet": "Sheet: Dữ liệu\nSelNo > E9L119174234 | Date > 2021-03-09 00:00:00 | Time > 08:04:36 | JigNo > #1 | FinTest > OK | FinLD1M140Hs > 86 | FinLD1M50Hs > 85 | FinLD1P50Hs > 83 | FinLD1P130Hs > 83 | FinLD1M140Vs > 96 | FinLD1M50Vs > 95 | FinLD1P50Vs > 90 | FinLD1P130Vs > 94 | FinM140Pitch > 42.8992840769276 | FinM50Pitch > 44.5991372111565 | FinP50Pitch > 43.6867892882686 | FinP130Pitch > 42.1579409332251",
+            "matched_combo": "3.153 + 1.252"
+          }
+        ]
+      },
+      "retrieval_journey": {
+        "id": "Q0849",
+        "query": "File có bao nhiêu record lỗi và phạm vi ngày nào?",
+        "intent": "diagnosis",
+        "content_terms": [
+          "file",
+          "có",
+          "bao",
+          "nhiêu",
+          "record",
+          "lỗi",
+          "và",
+          "phạm",
+          "vi",
+          "ngày",
+          "nào"
+        ],
+        "lsu_filter": {
+          "returned_count": 12,
+          "best_term_coverage": 0.36363636363636365,
+          "insufficiency_reasons": [
+            "incomplete_query_term_coverage"
+          ],
+          "top_results": [
+            {
+              "rank": 1,
+              "chunk_id": "66745dfcda8216b37ce6758eba50350a029952f8d25d28be9d65dcaf00289e0d",
+              "document_id": "wsc-75d716e930e8ddf3fc591e5a",
+              "source_name": "RE_ Iris LSU Beam径NG多発　異常品質会議2回目.msg",
+              "score": 11.0,
+              "term_coverage": 0.2727,
+              "matched_terms": [
+                "file",
+                "có",
+                "và"
+              ]
+            },
+            {
+              "rank": 2,
+              "chunk_id": "wsc-cc13a93c2c2cd621a8487e05-summary",
+              "document_id": "wsc-cc13a93c2c2cd621a8487e05",
+              "source_name": "Bong TAPE COVER GLASS Rev.00 VN.pptx",
+              "score": 8.5,
+              "term_coverage": 0.3636,
+              "matched_terms": [
+                "có",
+                "lỗi",
+                "và",
+                "ngày"
+              ]
+            },
+            {
+              "rank": 3,
+              "chunk_id": "fc4687a7cf363b4557ba4d9dff50e212cb5fd9222feacc0d3561fa57b89ef1b8",
+              "document_id": "wsc-75d716e930e8ddf3fc591e5a",
+              "source_name": "RE_ Iris LSU Beam径NG多発　異常品質会議2回目.msg",
+              "score": 8.0,
+              "term_coverage": 0.1818,
+              "matched_terms": [
+                "có",
+                "và"
+              ]
+            },
+            {
+              "rank": 4,
+              "chunk_id": "e83324627511ea83f50f6a510e34bb848a6c3b348b026ab0d99755d27feb35de",
+              "document_id": "wsc-cfe180f30fae3c031ffd5951",
+              "source_name": "Tài liệu đào tạo LSU_2019.01.18_K.pptx",
+              "score": 6.75,
+              "term_coverage": 0.3636,
+              "matched_terms": [
+                "có",
+                "bao",
+                "lỗi",
+                "và"
+              ]
+            },
+            {
+              "rank": 5,
+              "chunk_id": "2047286bd86959ab413911a31897df3d8c89872929462ea7ca7f111f4b8f322c",
+              "document_id": "wsc-cfe180f30fae3c031ffd5951",
+              "source_name": "Tài liệu đào tạo LSU_2019.01.18_K.pptx",
+              "score": 6.75,
+              "term_coverage": 0.1818,
+              "matched_terms": [
+                "có",
+                "và"
+              ]
+            }
+          ]
+        },
+        "all_filter": {
+          "returned_count": 12,
+          "best_term_coverage": 0.5454545454545454,
+          "top_results": [
+            {
+              "rank": 1,
+              "chunk_id": "9d13bad13693e1a386cecc2f5edf63c270a88fc49ed338a78bb8c35ec0fe3f64",
+              "document_id": "wsc-4fc7eb76bdc2e05c08b3f0f6",
+              "source_name": "Loi KDTPS.xlsx",
+              "score": 16.0,
+              "term_coverage": 0.3636,
+              "matched_terms": [
+                "lỗi",
+                "và",
+                "phạm",
+                "vi"
+              ]
+            },
+            {
+              "rank": 2,
+              "chunk_id": "b92c9ef62d4cda41a651b97b6a63707bd79524174448589351208cf003a0c4de",
+              "document_id": "wsc-4fc7eb76bdc2e05c08b3f0f6",
+              "source_name": "Loi KDTPS.xlsx",
+              "score": 15.0,
+              "term_coverage": 0.3636,
+              "matched_terms": [
+                "có",
+                "lỗi",
+                "phạm",
+                "vi"
+              ]
+            },
+            {
+              "rank": 3,
+              "chunk_id": "97637786a23d0a4d22598a4ea206f6bcb2cb12452a6165c58160944cc5900d66",
+              "document_id": "wsc-4fc7eb76bdc2e05c08b3f0f6",
+              "source_name": "Loi KDTPS.xlsx",
+              "score": 14.0,
+              "term_coverage": 0.5455,
+              "matched_terms": [
+                "có",
+                "lỗi",
+                "và",
+                "phạm",
+                "vi",
+                "ngày"
+              ]
+            },
+            {
+              "rank": 4,
+              "chunk_id": "fa0d8b763ee443b7dfb05a49a0b6af90eb99f30dff729e59204e6c5d97b37d5e",
+              "document_id": "wsc-1e085174af345d01afbf88d6",
+              "source_name": "wsc-1e085174af345d01afbf88d6.txt",
+              "score": 9.5,
+              "term_coverage": 0.2727,
+              "matched_terms": [
+                "có",
+                "record",
+                "lỗi"
+              ]
+            },
+            {
+              "rank": 5,
+              "chunk_id": "39000a89198508d4a3eb38390cb55b26ee7fb9c0ae6389a430f3822e2978dac4",
+              "document_id": "wsc-c0cfb5bb4e58b93f4ac06c76",
+              "source_name": "wsc-c0cfb5bb4e58b93f4ac06c76.txt",
+              "score": 9.5,
+              "term_coverage": 0.2727,
+              "matched_terms": [
+                "có",
+                "record",
+                "lỗi"
+              ]
+            }
+          ]
+        },
+        "q0668_special": {}
+      }
+    },
+    "Q0850": {
+      "existence_in_index": {
+        "source_matches": {
+          "2026_08_Error_BowOverAdjust.csv": [],
+          "BowOverAdjust": []
+        },
+        "target_term_matches": {
+          "1304": 175,
+          "1035": 220,
+          "814": 1836,
+          "1304件": 0,
+          "1035件": 0,
+          "814件": 0
+        },
+        "combined_matches": {
+          "1304 + 1035 + 814": 4
+        },
+        "sample_snippets": [
+          {
+            "chunk_id": "f0c451d397b899846b4848dd858cde5c117fe093a23a1998e7aca1c99c2e1bd1",
+            "document_id": "wsc-921d7a6025bee08cedda051d",
+            "source_name": "tổng hợp dữ liệu dán tape.xlsx",
+            "snippet": "Sheet: Dữ liệu\nSelNo > E9L119174234 | Date > 2021-03-09 00:00:00 | Time > 08:04:36 | JigNo > #1 | FinTest > OK | FinLD1M140Hs > 86 | FinLD1M50Hs > 85 | FinLD1P50Hs > 83 | FinLD1P130Hs > 83 | FinLD1M140Vs > 96 | FinLD1M50Vs > 95 | FinLD1P50Vs > 90 | FinLD1P130Vs > 94 | FinM140Pitch > 42.8992840769276 | FinM50Pitch > 44.5991372111565 | FinP50Pitch > 43.6867892882686 | FinP130Pitch > 42.1579409332251",
+            "matched_combo": "1304 + 1035 + 814"
+          },
+          {
+            "chunk_id": "9681a5af23335e0acb17f450743f7f453024e90ecf3dc6ef7fcad7b37c2fe334",
+            "document_id": "wsc-921d7a6025bee08cedda051d",
+            "source_name": "tổng hợp dữ liệu dán tape.xlsx",
+            "snippet": "Sheet: Dữ liệu\nSelNo > E9L119174234 | Date > 2021-03-09 00:00:00 | Time > 08:04:36 | JigNo > #1 | FinTest > OK | FinLD1M140Hs > 86 | FinLD1M50Hs > 85 | FinLD1P50Hs > 83 | FinLD1P130Hs > 83 | FinLD1M140Vs > 96 | FinLD1M50Vs > 95 | FinLD1P50Vs > 90 | FinLD1P130Vs > 94 | FinM140Pitch > 42.8992840769276 | FinM50Pitch > 44.5991372111565 | FinP50Pitch > 43.6867892882686 | FinP130Pitch > 42.1579409332251",
+            "matched_combo": "1304 + 1035 + 814"
+          },
+          {
+            "chunk_id": "2227cd0fdecda0c8eef69cf5e6f40c52bdca83640ea51c9fef2875b9ac8aa86a",
+            "document_id": "wsc-921d7a6025bee08cedda051d",
+            "source_name": "tổng hợp dữ liệu dán tape.xlsx",
+            "snippet": "Sheet: Dữ liệu\nSelNo > E9L119174234 | Date > 2021-03-09 00:00:00 | Time > 08:04:36 | JigNo > #1 | FinTest > OK | FinLD1M140Hs > 86 | FinLD1M50Hs > 85 | FinLD1P50Hs > 83 | FinLD1P130Hs > 83 | FinLD1M140Vs > 96 | FinLD1M50Vs > 95 | FinLD1P50Vs > 90 | FinLD1P130Vs > 94 | FinM140Pitch > 42.8992840769276 | FinM50Pitch > 44.5991372111565 | FinP50Pitch > 43.6867892882686 | FinP130Pitch > 42.1579409332251",
+            "matched_combo": "1304 + 1035 + 814"
+          },
+          {
+            "chunk_id": "599ad3bad764caab006ee2c8c6eef9adc90bc50d94b5205d12139cba9ba1bb50",
+            "document_id": "wsc-4fc7eb76bdc2e05c08b3f0f6",
+            "source_name": "Loi KDTPS.xlsx",
+            "snippet": "Sheet: History KDTPS\nColumn A | NO. | 生産日 Ngày tháng sản xuất | 機種/型番 Loại máy | 生産Line Line sản xuất | 生産工程 Công đoạn sản xuất | 発生シリアル/品目 Serial/Model phát sinh | 不具合分類 Phân loại lỗi | 不具合現象 Hiện trạng lỗi | 不具合件数 Số vụ lỗi\n | NO. | 生産日 Ngày tháng sản xuất | 機種/型番 Loại máy | 生産Line Line sản xuất | 生産工程 Công đoạn sản xuất | 発生シリアル/品目 Serial/Model phát sinh | 不具合分類 Phân loại lỗi | 不具合現象 Hiện trạng",
+            "matched_combo": "1304 + 1035 + 814"
+          }
+        ]
+      },
+      "retrieval_journey": {
+        "id": "Q0850",
+        "query": "Yellow、Cyan、Magenta分别有多少件？",
+        "intent": "diagnosis",
+        "content_terms": [
+          "yellow",
+          "cyan",
+          "magenta分别有多少件",
+          "magenta",
+          "分别有多少件",
+          "分别",
+          "别有",
+          "有多",
+          "多少",
+          "少件",
+          "分别有",
+          "别有多",
+          "有多少",
+          "多少件"
+        ],
+        "lsu_filter": {
+          "returned_count": 10,
+          "best_term_coverage": 0.21428571428571427,
+          "insufficiency_reasons": [
+            "incomplete_query_term_coverage",
+            "weak_query_term_coverage"
+          ],
+          "top_results": [
+            {
+              "rank": 1,
+              "chunk_id": "56f13aeffcf585e6f8e541e22ca039f088c9b26f94911ca81f4379376a117381",
+              "document_id": "wsc-894cf7bc9e15b9980ad7e6fb",
+              "source_name": "DATA_Matome.xlsx",
+              "score": 35.5,
+              "term_coverage": 0.2143,
+              "matched_terms": [
+                "yellow",
+                "cyan",
+                "magenta"
+              ]
+            },
+            {
+              "rank": 2,
+              "chunk_id": "1073a9906aa7cec7bd63672e5ef4a4d4497fa7290387942c8bdda8e3de16f792",
+              "document_id": "wsc-894cf7bc9e15b9980ad7e6fb",
+              "source_name": "DATA_Matome.xlsx",
+              "score": 35.5,
+              "term_coverage": 0.2143,
+              "matched_terms": [
+                "yellow",
+                "cyan",
+                "magenta"
+              ]
+            },
+            {
+              "rank": 3,
+              "chunk_id": "c0b6c3fa27d825a35188867895ca1c29fdbb1755c2534ecdc27c33a4b353b962",
+              "document_id": "wsc-894cf7bc9e15b9980ad7e6fb",
+              "source_name": "DATA_Matome.xlsx",
+              "score": 34.5,
+              "term_coverage": 0.2143,
+              "matched_terms": [
+                "yellow",
+                "cyan",
+                "magenta"
+              ]
+            },
+            {
+              "rank": 4,
+              "chunk_id": "03d4c190d9094cf6d4b428aa0e01cb823526f634f9ebc65731009acd362674b3",
+              "document_id": "wsc-ab3c54ac9b8321fae82a5ba7",
+              "source_name": "Sirius2_7620.xlsx",
+              "score": 24.5,
+              "term_coverage": 0.2143,
+              "matched_terms": [
+                "yellow",
+                "cyan",
+                "magenta"
+              ]
+            },
+            {
+              "rank": 5,
+              "chunk_id": "ec5410e1b31580335ea8e937795345262b5670a3828dec1ec9c74b2172d47489",
+              "document_id": "wsc-ab3c54ac9b8321fae82a5ba7",
+              "source_name": "Sirius2_7620.xlsx",
+              "score": 24.5,
+              "term_coverage": 0.2143,
+              "matched_terms": [
+                "yellow",
+                "cyan",
+                "magenta"
+              ]
+            }
+          ]
+        },
+        "all_filter": {
+          "returned_count": 12,
+          "best_term_coverage": 0.21428571428571427,
+          "top_results": [
+            {
+              "rank": 1,
+              "chunk_id": "56f13aeffcf585e6f8e541e22ca039f088c9b26f94911ca81f4379376a117381",
+              "document_id": "wsc-894cf7bc9e15b9980ad7e6fb",
+              "source_name": "DATA_Matome.xlsx",
+              "score": 35.5,
+              "term_coverage": 0.2143,
+              "matched_terms": [
+                "yellow",
+                "cyan",
+                "magenta"
+              ]
+            },
+            {
+              "rank": 2,
+              "chunk_id": "1073a9906aa7cec7bd63672e5ef4a4d4497fa7290387942c8bdda8e3de16f792",
+              "document_id": "wsc-894cf7bc9e15b9980ad7e6fb",
+              "source_name": "DATA_Matome.xlsx",
+              "score": 35.5,
+              "term_coverage": 0.2143,
+              "matched_terms": [
+                "yellow",
+                "cyan",
+                "magenta"
+              ]
+            },
+            {
+              "rank": 3,
+              "chunk_id": "c0b6c3fa27d825a35188867895ca1c29fdbb1755c2534ecdc27c33a4b353b962",
+              "document_id": "wsc-894cf7bc9e15b9980ad7e6fb",
+              "source_name": "DATA_Matome.xlsx",
+              "score": 34.5,
+              "term_coverage": 0.2143,
+              "matched_terms": [
+                "yellow",
+                "cyan",
+                "magenta"
+              ]
+            },
+            {
+              "rank": 4,
+              "chunk_id": "03d4c190d9094cf6d4b428aa0e01cb823526f634f9ebc65731009acd362674b3",
+              "document_id": "wsc-ab3c54ac9b8321fae82a5ba7",
+              "source_name": "Sirius2_7620.xlsx",
+              "score": 24.5,
+              "term_coverage": 0.2143,
+              "matched_terms": [
+                "yellow",
+                "cyan",
+                "magenta"
+              ]
+            },
+            {
+              "rank": 5,
+              "chunk_id": "ec5410e1b31580335ea8e937795345262b5670a3828dec1ec9c74b2172d47489",
+              "document_id": "wsc-ab3c54ac9b8321fae82a5ba7",
+              "source_name": "Sirius2_7620.xlsx",
+              "score": 24.5,
+              "term_coverage": 0.2143,
+              "matched_terms": [
+                "yellow",
+                "cyan",
+                "magenta"
+              ]
+            }
+          ]
+        },
+        "q0668_special": {}
+      }
+    },
+    "Q1034": {
+      "existence_in_index": {
+        "source_matches": {
+          "2026_08_Error.csv": [],
+          "2026_08_Error": []
+        },
+        "target_term_matches": {
+          "2026/08/11": 0,
+          "34笔": 0,
+          "34": 18012,
+          "08/12=22": 0,
+          "08/18=16": 0,
+          "22": 22374,
+          "16": 26789
+        },
+        "combined_matches": {
+          "2026/08/11 + 34": 0
+        },
+        "sample_snippets": []
+      },
+      "retrieval_journey": {
+        "id": "Q1034",
+        "query": "哪一天Error Record最多？",
+        "intent": "diagnosis",
+        "content_terms": [
+          "哪一天error",
+          "record最多",
+          "哪一天",
+          "error",
+          "record",
+          "最多",
+          "哪一",
+          "一天"
+        ],
+        "lsu_filter": {
+          "returned_count": 3,
+          "best_term_coverage": 0.125,
+          "insufficiency_reasons": [
+            "incomplete_query_term_coverage",
+            "weak_query_term_coverage"
+          ],
+          "top_results": [
+            {
+              "rank": 1,
+              "chunk_id": "14bdf5563c9d00679cd6c9f3c3ff28a7075e4eb54342f9b708b10d038ca70af1",
+              "document_id": "wsc-3862a76468aee5575cd502c5",
+              "source_name": "Sirius 2 _ C7620_報告版 4.pptx",
+              "score": 1.75,
+              "term_coverage": 0.125,
+              "matched_terms": [
+                "error"
+              ]
+            },
+            {
+              "rank": 2,
+              "chunk_id": "9a91c559a839c584fd9a17b61b47d60988ab7d4fb27c97098245a7016aeb8327",
+              "document_id": "wsc-3862a76468aee5575cd502c5",
+              "source_name": "Sirius 2 _ C7620_報告版 4.pptx",
+              "score": 0.75,
+              "term_coverage": 0.125,
+              "matched_terms": [
+                "error"
+              ]
+            },
+            {
+              "rank": 3,
+              "chunk_id": "wsc-3862a76468aee5575cd502c5-summary",
+              "document_id": "wsc-3862a76468aee5575cd502c5",
+              "source_name": "Sirius 2 _ C7620_報告版 4.pptx",
+              "score": 0.75,
+              "term_coverage": 0.125,
+              "matched_terms": [
+                "error"
+              ]
+            }
+          ]
+        },
+        "all_filter": {
+          "returned_count": 12,
+          "best_term_coverage": 0.125,
+          "top_results": [
+            {
+              "rank": 1,
+              "chunk_id": "4161a1b0089d6746a7be20230c37272cff1b4eb5975a83964c1b52f17590bb3b",
+              "document_id": "wsc-1633f597b1735e8e340903da",
+              "source_name": "KTD-2025-03-0239-Iris2024-C35-A7-C0980.xlsx",
+              "score": 7.75,
+              "term_coverage": 0.125,
+              "matched_terms": [
+                "error"
+              ]
+            },
+            {
+              "rank": 2,
+              "chunk_id": "fc06d200acf715ba742f1dbde55a385aaa944aad04a8989356f6743856346655",
+              "document_id": "wsc-1633f597b1735e8e340903da",
+              "source_name": "KTD-2025-03-0239-Iris2024-C35-A7-C0980.xlsx",
+              "score": 7.75,
+              "term_coverage": 0.125,
+              "matched_terms": [
+                "error"
+              ]
+            },
+            {
+              "rank": 3,
+              "chunk_id": "949a27a785cf627dca71e652313e52bf57e5eaf64787d4937f1e6ca8bf98fbd9",
+              "document_id": "wsc-0741f31ff003e2675d91dd59",
+              "source_name": "KTD-2026-07-0726-Iris2024-C33-A1.1-ERROR 0801.xlsx",
+              "score": 7.5,
+              "term_coverage": 0.125,
+              "matched_terms": [
+                "error"
+              ]
+            },
+            {
+              "rank": 4,
+              "chunk_id": "d1ab8ae1301ec81bdffb168a55c5f464c6baf3418f7600c3c3aad7652b7bd751",
+              "document_id": "wsc-1c32eff929cdd48b35b92a21",
+              "source_name": "KTD-2026-07-0726-Iris2024-C33-A1.1-ERROR 0801.xlsx",
+              "score": 7.0,
+              "term_coverage": 0.125,
+              "matched_terms": [
+                "error"
+              ]
+            },
+            {
+              "rank": 5,
+              "chunk_id": "6be5e677d3966bf634f4baf8989d023ca80e247f5c43352faa3a98df44d6a49b",
+              "document_id": "wsc-4fc7eb76bdc2e05c08b3f0f6",
+              "source_name": "Loi KDTPS.xlsx",
+              "score": 7.0,
+              "term_coverage": 0.125,
+              "matched_terms": [
+                "error"
+              ]
+            }
+          ]
+        },
+        "q0668_special": {}
+      }
+    },
+    "Q0620": {
+      "existence_in_index": {
+        "source_matches": {
+          "AI cảnh báo lỗi LSU.pptx": [],
+          "cảnh báo lỗi LSU": [],
+          "Sirius 2 _ C7620_報告版 4.pptx": [
+            {
+              "source_name": "Sirius 2 _ C7620_報告版 4.pptx",
+              "source_path": "D:\\Sandbox\\AIOS_habbit\\local_runs\\workspace_chat_rag_v2_canary\\materialized_sources\\wsc-3862a76468aee5575cd502c5.txt",
+              "document_id": "wsc-3862a76468aee5575cd502c5",
+              "chunk_count": 22
+            }
+          ]
+        },
+        "target_term_matches": {
+          "25.42%": 4,
+          "25.42": 4,
+          "49.49%": 3,
+          "49.49": 3,
+          "BOWSKEW 4 BEAM": 0,
+          "BOWSKEW": 61136
+        },
+        "combined_matches": {
+          "25.42 + 49.49": 0,
+          "49.49 + BOWSKEW": 0
+        },
+        "sample_snippets": []
+      },
+      "retrieval_journey": {
+        "id": "Q0620",
+        "query": "2026年3月のBOWSKEW 4 BEAM NG率はいくつですか。",
+        "intent": "diagnosis",
+        "content_terms": [
+          "2026年3月のbowskew",
+          "4",
+          "beam",
+          "ng率はいくつですか",
+          "2026",
+          "年",
+          "3",
+          "月の",
+          "bowskew",
+          "ng",
+          "率はいくつですか",
+          "率は",
+          "はい",
+          "いく",
+          "くつ",
+          "つで",
+          "です",
+          "すか",
+          "率はい",
+          "はいく",
+          "いくつ",
+          "くつで",
+          "つです",
+          "ですか"
+        ],
+        "lsu_filter": {
+          "returned_count": 12,
+          "best_term_coverage": 0.25,
+          "insufficiency_reasons": [
+            "incomplete_query_term_coverage",
+            "weak_query_term_coverage"
+          ],
+          "top_results": [
+            {
+              "rank": 1,
+              "chunk_id": "wsc-32b1df20c4f70b8206bb89b8-summary",
+              "document_id": "wsc-32b1df20c4f70b8206bb89b8",
+              "source_name": "siriud2調整治具_2号機_240411.pptx",
+              "score": 28.0,
+              "term_coverage": 0.1667,
+              "matched_terms": [
+                "4",
+                "beam",
+                "3",
+                "bowskew"
+              ]
+            },
+            {
+              "rank": 2,
+              "chunk_id": "wsc-3862a76468aee5575cd502c5-summary",
+              "document_id": "wsc-3862a76468aee5575cd502c5",
+              "source_name": "Sirius 2 _ C7620_報告版 4.pptx",
+              "score": 16.75,
+              "term_coverage": 0.25,
+              "matched_terms": [
+                "4",
+                "beam",
+                "年",
+                "3",
+                "bowskew",
+                "ng"
+              ]
+            },
+            {
+              "rank": 3,
+              "chunk_id": "372064579675f72ee9318c7cd7e6d765cf605eaa21d489f830dc77289eca59bc",
+              "document_id": "wsc-1e233aa1ef54e266c51e4d7d",
+              "source_name": "Bong_TAPE_COVER_GLASS_Rev.00_VN.pptx",
+              "score": 12.0,
+              "term_coverage": 0.1667,
+              "matched_terms": [
+                "4",
+                "2026",
+                "年",
+                "ng"
+              ]
+            },
+            {
+              "rank": 4,
+              "chunk_id": "2501fcea5962ad09260031cedf63a2923e89cc62f47ca0f1b7ddc61d06fc9fe3",
+              "document_id": "wsc-1e233aa1ef54e266c51e4d7d",
+              "source_name": "Bong_TAPE_COVER_GLASS_Rev.00_VN.pptx",
+              "score": 12.0,
+              "term_coverage": 0.1667,
+              "matched_terms": [
+                "4",
+                "2026",
+                "年",
+                "ng"
+              ]
+            },
+            {
+              "rank": 5,
+              "chunk_id": "fc23584880f3cf8975701e8bb82109ffdba82c3b7a59777d32a46e1506a44fde",
+              "document_id": "wsc-3862a76468aee5575cd502c5",
+              "source_name": "Sirius 2 _ C7620_報告版 4.pptx",
+              "score": 12.0,
+              "term_coverage": 0.2083,
+              "matched_terms": [
+                "4",
+                "beam",
+                "3",
+                "bowskew",
+                "ng"
+              ]
+            }
+          ]
+        },
+        "all_filter": {
+          "returned_count": 12,
+          "best_term_coverage": 0.25,
+          "top_results": [
+            {
+              "rank": 1,
+              "chunk_id": "wsc-32b1df20c4f70b8206bb89b8-summary",
+              "document_id": "wsc-32b1df20c4f70b8206bb89b8",
+              "source_name": "siriud2調整治具_2号機_240411.pptx",
+              "score": 28.0,
+              "term_coverage": 0.1667,
+              "matched_terms": [
+                "4",
+                "beam",
+                "3",
+                "bowskew"
+              ]
+            },
+            {
+              "rank": 2,
+              "chunk_id": "ba37f68fbb9acc770e8c60345ed67a0faa0c6db2756f590106c5318e063cee7f",
+              "document_id": "wsc-1d6a06690fd87180c59240d0",
+              "source_name": "wsc-1d6a06690fd87180c59240d0.txt",
+              "score": 26.0,
+              "term_coverage": 0.0833,
+              "matched_terms": [
+                "4",
+                "2026"
+              ]
+            },
+            {
+              "rank": 3,
+              "chunk_id": "ef9c9fe533150fc22145b7c3b01e4f6633ba56446bea2af2c6db3f4eb2d22f60",
+              "document_id": "wsc-1d6a06690fd87180c59240d0",
+              "source_name": "wsc-1d6a06690fd87180c59240d0.txt",
+              "score": 23.0,
+              "term_coverage": 0.125,
+              "matched_terms": [
+                "4",
+                "2026",
+                "3"
+              ]
+            },
+            {
+              "rank": 4,
+              "chunk_id": "a7d4d9785b484b5fc6b0b3179e91b8b917600223fb5fd55d8f85c40242d92556",
+              "document_id": "wsc-0ac3ea307df810908f4446a5",
+              "source_name": "3V2ND19040-MOUNT LD BLOCK  LOT 18.8.2026.xlsx",
+              "score": 20.5,
+              "term_coverage": 0.125,
+              "matched_terms": [
+                "4",
+                "2026",
+                "3"
+              ]
+            },
+            {
+              "rank": 5,
+              "chunk_id": "16b9d25b400476edfdec8fdad85a2e160cb35ab66942e5fa73b4d07432658d52",
+              "document_id": "wsc-0ac3ea307df810908f4446a5",
+              "source_name": "3V2ND19040-MOUNT LD BLOCK  LOT 18.8.2026.xlsx",
+              "score": 20.5,
+              "term_coverage": 0.125,
+              "matched_terms": [
+                "4",
+                "2026",
+                "3"
+              ]
+            }
+          ]
+        },
+        "q0668_special": {}
+      }
+    },
+    "Q0824": {
+      "existence_in_index": {
+        "source_matches": {
+          "2026_08_UnitTest.csv": [],
+          "UnitTest": []
+        },
+        "target_term_matches": {
+          "61C1068E7022": 0,
+          "7022": 100
+        },
+        "combined_matches": {
+          "61C1068E7022 + 08/12": 0,
+          "61C1068E7022 + 08/13": 0,
+          "61C1068E7022 + Total": 0
+        },
+        "sample_snippets": []
+      },
+      "retrieval_journey": {
+        "id": "Q0824",
+        "query": "`61C1068E7022`は8月12日と13日で判定Patternが変わりましたか。",
+        "intent": "diagnosis",
+        "content_terms": [
+          "61c1068e7022",
+          "は8月12日と13日で判定patternが変わりましたか",
+          "は",
+          "8",
+          "月",
+          "12",
+          "日と",
+          "13",
+          "日で判定",
+          "pattern",
+          "が変わりましたか",
+          "日で",
+          "で判",
+          "判定",
+          "日で判",
+          "で判定",
+          "が変",
+          "変わ",
+          "わり",
+          "りま",
+          "まし",
+          "した",
+          "たか",
+          "が変わ",
+          "変わり",
+          "わりま",
+          "りまし",
+          "ました",
+          "したか"
+        ],
+        "lsu_filter": {
+          "returned_count": 1,
+          "best_term_coverage": 0.06896551724137931,
+          "insufficiency_reasons": [
+            "incomplete_query_term_coverage",
+            "weak_query_term_coverage"
+          ],
+          "top_results": [
+            {
+              "rank": 1,
+              "chunk_id": "500850a3533e22d9d0a64d25e02ed9add464692c59ae3a3f43a4f7a92b5475f4",
+              "document_id": "wsc-cfe180f30fae3c031ffd5951",
+              "source_name": "Tài liệu đào tạo LSU_2019.01.18_K.pptx",
+              "score": 2.0,
+              "term_coverage": 0.069,
+              "matched_terms": [
+                "8",
+                "pattern"
+              ]
+            }
+          ]
+        },
+        "all_filter": {
+          "returned_count": 12,
+          "best_term_coverage": 0.2413793103448276,
+          "top_results": [
+            {
+              "rank": 1,
+              "chunk_id": "921db2356a2791d873204e04d03d30fae20af8b17e6d9d7e56c9dde824b3b748",
+              "document_id": "wsc-4fc7eb76bdc2e05c08b3f0f6",
+              "source_name": "Loi KDTPS.xlsx",
+              "score": 21.5,
+              "term_coverage": 0.2414,
+              "matched_terms": [
+                "は",
+                "pattern",
+                "判定",
+                "りま",
+                "まし",
+                "した",
+                "ました"
+              ]
+            },
+            {
+              "rank": 2,
+              "chunk_id": "c84da46c541871284ae90e58ea96def5b6d2896b1ae765966ca2de7dc3f3f48c",
+              "document_id": "wsc-4fc7eb76bdc2e05c08b3f0f6",
+              "source_name": "Loi KDTPS.xlsx",
+              "score": 19.0,
+              "term_coverage": 0.1724,
+              "matched_terms": [
+                "は",
+                "pattern",
+                "まし",
+                "した",
+                "ました"
+              ]
+            },
+            {
+              "rank": 3,
+              "chunk_id": "07b7c9108a26c277e9778208a9fa70133371db78060606245a0db1e39c588754",
+              "document_id": "wsc-4fc7eb76bdc2e05c08b3f0f6",
+              "source_name": "Loi KDTPS.xlsx",
+              "score": 16.0,
+              "term_coverage": 0.1724,
+              "matched_terms": [
+                "は",
+                "pattern",
+                "まし",
+                "した",
+                "ました"
+              ]
+            },
+            {
+              "rank": 4,
+              "chunk_id": "7e0d184818a4199ad9385341fb4b68f09b253cd867e94c0b78af0ec28ac39fbc",
+              "document_id": "wsc-7e2e25f32d054a40162d54ce",
+              "source_name": "KTD-2026-03-0232-Iris2024-C35-Drum-Bản mạch bị nứt.xlsx",
+              "score": 9.75,
+              "term_coverage": 0.1724,
+              "matched_terms": [
+                "13",
+                "pattern",
+                "まし",
+                "した",
+                "ました"
+              ]
+            },
+            {
+              "rank": 5,
+              "chunk_id": "eceaab02102b14627c9c55ea7e5d59e111244e1e2e0548acc36446a610698e99",
+              "document_id": "wsc-ce948fa79f1da30cb6dbba00",
+              "source_name": "KTD-2026-03-0232-Iris2024-C35-Drum-Bản mạch bị nứt.xlsx",
+              "score": 8.5,
+              "term_coverage": 0.1379,
+              "matched_terms": [
+                "pattern",
+                "まし",
+                "した",
+                "ました"
+              ]
+            }
+          ]
+        },
+        "q0668_special": {}
+      }
+    },
+    "Q0828": {
+      "existence_in_index": {
+        "source_matches": {
+          "2026_08_UnitTest.csv": [],
+          "UnitTest": []
+        },
+        "target_term_matches": {
+          "61C1068E6778": 0,
+          "61C1068E7022": 0,
+          "Black Skew": 0,
+          "Total NG": 0
+        },
+        "combined_matches": {
+          "61C1068E6778 + Total": 0,
+          "61C1068E6778 + Black": 0
+        },
+        "sample_snippets": []
+      },
+      "retrieval_journey": {
+        "id": "Q0828",
+        "query": "Có thể khẳng định Black Skew là nguyên nhân duy nhất của mọi Total NG trong file không?",
+        "intent": "diagnosis",
+        "content_terms": [
+          "có",
+          "thể",
+          "khẳng",
+          "định",
+          "black",
+          "skew",
+          "là",
+          "nguyên",
+          "nhân",
+          "duy",
+          "nhất",
+          "của",
+          "mọi",
+          "total",
+          "ng",
+          "trong",
+          "file",
+          "không"
+        ],
+        "lsu_filter": {
+          "returned_count": 12,
+          "best_term_coverage": 0.3888888888888889,
+          "insufficiency_reasons": [
+            "incomplete_query_term_coverage"
+          ],
+          "top_results": [
+            {
+              "rank": 1,
+              "chunk_id": "d7b8caba659a9189ece04e522e9aed49c0046d96802674656c2a7c056983780d",
+              "document_id": "wsc-fb4f4f8ff43f9f96c9c6ade4",
+              "source_name": "DATA_Matome.xlsx",
+              "score": 69.0,
+              "term_coverage": 0.1111,
+              "matched_terms": [
+                "black",
+                "skew"
+              ]
+            },
+            {
+              "rank": 2,
+              "chunk_id": "wsc-cc13a93c2c2cd621a8487e05-summary",
+              "document_id": "wsc-cc13a93c2c2cd621a8487e05",
+              "source_name": "Bong TAPE COVER GLASS Rev.00 VN.pptx",
+              "score": 29.5,
+              "term_coverage": 0.2778,
+              "matched_terms": [
+                "có",
+                "của",
+                "ng",
+                "trong",
+                "không"
+              ]
+            },
+            {
+              "rank": 3,
+              "chunk_id": "83c3f985a846a5089499b4254eeec3eb38540209f6ae722be994ffb149601aae",
+              "document_id": "wsc-5bb2e1327274e578dd2c71f4",
+              "source_name": "RE_ Iris LSU Beam径NG多発　異常品質会議3回目.msg",
+              "score": 21.0,
+              "term_coverage": 0.3889,
+              "matched_terms": [
+                "có",
+                "định",
+                "skew",
+                "của",
+                "ng",
+                "file",
+                "không"
+              ]
+            },
+            {
+              "rank": 4,
+              "chunk_id": "25ed473171a23998fe16ae95b999cb88b2b5a904b367408d3aab2f2bdc863e78",
+              "document_id": "wsc-cc13a93c2c2cd621a8487e05",
+              "source_name": "Bong TAPE COVER GLASS Rev.00 VN.pptx",
+              "score": 20.5,
+              "term_coverage": 0.2778,
+              "matched_terms": [
+                "có",
+                "của",
+                "ng",
+                "trong",
+                "không"
+              ]
+            },
+            {
+              "rank": 5,
+              "chunk_id": "e3837e7e23c7ed06bf5b3942bf9fe32caea3cc706e8ed6c363db5dcbf0ec8b8f",
+              "document_id": "wsc-1e233aa1ef54e266c51e4d7d",
+              "source_name": "Bong_TAPE_COVER_GLASS_Rev.00_VN.pptx",
+              "score": 20.5,
+              "term_coverage": 0.2778,
+              "matched_terms": [
+                "có",
+                "của",
+                "ng",
+                "trong",
+                "không"
+              ]
+            }
+          ]
+        },
+        "all_filter": {
+          "returned_count": 12,
+          "best_term_coverage": 0.5555555555555556,
+          "top_results": [
+            {
+              "rank": 1,
+              "chunk_id": "ac072454f252b25e123e0cf0dd3ec18895ad8616f0cf7cbeb296f58bc17eadca",
+              "document_id": "wsc-4fc7eb76bdc2e05c08b3f0f6",
+              "source_name": "Loi KDTPS.xlsx",
+              "score": 29.0,
+              "term_coverage": 0.5556,
+              "matched_terms": [
+                "có",
+                "định",
+                "là",
+                "nguyên",
+                "nhân",
+                "nhất",
+                "của",
+                "ng",
+                "trong",
+                "không"
+              ]
+            },
+            {
+              "rank": 2,
+              "chunk_id": "5c4e7233df0d0c0f26531b53f84aa0dc8ddc05ad7754943c2f17a65dc8df4bc7",
+              "document_id": "wsc-4fc7eb76bdc2e05c08b3f0f6",
+              "source_name": "Loi KDTPS.xlsx",
+              "score": 27.0,
+              "term_coverage": 0.5,
+              "matched_terms": [
+                "có",
+                "thể",
+                "định",
+                "nguyên",
+                "nhân",
+                "duy",
+                "ng",
+                "trong",
+                "không"
+              ]
+            },
+            {
+              "rank": 3,
+              "chunk_id": "1efdd8fd285babea78b7c32fe4948e43653b8be7e822a18f4cdeb780ec394ccf",
+              "document_id": "wsc-4fc7eb76bdc2e05c08b3f0f6",
+              "source_name": "Loi KDTPS.xlsx",
+              "score": 27.0,
+              "term_coverage": 0.5,
+              "matched_terms": [
+                "có",
+                "khẳng",
+                "định",
+                "là",
+                "nguyên",
+                "nhân",
+                "của",
+                "ng",
+                "không"
+              ]
+            },
+            {
+              "rank": 4,
+              "chunk_id": "b2069eabea59cb7478249c53f1d5045e9720ef2948aa4f54db3bd0ab7fc6af7b",
+              "document_id": "wsc-0603d773386b44af8c901ddf",
+              "source_name": "Iris2020_Cコール自己診断.xlsx",
+              "score": 18.0,
+              "term_coverage": 0.4444,
+              "matched_terms": [
+                "có",
+                "định",
+                "nguyên",
+                "nhân",
+                "nhất",
+                "của",
+                "trong",
+                "không"
+              ]
+            },
+            {
+              "rank": 5,
+              "chunk_id": "b8766b89c47dcc5ee4bea9a73c965b00b5810a0c01c41627e2bd9079c8998057",
+              "document_id": "wsc-2d528c22ed8a8466fba9c9bd",
+              "source_name": "wsc-2d528c22ed8a8466fba9c9bd.txt",
+              "score": 17.0,
+              "term_coverage": 0.3889,
+              "matched_terms": [
+                "có",
+                "thể",
+                "định",
+                "là",
+                "của",
+                "trong",
+                "không"
+              ]
+            }
+          ]
+        },
+        "q0668_special": {}
+      }
+    },
+    "Q0668": {
+      "existence_in_index": {
+        "source_matches": {
+          "3V2ND19040-MOUNT LD BLOCK LOT 18.8.2026.xlsx": [],
+          "MOUNT LD BLOCK": [
+            {
+              "source_name": "3V2ND19040-MOUNT LD BLOCK  LOT 18.8.2026.xlsx",
+              "source_path": "D:\\Sandbox\\AIOS_habbit\\local_runs\\workspace_chat_rag_v2_canary\\materialized_sources\\wsc-0ac3ea307df810908f4446a5.txt",
+              "document_id": "wsc-0ac3ea307df810908f4446a5",
+              "chunk_count": 82
+            }
+          ],
+          "122-g1": [],
+          "g1": [],
+          "g2": []
+        },
+        "target_term_matches": {
+          "13.81": 6,
+          "13.93": 0,
+          "13.76": 2,
+          "+0.12": 8,
+          "-0.05": 252,
+          "13.845": 5,
+          "13.856": 4
+        },
+        "combined_matches": {
+          "13.81 + 13.93": 0,
+          "13.81 + g1": 4,
+          "13.81 + g2": 4
+        },
+        "sample_snippets": [
+          {
+            "chunk_id": "58275204fc911b7211938d4af3704f68c62164070d5c6b0dd3148923fb2ffa66",
+            "document_id": "wsc-0ac3ea307df810908f4446a5",
+            "source_name": "3V2ND19040-MOUNT LD BLOCK  LOT 18.8.2026.xlsx",
+            "snippet": "Sheet: 18.08.2026\nColumns: NO | Vị trí bản vẽ | Kích thước đo | Column D | Dung sai | Column F | Column G | Điểm đo | Dung sai trên | Dung sai dưới | Lot 18.08.26 > Shot 1 ( 9h17' ) | Lot 18.08.26 > Shot 2 ( 9h18' ) | Lot 18.08.26 > Shot 3 ( 17h38' ) | Lot 18.08.26 > Shot 4 ( 17h39' ) | Lot 18.08.26 > Shot 5 ( 2h30' ) | Lot 18.08.26 > Shot 6 ( 2h31' ) | Phán định kết quả\nRow 59:  | 21D | // | 0.02",
+            "matched_combo": "13.81 + g1"
+          },
+          {
+            "chunk_id": "487a090c75117f103886ec1860bf364d2e5f3d412a54cc6336c694f56a569415",
+            "document_id": "wsc-0ac3ea307df810908f4446a5",
+            "source_name": "3V2ND19040-MOUNT LD BLOCK  LOT 18.8.2026.xlsx",
+            "snippet": "Sheet: 18.08.2026\nNO | Vị trí bản vẽ | Kích thước đo | Column D | Dung sai | Column F | Column G | Điểm đo | Dung sai trên | Dung sai dưới | Lot 18.08.26 > Shot 1 ( 9h17' ) | Lot 18.08.26 > Shot 2 ( 9h18' ) | Lot 18.08.26 > Shot 3 ( 17h38' ) | Lot 18.08.26 > Shot 4 ( 17h39' ) | Lot 18.08.26 > Shot 5 ( 2h30' ) | Lot 18.08.26 > Shot 6 ( 2h31' ) | Phán định kết quả\nNO | Vị trí bản vẽ | Kích thước đo ",
+            "matched_combo": "13.81 + g1"
+          },
+          {
+            "chunk_id": "e3a8501b17d24119284ba670467c56495f5a031141e4e71a4fcdf533e4701143",
+            "document_id": "wsc-582a992dc46566ab198dabe2",
+            "source_name": "3V2ND19040-MOUNT_LD_BLOCK__LOT_18.8.2026.xlsx",
+            "snippet": "58 | L58=0.010800000000003251 | M58=0.00730000000000075 | N58=0.007799999999996032 | O58=0.007799999999996032 | P58=0.008499999999997954 | Q58=0.009000000000000341 | R58==IF(OR(Q58>E58+G58,Q58<E58-H58),\"X\",IF(AND(Q58<=E58+G58-(G58+H58)*0.1,Q58>=E58-H58+(G58+H58)*0.1),\"O\",\"Caution\")) C59=21D | D59=// | E59=0.025 | F59=MAX | G59=0 | H59=0.025 | I59=e7,e8 | J59==E59+G59 | K59==E59-H59 | L59=0.0167000",
+            "matched_combo": "13.81 + g1"
+          },
+          {
+            "chunk_id": "55b6cd214397a40522587d8bd954ac20e240ad0edcae27042f607e038db4482f",
+            "document_id": "wsc-582a992dc46566ab198dabe2",
+            "source_name": "3V2ND19040-MOUNT_LD_BLOCK__LOT_18.8.2026.xlsx",
+            "snippet": "| R48==IF(OR(Q48>E48+G48,Q48<E48-H48),\"X\",IF(AND(Q48<=E48+G48-(G48+H48)*0.1,Q48>=E48-H48+(G48+H48)*0.1),\"O\",\"Caution\")) C49=21C | E49=39 | F49=+0.08 -0.05 | G49=0.08 | H49=0.05 | I49=Y98 | J49==E49+G49 | K49==E49-H49 | L49=38.9848 | M49=38.9815 | N49=38.9812 | O49=38.9737 | P49=38.9814 | Q49=38.9834 | R49==IF(OR(Q49>E49+G49,Q49<E49-H49),\"X\",IF(AND(Q49<=E49+G49-(G49+H49)*0.1,Q49>=E49-H49+(G49+H49)*",
+            "matched_combo": "13.81 + g1"
+          },
+          {
+            "chunk_id": "c1a1d8709cc33ae262dd6b1a850d187764b03922456ff341c53448c7d2990fd2",
+            "document_id": "wsc-0ac3ea307df810908f4446a5",
+            "source_name": "3V2ND19040-MOUNT LD BLOCK  LOT 18.8.2026.xlsx",
+            "snippet": "Sheet: 18.08.2026\nColumns: NO | Vị trí bản vẽ | Kích thước đo | Column D | Dung sai | Column F | Column G | Điểm đo | Dung sai trên | Dung sai dưới | Lot 18.08.26 > Shot 1 ( 9h17' ) | Lot 18.08.26 > Shot 2 ( 9h18' ) | Lot 18.08.26 > Shot 3 ( 17h38' ) | Lot 18.08.26 > Shot 4 ( 17h39' ) | Lot 18.08.26 > Shot 5 ( 2h30' ) | Lot 18.08.26 > Shot 6 ( 2h31' ) | Phán định kết quả\nRow 61:  | 1D |  | 13.81 |",
+            "matched_combo": "13.81 + g2"
+          },
+          {
+            "chunk_id": "487a090c75117f103886ec1860bf364d2e5f3d412a54cc6336c694f56a569415",
+            "document_id": "wsc-0ac3ea307df810908f4446a5",
+            "source_name": "3V2ND19040-MOUNT LD BLOCK  LOT 18.8.2026.xlsx",
+            "snippet": "Sheet: 18.08.2026\nNO | Vị trí bản vẽ | Kích thước đo | Column D | Dung sai | Column F | Column G | Điểm đo | Dung sai trên | Dung sai dưới | Lot 18.08.26 > Shot 1 ( 9h17' ) | Lot 18.08.26 > Shot 2 ( 9h18' ) | Lot 18.08.26 > Shot 3 ( 17h38' ) | Lot 18.08.26 > Shot 4 ( 17h39' ) | Lot 18.08.26 > Shot 5 ( 2h30' ) | Lot 18.08.26 > Shot 6 ( 2h31' ) | Phán định kết quả\nNO | Vị trí bản vẽ | Kích thước đo ",
+            "matched_combo": "13.81 + g2"
+          },
+          {
+            "chunk_id": "fb98fb34fbbf41a5b61c44d4a3e3b0a36f4cb3e215df2c430ae59a3b5ffb6f02",
+            "document_id": "wsc-582a992dc46566ab198dabe2",
+            "source_name": "3V2ND19040-MOUNT_LD_BLOCK__LOT_18.8.2026.xlsx",
+            "snippet": "60=13.8465 | Q60=13.8458 | R60==IF(OR(Q60>E60+G60,Q60<E60-H60),\"X\",IF(AND(Q60<=E60+G60-(G60+H60)*0.1,Q60>=E60-H60+(G60+H60)*0.1),\"O\",\"Caution\")) C61=1D | E61=13.81 | F61=+0.12 -0.05 | G61=0.12 | H61=0.05 | I61=g2 | J61==E61+G61 | K61==E61-H61 | L61=13.8562 | M61=13.8502 | N61=13.8474 | O61=13.8554 | P61=13.8489 | Q61=13.8483 | R61==IF(OR(Q61>E61+G61,Q61<E61-H61),\"X\",IF(AND(Q61<=E61+G61-(G61+H61)*0",
+            "matched_combo": "13.81 + g2"
+          },
+          {
+            "chunk_id": "55b6cd214397a40522587d8bd954ac20e240ad0edcae27042f607e038db4482f",
+            "document_id": "wsc-582a992dc46566ab198dabe2",
+            "source_name": "3V2ND19040-MOUNT_LD_BLOCK__LOT_18.8.2026.xlsx",
+            "snippet": "| R48==IF(OR(Q48>E48+G48,Q48<E48-H48),\"X\",IF(AND(Q48<=E48+G48-(G48+H48)*0.1,Q48>=E48-H48+(G48+H48)*0.1),\"O\",\"Caution\")) C49=21C | E49=39 | F49=+0.08 -0.05 | G49=0.08 | H49=0.05 | I49=Y98 | J49==E49+G49 | K49==E49-H49 | L49=38.9848 | M49=38.9815 | N49=38.9812 | O49=38.9737 | P49=38.9814 | Q49=38.9834 | R49==IF(OR(Q49>E49+G49,Q49<E49-H49),\"X\",IF(AND(Q49<=E49+G49-(G49+H49)*0.1,Q49>=E49-H49+(G49+H49)*",
+            "matched_combo": "13.81 + g2"
+          }
+        ]
+      },
+      "retrieval_journey": {
+        "id": "Q0668",
+        "query": "g1 và g2 có nominal và giới hạn nào?",
+        "intent": "diagnosis",
+        "content_terms": [
+          "g1",
+          "và",
+          "g2",
+          "có",
+          "nominal",
+          "giới",
+          "hạn",
+          "nào"
+        ],
+        "lsu_filter": {
+          "returned_count": 12,
+          "best_term_coverage": 0.25,
+          "insufficiency_reasons": [
+            "incomplete_query_term_coverage",
+            "weak_query_term_coverage"
+          ],
+          "top_results": [
+            {
+              "rank": 1,
+              "chunk_id": "4129cfda0553e9643efc63c00b42289debf85d40caaa99388547cbfb9c649e02",
+              "document_id": "wsc-61042de75628fa1f2c39831c",
+              "source_name": "KTD-2025-08-0866-DP Iris2020-C2B- Write DP Serial NG.xlsx",
+              "score": 7.5,
+              "term_coverage": 0.25,
+              "matched_terms": [
+                "g1",
+                "g2"
+              ]
+            },
+            {
+              "rank": 2,
+              "chunk_id": "ca80466920664e5d78ac480f358fb5f97f42f53028d298fa55f11762b742ff40",
+              "document_id": "wsc-c292106969b26cfd6269485b",
+              "source_name": "sirius2_beam径確認_240202.xlsx",
+              "score": 6.0,
+              "term_coverage": 0.25,
+              "matched_terms": [
+                "g1",
+                "g2"
+              ]
+            },
+            {
+              "rank": 3,
+              "chunk_id": "a3e45886521a679318d5cdba84e4a6931e14d9a7b9b5350653d2296ee42333a0",
+              "document_id": "wsc-c292106969b26cfd6269485b",
+              "source_name": "sirius2_beam径確認_240202.xlsx",
+              "score": 6.0,
+              "term_coverage": 0.25,
+              "matched_terms": [
+                "g1",
+                "g2"
+              ]
+            },
+            {
+              "rank": 4,
+              "chunk_id": "70a50a1e3c360f50e18b6c640c9311ecc9875fa7f0c9a679173b8db419ddc2c3",
+              "document_id": "wsc-61042de75628fa1f2c39831c",
+              "source_name": "KTD-2025-08-0866-DP Iris2020-C2B- Write DP Serial NG.xlsx",
+              "score": 5.5,
+              "term_coverage": 0.25,
+              "matched_terms": [
+                "g1",
+                "g2"
+              ]
+            },
+            {
+              "rank": 5,
+              "chunk_id": "dca5419176867fc9fbece07edb7aa8796c153503bea54279f4d1097a7acbe73c",
+              "document_id": "wsc-4bb9a926160fc7b2687cb7ac",
+              "source_name": "MAIN_3V2XD47010_04.pdf",
+              "score": 5.0,
+              "term_coverage": 0.25,
+              "matched_terms": [
+                "g1",
+                "g2"
+              ]
+            }
+          ]
+        },
+        "all_filter": {
+          "returned_count": 12,
+          "best_term_coverage": 0.25,
+          "top_results": [
+            {
+              "rank": 1,
+              "chunk_id": "4129cfda0553e9643efc63c00b42289debf85d40caaa99388547cbfb9c649e02",
+              "document_id": "wsc-61042de75628fa1f2c39831c",
+              "source_name": "KTD-2025-08-0866-DP Iris2020-C2B- Write DP Serial NG.xlsx",
+              "score": 7.5,
+              "term_coverage": 0.25,
+              "matched_terms": [
+                "g1",
+                "g2"
+              ]
+            },
+            {
+              "rank": 2,
+              "chunk_id": "ca80466920664e5d78ac480f358fb5f97f42f53028d298fa55f11762b742ff40",
+              "document_id": "wsc-c292106969b26cfd6269485b",
+              "source_name": "sirius2_beam径確認_240202.xlsx",
+              "score": 6.0,
+              "term_coverage": 0.25,
+              "matched_terms": [
+                "g1",
+                "g2"
+              ]
+            },
+            {
+              "rank": 3,
+              "chunk_id": "a3e45886521a679318d5cdba84e4a6931e14d9a7b9b5350653d2296ee42333a0",
+              "document_id": "wsc-c292106969b26cfd6269485b",
+              "source_name": "sirius2_beam径確認_240202.xlsx",
+              "score": 6.0,
+              "term_coverage": 0.25,
+              "matched_terms": [
+                "g1",
+                "g2"
+              ]
+            },
+            {
+              "rank": 4,
+              "chunk_id": "70a50a1e3c360f50e18b6c640c9311ecc9875fa7f0c9a679173b8db419ddc2c3",
+              "document_id": "wsc-61042de75628fa1f2c39831c",
+              "source_name": "KTD-2025-08-0866-DP Iris2020-C2B- Write DP Serial NG.xlsx",
+              "score": 5.5,
+              "term_coverage": 0.25,
+              "matched_terms": [
+                "g1",
+                "g2"
+              ]
+            },
+            {
+              "rank": 5,
+              "chunk_id": "9ab19f2974b5d6b09403565ef56495ff65db98ee91f22d9077548c37b796fde7",
+              "document_id": "wsc-6a25f0b37dc4c45c4ad1874f",
+              "source_name": "MAIN_3V2XC47010_04.pdf",
+              "score": 5.0,
+              "term_coverage": 0.25,
+              "matched_terms": [
+                "g1",
+                "g2"
+              ]
+            }
+          ]
+        },
+        "q0668_special": {
+          "target_chunk_in_lsu_filter": false,
+          "target_chunk_in_all_filter": false,
+          "target_doc_id": "wsc-582a992dc46566ab198dabe2",
+          "target_doc_domain": "dieu_tra_loi",
+          "is_in_lsu_domain_set": false,
+          "fts_top_5": [
+            [
+              "c2e71e842bf24156c26e00c25f6410535c276df0705e6d1186a9c91a435e19be",
+              "wsc-9c82b1ca2e1898a8d9d03e8b",
+              "61C1065D8513_B4_Bow_Skew.xlsm",
+              -24.385653213293153
+            ],
+            [
+              "cfd2650015345561b9acceda2604fb0c278fde7e56ebf148dc3d75d8d5234c1d",
+              "wsc-4fc7eb76bdc2e05c08b3f0f6",
+              "Loi KDTPS.xlsx",
+              -23.11531857320029
+            ],
+            [
+              "28e3f3b5a094d915437f280b35d480fa1ded5cf46c02b8c37de68ba4f72051d4",
+              "wsc-c18dcc9ac98cfd1c61aeb358",
+              "Maintenance mode 3.xlsx",
+              -23.11531857320029
+            ],
+            [
+              "f0d29a439aeda5d291ed8ab13d99c7fefb6afdab9d2106c5aa8ca40589a7e3db",
+              "wsc-c18dcc9ac98cfd1c61aeb358",
+              "Maintenance mode 3.xlsx",
+              -23.11531857320029
+            ],
+            [
+              "402d100658e35b4a1b97eb907ee092303d7c1d1516bb6e67ee574443a02b0f7a",
+              "wsc-4fc7eb76bdc2e05c08b3f0f6",
+              "Loi KDTPS.xlsx",
+              -22.054784888035385
+            ]
+          ],
+          "target_chunk_in_fts_match": false
+        }
+      }
+    },
+    "Q0843": {
+      "existence_in_index": {
+        "source_matches": {
+          "2026_08_Spec.csv": [],
+          "2026_08_Spec": []
+        },
+        "target_term_matches": {
+          "370 mA": 0,
+          "370mA": 0,
+          "370": 2060,
+          "520 mA": 2,
+          "520mA": 0,
+          "520": 1564,
+          "4399": 84,
+          "4.399": 3
+        },
+        "combined_matches": {
+          "370 + 520": 5,
+          "370 + 4399": 5
+        },
+        "sample_snippets": [
+          {
+            "chunk_id": "8808a9b4335c107227a94941471ad74e238fce5973ce1e1abef77bf6080d39b5",
+            "document_id": "wsc-b8220b0d1cc36804b19e6dea",
+            "source_name": "wsc-b8220b0d1cc36804b19e6dea.txt",
+            "snippet": "Trang tính: 4.AGV_ACR・CTU間通信 A1=4.AGV - ACR/CTU間通信 B4=1. 通信仕様概要 D5=1.1 通信インターフェイス方式 E6=・ | F6=AGVとACR/CTU間の通信は、UART（シリアルインターフェース）にて行う。 E7=・ | F7=通信は、AGV側をマスタ、ACR/CTU側をスレーブとする。 E8=・ | F8=マスタからのコマンドに対してスレーブがステイタスを返答するMst-Slv間通信方式。 D10=1.2 通信回線仕様 F11=伝送方式 | L11=シリアル伝送 F12=速度 | L12=115200bps F13=データ長 | L13=8ビット F14=スタートビット | L14=1ビット F15=ストップビット | L15=1ビット F16=パリティビット | L16=None B19=2. 通信プロトコル D20=2.1",
+            "matched_combo": "370 + 520"
+          },
+          {
+            "chunk_id": "f0c451d397b899846b4848dd858cde5c117fe093a23a1998e7aca1c99c2e1bd1",
+            "document_id": "wsc-921d7a6025bee08cedda051d",
+            "source_name": "tổng hợp dữ liệu dán tape.xlsx",
+            "snippet": "Sheet: Dữ liệu\nSelNo > E9L119174234 | Date > 2021-03-09 00:00:00 | Time > 08:04:36 | JigNo > #1 | FinTest > OK | FinLD1M140Hs > 86 | FinLD1M50Hs > 85 | FinLD1P50Hs > 83 | FinLD1P130Hs > 83 | FinLD1M140Vs > 96 | FinLD1M50Vs > 95 | FinLD1P50Vs > 90 | FinLD1P130Vs > 94 | FinM140Pitch > 42.8992840769276 | FinM50Pitch > 44.5991372111565 | FinP50Pitch > 43.6867892882686 | FinP130Pitch > 42.1579409332251",
+            "matched_combo": "370 + 520"
+          },
+          {
+            "chunk_id": "3805ff88df351307f3bc93c6d72eafe9ac3bea21baaa845f7b470db4a20388ee",
+            "document_id": "wsc-921d7a6025bee08cedda051d",
+            "source_name": "tổng hợp dữ liệu dán tape.xlsx",
+            "snippet": "Sheet: Dữ liệu\nSelNo > E9L119174234 | Date > 2021-03-09 00:00:00 | Time > 08:04:36 | JigNo > #1 | FinTest > OK | FinLD1M140Hs > 86 | FinLD1M50Hs > 85 | FinLD1P50Hs > 83 | FinLD1P130Hs > 83 | FinLD1M140Vs > 96 | FinLD1M50Vs > 95 | FinLD1P50Vs > 90 | FinLD1P130Vs > 94 | FinM140Pitch > 42.8992840769276 | FinM50Pitch > 44.5991372111565 | FinP50Pitch > 43.6867892882686 | FinP130Pitch > 42.1579409332251",
+            "matched_combo": "370 + 520"
+          },
+          {
+            "chunk_id": "21424966aece6504e7aae82a4d244294527290b829e8f4122b771e4d9729a84d",
+            "document_id": "wsc-921d7a6025bee08cedda051d",
+            "source_name": "tổng hợp dữ liệu dán tape.xlsx",
+            "snippet": "Sheet: Dữ liệu\nSelNo > E9L119174234 | Date > 2021-03-09 00:00:00 | Time > 08:04:36 | JigNo > #1 | FinTest > OK | FinLD1M140Hs > 86 | FinLD1M50Hs > 85 | FinLD1P50Hs > 83 | FinLD1P130Hs > 83 | FinLD1M140Vs > 96 | FinLD1M50Vs > 95 | FinLD1P50Vs > 90 | FinLD1P130Vs > 94 | FinM140Pitch > 42.8992840769276 | FinM50Pitch > 44.5991372111565 | FinP50Pitch > 43.6867892882686 | FinP130Pitch > 42.1579409332251",
+            "matched_combo": "370 + 520"
+          },
+          {
+            "chunk_id": "999b00acfc3c0993760fc407d978f44e4252f2367b4da6b35be954a2463f1eae",
+            "document_id": "wsc-921d7a6025bee08cedda051d",
+            "source_name": "tổng hợp dữ liệu dán tape.xlsx",
+            "snippet": "Sheet: Dữ liệu\nSelNo > E9L119174234 | Date > 2021-03-09 00:00:00 | Time > 08:04:36 | JigNo > #1 | FinTest > OK | FinLD1M140Hs > 86 | FinLD1M50Hs > 85 | FinLD1P50Hs > 83 | FinLD1P130Hs > 83 | FinLD1M140Vs > 96 | FinLD1M50Vs > 95 | FinLD1P50Vs > 90 | FinLD1P130Vs > 94 | FinM140Pitch > 42.8992840769276 | FinM50Pitch > 44.5991372111565 | FinP50Pitch > 43.6867892882686 | FinP130Pitch > 42.1579409332251",
+            "matched_combo": "370 + 520"
+          },
+          {
+            "chunk_id": "f0c451d397b899846b4848dd858cde5c117fe093a23a1998e7aca1c99c2e1bd1",
+            "document_id": "wsc-921d7a6025bee08cedda051d",
+            "source_name": "tổng hợp dữ liệu dán tape.xlsx",
+            "snippet": "Sheet: Dữ liệu\nSelNo > E9L119174234 | Date > 2021-03-09 00:00:00 | Time > 08:04:36 | JigNo > #1 | FinTest > OK | FinLD1M140Hs > 86 | FinLD1M50Hs > 85 | FinLD1P50Hs > 83 | FinLD1P130Hs > 83 | FinLD1M140Vs > 96 | FinLD1M50Vs > 95 | FinLD1P50Vs > 90 | FinLD1P130Vs > 94 | FinM140Pitch > 42.8992840769276 | FinM50Pitch > 44.5991372111565 | FinP50Pitch > 43.6867892882686 | FinP130Pitch > 42.1579409332251",
+            "matched_combo": "370 + 4399"
+          },
+          {
+            "chunk_id": "3805ff88df351307f3bc93c6d72eafe9ac3bea21baaa845f7b470db4a20388ee",
+            "document_id": "wsc-921d7a6025bee08cedda051d",
+            "source_name": "tổng hợp dữ liệu dán tape.xlsx",
+            "snippet": "Sheet: Dữ liệu\nSelNo > E9L119174234 | Date > 2021-03-09 00:00:00 | Time > 08:04:36 | JigNo > #1 | FinTest > OK | FinLD1M140Hs > 86 | FinLD1M50Hs > 85 | FinLD1P50Hs > 83 | FinLD1P130Hs > 83 | FinLD1M140Vs > 96 | FinLD1M50Vs > 95 | FinLD1P50Vs > 90 | FinLD1P130Vs > 94 | FinM140Pitch > 42.8992840769276 | FinM50Pitch > 44.5991372111565 | FinP50Pitch > 43.6867892882686 | FinP130Pitch > 42.1579409332251",
+            "matched_combo": "370 + 4399"
+          },
+          {
+            "chunk_id": "21424966aece6504e7aae82a4d244294527290b829e8f4122b771e4d9729a84d",
+            "document_id": "wsc-921d7a6025bee08cedda051d",
+            "source_name": "tổng hợp dữ liệu dán tape.xlsx",
+            "snippet": "Sheet: Dữ liệu\nSelNo > E9L119174234 | Date > 2021-03-09 00:00:00 | Time > 08:04:36 | JigNo > #1 | FinTest > OK | FinLD1M140Hs > 86 | FinLD1M50Hs > 85 | FinLD1P50Hs > 83 | FinLD1P130Hs > 83 | FinLD1M140Vs > 96 | FinLD1M50Vs > 95 | FinLD1P50Vs > 90 | FinLD1P130Vs > 94 | FinM140Pitch > 42.8992840769276 | FinM50Pitch > 44.5991372111565 | FinP50Pitch > 43.6867892882686 | FinP130Pitch > 42.1579409332251",
+            "matched_combo": "370 + 4399"
+          },
+          {
+            "chunk_id": "999b00acfc3c0993760fc407d978f44e4252f2367b4da6b35be954a2463f1eae",
+            "document_id": "wsc-921d7a6025bee08cedda051d",
+            "source_name": "tổng hợp dữ liệu dán tape.xlsx",
+            "snippet": "Sheet: Dữ liệu\nSelNo > E9L119174234 | Date > 2021-03-09 00:00:00 | Time > 08:04:36 | JigNo > #1 | FinTest > OK | FinLD1M140Hs > 86 | FinLD1M50Hs > 85 | FinLD1P50Hs > 83 | FinLD1P130Hs > 83 | FinLD1M140Vs > 96 | FinLD1M50Vs > 95 | FinLD1P50Vs > 90 | FinLD1P130Vs > 94 | FinM140Pitch > 42.8992840769276 | FinM50Pitch > 44.5991372111565 | FinP50Pitch > 43.6867892882686 | FinP130Pitch > 42.1579409332251",
+            "matched_combo": "370 + 4399"
+          },
+          {
+            "chunk_id": "9681a5af23335e0acb17f450743f7f453024e90ecf3dc6ef7fcad7b37c2fe334",
+            "document_id": "wsc-921d7a6025bee08cedda051d",
+            "source_name": "tổng hợp dữ liệu dán tape.xlsx",
+            "snippet": "Sheet: Dữ liệu\nSelNo > E9L119174234 | Date > 2021-03-09 00:00:00 | Time > 08:04:36 | JigNo > #1 | FinTest > OK | FinLD1M140Hs > 86 | FinLD1M50Hs > 85 | FinLD1P50Hs > 83 | FinLD1P130Hs > 83 | FinLD1M140Vs > 96 | FinLD1M50Vs > 95 | FinLD1P50Vs > 90 | FinLD1P130Vs > 94 | FinM140Pitch > 42.8992840769276 | FinM50Pitch > 44.5991372111565 | FinP50Pitch > 43.6867892882686 | FinP130Pitch > 42.1579409332251",
+            "matched_combo": "370 + 4399"
+          }
+        ]
+      },
+      "retrieval_journey": {
+        "id": "Q0843",
+        "query": "Cặp giới hạn Current phổ biến nhất là bao nhiêu?",
+        "intent": "diagnosis",
+        "content_terms": [
+          "cặp",
+          "giới",
+          "hạn",
+          "current",
+          "phổ",
+          "biến",
+          "nhất",
+          "là",
+          "bao",
+          "nhiêu"
+        ],
+        "lsu_filter": {
+          "returned_count": 12,
+          "best_term_coverage": 0.4,
+          "insufficiency_reasons": [
+            "incomplete_query_term_coverage"
+          ],
+          "top_results": [
+            {
+              "rank": 1,
+              "chunk_id": "8c158035ee21be4736b06a62a570484bb1d8c9879ec01654bc61a933b08868b1",
+              "document_id": "wsc-cfe180f30fae3c031ffd5951",
+              "source_name": "Tài liệu đào tạo LSU_2019.01.18_K.pptx",
+              "score": 6.0,
+              "term_coverage": 0.4,
+              "matched_terms": [
+                "hạn",
+                "biến",
+                "nhất",
+                "là"
+              ]
+            },
+            {
+              "rank": 2,
+              "chunk_id": "a455b159555f1eb4ee1583b209ee182bdf3c0dd933e235b1dee43ae08eb6e5d6",
+              "document_id": "wsc-cfe180f30fae3c031ffd5951",
+              "source_name": "Tài liệu đào tạo LSU_2019.01.18_K.pptx",
+              "score": 6.0,
+              "term_coverage": 0.2,
+              "matched_terms": [
+                "nhất",
+                "là"
+              ]
+            },
+            {
+              "rank": 3,
+              "chunk_id": "57b17da7b88261d5595d2487295eaf46c660f03f8a44a0c78509f2069df50ca1",
+              "document_id": "wsc-894cf7bc9e15b9980ad7e6fb",
+              "source_name": "DATA_Matome.xlsx",
+              "score": 4.5,
+              "term_coverage": 0.1,
+              "matched_terms": [
+                "current"
+              ]
+            },
+            {
+              "rank": 4,
+              "chunk_id": "dc5de88c06bcbcb56fa30eb3671b37239e5debf8aeb17a5cf5b1cb2019244726",
+              "document_id": "wsc-9c82b1ca2e1898a8d9d03e8b",
+              "source_name": "61C1065D8513_B4_Bow_Skew.xlsm",
+              "score": 4.5,
+              "term_coverage": 0.1,
+              "matched_terms": [
+                "nhất"
+              ]
+            },
+            {
+              "rank": 5,
+              "chunk_id": "95d4ea78aaf521f80ea458d1df8c0061745fc9e904af428adefff7a960a64f67",
+              "document_id": "wsc-fb4f4f8ff43f9f96c9c6ade4",
+              "source_name": "DATA_Matome.xlsx",
+              "score": 4.0,
+              "term_coverage": 0.1,
+              "matched_terms": [
+                "current"
+              ]
+            }
+          ]
+        },
+        "all_filter": {
+          "returned_count": 12,
+          "best_term_coverage": 0.4,
+          "top_results": [
+            {
+              "rank": 1,
+              "chunk_id": "83e0296d71ee170223ceb09942e3c1745b18a55fceddfeb6742281a1fd15047b",
+              "document_id": "wsc-4fc7eb76bdc2e05c08b3f0f6",
+              "source_name": "Loi KDTPS.xlsx",
+              "score": 14.25,
+              "term_coverage": 0.2,
+              "matched_terms": [
+                "giới",
+                "hạn"
+              ]
+            },
+            {
+              "rank": 2,
+              "chunk_id": "9a9ed30e288f538bf19ae4da46273108f14c3400fd34e594b363c794818973bd",
+              "document_id": "wsc-6227ecdc7e605c80494c74d7",
+              "source_name": "Iris2020_Cコール自己診断.xlsx",
+              "score": 14.0,
+              "term_coverage": 0.2,
+              "matched_terms": [
+                "giới",
+                "hạn"
+              ]
+            },
+            {
+              "rank": 3,
+              "chunk_id": "3db73a14e8dbd0c54f6a6caee4465dab8ed20be215a2ec34ce57df9ca8017321",
+              "document_id": "wsc-6227ecdc7e605c80494c74d7",
+              "source_name": "Iris2020_Cコール自己診断.xlsx",
+              "score": 12.0,
+              "term_coverage": 0.2,
+              "matched_terms": [
+                "giới",
+                "hạn"
+              ]
+            },
+            {
+              "rank": 4,
+              "chunk_id": "49a97bd28d74e53a917b28713cee8a864c2cce87b52590fec781d62b57721701",
+              "document_id": "wsc-0603d773386b44af8c901ddf",
+              "source_name": "Iris2020_Cコール自己診断.xlsx",
+              "score": 11.5,
+              "term_coverage": 0.4,
+              "matched_terms": [
+                "giới",
+                "hạn",
+                "nhất",
+                "là"
+              ]
+            },
+            {
+              "rank": 5,
+              "chunk_id": "6fd16da0f282fadc096a6e44d946f2f065c6d2ec12c996b40da1f30c63f78caf",
+              "document_id": "wsc-0603d773386b44af8c901ddf",
+              "source_name": "Iris2020_Cコール自己診断.xlsx",
+              "score": 11.0,
+              "term_coverage": 0.2,
+              "matched_terms": [
+                "current",
+                "nhất"
+              ]
+            }
+          ]
+        },
+        "q0668_special": {}
+      }
+    }
+  }
+}
