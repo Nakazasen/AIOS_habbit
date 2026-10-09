@@ -34,7 +34,7 @@ Các tệp được lưu trữ tại `docs/phieu-viec/ket-qua/` (đo kích thư�
 - `docs/phieu-viec/ket-qua/ui-synth-term-extract-fix-redo-cau2.json`: **1.149 bytes**
 - `docs/phieu-viec/ket-qua/ui-synth-term-extract-fix-redo-cau3.json`: **1.877 bytes**
 - `docs/phieu-viec/ket-qua/ui-synth-term-extract-fix-redo-summary.json`: **8.296 bytes**
-- `docs/phieu-viec/ket-qua/ui-synth-term-extract-fix-redo.md`: **13.310 bytes**
+- `docs/phieu-viec/ket-qua/ui-synth-term-extract-fix-redo.md`: **12.968 bytes**
 
 ---
 
