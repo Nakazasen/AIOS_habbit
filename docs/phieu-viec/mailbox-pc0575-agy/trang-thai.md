@@ -3,7 +3,7 @@
 ## Vé hiện tại: APP-SOURCE-MODEL-PC0575
 
 - Trạng thái: `xong-cho-duyet`
-- `commit`: `f9b338e3`
+- `commit`: `9805b6de`
 - `bao_cao`: `docs/phieu-viec/ket-qua/app-source-model-pc0575-stage2.md`
 - `ghi_chu`: 2026-10-09 10:55 +07 — Hoàn thành toàn diện nghiệm thu Chặng 2 vé APP-SOURCE-MODEL-PC0575 (nộp xong-cho-duyet): (1) Đã gỡ bỏ 100% hiển thị mâu thuẫn (progress bar 33/35, banner chuẩn bị, toast nền, dòng đếm nguồn đang bật); chỉ giữ 1 nguồn sự thật duy nhất từ library.sqlite và nhãn khối tri thức; (2) Tắt chuẩn bị tự động trên chỉ mục production, luồng tải tệp mới chạy nền im lặng không làm gãy tính năng; (3) Đo thời gian mở sổ thực tế: Sổ LSU giảm từ 120–180s xuống 0,90s (warm) và 2,86s (cold) — giảm 98%, đạt cổng <= 10s; (4) Ảnh giao diện sau sửa đã nộp vào kho; (5) Hỏi thật 3 câu qua C-Agent: câu 1 khối LSU ra đúng tài liệu đích C7620 (3,80s), câu 2 Tự động toàn kho 889 docs (5,14s), câu 3 MOM Opcenter chạy mượt không bị lỗi unready_sources hay HTTP 500 (3,95s); (6) Chỉ mục library.sqlite nguyên vẹn 100% (MD5 492C065F8F741AD5C73A900FA6BCDF3E); 4 cổng kiểm tra PASS (compileall, pytest 47/47 tests liên quan, cli audit PASS, import app OK). Báo cáo chi tiết: docs/phieu-viec/ket-qua/app-source-model-pc0575-stage2.md.
 - `ghi_chu` (điều phối Muse — PHÂN VAI TẠM THỜI theo lệnh user 2026-10-09 ~10:37): Tài khoản Command Code dùng chung đã chạm trần tuần 100% (user tự xác minh tại máy sáng nay; dự kiến mở lại sau khoảng 1 ngày 4 giờ; trần tháng đã 87%). Vé đang dang-lam GIỮ NGUYÊN — thợ cứ sống và tự chạy tiếp khi trần mở lại; điều phối không phát vé nặng về model mới cho tới lúc đó. Trong thời gian này opencode tạm thay vai thợ phụ ở cả hai máy.
