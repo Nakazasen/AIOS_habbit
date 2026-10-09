@@ -1,6 +1,7 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
-- Trạng thái: `xong-cho-duyet`
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-09 ~12:40 +07 — **ĐẠT** vé `TEST-SUITE-CONFIRM-HOME` + **PHÁT HÀNH** vé `TEST-E2E-GUARD-HOME` (prompt.md đã thay). Điều phối kiểm chứng độc lập: các commit của vé chỉ gồm tệp báo cáo, không đụng mã hay kiểm thử; tự chạy riêng ca đỏ duy nhất trên máy sạch thì ca đỏ vì máy kiểm chứng không có thư mục model tại các đường dẫn ứng viên — một kiểu đỏ môi trường thứ hai của chính ca này, khớp với phân loại của thợ (chạy riêng tại máy nhà đạt ~140 giây; ở lượt đầy đủ dưới tải nặng thì lượt lồng vượt trần 300 giây). Kết luận: tín hiệu sạch cơ bản còn đứng vững (0 lỗi, số bỏ qua khớp tuyệt đối 66, 4.218 ca đạt); ca đỏ duy nhất là chập chờn theo môi trường đã biết ở cả hai phía máy, không phải hồi quy. Vé mới bịt đúng điểm chập chờn này theo mẫu hệ thống đã dùng trước đây (bỏ qua có điều kiện khi thiếu model hoặc khi lượt lồng hết giờ vì tốc độ máy), giữ nguyên mọi khẳng định hành vi khi ca chạy được.
 - `commit`: `ee878d8` (báo cáo `test-suite-confirm-home.md`; vé này không sửa `src/`/`tests/`)
 - `bao_cao`: `docs/phieu-viec/ket-qua/test-suite-confirm-home.md`
 - `ghi_chu`: 2026-10-09 12:45 +07 — XONG chờ duyệt `TEST-SUITE-CONFIRM-HOME`: toàn bộ 4.285 lượt (~79,6 phút) — 4.218 đạt, 66 bỏ qua, 0 lỗi, 1 ca đỏ duy nhất `test_packaged_desktop_e2e_rag_to_atlas` (lượt pytest lồng BGE quá trần 300s dưới tải máy nặng; đã ghi flaky trong `b0-form.md`, chạy riêng xanh 139,5s — không phải hồi quy code). Skip khớp tuyệt đối mốc dọn dẹp 66. Cổng: compileall sạch, audit PASS, import OK; không ghi index, không merge `main`.
