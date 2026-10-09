@@ -12,9 +12,11 @@ from __future__ import annotations
 
 import dataclasses
 import hashlib
+import json
 import os
 from pathlib import Path
 import sqlite3
+import time
 from typing import Any, Mapping, Optional, Tuple
 
 
@@ -98,7 +100,109 @@ def compute_logical_fingerprint(con: sqlite3.Connection) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+ENV_DISABLE_PERSISTENT_INDEX_STATUS_CACHE = "AIOS_DISABLE_PERSISTENT_INDEX_STATUS_CACHE"
+
 _INDEX_STATUS_MEMORY_CACHE: dict[Tuple[str, float, int, str], IndexStatusInfo] = {}
+
+
+def _get_persistent_cache_path(resolved_path: Path) -> Path:
+    """Trả về đường dẫn tệp JSON lưu cache trạng thái chỉ mục trên đĩa.
+    
+    Tệp được lưu cùng thư mục với database: .<tên_db>_status_cache.json
+    để không ảnh hưởng và không ghi đè vào tệp SQLite chính (bảo toàn MD5 tuyệt đối).
+    """
+    return resolved_path.parent / f".{resolved_path.stem}_status_cache.json"
+
+
+def _load_persistent_cache(
+    resolved_path: Path,
+    stat_info: os.stat_result,
+    backend_display: str,
+) -> Optional[IndexStatusInfo]:
+    """Đọc thông tin trạng thái chỉ mục từ tệp cache trên đĩa nếu còn hiệu lực.
+    
+    Cơ chế kiểm chứng nghiêm ngặt (strict validation):
+    - Khớp đường dẫn chuẩn hóa (db_path)
+    - Khớp kích thước tệp chính xác (st_size)
+    - Khớp thời gian chỉnh sửa (st_mtime)
+    - Khớp tên backend hiển thị (backend_display)
+    - Dữ liệu bên trong hợp lệ (doc_count > 0, chunk_count > 0, fingerprint_12)
+    """
+    if os.environ.get(ENV_DISABLE_PERSISTENT_INDEX_STATUS_CACHE, "").strip().lower() in ("1", "true", "yes"):
+        return None
+
+    cache_path = _get_persistent_cache_path(resolved_path)
+    try:
+        if not cache_path.is_file():
+            return None
+        payload = json.loads(cache_path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict) or payload.get("version") != 1:
+            return None
+        if payload.get("db_path") != resolved_path.resolve().as_posix():
+            return None
+        if payload.get("st_size") != stat_info.st_size:
+            return None
+        cached_mtime = payload.get("st_mtime")
+        if cached_mtime is None or abs(float(cached_mtime) - float(stat_info.st_mtime)) > 1e-4:
+            return None
+        if payload.get("backend") != backend_display:
+            return None
+
+        doc_count = int(payload.get("doc_count", 0))
+        chunk_count = int(payload.get("chunk_count", 0))
+        fingerprint_12 = str(payload.get("fingerprint_12", "")).strip()
+        status_line = str(payload.get("status_line", "")).strip()
+
+        if doc_count <= 0 or chunk_count <= 0 or not fingerprint_12 or not status_line:
+            return None
+
+        return IndexStatusInfo(
+            db_name=resolved_path.name,
+            doc_count=doc_count,
+            chunk_count=chunk_count,
+            fingerprint_12=fingerprint_12,
+            backend=backend_display,
+            status_line=status_line,
+            is_error=False,
+        )
+    except Exception:
+        return None
+
+
+def _save_persistent_cache(
+    resolved_path: Path,
+    stat_info: os.stat_result,
+    info: IndexStatusInfo,
+) -> None:
+    """Ghi cache trạng thái chỉ mục xuống đĩa một cách an toàn và nguyên tử (atomic write)."""
+    if os.environ.get(ENV_DISABLE_PERSISTENT_INDEX_STATUS_CACHE, "").strip().lower() in ("1", "true", "yes"):
+        return
+    if info.is_error or info.doc_count <= 0 or info.chunk_count <= 0 or not info.fingerprint_12:
+        return
+
+    cache_path = _get_persistent_cache_path(resolved_path)
+    tmp_path = cache_path.with_name(f"{cache_path.name}.tmp.{os.getpid()}")
+    try:
+        payload = {
+            "version": 1,
+            "db_path": resolved_path.resolve().as_posix(),
+            "st_mtime": stat_info.st_mtime,
+            "st_size": stat_info.st_size,
+            "backend": info.backend,
+            "doc_count": info.doc_count,
+            "chunk_count": info.chunk_count,
+            "fingerprint_12": info.fingerprint_12,
+            "status_line": info.status_line,
+            "saved_at": time.time(),
+        }
+        tmp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp_path.replace(cache_path)
+    except Exception:
+        try:
+            if tmp_path.exists():
+                tmp_path.unlink()
+        except Exception:
+            pass
 
 
 def get_index_status_info(
@@ -137,6 +241,8 @@ def get_index_status_info(
         )
 
     # Kiểm tra bộ nhớ đệm tiến trình (cache theo tệp, mtime và kích cỡ)
+    stat_info = None
+    cache_key = None
     try:
         stat_info = resolved_path.stat()
         cache_key = (
@@ -147,8 +253,15 @@ def get_index_status_info(
         )
         if cache_key in _INDEX_STATUS_MEMORY_CACHE:
             return _INDEX_STATUS_MEMORY_CACHE[cache_key]
+
+        # Tầng 2: Kiểm tra bộ nhớ đệm bền vững trên đĩa (Persistent Disk Cache)
+        disk_cached = _load_persistent_cache(resolved_path, stat_info, backend_display)
+        if disk_cached is not None:
+            _INDEX_STATUS_MEMORY_CACHE[cache_key] = disk_cached
+            return disk_cached
     except OSError:
         cache_key = None
+        stat_info = None
 
     db_name = resolved_path.name
     try:
@@ -214,6 +327,8 @@ def get_index_status_info(
             )
             if cache_key is not None:
                 _INDEX_STATUS_MEMORY_CACHE[cache_key] = res
+                if stat_info is not None:
+                    _save_persistent_cache(resolved_path, stat_info, res)
             return res
         finally:
             con.close()

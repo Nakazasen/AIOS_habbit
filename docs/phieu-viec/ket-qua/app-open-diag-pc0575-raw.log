@@ -73,3 +73,70 @@
 
 [2026-10-09 13:24:51.388] Đã lưu kết quả đo đạc phân rã vào: D:\Sandbox\AIOS_habbit\docs\phieu-viec\ket-qua\app-open-diag-pc0575-timings.json
 [2026-10-09 13:24:51.389] Đã lưu toàn văn log thô vào: D:\Sandbox\AIOS_habbit\docs\phieu-viec\ket-qua\app-open-diag-pc0575-raw.log
+[2026-10-09 13:33:19.904] =====================================================================
+[2026-10-09 13:33:19.907] KHỞI ĐỘNG CHUỖI ĐO PHÂN RÃ THỜI GIAN MỞ SỔ (APP-OPEN-DIAG-PC0575)
+[2026-10-09 13:33:19.909] Thời gian: 2026-10-09T13:33:19.909688
+[2026-10-09 13:33:19.911] Python interpreter: D:\Sandbox\AIOS_habbit\.venv\Scripts\python.exe (version 3.11.15)
+[2026-10-09 13:33:19.913] =====================================================================
+
+[2026-10-09 13:33:19.915] === BẮT ĐẦU ĐO: (a) Bấm vào sổ MOM - Mở lần đầu sau khởi động app (LẠNH) (Sổ: mom_opcenter, Lạnh: True) ===
+[2026-10-09 13:33:24.679]   [1] Tải / Khởi tạo trang: 4.7612s
+[2026-10-09 13:33:24.681]   [*] Đã làm sạch in-memory cache tiến trình (_INDEX_STATUS_MEMORY_CACHE.clear())
+[2026-10-09 13:33:24.685]   [2] Đọc metadata sổ (MOM / Opcenter): 0.0019s
+[2026-10-09 13:33:24.695]   [3] Liệt kê cuộc trò chuyện (9 cuộc): 0.0035s
+[2026-10-09 13:33:24.764]   [4] Truy vấn CSDL hội thoại (24 tin nhắn): 0.0619s
+[2026-10-09 13:33:29.168]   [5] Chuẩn bị/phạm vi nguồn (150 nguồn): 4.4025s
+[2026-10-09 13:33:29.178]   [6] Kiểm tra mô hình/worker nền (warmed=False): 0.0070s
+[2026-10-09 13:33:52.392] =====================================================================
+[2026-10-09 13:33:52.395] KHỞI ĐỘNG CHUỖI ĐO PHÂN RÃ THỜI GIAN MỞ SỔ (APP-OPEN-DIAG-PC0575)
+[2026-10-09 13:33:52.397] Thời gian: 2026-10-09T13:33:52.397571
+[2026-10-09 13:33:52.400] Python interpreter: D:\Sandbox\AIOS_habbit\.venv\Scripts\python.exe (version 3.11.15)
+[2026-10-09 13:33:52.403] =====================================================================
+
+[2026-10-09 13:33:52.404] === BẮT ĐẦU ĐO: (a) Bấm vào sổ MOM - Mở lần đầu sau khởi động app (LẠNH) (Sổ: mom_opcenter, Lạnh: True) ===
+[2026-10-09 13:33:55.178]   [1] Tải / Khởi tạo trang: 2.7727s
+[2026-10-09 13:33:55.181]   [*] Đã làm sạch in-memory cache tiến trình (_INDEX_STATUS_MEMORY_CACHE.clear())
+[2026-10-09 13:33:55.183]   [2] Đọc metadata sổ (MOM / Opcenter): 0.0011s
+[2026-10-09 13:33:55.187]   [3] Liệt kê cuộc trò chuyện (9 cuộc): 0.0015s
+[2026-10-09 13:33:55.198]   [4] Truy vấn CSDL hội thoại (24 tin nhắn): 0.0096s
+[2026-10-09 13:33:55.684]   [5] Chuẩn bị/phạm vi nguồn (150 nguồn): 0.4849s
+[2026-10-09 13:33:55.691]   [6] Kiểm tra mô hình/worker nền (warmed=False): 0.0044s
+[2026-10-09 13:33:55.701]   [7] Dòng trạng thái kho: 0.0078s -> Kho đang dùng: library.sqlite · 889 tài liệu · 149.800 mảnh · mã 87a3626a85bc · ONNX fp32
+[2026-10-09 13:33:55.704]   [8] Các khâu khác (Memory, IDE pending requests): 0.0008s
+[2026-10-09 13:33:55.707] === KẾT THÚC (a) Bấm vào sổ MOM - Mở lần đầu sau khởi động app (LẠNH): TỔNG 3.3006s ===
+
+[2026-10-09 13:33:55.709] === BẮT ĐẦU ĐO: (b) Bấm vào sổ MOM - Mở lần thứ hai (ẤM) (Sổ: mom_opcenter, Lạnh: False) ===
+[2026-10-09 13:33:55.711]   [1] Tải / Khởi tạo trang: 0.0000s
+[2026-10-09 13:33:55.716]   [2] Đọc metadata sổ (MOM / Opcenter): 0.0019s
+[2026-10-09 13:33:55.720]   [3] Liệt kê cuộc trò chuyện (9 cuộc): 0.0017s
+[2026-10-09 13:33:55.722]   [4] Truy vấn CSDL hội thoại (24 tin nhắn): 0.0014s
+[2026-10-09 13:33:55.727]   [5] Chuẩn bị/phạm vi nguồn (150 nguồn): 0.0026s
+[2026-10-09 13:33:55.734]   [6] Kiểm tra mô hình/worker nền (warmed=False): 0.0047s
+[2026-10-09 13:33:55.741]   [7] Dòng trạng thái kho: 0.0048s -> Kho đang dùng: library.sqlite · 889 tài liệu · 149.800 mảnh · mã 87a3626a85bc · ONNX fp32
+[2026-10-09 13:33:55.745]   [8] Các khâu khác (Memory, IDE pending requests): 0.0008s
+[2026-10-09 13:33:55.747] === KẾT THÚC (b) Bấm vào sổ MOM - Mở lần thứ hai (ẤM): TỔNG 0.0354s ===
+
+[2026-10-09 13:33:55.750] === BẮT ĐẦU ĐO: (c1) Bấm vào sổ LSU (NB-E35A7BEE) - Lần đầu (sau khi MOM đã nạp) (Sổ: NB-E35A7BEE, Lạnh: False) ===
+[2026-10-09 13:33:55.752]   [1] Tải / Khởi tạo trang: 0.0001s
+[2026-10-09 13:33:55.756]   [2] Đọc metadata sổ (Điều tra lỗi LSU): 0.0020s
+[2026-10-09 13:33:55.762]   [3] Liệt kê cuộc trò chuyện (5 cuộc): 0.0021s
+[2026-10-09 13:33:55.767]   [4] Truy vấn CSDL hội thoại (72 tin nhắn): 0.0021s
+[2026-10-09 13:33:55.772]   [5] Chuẩn bị/phạm vi nguồn (494 nguồn): 0.0024s
+[2026-10-09 13:33:55.779]   [6] Kiểm tra mô hình/worker nền (warmed=False): 0.0050s
+[2026-10-09 13:33:55.786]   [7] Dòng trạng thái kho: 0.0044s -> Kho đang dùng: library.sqlite · 889 tài liệu · 149.800 mảnh · mã 87a3626a85bc · ONNX fp32
+[2026-10-09 13:33:55.789]   [8] Các khâu khác (Memory, IDE pending requests): 0.0009s
+[2026-10-09 13:33:55.791] === KẾT THÚC (c1) Bấm vào sổ LSU (NB-E35A7BEE) - Lần đầu (sau khi MOM đã nạp): TỔNG 0.0396s ===
+
+[2026-10-09 13:33:55.795] === BẮT ĐẦU ĐO: (c2) Bấm vào sổ LSU (NB-E35A7BEE) - Lần thứ hai (ẤM) (Sổ: NB-E35A7BEE, Lạnh: False) ===
+[2026-10-09 13:33:55.797]   [1] Tải / Khởi tạo trang: 0.0000s
+[2026-10-09 13:33:55.802]   [2] Đọc metadata sổ (Điều tra lỗi LSU): 0.0017s
+[2026-10-09 13:33:55.807]   [3] Liệt kê cuộc trò chuyện (5 cuộc): 0.0034s
+[2026-10-09 13:33:55.813]   [4] Truy vấn CSDL hội thoại (72 tin nhắn): 0.0022s
+[2026-10-09 13:33:55.818]   [5] Chuẩn bị/phạm vi nguồn (494 nguồn): 0.0029s
+[2026-10-09 13:33:55.825]   [6] Kiểm tra mô hình/worker nền (warmed=False): 0.0052s
+[2026-10-09 13:33:55.834]   [7] Dòng trạng thái kho: 0.0052s -> Kho đang dùng: library.sqlite · 889 tài liệu · 149.800 mảnh · mã 87a3626a85bc · ONNX fp32
+[2026-10-09 13:33:55.836]   [8] Các khâu khác (Memory, IDE pending requests): 0.0005s
+[2026-10-09 13:33:55.839] === KẾT THÚC (c2) Bấm vào sổ LSU (NB-E35A7BEE) - Lần thứ hai (ẤM): TỔNG 0.0421s ===
+
+[2026-10-09 13:33:55.845] Đã lưu kết quả đo đạc phân rã vào: D:\Sandbox\AIOS_habbit\docs\phieu-viec\ket-qua\app-open-diag-pc0575-timings.json
+[2026-10-09 13:33:55.847] Đã lưu toàn văn log thô vào: D:\Sandbox\AIOS_habbit\docs\phieu-viec\ket-qua\app-open-diag-pc0575-raw.log

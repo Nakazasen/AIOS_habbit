@@ -142,73 +142,18 @@ def profile_single_notebook_open(notebook_id: str, is_cold: bool, step_name: str
     log_step(f"  [6] Kiểm tra mô hình/worker nền (warmed={worker_warmed}): {timings['6_nap_mo_hinh_worker_nen']:.4f}s")
 
     # Khâu 7: Dòng trạng thái kho & tính vân tay logic (Phân rã sâu khâu này)
+    # Khâu 7: Dòng trạng thái kho & tính vân tay logic
     t0_idx_total = time.perf_counter()
     idx_path = resolve_active_index_db_path(getattr(conv, "collection_id", None) or details["collection_id"])
     details["index_db_path"] = str(idx_path) if idx_path else ""
 
-    sub_timings: Dict[str, float] = {}
-    if idx_path and idx_path.is_file():
-        # Kiểm tra nếu cache đã có (ấm)
-        cache_key = None
-        try:
-            st_info = idx_path.stat()
-            cache_key = (idx_path.resolve().as_posix(), st_info.st_mtime, st_info.st_size, "ONNX fp32")
-        except OSError:
-            pass
-
-        if cache_key and cache_key in _INDEX_STATUS_MEMORY_CACHE:
-            t_cache = time.perf_counter()
-            info = _INDEX_STATUS_MEMORY_CACHE[cache_key]
-            sub_timings["7_0_in_memory_cache_hit"] = round(time.perf_counter() - t_cache, 4)
-            details["status_line"] = info.status_line
-            log_step(f"  [7] Dòng trạng thái kho (IN-MEMORY CACHE HIT): {sub_timings['7_0_in_memory_cache_hit']:.4f}s -> {info.status_line}")
-        else:
-            # Đo chi tiết từng bước tính toán trực tiếp từ SQLite
-            t_sub = time.perf_counter()
-            uri = f"file:{idx_path.resolve().as_posix()}?mode=ro"
-            con = sqlite3.connect(uri, uri=True, timeout=10.0)
-            con.execute("PRAGMA query_only = ON")
-            sub_timings["7_1_sqlite_connect"] = round(time.perf_counter() - t_sub, 4)
-
-            t_sub = time.perf_counter()
-            chunk_count = int(con.execute("SELECT COUNT(*) FROM chunks").fetchone()[0])
-            sub_timings["7_2_count_chunks"] = round(time.perf_counter() - t_sub, 4)
-
-            t_sub = time.perf_counter()
-            doc_count = int(con.execute("SELECT COUNT(DISTINCT document_id) FROM chunks").fetchone()[0])
-            sub_timings["7_3_count_distinct_docs"] = round(time.perf_counter() - t_sub, 4)
-
-            t_sub = time.perf_counter()
-            full_fp = compute_logical_fingerprint(con)
-            fingerprint_12 = full_fp[:12]
-            sub_timings["7_4_compute_logical_fingerprint"] = round(time.perf_counter() - t_sub, 4)
-
-            con.close()
-            status_line = (
-                f"Kho đang dùng: {idx_path.name} · {doc_count} tài liệu · {chunk_count} mảnh "
-                f"· mã {fingerprint_12} · ONNX fp32"
-            )
-            details["status_line"] = status_line
-            log_step(f"  [7.1] SQLite Connect: {sub_timings['7_1_sqlite_connect']:.4f}s")
-            log_step(f"  [7.2] COUNT(*) chunks ({chunk_count}): {sub_timings['7_2_count_chunks']:.4f}s")
-            log_step(f"  [7.3] COUNT(DISTINCT document_id) ({doc_count}): {sub_timings['7_3_count_distinct_docs']:.4f}s")
-            log_step(f"  [7.4] compute_logical_fingerprint (SHA-256 trên 149k rows): {sub_timings['7_4_compute_logical_fingerprint']:.4f}s (mã {fingerprint_12})")
-
-            # Lưu vào cache để mô phỏng lần tiếp theo
-            if cache_key:
-                from aios_habit.index_status import IndexStatusInfo
-                _INDEX_STATUS_MEMORY_CACHE[cache_key] = IndexStatusInfo(
-                    db_name=idx_path.name,
-                    doc_count=doc_count,
-                    chunk_count=chunk_count,
-                    fingerprint_12=fingerprint_12,
-                    backend="ONNX fp32",
-                    status_line=status_line,
-                )
-
+    info = get_index_status_info(idx_path, backend_name="onnx")
     timings["7_dong_trang_thai_kho_va_van_tay"] = round(time.perf_counter() - t0_idx_total, 4)
-    timings["7_chi_tiet_trang_thai_kho"] = sub_timings
-    log_step(f"  [7] Tổng khâu trạng thái kho & vân tay: {timings['7_dong_trang_thai_kho_va_van_tay']:.4f}s")
+    details["status_line"] = info.status_line
+    details["doc_count"] = info.doc_count
+    details["chunk_count"] = info.chunk_count
+    details["fingerprint_12"] = info.fingerprint_12
+    log_step(f"  [7] Dòng trạng thái kho: {timings['7_dong_trang_thai_kho_va_van_tay']:.4f}s -> {info.status_line}")
 
     # Khâu 8: Các khâu khác (Memory pref, pending IDE requests, v.v.)
     t0 = time.perf_counter()
