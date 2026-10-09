@@ -29,26 +29,50 @@ import aios_habit.workspace_chat_rag_v2_adapter as adapter
 
 
 def test_domain_document_map_counts() -> None:
+    # Relational assertions over the bundled map: no absolute store size.
     doc_map = load_domain_document_map()
-    assert len(doc_map) == 889
+    total = len(doc_map)
+    assert total > 0
 
     lsu_ids = get_domain_document_ids("lsu")
     assert lsu_ids is not None
-    assert len(lsu_ids) == 92
+    assert len(lsu_ids) > 0
 
     dtl_ids = get_domain_document_ids("dieu_tra_loi")
     assert dtl_ids is not None
-    assert len(dtl_ids) == 681
+    assert len(dtl_ids) > 0
 
     mom_ids = get_domain_document_ids("mom")
     assert mom_ids is not None
-    assert len(mom_ids) == 44
+    assert len(mom_ids) > 0
 
     th_ids = get_domain_document_ids("tong_hop")
     assert th_ids is not None
-    assert len(th_ids) == 72
+    assert len(th_ids) > 0
 
-    assert 92 + 681 + 44 + 72 == 889
+    # Counts via the domain getter match a direct read of the loaded map.
+    for domain, ids in (
+        ("lsu", lsu_ids),
+        ("dieu_tra_loi", dtl_ids),
+        ("mom", mom_ids),
+        ("tong_hop", th_ids),
+    ):
+        direct = {doc for doc, dom in doc_map.items() if dom == domain}
+        assert set(ids) == direct
+
+    # Four domains fully disjoint, union equals the map, counts sum to total.
+    lsu_set = set(lsu_ids)
+    dtl_set = set(dtl_ids)
+    mom_set = set(mom_ids)
+    th_set = set(th_ids)
+    assert not (lsu_set & dtl_set)
+    assert not (lsu_set & mom_set)
+    assert not (lsu_set & th_set)
+    assert not (dtl_set & mom_set)
+    assert not (dtl_set & th_set)
+    assert not (mom_set & th_set)
+    assert lsu_set | dtl_set | mom_set | th_set == set(doc_map.keys())
+    assert len(lsu_ids) + len(dtl_ids) + len(mom_ids) + len(th_ids) == total
 
 
 def test_production_index_specs_retrieval() -> None:

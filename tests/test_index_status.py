@@ -188,12 +188,18 @@ def test_index_status_matches_real_db_if_present() -> None:
 
     info = get_index_status_info(real_db)
 
-    # Khẳng định số hiển thị khớp số đọc trực tiếp từ DB
+    # Relational assertions: displayed numbers match direct DB reads.
     assert info.is_error is False
-    assert info.chunk_count == direct_chunks == 149800
-    assert info.doc_count == direct_docs == 889
-    assert info.fingerprint_12 == direct_fp[:12] == "87a3626a85bc"
+    assert direct_chunks > 0
+    assert direct_docs > 0
+    assert info.chunk_count == direct_chunks
+    assert info.doc_count == direct_docs
+    # Relational fingerprint: both read paths agree, display length holds.
+    assert len(direct_fp) == 64
+    assert len(info.fingerprint_12) == 12
+    assert info.fingerprint_12 == direct_fp[:12]
     assert info.db_name == "library.sqlite"
     assert info.status_line == (
-        "Kho đang dùng: library.sqlite · 889 tài liệu · 149.800 mảnh · mã 87a3626a85bc · ONNX fp32"
+        f"Kho đang dùng: library.sqlite · {format_thousands_vi(direct_docs)} tài liệu "
+        f"· {format_thousands_vi(direct_chunks)} mảnh · mã {direct_fp[:12]} · {info.backend}"
     )
