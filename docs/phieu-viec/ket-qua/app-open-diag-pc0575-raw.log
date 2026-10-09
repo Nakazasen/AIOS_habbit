@@ -1,0 +1,75 @@
+[2026-10-09 13:22:46.842] =====================================================================
+[2026-10-09 13:22:56.403] =====================================================================
+[2026-10-09 13:22:56.405] KHỞI ĐỘNG CHUỖI ĐO PHÂN RÃ THỜI GIAN MỞ SỔ (APP-OPEN-DIAG-PC0575)
+[2026-10-09 13:22:56.406] Thời gian: 2026-10-09T13:22:56.406647
+[2026-10-09 13:22:56.408] Python interpreter: D:\Sandbox\AIOS_habbit\.venv\Scripts\python.exe (version 3.11.15)
+[2026-10-09 13:22:56.409] =====================================================================
+
+[2026-10-09 13:22:56.417] === BẮT ĐẦU ĐO: (a) Bấm vào sổ MOM - Mở lần đầu sau khởi động app (LẠNH) (Sổ: mom_opcenter, Lạnh: True) ===
+[2026-10-09 13:23:07.260] =====================================================================
+[2026-10-09 13:23:07.262] KHỞI ĐỘNG CHUỖI ĐO PHÂN RÃ THỜI GIAN MỞ SỔ (APP-OPEN-DIAG-PC0575)
+[2026-10-09 13:23:07.264] Thời gian: 2026-10-09T13:23:07.264034
+[2026-10-09 13:23:07.265] Python interpreter: D:\Sandbox\AIOS_habbit\.venv\Scripts\python.exe (version 3.11.15)
+[2026-10-09 13:23:07.267] =====================================================================
+
+[2026-10-09 13:23:07.268] === BẮT ĐẦU ĐO: (a) Bấm vào sổ MOM - Mở lần đầu sau khởi động app (LẠNH) (Sổ: mom_opcenter, Lạnh: True) ===
+[2026-10-09 13:23:18.624] =====================================================================
+[2026-10-09 13:23:18.625] KHỞI ĐỘNG CHUỖI ĐO PHÂN RÃ THỜI GIAN MỞ SỔ (APP-OPEN-DIAG-PC0575)
+[2026-10-09 13:23:18.627] Thời gian: 2026-10-09T13:23:18.627843
+[2026-10-09 13:23:18.628] Python interpreter: D:\Sandbox\AIOS_habbit\.venv\Scripts\python.exe (version 3.11.15)
+[2026-10-09 13:23:18.630] =====================================================================
+
+[2026-10-09 13:23:18.631] === BẮT ĐẦU ĐO: (a) Bấm vào sổ MOM - Mở lần đầu sau khởi động app (LẠNH) (Sổ: mom_opcenter, Lạnh: True) ===
+[2026-10-09 13:23:23.862]   [1] Tải / Khởi tạo trang: 5.2301s
+[2026-10-09 13:23:23.864]   [*] Đã làm sạch in-memory cache tiến trình (_INDEX_STATUS_MEMORY_CACHE.clear())
+[2026-10-09 13:23:23.869]   [2] Đọc metadata sổ (MOM / Opcenter): 0.0025s
+[2026-10-09 13:23:23.874]   [3] Liệt kê cuộc trò chuyện (9 cuộc): 0.0020s
+[2026-10-09 13:23:23.964]   [4] Truy vấn CSDL hội thoại (24 tin nhắn): 0.0888s
+[2026-10-09 13:23:30.454]   [5] Chuẩn bị/phạm vi nguồn (150 nguồn): 6.4875s
+[2026-10-09 13:23:30.467]   [6] Kiểm tra mô hình/worker nền (warmed=False): 0.0111s
+[2026-10-09 13:24:51.276]   [7.1] SQLite Connect: 0.0052s
+[2026-10-09 13:24:51.279]   [7.2] COUNT(*) chunks (149800): 1.3321s
+[2026-10-09 13:24:51.280]   [7.3] COUNT(DISTINCT document_id) (889): 0.0026s
+[2026-10-09 13:24:51.281]   [7.4] compute_logical_fingerprint (SHA-256 trên 149k rows): 79.4578s (mã 87a3626a85bc)
+[2026-10-09 13:24:51.283]   [7] Tổng khâu trạng thái kho & vân tay: 80.8133s
+[2026-10-09 13:24:51.286]   [8] Các khâu khác (Memory, IDE pending requests): 0.0007s
+[2026-10-09 13:24:51.287] === KẾT THÚC (a) Bấm vào sổ MOM - Mở lần đầu sau khởi động app (LẠNH): TỔNG 92.6546s ===
+
+[2026-10-09 13:24:51.289] === BẮT ĐẦU ĐO: (b) Bấm vào sổ MOM - Mở lần thứ hai (ẤM) (Sổ: mom_opcenter, Lạnh: False) ===
+[2026-10-09 13:24:51.291]   [1] Tải / Khởi tạo trang: 0.0000s
+[2026-10-09 13:24:51.294]   [2] Đọc metadata sổ (MOM / Opcenter): 0.0015s
+[2026-10-09 13:24:51.296]   [3] Liệt kê cuộc trò chuyện (9 cuộc): 0.0013s
+[2026-10-09 13:24:51.298]   [4] Truy vấn CSDL hội thoại (24 tin nhắn): 0.0012s
+[2026-10-09 13:24:51.305]   [5] Chuẩn bị/phạm vi nguồn (150 nguồn): 0.0054s
+[2026-10-09 13:24:51.311]   [6] Kiểm tra mô hình/worker nền (warmed=False): 0.0052s
+[2026-10-09 13:24:51.317]   [7] Dòng trạng thái kho (IN-MEMORY CACHE HIT): 0.0000s -> Kho đang dùng: library.sqlite · 889 tài liệu · 149800 mảnh · mã 87a3626a85bc · ONNX fp32
+[2026-10-09 13:24:51.318]   [7] Tổng khâu trạng thái kho & vân tay: 0.0059s
+[2026-10-09 13:24:51.321]   [8] Các khâu khác (Memory, IDE pending requests): 0.0007s
+[2026-10-09 13:24:51.322] === KẾT THÚC (b) Bấm vào sổ MOM - Mở lần thứ hai (ẤM): TỔNG 0.0312s ===
+
+[2026-10-09 13:24:51.323] === BẮT ĐẦU ĐO: (c1) Bấm vào sổ LSU (NB-E35A7BEE) - Lần đầu (sau khi MOM đã nạp) (Sổ: NB-E35A7BEE, Lạnh: False) ===
+[2026-10-09 13:24:51.325]   [1] Tải / Khởi tạo trang: 0.0000s
+[2026-10-09 13:24:51.328]   [2] Đọc metadata sổ (Điều tra lỗi LSU): 0.0015s
+[2026-10-09 13:24:51.331]   [3] Liệt kê cuộc trò chuyện (5 cuộc): 0.0013s
+[2026-10-09 13:24:51.334]   [4] Truy vấn CSDL hội thoại (72 tin nhắn): 0.0018s
+[2026-10-09 13:24:51.337]   [5] Chuẩn bị/phạm vi nguồn (494 nguồn): 0.0024s
+[2026-10-09 13:24:51.342]   [6] Kiểm tra mô hình/worker nền (warmed=False): 0.0032s
+[2026-10-09 13:24:51.346]   [7] Dòng trạng thái kho (IN-MEMORY CACHE HIT): 0.0000s -> Kho đang dùng: library.sqlite · 889 tài liệu · 149800 mảnh · mã 87a3626a85bc · ONNX fp32
+[2026-10-09 13:24:51.347]   [7] Tổng khâu trạng thái kho & vân tay: 0.0040s
+[2026-10-09 13:24:51.350]   [8] Các khâu khác (Memory, IDE pending requests): 0.0010s
+[2026-10-09 13:24:51.352] === KẾT THÚC (c1) Bấm vào sổ LSU (NB-E35A7BEE) - Lần đầu (sau khi MOM đã nạp): TỔNG 0.0268s ===
+
+[2026-10-09 13:24:51.353] === BẮT ĐẦU ĐO: (c2) Bấm vào sổ LSU (NB-E35A7BEE) - Lần thứ hai (ẤM) (Sổ: NB-E35A7BEE, Lạnh: False) ===
+[2026-10-09 13:24:51.355]   [1] Tải / Khởi tạo trang: 0.0000s
+[2026-10-09 13:24:51.358]   [2] Đọc metadata sổ (Điều tra lỗi LSU): 0.0012s
+[2026-10-09 13:24:51.361]   [3] Liệt kê cuộc trò chuyện (5 cuộc): 0.0016s
+[2026-10-09 13:24:51.364]   [4] Truy vấn CSDL hội thoại (72 tin nhắn): 0.0016s
+[2026-10-09 13:24:51.367]   [5] Chuẩn bị/phạm vi nguồn (494 nguồn): 0.0022s
+[2026-10-09 13:24:51.373]   [6] Kiểm tra mô hình/worker nền (warmed=False): 0.0037s
+[2026-10-09 13:24:51.378]   [7] Dòng trạng thái kho (IN-MEMORY CACHE HIT): 0.0000s -> Kho đang dùng: library.sqlite · 889 tài liệu · 149800 mảnh · mã 87a3626a85bc · ONNX fp32
+[2026-10-09 13:24:51.380]   [7] Tổng khâu trạng thái kho & vân tay: 0.0059s
+[2026-10-09 13:24:51.381]   [8] Các khâu khác (Memory, IDE pending requests): 0.0005s
+[2026-10-09 13:24:51.383] === KẾT THÚC (c2) Bấm vào sổ LSU (NB-E35A7BEE) - Lần thứ hai (ẤM): TỔNG 0.0287s ===
+
+[2026-10-09 13:24:51.388] Đã lưu kết quả đo đạc phân rã vào: D:\Sandbox\AIOS_habbit\docs\phieu-viec\ket-qua\app-open-diag-pc0575-timings.json
+[2026-10-09 13:24:51.389] Đã lưu toàn văn log thô vào: D:\Sandbox\AIOS_habbit\docs\phieu-viec\ket-qua\app-open-diag-pc0575-raw.log
