@@ -1,0 +1,38 @@
+{
+  "mo_ta": "Luot do 50 cau sau khi sua _citation_first_fallback de bao toan trich dan va bang chung goc cho answer_shape diagnosis",
+  "model": "inclusionai/ling-3.1-flash:free",
+  "tong_diem": 65.33,
+  "so_cau": 50,
+  "gpa": 1.31,
+  "so_validated": 19,
+  "so_fallback": 23,
+  "so_not_called": 8,
+  "so_dat_3": 9,
+  "so_dat_ge_2": 12,
+  "so_cau_claims_10": 44,
+  "phan_bo_intent": {
+    "diagnosis": 44,
+    "general": 3,
+    "procedure": 2,
+    "cross_source_synthesis": 1
+  },
+  "do_tre_tb_cau": 134.07,
+  "do_tre_tb_synth": 121.45,
+  "so_loi_ky_thuat": 0,
+  "credits": 0.0,
+  "sha_truoc": "45eb0e072893f802d71ab201cfbb2b29c36e2b0a31313fa79fc55a025b65b7c0",
+  "sha_sau": "45eb0e072893f802d71ab201cfbb2b29c36e2b0a31313fa79fc55a025b65b7c0",
+  "md5_truoc": "239009676829484049738866329de9f2",
+  "md5_sau": "239009676829484049738866329de9f2",
+  "size_truoc": 2942201856,
+  "size_sau": 2942201856,
+  "index_chi_doc_khop": true,
+  "preload_dense": [
+    121331,
+    10456.337600015104
+  ],
+  "preload_sparse": [
+    121331,
+    21521.14339999389
+  ]
+}
