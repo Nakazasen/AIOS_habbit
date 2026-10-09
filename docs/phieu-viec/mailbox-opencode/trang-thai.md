@@ -1,6 +1,7 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
 - Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-09 12:14 +07 — Heartbeat vé `TEST-SUITE-CONFIRM-HOME`: pytest nền tới ~77% (log 4.862 → 6.968 byte, xả dồn lúc 12:02; worker còn sống, CPU vẫn tăng chậm). Chưa chạm `src/`/`tests/`.
 - `ghi_chu`: 2026-10-09 12:03 +07 — Heartbeat vé `TEST-SUITE-CONFIRM-HOME`: pytest nền tới ~50% (log 4.052 → 4.862 byte). Chưa chạm `src/`/`tests/`.
 - `ghi_chu`: 2026-10-09 11:52 +07 — Heartbeat vé `TEST-SUITE-CONFIRM-HOME`: pytest nền chạy lại sau quãng chậm (log 3.566 → 4.052 byte lúc 11:40, tới ~42%; thấy 1 `F` quanh ~38% — chưa phân loại vội, chờ chạy xong). Máy đang tải nặng (OMP cùng chạy app thật + BGE) nên lượt này chậm hơn mốc cũ. Chưa chạm `src/`/`tests/`.
 - `ghi_chu`: 2026-10-09 11:34 +07 — Heartbeat vé `TEST-SUITE-CONFIRM-HOME`: pytest nền có dấu hiệu đứng ở ~36% (log giữ 3.566 byte từ 11:19, CPU các tiến trình python không tăng sau ~6 phút; tiến trình `pytest` + worker còn sống, chưa có `done.marker`). Chưa kết luận treo — chờ thêm một nhịp xem timeout của ca đang chạy có tự nhả không. Chưa chạm `src/`/`tests/`.
