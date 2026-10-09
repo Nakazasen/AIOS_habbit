@@ -1,0 +1,130 @@
+{
+  "so_mom_lan_1_lanh": {
+    "step_name": "(a) Bấm vào sổ MOM - Mở lần đầu sau khởi động app (LẠNH)",
+    "notebook_id": "mom_opcenter",
+    "is_cold": true,
+    "timings": {
+      "1_tai_khoi_tao_trang": 8.1156,
+      "2_doc_metadata_so": 0.0014,
+      "3_liet_ke_cuoc_tro_chuyen": 0.0018,
+      "4_truy_van_co_so_du_lieu_hoi_thoai": 0.0948,
+      "5_chuan_bi_pham_vi_nguon": 6.2691,
+      "6_nap_mo_hinh_worker_nen": 0.0202,
+      "7_dong_trang_thai_kho_va_van_tay": 0.0055,
+      "8_cac_khau_khac": 0.0007,
+      "tong_thoi_gian_toan_trinh_s": 14.563
+    },
+    "details": {
+      "notebook_title": "MOM / Opcenter",
+      "collection_id": "tri_thuc",
+      "conversation_count": 13,
+      "active_conv_id": "CONV-EEA591C6",
+      "message_count": 24,
+      "notebook_sources_count": 150,
+      "enabled_selections_count": 146,
+      "worker_warmed": false,
+      "index_db_path": "D:\\Sandbox\\AIOS_habbit\\local_runs\\workspace_chat_rag_v2_production\\bge_m3_hybrid\\collections\\tri_thuc\\library.sqlite",
+      "status_line": "Kho đang dùng: library.sqlite · 889 tài liệu · 149.800 mảnh · mã 87a3626a85bc · ONNX fp32",
+      "doc_count": 889,
+      "chunk_count": 149800,
+      "fingerprint_12": "87a3626a85bc"
+    },
+    "tong_thoi_gian_s": 14.563
+  },
+  "so_mom_lan_2_am": {
+    "step_name": "(b) Bấm vào sổ MOM - Mở lần thứ hai (ẤM)",
+    "notebook_id": "mom_opcenter",
+    "is_cold": false,
+    "timings": {
+      "1_tai_khoi_tao_trang": 0.0,
+      "2_doc_metadata_so": 0.0014,
+      "3_liet_ke_cuoc_tro_chuyen": 0.0014,
+      "4_truy_van_co_so_du_lieu_hoi_thoai": 0.0014,
+      "5_chuan_bi_pham_vi_nguon": 0.0018,
+      "6_nap_mo_hinh_worker_nen": 0.0033,
+      "7_dong_trang_thai_kho_va_van_tay": 0.0037,
+      "8_cac_khau_khac": 0.0005,
+      "tong_thoi_gian_toan_trinh_s": 0.0237
+    },
+    "details": {
+      "notebook_title": "MOM / Opcenter",
+      "collection_id": "tri_thuc",
+      "conversation_count": 13,
+      "active_conv_id": "CONV-EEA591C6",
+      "message_count": 24,
+      "notebook_sources_count": 150,
+      "enabled_selections_count": 146,
+      "worker_warmed": false,
+      "index_db_path": "D:\\Sandbox\\AIOS_habbit\\local_runs\\workspace_chat_rag_v2_production\\bge_m3_hybrid\\collections\\tri_thuc\\library.sqlite",
+      "status_line": "Kho đang dùng: library.sqlite · 889 tài liệu · 149.800 mảnh · mã 87a3626a85bc · ONNX fp32",
+      "doc_count": 889,
+      "chunk_count": 149800,
+      "fingerprint_12": "87a3626a85bc"
+    },
+    "tong_thoi_gian_s": 0.0237
+  },
+  "so_lsu_lan_1": {
+    "step_name": "(c1) Bấm vào sổ LSU (NB-E35A7BEE) - Lần đầu (sau khi MOM đã nạp)",
+    "notebook_id": "NB-E35A7BEE",
+    "is_cold": false,
+    "timings": {
+      "1_tai_khoi_tao_trang": 0.0,
+      "2_doc_metadata_so": 0.0013,
+      "3_liet_ke_cuoc_tro_chuyen": 0.0014,
+      "4_truy_van_co_so_du_lieu_hoi_thoai": 0.0014,
+      "5_chuan_bi_pham_vi_nguon": 0.0026,
+      "6_nap_mo_hinh_worker_nen": 0.004,
+      "7_dong_trang_thai_kho_va_van_tay": 0.0038,
+      "8_cac_khau_khac": 0.0006,
+      "tong_thoi_gian_toan_trinh_s": 0.0257
+    },
+    "details": {
+      "notebook_title": "Điều tra lỗi LSU",
+      "collection_id": "tri_thuc",
+      "conversation_count": 5,
+      "active_conv_id": "CONV-9C730D76",
+      "message_count": 72,
+      "notebook_sources_count": 494,
+      "enabled_selections_count": 50,
+      "worker_warmed": false,
+      "index_db_path": "D:\\Sandbox\\AIOS_habbit\\local_runs\\workspace_chat_rag_v2_production\\bge_m3_hybrid\\collections\\tri_thuc\\library.sqlite",
+      "status_line": "Kho đang dùng: library.sqlite · 889 tài liệu · 149.800 mảnh · mã 87a3626a85bc · ONNX fp32",
+      "doc_count": 889,
+      "chunk_count": 149800,
+      "fingerprint_12": "87a3626a85bc"
+    },
+    "tong_thoi_gian_s": 0.0257
+  },
+  "so_lsu_lan_2_am": {
+    "step_name": "(c2) Bấm vào sổ LSU (NB-E35A7BEE) - Lần thứ hai (ẤM)",
+    "notebook_id": "NB-E35A7BEE",
+    "is_cold": false,
+    "timings": {
+      "1_tai_khoi_tao_trang": 0.0,
+      "2_doc_metadata_so": 0.0019,
+      "3_liet_ke_cuoc_tro_chuyen": 0.0013,
+      "4_truy_van_co_so_du_lieu_hoi_thoai": 0.0013,
+      "5_chuan_bi_pham_vi_nguon": 0.0027,
+      "6_nap_mo_hinh_worker_nen": 0.0061,
+      "7_dong_trang_thai_kho_va_van_tay": 0.0041,
+      "8_cac_khau_khac": 0.0005,
+      "tong_thoi_gian_toan_trinh_s": 0.0293
+    },
+    "details": {
+      "notebook_title": "Điều tra lỗi LSU",
+      "collection_id": "tri_thuc",
+      "conversation_count": 5,
+      "active_conv_id": "CONV-9C730D76",
+      "message_count": 72,
+      "notebook_sources_count": 494,
+      "enabled_selections_count": 50,
+      "worker_warmed": false,
+      "index_db_path": "D:\\Sandbox\\AIOS_habbit\\local_runs\\workspace_chat_rag_v2_production\\bge_m3_hybrid\\collections\\tri_thuc\\library.sqlite",
+      "status_line": "Kho đang dùng: library.sqlite · 889 tài liệu · 149.800 mảnh · mã 87a3626a85bc · ONNX fp32",
+      "doc_count": 889,
+      "chunk_count": 149800,
+      "fingerprint_12": "87a3626a85bc"
+    },
+    "tong_thoi_gian_s": 0.0293
+  }
+}

@@ -1,6 +1,7 @@
 # Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
 - Trạng thái: `dang-lam`
+- `ghi_chu` (tho opencode): 2026-10-09 15:26 +07 - do ky thuat xong: MOM lanh 14.56s (khau 7 chi 0.0055s, khau 1+5 cham do may ban), MOM am 0.024s, LSU lan1 0.026s, LSU lan2 0.029s; chi tiet o open-diag-xcheck-pc0575-timings.json. Tiep tuc thu duong hoan lui tat-cache.
 - `ghi_chu` (tho opencode): 2026-10-09 15:25 +07 - buoc 1 xong: chay lai tests/test_index_status.py 13/13 PASS trong 128.4s (tho chinh 78.1s, cham hon do dia ban); MD5 truoc do 492c065f KHOP bao cao goc, cache .library_status_cache.json ngoai DB (size khop 2853646336, fp 87a3626a85bc). Tiep tuc do lanh/am ky thuat.
 - `ghi_chu` (tho opencode): 2026-10-09 15:18 +07 - nhan ve `OPEN-DIAG-XCHECK-PC0575` (pull 11706580, da doc prompt + QUY-UOC chung + rieng). Kiem cong gate: watcher moi nhat LAUNCH 2/4 luc 15:14 cho sig cu SRC-PROBE, chua cham 4 nen giu `dang-lam`, khong dat cho-muse. Ve du dieu kien mo (moi + ticket moi + chua co bao cao open-diag-xcheck). Bat dau kiem chung doc lap, chi doc/khong sua.
 - `ghi_chu` (điều phối Muse): 2026-10-09 ~15:12 +07 — **PHÁT HÀNH vé `OPEN-DIAG-XCHECK-PC0575`** (prompt.md đã thay): kiểm chứng chéo độc lập kết quả vé chẩn đoán mở sổ của thợ chính — chạy lại tệp kiểm thử liên quan, tự đo lại mở lạnh và mở ấm hai sổ bằng thao tác thật, thử đường hoàn lui bằng biến môi trường tắt bộ nhớ đệm, đối chiếu số đo với báo cáo gốc. Chỉ kiểm chứng, không sửa gì; đo khi máy rảnh, không chạy việc nặng đồng thời với phiên ứng dụng của người dùng.
