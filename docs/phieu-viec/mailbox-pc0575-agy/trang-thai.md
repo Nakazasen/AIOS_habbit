@@ -1,4 +1,14 @@
-# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
+﻿# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
+
+## Vé hiện tại: QA-CONTEXT-DIAG-PC0575 (chẩn đoán và sửa lỗi báo thiếu ngữ cảnh)
+
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-09 ~22:08 +07 — **ĐẠT phần nạp dữ kiện — CHƯA ĐẠT phần nghiệm thu dùng thật** vé `SRC-RECEIVE-2GOI-PC0575` + **PHÁT HÀNH** vé `QA-CONTEXT-DIAG-PC0575` (prompt.md đã thay) với phạm vi mở rộng ghi ở cuối ghi chú này. Phần nạp được công nhận: băm hai gói khớp tuyệt đối, sao lưu mới kèm kiểm tra toàn vẹn đạt trước khi nạp, chạy thử không ghi có thực hiện, nạp theo đợt có điểm kiểm, toàn vẹn sau nạp đạt, số tài liệu theo khâu nguồn tăng từ 468 lên 889 trong khi tổng số mảnh giữ nguyên 149.800 — bản chất đợt nạp là gắn tệp nguồn thật và cập nhật vân tay nguồn cho các mảnh đã có, đúng dữ kiện ở các mốc bước 3 và bước 4. Phần nghiệm thu chưa đạt: cả 3 đáp án nguyên văn đều là 'không đủ thông tin' — hai câu thuộc tài liệu vừa nạp không tìm thấy chính tài liệu đó, và câu hồi quy cũ về mã C7620 trên Sirius 2 (từng có đáp án thật ở các phiên trước) cũng rỗng; bảng tóm tắt tự ghi đạt cho cả 3 câu là khẳng định sai bản chất, dù ghi nhận thợ đã in đáp án nguyên văn thật không che giấu. Hai điểm chữ bắt buộc đính chính trong báo cáo của vé nạp: phần tóm tắt chạy thử ghi '90 tài liệu mới' trong khi chi tiết của chính báo cáo ghi gói 90 đã có sẵn từ trước; và khẳng định vân tay mới 'khớp hoàn toàn với vân tay chuẩn' là sai — vân tay đã đổi từ mã cũ sang mã mới sau đợt cập nhật vân tay nguồn, phải ghi đúng như vậy kèm giải trình phần khác biệt nằm ở siêu dữ liệu nguồn hay nội dung mảnh. Đính chính làm ở mục đầu tiên của vé mới này bằng một commit riêng. **Phạm vi mở rộng của vé QA-CONTEXT-DIAG:** hiện tượng hỏi mà không ra đáp án ở phiên nghiệm thu này cùng một vùng bệnh với câu 'WMS là gì?' của người dùng — phân rã luôn cả 3 câu nghiệm thu rỗng đó trong cùng vé, và sau khi sửa phải hỏi lại đạt cả 3 câu đó (có đáp án thật, có trích dẫn) cộng với câu của người dùng, mới đủ điều kiện nộp.
+- `bao_cao`: `docs/phieu-viec/ket-qua/qa-context-diag-pc0575.md`
+- Ticket: `QA-CONTEXT-DIAG-PC0575` — [CTY] chẩn đoán thiếu ngữ cảnh (phạm vi mở rộng gồm 3 câu nghiệm thu rỗng của vé nạp gói). Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt.md`.
+- `hang-cho`: (1) `UI-CAGENT-SELECT-PC0575` — mở lựa chọn đích C-Agent (tệp `docs/phieu-viec/mailbox-pc0575-agy/prompt-queue-ui-cagent-select-pc0575.md`); (2) `NOTEBOOK-OPEN-DIAG-PC0575` — chẩn đoán mở sổ vụ việc (tệp `docs/phieu-viec/mailbox-pc0575-agy/prompt-queue-notebook-open-diag-pc0575.md`); (3) `RAG-REMEASURE-AFTER-SRC-PC0575` — đo lại 50 câu sau nạp gói (tệp `docs/phieu-viec/mailbox-pc0575-agy/prompt-queue-rag-remeasure-after-src-pc0575.md`).
+
+## Vé trước: SRC-RECEIVE-2GOI-PC0575
 
 ## Vé hiện tại: SRC-RECEIVE-2GOI-PC0575 (nhận và nạp hai gói nguồn vào chỉ mục)
 
