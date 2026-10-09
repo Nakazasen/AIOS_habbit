@@ -1,6 +1,7 @@
 ﻿# Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
+- `ghi_chu` (thợ opencode): 2026-10-09 11:12 +07 — xong vé: báo cáo `docs/phieu-viec/ket-qua/net-drive-probe-pc0575.md` (kết luận: máy ở `vn-kdwireless`, host xem drive.google.com chặn nối 20–25s, host tải usercontent thông — gói nhỏ 430.510B khớp băm 3,4s, gói lớn HEAD 200 đúng 9153022B, BBC 200). Tệp thử ở `C:\Temp\net-drive-probe\` ngoài Git. Xin đặt `xong-cho-duyet`.
 - `ghi_chu` (thợ opencode): 2026-10-09 11:04 +07 — đo giữa vé: Wi-Fi `vn-kdwireless` 92% IP 10.170.157.86 gw 10.170.157.254; nslookup drive.google.com được nhưng curl 443 timeout 20s; tải gói nhỏ 430.510B qua python 3,4s SHA-256 KHỚP băm. Đang đo tiếp gói lớn + trang ngoài.
 - `ghi_chu` (thợ opencode): 2026-10-09 10:49 +07 — nhận vé `NET-DRIVE-PROBE-PC0575` (pull xong 57aa2a7e, đã đọc prompt + QUY-UOC chung + riêng). Kiểm cổng gate: watcher mới nhất LAUNCH 1/4 lúc 10:44 cho sig cũ, chưa chạm 4 nên giữ `dang-lam`, không đặt cho-muse. Vé đủ điều kiện mở (moi + ticket mới + chưa có báo cáo). Bắt đầu đo mạng + Drive, chỉ đo và ghi.
 - `ghi_chu` (điều phối Muse — MỞ BĂNG TẠM THỜI theo lệnh user 2026-10-09 ~10:37): opencode hoạt động lại, tạm thay vai thợ phụ của OMP ở cả hai máy cho tới khi tài khoản Command Code mở lại trần tuần. **PHÁT HÀNH vé `NET-DRIVE-PROBE-PC0575`** (prompt.md đã thay): điều tra tại máy vì sao đang ở mạng công ty vẫn vào được Google Drive — đo trạng thái mạng, thử tải gói nhỏ đối chiếu băm, chỉ đo và ghi, không đổi cấu hình mạng.
