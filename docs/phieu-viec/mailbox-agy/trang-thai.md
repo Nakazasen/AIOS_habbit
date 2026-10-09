@@ -1,5 +1,15 @@
 ﻿# Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
+## Vé hiện tại: SYNTH-CONTEXT-ENTITY-HOME (nới ngữ cảnh có điều kiện theo thực thể)
+
+- Trạng thái: `moi`
+- `ghi_chu` (điều phối Muse): 2026-10-09 ~18:31 +07 — **PHÁT HÀNH NGAY theo lệnh trực tiếp của user lúc 18:26** (user: cả hai máy cho thợ agy chạy chính, không chờ trần tài khoản mở lại vì phí thời gian). Vé này là vé đầu của chuỗi chất lượng đã xếp sẵn cho máy nhà: nới ngữ cảnh có điều kiện theo thực thể cho các mảnh hạng 9–12, mốc so sánh là tổng 65,33 trên 150 (điểm trung bình 1,31) của lượt sửa trích dẫn vừa đạt. Lưu ý đã ghi trong vé: lượt gọi mô hình có thể bị từ chối lẻ tẻ do tài khoản gần trần — gặp thì ghi mốc, chờ một nhịp rồi chạy tiếp, không bỏ dở vé, không đổi sang mô hình ngoài chuỗi đã chốt.
+- `bao_cao`: `docs/phieu-viec/ket-qua/synth-context-entity-home.md`
+- Ticket: `SYNTH-CONTEXT-ENTITY-HOME` — [NHÀ] nới ngữ cảnh có điều kiện. Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`.
+- `hang-cho`: (1) `EVAL-NORMALIZE-FIX-HOME` — sửa ca oan của thước đo, tệp `docs/phieu-viec/mailbox-agy/prompt-queue-eval-normalize-fix-home.md`; (2) `SYNTH-EVIDENCE-GATE-AUDIT-HOME` — rà ngưỡng cổng kiểm chứng bằng chứng cho câu chẩn đoán ngắn, tệp `docs/phieu-viec/mailbox-agy/prompt-queue-synth-evidence-gate-audit-home.md`. Phát hành theo đúng thứ tự này sau mỗi verdict đạt.
+
+## Vé trước: SYNTH-FALLBACK-CITATION-FIX-HOME
+
 - Trạng thái: `xong`
 - `ghi_chu` (verdict Muse): 2026-10-09 ~11:15 +07 — **ĐẠT** vé `SYNTH-FALLBACK-CITATION-FIX-HOME`. Điều phối đếm lại độc lập từ tệp dữ kiện thô khớp tuyệt đối với báo cáo: tổng điểm 38,50 → 65,33 (thang 150), số câu qua kiểm định 19, cả 23 câu rơi về đường dự phòng đều có trích dẫn và nhóm này ghi 29,67 điểm (lượt trước cả nhóm 0 điểm). Cơ chế sửa đúng mục tiêu: đáp án dự phòng nay xuất đoạn trích nguyên văn kèm nhãn nguồn nên thước đo ghi nhận được. Tiêu chí phụ giữ số câu qua kiểm định ở mức 20 chỉ đạt 19 — dao động 1 câu nằm trong biên nhiễu của mô hình miễn phí và báo cáo tự khai thẳng, không giấu như lần trước, nên không trừ. Điểm chất lượng hiện ở mức 1,31 trên thang 3, vẫn dưới ngưỡng sẵn sàng 1,5: các bước tiếp theo của chuỗi chất lượng (nới ngữ cảnh có điều kiện theo thực thể, sửa các ca thước đo chấm oan, rà ngưỡng cổng bằng chứng cho câu chẩn đoán ngắn) sẽ phát hành khi trần của tài khoản dùng chung mở lại — theo lệnh user, lúc này không phát vé nặng về model mới.
 - `ghi_chu` (điều phối Muse — PHÂN VAI TẠM THỜI theo lệnh user 2026-10-09 ~10:37): Tài khoản Command Code dùng chung đã chạm trần tuần 100% (user tự xác minh tại máy sáng nay; dự kiến mở lại sau khoảng 1 ngày 4 giờ; trần tháng đã 87%). Vé đang dang-lam GIỮ NGUYÊN — thợ cứ sống và tự chạy tiếp khi trần mở lại; điều phối không phát vé nặng về model mới cho tới lúc đó. Trong thời gian này opencode tạm thay vai thợ phụ ở cả hai máy.
