@@ -1,0 +1,15 @@
+{
+  "ticket": "SYNTH-REMEASURE-STABLE-HOME",
+  "round": 1,
+  "timestamp": "2026-10-10 02:36:17",
+  "model": "inclusionai/ling-3.1-flash:free",
+  "tong_cau": 50,
+  "tong_diem": 67.84,
+  "diem_trung_binh": 1.357,
+  "so_validated": 1,
+  "so_fallback": 41,
+  "so_not_called": 8,
+  "so_uncited": 8,
+  "index_sha256": "45eb0e072893f802d71ab201cfbb2b29c36e2b0a31313fa79fc55a025b65b7c0",
+  "index_size_bytes": 2942201856
+}
