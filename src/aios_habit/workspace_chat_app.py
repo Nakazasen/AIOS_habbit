@@ -4857,11 +4857,16 @@ else:
                             if one_shot_image_text:
                                 q_text = f"{q_text}\n\n---\n{one_shot_image_text}"
 
+                        from aios_habit.workspace_chat_rag_v2_adapter import (
+                            is_production_index_available,
+                        )
+                        prod_index_ready = is_production_index_available()
+
                         enabled_selections = load_enabled_sources_for_conversation(active_conversation.id)
                         current_notebook_sources = load_notebook_sources(active_nb_id)
                         current_temp_sources = load_temporary_sources(active_conversation.id)
 
-                        if not enabled_selections and not one_shot_image_text:
+                        if not prod_index_ready and not enabled_selections and not one_shot_image_text:
                             st.session_state.wsc_last_ai_badge = {
                                 "conversation_id": active_conversation.id,
                                 "type": "insufficient_context",
@@ -4879,7 +4884,7 @@ else:
                             )
 
                             non_empty_sources = [s for s in packed_sources if s.text and s.text.strip()]
-                            if not non_empty_sources and not one_shot_image_text:
+                            if not prod_index_ready and not non_empty_sources and not one_shot_image_text:
                                 st.session_state.wsc_last_ai_badge = {
                                     "conversation_id": active_conversation.id,
                                     "type": "insufficient_context",
@@ -5010,6 +5015,9 @@ else:
                                             )
                                             st.session_state.wsc_last_ai_badge = None
                                             safe_rerun()
+                                    elif prod_index_ready:
+                                        # Kho tri thức production sẵn sàng; không có nguồn riêng nào cần chuẩn bị
+                                        query_relevant_sources = ()
                                     else:
                                         # Graceful degradation: các tài liệu gặp lỗi chuẩn bị;
                                         # không chặn cứng, chuyển sang fallback qua nội dung văn bản nguồn
