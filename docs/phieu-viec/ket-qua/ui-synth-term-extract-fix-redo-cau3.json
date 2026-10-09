@@ -1,0 +1,16 @@
+{
+  "session_code": "CONV-REDO-6AC92E5D",
+  "stt": 3,
+  "id": "Q0709",
+  "loai": "thong_so_skew",
+  "ten_loai": "Thong so (Bang quy doi Skew)",
+  "question": "Trong bảng quy đổi Skew, Black, Cyan, Magenta và Yellow lần lượt có giá trị µm và dot bao nhiêu?",
+  "thoi_gian_toan_trinh_giay": 85.18,
+  "model_phuc_vu": "inclusionai/ling-3.1-flash:free",
+  "dap_an_nguyen_van": "**Tóm tắt**  \nDựa trên nguồn tham khảo, bảng quy đổi Skew cho các màu Black, Cyan, Magenta và Yellow được cung cấp với giá trị µm và dot như sau:\n\n- **Black**: 0 µm, 0 dot  \n- **Cyan**: -34 µm, =X10/42 dot  \n- **Magenta**: 81 µm, =X11/42 dot  \n- **Yellow**: 125 µm, =X12/42 dot  \n\n**Điều đã xác nhận**  \n- Giá trị µm của Skew từng màu được ghi rõ trong nguồn [1].  \n- Công thức tính dot dựa trên giá trị µm cũng được nêu rõ trong cùng nguồn [1].  \n\n**Điểm chưa đủ bằng chứng**  \n- Các nguồn khác như [2], [3], [4], [5] không cung cấp thông tin trực tiếp về bảng quy đổi Skew bằng µm và dot.  \n- Không có nguồn nào khẳng định giá trị dot dưới dạng số thực cụ thể (thay vì công thức).  \n\n**Việc cần kiểm tra tiếp**  \n- Xác minh lại giá trị dot thực tế khi áp dụng công thức =X10/42, =X11/42, =X12/42 từ nguồn [1].  \n- Kiểm tra xem các nguồn khác có chứa dữ liệu bổ sung hoặc cập nhật mới hơn không.  \n\n**Nguồn đã dùng**  \n- [1] sirius2 beam径確認_240202.xlsx (Sheet: Sheet18, ô W9:Y12)\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng.",
+  "do_dai_ky_tu": 1044,
+  "anh_chup": "ui-synth-term-extract-fix-redo-04-cau3-q0709.png",
+  "anh_chup_kich_thuoc_bytes": 73798,
+  "anh_chup_pixels": "1200x1101",
+  "hoan_thanh": true
+}

@@ -1,0 +1,16 @@
+{
+  "session_code": "CONV-REDO-6AC92E5D",
+  "stt": 2,
+  "id": "Q0718",
+  "loai": "nguyen_nhan_dmt_pmt",
+  "ten_loai": "Phan tich nguyen nhan (DMT-PMT)",
+  "question": "File có xác nhận chênh lệch DMT–PMT chính là nguyên nhân duy nhất gây NG không?",
+  "thoi_gian_toan_trinh_giay": 149.64,
+  "model_phuc_vu": "inclusionai/ling-3.1-flash:free",
+  "dap_an_nguyen_van": "**Tóm tắt:**\nCác nguồn được cung cấp không đề cập trực tiếp đến \"chênh lệch DMT–PMT\" là nguyên nhân gây NG. Tuy nhiên, các nguồn có đề cập đến nhiều trường hợp \"chênh lệch\", \"không thống nhất\" hoặc \"lệch\" khác nhau dẫn đến tình trạng NG (No Good). Ngoài ra, các nguồn cũng liệt kê nhiều nguyên\n\n[Lưu ý: Câu trả lời bị cắt ngắn do đạt giới hạn độ dài token của mô hình.]\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng.",
+  "do_dai_ky_tu": 433,
+  "anh_chup": "ui-synth-term-extract-fix-redo-03-cau2-q0718.png",
+  "anh_chup_kich_thuoc_bytes": 33177,
+  "anh_chup_pixels": "1200x510",
+  "hoan_thanh": true
+}
