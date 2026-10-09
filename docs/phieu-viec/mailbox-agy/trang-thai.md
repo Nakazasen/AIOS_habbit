@@ -1,8 +1,9 @@
-﻿# Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
+# Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
 ## Vé hiện tại: SYNTH-Q0668-FILTER-FIX-HOME (mở đường cho tài liệu bị lọc khối oan — ca Q0668)
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-10 04:56 +07 — Nhận vé SYNTH-Q0668-FILTER-FIX-HOME: Cổng gate thông suốt (sửa mã đường truy hồi RAG, bảo toàn chỉ mục production). Bắt đầu Mục 1: rà soát khâu phân loại/lọc khối (domain filter) và xếp hạng truy hồi cho câu hỏi chứa định danh chính xác (ca Q0668).
 - `ghi_chu` (verdict Muse): 2026-10-10 ~05:00 +07 — **ĐẠT** vé `SYNTH-RETRIEVAL-GAP-DIAG-HOME` + **PHÁT HÀNH** vé `SYNTH-Q0668-FILTER-FIX-HOME` (prompt.md đã thay). Điều phối kiểm chứng độc lập: đọc hồ sơ chẩn đoán chi tiết — phương pháp tìm của thợ đủ sâu (quét toàn bộ 149.800 mảnh, tìm theo tên nguồn, theo từng thuật ngữ đích và theo cặp thuật ngữ kết hợp; các con số riêng lẻ có xuất hiện rải rác nhưng tổ hợp dữ kiện đích thì không có), và tự đối chiếu chéo tại kho dữ liệu nguồn đã kéo về: cả 5 tệp bị kết luận thiếu đều thực sự tồn tại ở kho nguồn nhưng chưa từng vào chỉ mục production, khớp với kết luận của thợ. Kết luận được công nhận: 7 trên 8 câu bị mất điểm là do kho thiếu dữ liệu thật (nhóm a — 5 tệp nguồn: 4 tệp CSV dữ liệu tháng 8 và tệp trình chiếu cảnh báo lỗi LSU), không phải lỗi mã; câu còn lại Q0668 có dữ kiện đầy đủ trong kho (82 mảnh, mảnh đích chứa đủ bộ số nominal và giới hạn) nhưng bị khâu lọc khối loại vì nhãn khối và bị xếp hạng toàn văn đẩy xuống khoảng hạng 602 tới 658 — vé sửa đúng ca này được phát hành ngay. Vé nạp 5 tệp thiếu xếp ở hàng chờ: điều phối đang chuẩn bị gói nguồn kèm mã băm từ kho dữ liệu đã kéo về, khi gói sẵn sàng sẽ ghi thông báo mở vé ngay tại tệp này. Chỉ mục production giữ nguyên vẹn qua toàn bộ vé chẩn đoán (mã băm khớp chuẩn), đúng tính chất chỉ đọc đã cam kết.
 - `bao_cao`: `docs/phieu-viec/ket-qua/synth-q0668-filter-fix-home.md`
 - Ticket: `SYNTH-Q0668-FILTER-FIX-HOME` — [NHÀ] mở đường truy hồi cho ca Q0668. Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`.
