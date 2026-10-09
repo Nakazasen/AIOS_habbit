@@ -1,8 +1,9 @@
-﻿# Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
+# Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
 ## Vé hiện tại: SYNTH-CONTEXT-ENTITY-HOME (nới ngữ cảnh có điều kiện theo thực thể)
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-09 18:43 +07 — Nhận vé SYNTH-CONTEXT-ENTITY-HOME: Cổng gate thông suốt (lệnh phát hành của user và điều phối Muse mở sẵn; môi trường Python 3.11 sẵn sàng, chỉ mục production nguyên vẹn). Bắt đầu Mục 1 thiết kế và áp cơ chế nới ngữ cảnh có điều kiện theo thực thể cho các mảnh hạng 9–12.
 - `ghi_chu` (điều phối Muse): 2026-10-09 ~18:31 +07 — **PHÁT HÀNH NGAY theo lệnh trực tiếp của user lúc 18:26** (user: cả hai máy cho thợ agy chạy chính, không chờ trần tài khoản mở lại vì phí thời gian). Vé này là vé đầu của chuỗi chất lượng đã xếp sẵn cho máy nhà: nới ngữ cảnh có điều kiện theo thực thể cho các mảnh hạng 9–12, mốc so sánh là tổng 65,33 trên 150 (điểm trung bình 1,31) của lượt sửa trích dẫn vừa đạt. Lưu ý đã ghi trong vé: lượt gọi mô hình có thể bị từ chối lẻ tẻ do tài khoản gần trần — gặp thì ghi mốc, chờ một nhịp rồi chạy tiếp, không bỏ dở vé, không đổi sang mô hình ngoài chuỗi đã chốt.
 - `bao_cao`: `docs/phieu-viec/ket-qua/synth-context-entity-home.md`
 - Ticket: `SYNTH-CONTEXT-ENTITY-HOME` — [NHÀ] nới ngữ cảnh có điều kiện. Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`.
