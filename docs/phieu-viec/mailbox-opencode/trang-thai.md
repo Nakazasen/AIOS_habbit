@@ -1,6 +1,7 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
 - Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-09 11:34 +07 — Heartbeat vé `TEST-SUITE-CONFIRM-HOME`: pytest nền có dấu hiệu đứng ở ~36% (log giữ 3.566 byte từ 11:19, CPU các tiến trình python không tăng sau ~6 phút; tiến trình `pytest` + worker còn sống, chưa có `done.marker`). Chưa kết luận treo — chờ thêm một nhịp xem timeout của ca đang chạy có tự nhả không. Chưa chạm `src/`/`tests/`.
 - `ghi_chu`: 2026-10-09 11:17 +07 — Heartbeat vé `TEST-SUITE-CONFIRM-HOME`: pytest nền vẫn chạy (log 1.460 → 3.404 byte, tới ~35%). Chưa chạm `src/`/`tests/`.
 - `ghi_chu`: 2026-10-09 11:06 +07 — Heartbeat vé `TEST-SUITE-CONFIRM-HOME`: pytest nền vẫn chạy (log 0 → 1.460 byte, tới ~15%, có `s` rải rác đúng kiểu bỏ qua có điều kiện — chưa phân loại vội, chờ chạy xong). Chưa chạm `src/`/`tests/`.
 - `ghi_chu`: 2026-10-09 10:55 +07 — Mốc chạy nền vé `TEST-SUITE-CONFIRM-HOME`: đầu nhánh chạy là `683554f` (sau rebase qua `288fc3d` của PC0575, nội dung vé giữ nguyên); tiến trình pytest toàn bộ đã khởi động tách phiên (log `local_runs/test-suite-confirm-home/pytest-full.log` + `.err.log`, `done.marker` khi xong; tạm `D:\pytest-tmp` do ổ C còn ~4,2GB); Python 3.11.14 qua uv OK. Chưa chạm `src/`/`tests/`. Heartbeat tiếp theo ~15 phút.
