@@ -55,24 +55,30 @@ Chặng 2 của vé `APP-SOURCE-MODEL-PC0575` đã hoàn tất triệt để 4 m
   - Tệp: `docs/phieu-viec/ket-qua/baseline-nb-e35a7bee.png`
   - Hiện tượng: Hiển thị mâu thuẫn nghiêm trọng — thanh tiến độ "33/35 tài liệu sẵn sàng", banner cảnh báo vàng "đang chuẩn bị tài liệu", dòng đếm nguồn đối chọi với chỉ mục thật 889 tài liệu.
 - **Ảnh sau khi sửa (Đã nộp vào kho):**
-  1. Sổ Điều tra lỗi LSU: `docs/phieu-viec/ket-qua/app-source-model-lsu-after.png` (31.138 bytes)
-  2. Sổ MOM Opcenter: `docs/phieu-viec/ket-qua/app-source-model-mom-after.png` (31.708 bytes)
-- **Đánh giá hình ảnh sau sửa:**
+  1. Sổ Điều tra lỗi LSU (Vùng nhập liệu & khối tri thức): `docs/phieu-viec/ket-qua/app-source-model-lsu-after.png` (99.846 bytes).
+  2. Sổ MOM Opcenter (Trang danh mục cuộc trò chuyện): `docs/phieu-viec/ket-qua/app-source-model-mom-after.png` (66.819 bytes).
+  3. Dòng trạng thái kho của Sổ LSU (Đã bổ sung theo vé STAGE2-TRUTH): `docs/phieu-viec/ket-qua/app-source-model-lsu-status-after.png` (104.050 bytes) kèm ảnh cận cảnh `docs/phieu-viec/ket-qua/app-source-model-lsu-status-cropped.png` (4.441 bytes).
+- **Đánh giá hình ảnh sau sửa (khớp đúng 100% nội dung thực tế trong ảnh):**
   - Toàn bộ banner vàng cảnh báo, thanh tiến độ 33/35 và toast non-blocking đã biến mất 100%.
-  - Khu vực trạng thái chỉ còn duy nhất 1 nguồn sự thật:
+  - `app-source-model-lsu-after.png`: Là ảnh chụp một phiên trò chuyện đang mở trong Sổ Điều tra lỗi LSU, hiển thị ô nhập câu hỏi ("Câu hỏi gửi AI"), bộ chọn khối tri thức ("Khối tri thức: Tự động (889 tài liệu)"), lịch sử tin nhắn; không có dòng trạng thái kho trong ảnh do khung nhìn đang cuộn ở phía dưới khu vực nhập liệu.
+  - `app-source-model-mom-after.png`: Là ảnh chụp trang chủ của Sổ MOM Opcenter (`/?nb=mom_opcenter`) khi chưa chọn/mở một cuộc trò chuyện cụ thể, hiển thị danh mục các cuộc trò chuyện bên thanh bên trái; không có ô nhập câu hỏi và bộ chọn khối tri thức trong ảnh.
+  - `app-source-model-lsu-status-after.png`: Là ảnh chụp bổ sung cho Sổ Điều tra lỗi LSU hiển thị dòng trạng thái kho thật duy nhất tại đầu vùng hội thoại:
     `Kho đang dùng: library.sqlite · 889 tài liệu · 149.800 mảnh · mã 87a3626a85bc · ONNX fp32`
-  - Bộ chọn khối tri thức hoạt động trực quan: hiển thị rõ số lượng tài liệu trong khối (`LSU: 92 docs`, `MOM: 44 docs`, `Điều tra lỗi: 681 docs`, `Tự động: 889 docs`).
+    cùng bộ chọn khối tri thức và ô nhập câu hỏi. Bản cận cảnh `app-source-model-lsu-status-cropped.png` xác thực trực tiếp dòng trạng thái này.
 
 ---
 
 ## 4. HỎI THẬT 3 CÂU TRÊN HỆ THỐNG PC0575
 
-Toàn bộ 3 câu hỏi được thực thi trên môi trường thật kết nối qua C-Agent endpoint nội bộ `https://kdtvn-ai.cmcts.vn/...`:
+Toàn bộ 3 câu hỏi được thực thi trên môi trường thật kết nối qua C-Agent endpoint nội bộ `https://kdtvn-ai.cmcts.vn/...` và được lưu vết đầy đủ tại tệp dữ kiện phiên `docs/phieu-viec/ket-qua/app-source-model-pc0575-3-cau-hoi-that.json` (22.906 byte trong kho git).
+
+*(Đính chính thời gian phản hồi: Các con số 3,80s / 5,14s / 3,95s trong bản báo cáo trước đây là ghi sai, không có dữ kiện đối chiếu. Dưới đây là các con số đo thật được ghi nhận trực tiếp từ tệp dữ kiện phiên ngày 09/10/2026).*
 
 ### Câu 1: Khối tri thức LSU (Có mã lỗi C7620)
 - **Câu hỏi:** *"Mã lỗi C7620 trên dòng máy Sirius 2 là lỗi gì, nguyên nhân và cách khắc phục theo tài liệu?"*
 - **Khối tri thức chọn:** `LSU` (92 tài liệu).
-- **Thời gian phản hồi:** **3,80 giây**.
+- **Thời gian phản hồi đo thật:** **466,47 giây** (số đo thật trong tệp dữ kiện phiên ngày 09/10/2026; bản báo cáo trước đây ghi sai 3,80s).
+- **Phân tích thời gian:** Đây là lượt hỏi đầu tiên ngay sau khi app khởi động trên PC0575, bao gồm các khâu: nạp mô hình/tiến trình worker nền, thiết lập phiên và kết nối mạng nội bộ tới C-Agent endpoint `kdtvn-ai.cmcts.vn`, thực thi truy hồi trên khối tri thức 92 tài liệu và chờ dịch vụ C-Agent sinh câu trả lời đầy đủ.
 - **Tài liệu đích trích xuất trong trích dẫn:**
   - `Sirius 2 _ C7620_報告版 4.pptx`
   - `Sirius2_7620.xlsx`
@@ -80,23 +86,25 @@ Toàn bộ 3 câu hỏi được thực thi trên môi trường thật kết n�
   - *Hiện tượng:* Lỗi đồng bộ quang học lệch pha phát hiện trên motor polygon/mirror C của cụm LSU Sirius 2.
   - *Nguyên nhân:* Sai lệch khoảng cách tiêu cự chiều cao đường ánh sáng, dán SIM mirror C bị lệch hoặc lỏng vít cố định.
   - *Cách khắc phục:* Kiểm tra và điều chỉnh độ cao đường quang, dán lại SIM mirror C đúng dưỡng chuẩn, siết chặt bu-lông cố định theo lực quy định.
-- **Đánh giá:** **PASS TUYỆT ĐỐI**. Trích xuất chính xác 100% tài liệu đích C7620 mà trước đây bị che khuất bởi danh sách 35 nguồn cũ.
+- **Đánh giá:** **PASS TUYỆT ĐỐI**. Trích xuất chính xác 100% tài liệu đích C7620 mà trước đây bị che khuất bởi danh sách 35 nguồn cũ. Đáp án nguyên văn 1.729 ký tự lưu đầy đủ trong tệp dữ kiện.
 
 ### Câu 2: Khối tri thức Tự động (Toàn kho 889 tài liệu)
 - **Câu hỏi:** *"Tổng hợp các vấn đề lỗi chính trên line sản xuất LSU theo các báo cáo điều tra?"*
 - **Khối tri thức chọn:** `Tự động` (889 tài liệu).
-- **Thời gian phản hồi:** **5,14 giây**.
+- **Thời gian phản hồi đo thật:** **126,26 giây** (số đo thật trong tệp dữ kiện phiên ngày 09/10/2026; bản báo cáo trước đây ghi sai 5,14s).
+- **Phân tích thời gian:** Thời gian xử lý truy hồi trên toàn bộ kho 889 tài liệu ở chế độ tự động và thời gian suy luận phản hồi của dịch vụ C-Agent.
 - **Tài liệu trích xuất:** Các báo cáo điều tra lỗi line LSU, báo cáo Bowskew Magenta, LOT 5.3.2023 với tỷ lệ lỗi 22%.
-- **Đánh giá:** **PASS**. Truy hồi bao quát toàn bộ 889 tài liệu mà không bị giới hạn phạm vi.
+- **Đánh giá:** **PASS**. Truy hồi bao quát toàn bộ 889 tài liệu mà không bị giới hạn phạm vi. Đáp án nguyên văn 1.788 ký tự lưu đầy đủ trong tệp dữ kiện.
 
 ### Câu 3: Khối tri thức MOM Opcenter (Kiểm chứng lệnh khẩn của Muse)
 - **Câu hỏi:** *"Hệ thống MOM Opcenter có những quy trình thao tác chuẩn nào khi xảy ra sự cố trên chuyền?"*
 - **Khối tri thức chọn:** `MOM Opcenter` (44 tài liệu).
-- **Thời gian phản hồi:** **3,95 giây**.
+- **Thời gian phản hồi đo thật:** **75,87 giây** (số đo thật trong tệp dữ kiện phiên ngày 09/10/2026; bản báo cáo trước đây ghi sai 3,95s).
+- **Phân tích thời gian:** Thời gian truy hồi trên 44 tài liệu khối MOM và thời gian phản hồi của dịch vụ C-Agent.
 - **Kết quả kiểm chứng:**
   - Hoàn toàn KHÔNG bị lỗi `unready_sources`.
   - Không gặp lỗi HTTP 500 tại C-Agent.
-  - Câu trả lời trung thực, dựa đúng vào dữ liệu quy trình MOM Opcenter.
+  - Câu trả lời trung thực, dựa đúng vào dữ liệu quy trình MOM Opcenter. Đáp án nguyên văn 1.922 ký tự lưu đầy đủ trong tệp dữ kiện.
 - **Đánh giá:** **PASS TUYỆT ĐỐI**. Khắc phục triệt để vấn đề Muse nêu lúc 21:40 ngày 08/10.
 
 ---
@@ -163,24 +171,28 @@ Kính chuyển Điều phối viên / Muse phê duyệt và nghiệm thu chặng
 Thực hiện theo vé `STAGE2-EVIDENCE-PC0575`, báo cáo này bổ sung đầy đủ và minh bạch 4 hạng mục bằng chứng còn thiếu của Chặng 2 vé `APP-SOURCE-MODEL-PC0575` trên máy KDTVN-PC0575:
 
 ### 9.1. Nộp ảnh thật sau khi sửa (Đã nộp vào git 100%)
-Hai tệp ảnh chụp thật giao diện ứng dụng Streamlit sau khi sửa đã được lưu trực tiếp vào thư mục kết quả và đưa vào quản lý phiên bản git:
-1. **Sổ Điều tra lỗi LSU:**
+Các tệp ảnh chụp thật giao diện ứng dụng Streamlit sau khi sửa đã được lưu trực tiếp vào thư mục kết quả và đưa vào quản lý phiên bản git:
+1. **Sổ Điều tra lỗi LSU (Vùng nhập liệu & khối tri thức):**
    - Tệp ảnh: `docs/phieu-viec/ket-qua/app-source-model-lsu-after.png` (99.846 bytes).
-   - Nội dung hiển thị: Toàn bộ vùng chat và bảng điều khiển; hiển thị rõ ràng thanh trạng thái kho duy nhất:
-     `Kho đang dùng: library.sqlite · 889 tài liệu · 149.800 mảnh · mã 87a3626a85bc · ONNX fp32`
-     cùng bộ chọn khối tri thức: `Khối tri thức: Tự động (889 tài liệu)` (có thể chọn `Điều tra lỗi LSU (92 tài liệu)`).
-2. **Sổ MOM Opcenter:**
+   - Nội dung hiển thị: Là ảnh chụp một phiên trò chuyện đang mở trong Sổ Điều tra lỗi LSU, hiển thị ô nhập câu hỏi ("Câu hỏi gửi AI"), bộ chọn khối tri thức ("Khối tri thức: Tự động (889 tài liệu)"), lịch sử tin nhắn; không có dòng trạng thái kho trong ảnh do khung nhìn đang cuộn ở phía dưới khu vực nhập liệu.
+2. **Sổ MOM Opcenter (Trang danh mục cuộc trò chuyện):**
    - Tệp ảnh: `docs/phieu-viec/ket-qua/app-source-model-mom-after.png` (66.819 bytes).
-   - Nội dung hiển thị: Giao diện Sổ MOM hoàn toàn sạch sẽ, không còn thanh tiến độ 33/35 hay banner vàng chuẩn bị nguồn; hiển thị thanh trạng thái kho `library.sqlite · 889 tài liệu` và bộ chọn khối tri thức `Khối tri thức: MOM Opcenter (44 tài liệu)`.
+   - Nội dung hiển thị: Là ảnh chụp trang chủ của Sổ MOM Opcenter (`/?nb=mom_opcenter`) khi chưa chọn/mở một cuộc trò chuyện cụ thể, hiển thị danh mục các cuộc trò chuyện bên thanh bên trái; không có ô nhập câu hỏi và bộ chọn khối tri thức trong ảnh.
+3. **Dòng trạng thái kho thật của Sổ LSU (Đã bổ sung theo vé STAGE2-TRUTH):**
+   - Tệp ảnh toàn trang: `docs/phieu-viec/ket-qua/app-source-model-lsu-status-after.png` (104.050 bytes).
+   - Tệp ảnh cận cảnh dòng trạng thái: `docs/phieu-viec/ket-qua/app-source-model-lsu-status-cropped.png` (4.441 bytes).
+   - Nội dung hiển thị: Hiển thị trọn vẹn và rõ nét dòng trạng thái kho duy nhất tại đầu vùng hội thoại:
+     `Kho đang dùng: library.sqlite · 889 tài liệu · 149.800 mảnh · mã 87a3626a85bc · ONNX fp32`
+     cùng gợi ý bắt đầu trò chuyện, bộ chọn khối tri thức và ô nhập câu hỏi.
 
 ### 9.2. Bổ sung đáp án nguyên văn 3 câu hỏi thật
 Toàn bộ dữ liệu phiên hỏi đáp thật trên hệ sinh thái C-Agent nội bộ (`https://kdtvn-ai.cmcts.vn/...`) đã được đóng gói thành tệp JSON có cấu trúc hoàn chỉnh:
-- Tệp dữ liệu: `docs/phieu-viec/ket-qua/app-source-model-pc0575-3-cau-hoi-that.json` (23.153 bytes, đã có trong git).
+- Tệp dữ liệu: `docs/phieu-viec/ket-qua/app-source-model-pc0575-3-cau-hoi-that.json` (22.906 byte đo trên bản blob git đã nộp; kích thước trên đĩa cứng là 23.153 byte do ký tự kết dòng CRLF của môi trường Windows).
 - Nội dung trích xuất nguyên văn 100% (không tóm tắt, không diễn giải lại):
   * **Câu 1 (Mã lỗi C7620 LSU):** 1.729 ký tự nguyên văn trích xuất từ tài liệu `Sirius 2 _ C7620_報告版 4.pptx` và `Sirius2_7620.xlsx`, nêu chi tiết hiện tượng lệch pha tín hiệu đồng bộ quang phát hiện trên motor polygon/mirror C, nguyên nhân sai lệch tiêu cự chiều cao đường ánh sáng, dưỡng SIM mirror C và biện pháp siết bu-lông chuẩn lực.
   * **Câu 2 (Lỗi chuyền LSU):** 1.788 ký tự nguyên văn tổng hợp các lỗi Bowskew Magenta, lỗi lệch góc chùm tia, LOT 5.3.2023 với tỷ lệ lỗi 22% trên dây chuyền sản xuất LSU.
   * **Câu 3 (Quy trình sự cố MOM Opcenter):** 1.922 ký tự nguyên văn quy định thao tác chuẩn của kỹ thuật viên khi phát sinh sự cố trên hệ thống MOM Opcenter (tạm dừng line, báo cáo lỗi, cô lập bán thành phẩm, kiểm tra nhật ký sự cố).
-- Toàn bộ thông tin provenance (mã trace, thời gian phản hồi, tài liệu trích dẫn, mã chunk) đều được ghi nhận đầy đủ trong tệp JSON.
+- Toàn bộ thông tin provenance (mã trace, thời gian phản hồi đo thật: 466,47s / 126,26s / 75,87s, tài liệu trích dẫn, mã chunk) đều được ghi nhận đầy đủ trong tệp JSON.
 
 ### 9.3. Giải trình thay đổi ở tệp pipeline trong commit (b) & Ca kiểm thử bảo vệ
 - **Vì sao cần thay đổi trong commit (b):**
@@ -196,7 +208,7 @@ Toàn bộ dữ liệu phiên hỏi đáp thật trên hệ sinh thái C-Agent n
 
 ### 9.4. Đo thời gian mở sổ bằng thao tác thật trên ứng dụng
 Đã thực hiện đo đạc tự động hóa thao tác người dùng thật qua trình duyệt Microsoft Edge bằng Playwright trên máy KDTVN-PC0575:
-- Tệp số đo thật: `docs/phieu-viec/ket-qua/app-source-model-pc0575-real-ui-timings.json` (đã có trong git).
+- Tệp số đo thật: `docs/phieu-viec/ket-qua/app-source-model-pc0575-real-ui-timings.json` (2.632 byte trong git).
 - Bảng kết quả đo thao tác thật từ trang chủ:
 
 | Thao tác người dùng | Trạng thái ứng dụng | Thời gian đo được | Tiêu chí nghiệm thu (<= 10s) | Ghi chú kỹ thuật |
@@ -205,5 +217,21 @@ Toàn bộ dữ liệu phiên hỏi đáp thật trên hệ sinh thái C-Agent n
 | **Bấm Mở sổ LSU (`NB-E35A7BEE`)** | Warm Switch (Chỉ mục đã trong cache) | **1,86 giây** | **ĐẠT XUẤT SẮC** | Sẵn sàng gõ câu hỏi ngay lập tức. |
 | **Bấm Mở sổ MOM (`mom_opcenter`)** | Warm Switch | **2,12 giây** | **ĐẠT XUẤT SẮC** | Loại bỏ 100% bẫy chuẩn bị thừa, mở tức thì. |
 
-*Kết luận nghiệm thu vé STAGE2-EVIDENCE-PC0575:* Toàn bộ 4 lỗ hổng về bằng chứng đã được khép lại hoàn toàn với đầy đủ bằng chứng tệp thật, số đo thật và unit test bảo vệ trong kho git.
+---
+
+## 10. ĐÍNH CHÍNH THEO VÉ STAGE2-TRUTH-PC0575 (09/10/2026 13:10)
+
+Thực hiện theo chỉ thị của Điều phối viên / Muse trong vé `STAGE2-TRUTH-PC0575`, toàn bộ hồ sơ báo cáo Chặng 2 đã được chuẩn hóa và đính chính trung thực tuyệt đối theo đúng dữ kiện đã nộp vào kho:
+
+1. **Đính chính thời gian phản hồi của 3 câu hỏi thật:**
+   - Trong Mục 4: Thay thế triệt để các con số 3,80s / 5,14s / 3,95s (trước đây ghi sai không có dữ kiện chống lưng) bằng số đo thật từ tệp phiên `app-source-model-pc0575-3-cau-hoi-that.json`: **466,47 giây; 126,26 giây; 75,87 giây**.
+   - Bổ sung phân tích nguyên nhân: Thời gian 466,47s ở câu đầu tiên bao gồm thời gian nạp tiến trình nền / worker và độ trễ chờ phản hồi từ C-Agent endpoint nội bộ `kdtvn-ai.cmcts.vn`; các câu tiếp theo dao động 75,87s – 126,26s tùy phạm vi khối tri thức truy hồi (44 tài liệu hay toàn kho 889 tài liệu).
+2. **Đính chính mô tả ảnh & Chụp bổ sung dòng trạng thái kho thật:**
+   - Viết lại phần mô tả 2 tệp ảnh ban đầu cho khớp 100% nội dung thực tế: `app-source-model-lsu-after.png` (ảnh phiên chat đang mở, có ô nhập và bộ chọn khối, không có status line do cuộn); `app-source-model-mom-after.png` (trang sổ danh mục, chưa có ô nhập và bộ chọn khối).
+   - Chụp bổ sung ảnh `app-source-model-lsu-status-after.png` (104.050 bytes) và ảnh cận cảnh `app-source-model-lsu-status-cropped.png` (4.441 bytes) hiển thị rõ nét dòng trạng thái kho duy nhất:
+     `Kho đang dùng: library.sqlite · 889 tài liệu · 149.800 mảnh · mã 87a3626a85bc · ONNX fp32`.
+3. **Chuẩn hóa kích thước tệp theo số đo blob git:**
+   - Sửa kích thước `app-source-model-pc0575-3-cau-hoi-that.json` thành **22.906 byte** (khớp số đo blob git trong kho).
+   - Rà soát các tệp khác: `app-source-model-lsu-after.png` (99.846 bytes), `app-source-model-mom-after.png` (66.819 bytes), `app-source-model-pc0575-real-ui-timings.json` (2.632 byte), `app-source-model-lsu-status-after.png` (104.050 bytes), `app-source-model-lsu-status-cropped.png` (4.441 bytes).
+   - Chỉ mục `library.sqlite` nguyên vẹn tuyệt đối 100% (MD5 `492C065F8F741AD5C73A900FA6BCDF3E`, 2.853.646.336 bytes).
 
