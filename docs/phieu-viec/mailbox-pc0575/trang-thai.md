@@ -2,7 +2,8 @@
 
 ## Vé hiện tại: AUDIT-REMEASURE-PC0575
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `ghi_chu` (tiến độ OMP — NHẬN VÉ + ĐÃ KIỂM XONG SỐ LIỆU THÔ): 2026-10-09 ~10:05 +07 — Đã pull `c21e3b19`, nhận vé `AUDIT-REMEASURE-PC0575`, ghi `dang-lam`. Kiểm nhanh (chỉ đọc tệp, không chạy app): tệp thô còn đủ trên máy — `local_runs/remeasure_cagent_progress.jsonl` (50 dòng, tổng 146,83 GPA 2,9366, 49 câu ≥2, 46 câu =3), `local_runs/remeasure_rag_progress.jsonl` (50 dòng, tổng 47,83 GPA 0,9566, 14 câu ≥2, 3 câu =3) — khớp báo cáo; bảng 50 câu trong báo cáo đo lại khớp 100% tệp thô (0 lệch); `retrieval_s` trung bình toàn 50 câu = **26,12s** (khớp con số điều phối 26,1s cần ghi). Bước kế: sửa 3 điểm trình bày + viết báo cáo kiểm toán.
 - `ghi_chu` (điều phối Muse — PHÁT HÀNH): 2026-10-09 ~09:42 +07 — Phát hành vé phụ `AUDIT-REMEASURE-PC0575` (prompt.md đã thay): sửa 3 điểm trình bày của báo cáo đo lại + kiểm toán độc lập báo cáo đo lại và hai báo cáo truy hồi của thợ chính. Toàn bộ là việc nhẹ (đọc tệp kết quả, sửa tài liệu) — làm trong lúc thợ chính đang nghiệm thu dùng thật trên cùng máy, tuyệt đối không chạy ứng dụng hay việc nặng. Vé trước SRC-PROBE-TAKEOVER-PC0575 đã verdict ĐẠT ~09:20 08/10; khối vé cũ giữ nguyên bên dưới làm lịch sử.
 - `bao_cao`: `docs/phieu-viec/ket-qua/audit-remeasure-pc0575.md`
 - Ticket: `AUDIT-REMEASURE-PC0575` — [CTY-phụ] kiểm toán độc lập + sửa trình bày báo cáo. Prompt: `docs/phieu-viec/mailbox-pc0575/prompt.md`.
