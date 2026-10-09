@@ -43,6 +43,16 @@ DEFAULT_SIDECAR_STARTUP_TIMEOUT_SECONDS = 8.0
 DEFAULT_SYNTH_CONTEXT_TOPK = 8
 SYNTH_CONTEXT_TOPK_ENV = "AIOS_RAG_SYNTH_CONTEXT_TOPK"
 
+from aios_habit.rag_v2.entity_context import (
+    DEFAULT_SYNTH_CONTEXT_EXPAND_MAX,
+    SYNTH_CONTEXT_ENTITY_EXPAND_ENV,
+    extract_concrete_query_entities,
+    is_synth_context_entity_expand_enabled,
+    item_matches_any_entity,
+    select_entity_conditional_context,
+)
+_item_matches_any_entity = item_matches_any_entity
+
 
 def get_synth_context_topk() -> int:
     """Return configured number of context chunks passed into synthesis prompt."""
@@ -1413,8 +1423,13 @@ def route_workspace_chat_submission(
 
     if health.is_direct_ready:
         synth_topk = get_synth_context_topk()
+        selected_evidence, entity_telemetry = select_entity_conditional_context(
+            question=question,
+            evidence_items=evidence_items,
+            base_topk=synth_topk,
+        )
         context_blocks = []
-        for idx, ev in enumerate(evidence_items[:synth_topk], start=1):
+        for idx, ev in enumerate(selected_evidence, start=1):
             if isinstance(ev, dict):
                 title_ev = ev.get("title", f"Nguồn {idx}")
                 snip_ev = ev.get("text", ev.get("snippet", ""))
@@ -1555,6 +1570,7 @@ def route_workspace_chat_submission(
                     "retrieval_summary": retrieval_summary,
                     "evidence_items": evidence_items,
                     "trace_id": trace.trace_id,
+                    "entity_conditional_expand": entity_telemetry,
                 }
                 badge.update(memory_badge_fields(memory_result))
                 return (True, "Đã nhận câu trả lời từ Antigravity IDE (Direct) thành công.", badge, None)

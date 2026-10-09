@@ -91,6 +91,8 @@ class EvidencePackConfig:
     per_document_limit: int = 3
     high_score_threshold: float = 8.0
     medium_score_threshold: float = 3.0
+    conditional_entity_expand: Optional[bool] = None
+    max_expand_items: int = 12
     soft_warning_codes: frozenset[str] = frozenset({
         "incomplete_query_term_coverage",
         "weak_query_term_coverage",
@@ -251,6 +253,7 @@ class EvidencePack:
     supported_obligation_count: int
     planned_obligation_count: int
     created_at: str
+    entity_expand_telemetry: Optional[Dict[str, Any]] = None
 
 
 # ---------------------------------------------------------------------------
@@ -651,6 +654,46 @@ def build_evidence_pack(
             break
         add_result(result)
 
+    entity_telemetry: dict[str, Any] = {
+        "expanded": False,
+        "enabled": False,
+        "base_count": len(selected),
+        "total_selected": len(selected),
+        "expanded_indices": [],
+        "matched_entities": [],
+        "entities_found": [],
+    }
+
+    from aios_habit.rag_v2.entity_context import (
+        extract_concrete_query_entities,
+        is_synth_context_entity_expand_enabled,
+        item_matches_any_entity,
+    )
+
+    should_expand = (
+        is_synth_context_entity_expand_enabled()
+        if config.conditional_entity_expand is None
+        else bool(config.conditional_entity_expand)
+    )
+    entity_telemetry["enabled"] = should_expand
+
+    if should_expand and len(selected) < config.max_expand_items:
+        entities = extract_concrete_query_entities(query_text)
+        entity_telemetry["entities_found"] = list(entities)
+        if entities:
+            for result in selection_results:
+                if len(selected) >= config.max_expand_items:
+                    break
+                if result.chunk_id in selected_chunk_ids:
+                    continue
+                matched, matched_ent = item_matches_any_entity(result, entities)
+                if matched:
+                    if add_result(result):
+                        entity_telemetry["expanded_indices"].append(len(selected))
+                        entity_telemetry["matched_entities"].append(matched_ent)
+            entity_telemetry["expanded"] = len(entity_telemetry["expanded_indices"]) > 0
+            entity_telemetry["total_selected"] = len(selected)
+
     if query_plan.intent_category in {"precise", "procedure"} and selected:
         if all(_is_summary_result(item) for item in selected):
             detailed = next(
@@ -854,6 +897,7 @@ def build_evidence_pack(
         supported_obligation_count=supported_obligation_count,
         planned_obligation_count=planned_obligation_count,
         created_at=datetime.now().isoformat(),
+        entity_expand_telemetry=entity_telemetry,
     )
 
 
