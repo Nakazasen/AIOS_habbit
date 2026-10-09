@@ -14,8 +14,8 @@ Vé `SRC-RECEIVE-2GOI-PC0575` đã được thực thi trọn vẹn tại máy c
 
 1. **Tải và đối chiếu băm 2 gói nguồn:** Đã tải trọn vẹn Gói 90 và Gói 421 từ Google Drive qua liên kết trực tiếp ngay trên mạng công ty (`vn-kdwireless`), kiểm chứng băm SHA-256 trùng khớp 100% với dữ kiện vé.
 2. **Sao lưu mới chỉ mục production:** Đã tạo bản sao lưu sạch của `library.sqlite` trước khi nạp tại `local_runs/backup_production_before_src_receive_2goi_20261009/library.sqlite`, kiểm tra toàn vẹn SQLite đạt `ok`.
-3. **Chạy thử không ghi (dry-run):** Đã phân tích nhóm tài liệu của 2 gói, xác thực phân bổ 90 tài liệu mới và 421 tài liệu mới, kiểm tra 3 mã đại diện nhóm 90.
-4. **Nạp nguồn theo đợt có checkpoint:** Đã chép 511 tệp nguồn vào kho materialized sources, nạp thành công 421 tài liệu vào `library.sqlite`. Chỉ mục production đạt đúng **889 tài liệu**, **149.800 mảnh**, vân tay logic mới `caf65577e2a5`, kiểm tra toàn vẹn đạt `ok`.
+3. **Chạy thử không ghi (dry-run):** Đã phân tích nhóm tài liệu của 2 gói, xác thực phân bổ 0 tài liệu mới từ Gói 90 (toàn bộ 90 tài liệu đã có sẵn trong chỉ mục từ trước) và 421 tài liệu mới hoàn toàn từ Gói 421 (tăng từ 468 lên 889 tài liệu), kiểm tra 3 mã đại diện nhóm 90.
+4. **Nạp nguồn theo đợt có checkpoint:** Đã chép 511 tệp nguồn vào kho materialized sources, nạp thành công 421 tài liệu vào `library.sqlite`. Chỉ mục production đạt đúng **889 tài liệu**, **149.800 mảnh**, vân tay logic đổi từ mã cũ `87a3626a85bc` sang mã mới `caf65577e2a5` do cập nhật siêu dữ liệu nguồn (nội dung văn bản các mảnh được bảo toàn 100%), kiểm tra toàn vẹn đạt `ok`.
 5. **Nghiệm thu dùng thật:** Đã khởi chạy ứng dụng Streamlit ở chế độ CPU-only, thực hiện hỏi 3 câu hỏi thật (2 câu thuộc Gói 421 vừa nạp, 1 câu thuộc tài liệu cũ hồi quy), thu thập 100% đáp án nguyên văn vào tệp dữ kiện JSON và chụp 3 ảnh màn hình giao diện thật chứa câu trả lời.
 
 ---
@@ -77,7 +77,7 @@ Vé `SRC-RECEIVE-2GOI-PC0575` đã được thực thi trọn vẹn tại máy c
   - **Băm MD5 mới:** `51823A0154F4F6C07BE79FD6A292955C`
   - **Tổng số tài liệu:** **889 tài liệu** (tăng thêm 421 tài liệu mới so với 468 tài liệu ban đầu).
   - **Tổng số mảnh (chunks):** **149.800 mảnh**.
-  - **Vân tay logic mới:** `caf65577e2a5` (khớp hoàn toàn với vân tay chuẩn của kho 889 tài liệu).
+  - **Vân tay logic mới:** `caf65577e2a5` (thay đổi từ mã cũ `87a3626a85bc` sang mã mới `caf65577e2a5` sau đợt cập nhật vân tay nguồn). Giải trình khác biệt: Mã vân tay thay đổi do cập nhật `source_fingerprint` (siêu dữ liệu liên kết tệp nguồn thực tế) cho 421 tài liệu mới nạp và các mảnh tương ứng; tổng số mảnh và nội dung văn bản mảnh (`chunk_text_hash`) được bảo toàn tuyệt đối không đổi (149.800 mảnh).
   - **Kiểm tra toàn vẹn sau nạp:** `PRAGMA integrity_check` -> `"ok"`.
   - **Dòng trạng thái hiển thị trên ứng dụng:** `library.sqlite · 889 tài liệu · 149.800 mảnh · mã caf65577e2a5`.
 
