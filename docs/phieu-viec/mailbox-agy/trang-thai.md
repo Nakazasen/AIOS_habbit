@@ -1,4 +1,14 @@
-# Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
+﻿# Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
+
+## Vé hiện tại: SYNTH-RETRIEVAL-GAP-DIAG-HOME (chẩn đoán khoảng trống truy hồi)
+
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-10 ~04:35 +07 — **ĐẠT** vé `SYNTH-REMEASURE-STABLE-HOME` + **PHÁT HÀNH** vé `SYNTH-RETRIEVAL-GAP-DIAG-HOME` (prompt.md đã thay). Điều phối kiểm chứng độc lập: tự cộng lại từ hai tệp dữ kiện thô — lượt 1 đạt 67,84, lượt 2 đạt 69,84, trung bình 68,84 trên 150 (điểm trung bình 1,377), khớp tuyệt đối; câu duy nhất đổi điểm giữa hai lượt là Q0718 (1,0 lên 3,0 kèm đổi chế độ từ dự phòng sang được thẩm định), không câu nào giảm; kích thước tệp báo cáo 23.703 byte khớp đúng số thợ khai (đo bằng git cat-file); phần làm lại nghiệm thu ở Mục 0 đạt — phiên mới nhất quán một mã phiên cho cả ba câu, ghi rõ mã commit đang chạy, và điều phối tự mở ảnh câu Q0718 thấy trọn thân đáp án trong khung hình, đúng câu hỏi, không còn lỗi trùng đáp án của lần nộp trước. Kết luận chất lượng quyết định của vé: với cùng một cấu hình không thay đổi, hệ thống ổn định cao (hai lượt lệch đúng 2,0 điểm) — khoảng cách tới ngưỡng 1,5 là khoảng 6,2 điểm mỗi lượt và là khoảng cách cấu trúc thật, không phải nhiễu đo; thành phần lớn nhất là 8 câu bị chặn vì thiếu bằng chứng (tối đa 24 điểm). Một chấn chỉnh về cách trình bày bắt buộc ghi nhận: con số 'điểm trung bình 1,639 trên 42 câu' trong báo cáo là phép tính sau khi loại 8 câu 0 điểm — đúng số học nhưng là thống kê chọn mẫu, không phải con số chấm theo quy ước bộ đề (toàn bộ 50 câu) và không được dùng làm căn cứ kết luận đạt ngưỡng ở bất kỳ báo cáo nào sau này; con số quyết định duy nhất là 1,377 trên 50 câu. Vé chẩn đoán khoảng trống truy hồi được phát hành ngay để trả lời câu hỏi quyết định: dữ liệu của 8 câu bị chặn có tồn tại trong chỉ mục hay không, và nếu có thì khâu truy hồi nào làm mất nó.
+- `bao_cao`: `docs/phieu-viec/ket-qua/synth-retrieval-gap-diag-home.md`
+- Ticket: `SYNTH-RETRIEVAL-GAP-DIAG-HOME` — [NHÀ] chẩn đoán truy hồi nhóm câu bị chặn. Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`.
+- `hang-cho`: (trống — điều phối xếp việc tiếp theo theo kết quả chẩn đoán).
+
+## Vé trước: SYNTH-REMEASURE-STABLE-HOME
 
 ## Vé hiện tại: SYNTH-REMEASURE-STABLE-HOME (đo lặp hai lượt để có con số chất lượng quyết định)
 
