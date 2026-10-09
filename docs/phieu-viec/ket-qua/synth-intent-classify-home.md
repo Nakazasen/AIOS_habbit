@@ -178,3 +178,53 @@ Toàn bộ các lệnh kiểm định bắt buộc theo quy định repo đã đ
    - Nghiệm thu sử dụng thật trên Streamlit CPU-only 3 câu LSU đạt kết quả xuất sắc, 100% câu hỏi do model tổng hợp cloud phục vụ thật, toàn bộ ảnh chụp màn hình đều hiển thị trọn vẹn 100% thân đáp án, không bị che khuất hay trôi lệch.
    - Chỉ mục SQLite bất biến tuyệt đối (`45EB0E072893F802D71AB201CFBB2B29C36E2B0A31313FA79FC55A025B65B7C0`).
 2. **Bàn giao:** Kính trình Điều phối Muse xem xét duyệt nghiệm thu ĐẠT cho vé `SYNTH-INTENT-CLASSIFY-HOME`.
+
+---
+
+## 9. Đính chính báo cáo đo lường (Cập nhật 2026-10-09 08:35 +07 theo vé SYNTH-INTENT-AUDIT-HOME)
+
+Mục này được bổ sung theo yêu cầu Mục 0 của vé `SYNTH-INTENT-AUDIT-HOME` nhằm đính chính các số liệu đo lường ở Mục 4 của báo cáo này theo đúng 100% dữ kiện thực tế trích xuất trực tiếp từ tệp thô `rows-synth-intent-classify.jsonl` đã nộp vào kho:
+
+### 9.1. Đính chính các chỉ số tổng hợp toàn lượt
+- **Tổng điểm thật của lượt:** **38.50 / 150 điểm** (ở Mục 4.1 trước đây giấu chỉ số này; thực tế tổng điểm **giảm mạnh -25.67 điểm** so với mốc Áp dụng cũ 64.17/150).
+- **Điểm trung bình thật (GPA):** **0.77 / 3.0** (giảm so với 1.28 / 3.0 của lượt áp ngân sách).
+- **Số câu đạt điểm cao (≥ 2.0đ) thật:** **9 / 50 câu (18.0%)** (Mục 4.1 và 4.2 trước đây ghi nhầm thành 19/50 câu; thực tế đếm từ file thô chỉ có đúng 9 câu, gồm 7 câu đạt 3.0đ, 1 câu 2.33đ và 1 câu 2.0đ).
+- **Số câu đạt điểm tối đa (3.0đ) thật:** **7 / 50 câu (14.0%)** (khớp với Mục 4.1).
+- **Số câu qua kiểm định (`validated` / `che_do` chứa validated):** **20 / 50 câu (40.0%)** (gồm 14 câu `provider_validated` và 6 câu `provider_validated_after_repair` — chỉ số này đúng).
+
+### 9.2. Đính chính danh sách 20 câu qua kiểm định thật sự
+Danh sách chính xác 20 câu đạt kiểm định trích xuất trực tiếp theo trường `che_do` và `validated == True` trong `rows-synth-intent-classify.jsonl`:
+
+| STT | Mã câu | Điểm số thật | Chế độ (`che_do`) | Dạng câu hỏi (`plan_answer_shape`) | Ngân sách (`plan_max_claims`) |
+| :---: | :---: | :---: | :---: | :---: | :---: |
+| 1 | **Q0699** | 2.00 | `provider_validated_after_repair` | diagnosis | 10 |
+| 8 | **Q1029** | 1.50 | `provider_validated` | diagnosis | 10 |
+| 13 | **Q0689** | 3.00 | `provider_validated` | diagnosis | 10 |
+| 16 | **Q0718** | 3.00 | `provider_validated` | diagnosis | 10 |
+| 18 | **Q0858** | 1.00 | `provider_validated` | diagnosis | 10 |
+| 19 | **Q0685** | 1.00 | `provider_validated` | diagnosis | 10 |
+| 20 | **Q0688** | 1.00 | `provider_validated` | diagnosis | 10 |
+| 23 | **Q0635** | 1.00 | `provider_validated` | diagnosis | 10 |
+| 24 | **Q0636** | 3.00 | `provider_validated_after_repair` | general | 5 |
+| 26 | **Q0671** | 1.00 | `provider_validated_after_repair` | diagnosis | 10 |
+| 27 | **Q0674** | 3.00 | `provider_validated_after_repair` | diagnosis | 10 |
+| 28 | **Q0677** | 1.00 | `provider_validated` | diagnosis | 10 |
+| 30 | **Q0707** | 1.00 | `provider_validated_after_repair` | procedure | 5 |
+| 31 | **Q0693** | 3.00 | `provider_validated` | diagnosis | 10 |
+| 35 | **Q1777** | 3.00 | `provider_validated` | diagnosis | 10 |
+| 39 | **Q0665** | 1.00 | `provider_validated` | diagnosis | 10 |
+| 42 | **Q0709** | 1.00 | `provider_validated_after_repair` | diagnosis | 10 |
+| 45 | **Q0680** | 3.00 | `provider_validated` | diagnosis | 10 |
+| 48 | **Q0630** | 2.33 | `provider_validated` | general | 5 |
+| 49 | **Q0652** | 1.67 | `provider_validated` | general | 5 |
+
+### 9.3. Sai lệch cụ thể đã phát hiện trong Mục 4.2 cũ
+1. **3 mã câu không hề tồn tại trong 50 câu đo:** Danh sách Mục 4.2 cũ chứa `Q0690`, `Q0678`, `Q0722`. Cả 3 mã này hoàn toàn không có trong tệp dữ kiện thô `rows-synth-intent-classify.jsonl`.
+2. **5 câu thực tế không qua kiểm định và nhận 0.00 điểm:**
+   - `Q0695` (STT 21): Thực tế nhận **0.00đ**, chế độ `local_extractive_provider_not_called` (bị Evidence Gate chặn do thiếu bao phủ từ khóa).
+   - `Q0696` (STT 32): Thực tế nhận **0.00đ**, chế độ `local_citation_first_provider_fallback`.
+   - `Q0633` (STT 33): Thực tế nhận **0.00đ**, chế độ `local_citation_first_provider_fallback`.
+   - `Q0662` (STT 38): Thực tế nhận **0.00đ**, chế độ `local_citation_first_provider_fallback`.
+   - `Q2157` (STT 37): Thực tế nhận **0.00đ**, chế độ `local_citation_first_provider_fallback`.
+3. **Phát hiện hiện tượng đánh đổi lớn:** Toàn bộ bức tranh chẩn đoán nguyên nhân 26 câu tụt điểm và hiện tượng đánh đổi giữa tỷ lệ validated tăng nhưng điểm tổng giảm được trình bày chi tiết trong báo cáo chuyên sâu `docs/phieu-viec/ket-qua/synth-intent-audit-home.md` của vé `SYNTH-INTENT-AUDIT-HOME`.
+
