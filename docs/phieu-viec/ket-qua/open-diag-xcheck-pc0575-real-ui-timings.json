@@ -1,0 +1,37 @@
+{
+  "thiet_bi": "KDTVN-PC0575",
+  "ngay_do": "2026-10-09",
+  "phuong_phap_do": "Bam that tren Chromium headless (Playwright) vao app Streamlit khoi dong sach port 8503 (lan 1 ket 120s -> khoi dong sach do lai), do tu click Mo so toi nut Hoi san sang; timeout lanh 300s, am 120s",
+  "tieu_chi_nghiem_thu": "Mo am <= 10 giay; mo lanh co phan ra khep kin",
+  "ket_qua": {
+    "so_mom_cold": {
+      "notebook_id": "mom_opcenter",
+      "thoi_gian_mo_so_giay": 98.0,
+      "ket_qua": "HIEN-NUT-HOI",
+      "anh_chup": "docs/phieu-viec/ket-qua/open-diag-xcheck-mom-after.png",
+      "kich_thuoc_anh_bytes": 83218
+    },
+    "so_mom_warm": {
+      "thoi_gian_mo_so_giay": 120.53,
+      "ket_qua": "KHONG-THAY-NUT-HOI-TimeoutError",
+      "anh_chup": "docs/phieu-viec/ket-qua/open-diag-xcheck-mom-warm.png",
+      "kich_thuoc_anh_bytes": 81116,
+      "notebook_id": "mom_opcenter"
+    },
+    "so_lsu_lan_1": {
+      "thoi_gian_mo_so_giay": 226.41,
+      "ket_qua": "HIEN-NUT-HOI",
+      "anh_chup": "docs/phieu-viec/ket-qua/open-diag-xcheck-lsu-after.png",
+      "kich_thuoc_anh_bytes": 67555,
+      "notebook_id": "NB-E35A7BEE"
+    },
+    "so_lsu_lan_2": {
+      "thoi_gian_mo_so_giay": 127.3,
+      "ket_qua": "KHONG-THAY-NUT-HOI-TimeoutError",
+      "anh_chup": "docs/phieu-viec/ket-qua/open-diag-xcheck-lsu-warm.png",
+      "kich_thuoc_anh_bytes": 0,
+      "notebook_id": "NB-E35A7BEE"
+    }
+  },
+  "danh_gia": "LECH so voi bao cao goc do may ban + lane ingest 421 ghi chi muc trong luc do (chi tiet muc 3/5 bao cao)."
+}

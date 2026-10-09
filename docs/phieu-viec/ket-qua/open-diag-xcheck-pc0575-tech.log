@@ -1,0 +1,53 @@
+[2026-10-09 15:25:33.235] =====================================================================
+[2026-10-09 15:25:33.237] KHỞI ĐỘNG CHUỖI ĐO PHÂN RÃ THỜI GIAN MỞ SỔ (APP-OPEN-DIAG-PC0575)
+[2026-10-09 15:25:33.238] Thời gian: 2026-10-09T15:25:33.238625
+[2026-10-09 15:25:33.240] Python interpreter: D:\Sandbox\AIOS_habbit\.venv\Scripts\python.exe (version 3.11.15)
+[2026-10-09 15:25:33.241] =====================================================================
+
+[2026-10-09 15:25:33.242] === BẮT ĐẦU ĐO: (a) Bấm vào sổ MOM - Mở lần đầu sau khởi động app (LẠNH) (Sổ: mom_opcenter, Lạnh: True) ===
+[2026-10-09 15:25:41.360]   [1] Tải / Khởi tạo trang: 8.1156s
+[2026-10-09 15:25:41.375]   [*] Đã làm sạch in-memory cache tiến trình (_INDEX_STATUS_MEMORY_CACHE.clear())
+[2026-10-09 15:25:41.378]   [2] Đọc metadata sổ (MOM / Opcenter): 0.0014s
+[2026-10-09 15:25:41.381]   [3] Liệt kê cuộc trò chuyện (13 cuộc): 0.0018s
+[2026-10-09 15:25:41.477]   [4] Truy vấn CSDL hội thoại (24 tin nhắn): 0.0948s
+[2026-10-09 15:25:47.747]   [5] Chuẩn bị/phạm vi nguồn (150 nguồn): 6.2691s
+[2026-10-09 15:25:47.796]   [6] Kiểm tra mô hình/worker nền (warmed=False): 0.0202s
+[2026-10-09 15:25:47.803]   [7] Dòng trạng thái kho: 0.0055s -> Kho đang dùng: library.sqlite · 889 tài liệu · 149.800 mảnh · mã 87a3626a85bc · ONNX fp32
+[2026-10-09 15:25:47.806]   [8] Các khâu khác (Memory, IDE pending requests): 0.0007s
+[2026-10-09 15:25:47.807] === KẾT THÚC (a) Bấm vào sổ MOM - Mở lần đầu sau khởi động app (LẠNH): TỔNG 14.5630s ===
+
+[2026-10-09 15:25:47.808] === BẮT ĐẦU ĐO: (b) Bấm vào sổ MOM - Mở lần thứ hai (ẤM) (Sổ: mom_opcenter, Lạnh: False) ===
+[2026-10-09 15:25:47.809]   [1] Tải / Khởi tạo trang: 0.0000s
+[2026-10-09 15:25:47.811]   [2] Đọc metadata sổ (MOM / Opcenter): 0.0014s
+[2026-10-09 15:25:47.815]   [3] Liệt kê cuộc trò chuyện (13 cuộc): 0.0014s
+[2026-10-09 15:25:47.818]   [4] Truy vấn CSDL hội thoại (24 tin nhắn): 0.0014s
+[2026-10-09 15:25:47.820]   [5] Chuẩn bị/phạm vi nguồn (150 nguồn): 0.0018s
+[2026-10-09 15:25:47.825]   [6] Kiểm tra mô hình/worker nền (warmed=False): 0.0033s
+[2026-10-09 15:25:47.830]   [7] Dòng trạng thái kho: 0.0037s -> Kho đang dùng: library.sqlite · 889 tài liệu · 149.800 mảnh · mã 87a3626a85bc · ONNX fp32
+[2026-10-09 15:25:47.831]   [8] Các khâu khác (Memory, IDE pending requests): 0.0005s
+[2026-10-09 15:25:47.833] === KẾT THÚC (b) Bấm vào sổ MOM - Mở lần thứ hai (ẤM): TỔNG 0.0237s ===
+
+[2026-10-09 15:25:47.835] === BẮT ĐẦU ĐO: (c1) Bấm vào sổ LSU (NB-E35A7BEE) - Lần đầu (sau khi MOM đã nạp) (Sổ: NB-E35A7BEE, Lạnh: False) ===
+[2026-10-09 15:25:47.836]   [1] Tải / Khởi tạo trang: 0.0000s
+[2026-10-09 15:25:47.838]   [2] Đọc metadata sổ (Điều tra lỗi LSU): 0.0013s
+[2026-10-09 15:25:47.841]   [3] Liệt kê cuộc trò chuyện (5 cuộc): 0.0014s
+[2026-10-09 15:25:47.843]   [4] Truy vấn CSDL hội thoại (72 tin nhắn): 0.0014s
+[2026-10-09 15:25:47.847]   [5] Chuẩn bị/phạm vi nguồn (494 nguồn): 0.0026s
+[2026-10-09 15:25:47.852]   [6] Kiểm tra mô hình/worker nền (warmed=False): 0.0040s
+[2026-10-09 15:25:47.858]   [7] Dòng trạng thái kho: 0.0038s -> Kho đang dùng: library.sqlite · 889 tài liệu · 149.800 mảnh · mã 87a3626a85bc · ONNX fp32
+[2026-10-09 15:25:47.860]   [8] Các khâu khác (Memory, IDE pending requests): 0.0006s
+[2026-10-09 15:25:47.861] === KẾT THÚC (c1) Bấm vào sổ LSU (NB-E35A7BEE) - Lần đầu (sau khi MOM đã nạp): TỔNG 0.0257s ===
+
+[2026-10-09 15:25:47.862] === BẮT ĐẦU ĐO: (c2) Bấm vào sổ LSU (NB-E35A7BEE) - Lần thứ hai (ẤM) (Sổ: NB-E35A7BEE, Lạnh: False) ===
+[2026-10-09 15:25:47.866]   [1] Tải / Khởi tạo trang: 0.0000s
+[2026-10-09 15:25:47.869]   [2] Đọc metadata sổ (Điều tra lỗi LSU): 0.0019s
+[2026-10-09 15:25:47.872]   [3] Liệt kê cuộc trò chuyện (5 cuộc): 0.0013s
+[2026-10-09 15:25:47.874]   [4] Truy vấn CSDL hội thoại (72 tin nhắn): 0.0013s
+[2026-10-09 15:25:47.878]   [5] Chuẩn bị/phạm vi nguồn (494 nguồn): 0.0027s
+[2026-10-09 15:25:47.886]   [6] Kiểm tra mô hình/worker nền (warmed=False): 0.0061s
+[2026-10-09 15:25:47.891]   [7] Dòng trạng thái kho: 0.0041s -> Kho đang dùng: library.sqlite · 889 tài liệu · 149.800 mảnh · mã 87a3626a85bc · ONNX fp32
+[2026-10-09 15:25:47.893]   [8] Các khâu khác (Memory, IDE pending requests): 0.0005s
+[2026-10-09 15:25:47.894] === KẾT THÚC (c2) Bấm vào sổ LSU (NB-E35A7BEE) - Lần thứ hai (ẤM): TỔNG 0.0293s ===
+
+[2026-10-09 15:25:47.900] Đã lưu kết quả đo đạc phân rã vào: D:\Sandbox\AIOS_habbit\docs\phieu-viec\ket-qua\open-diag-xcheck-pc0575-timings.json
+[2026-10-09 15:25:47.902] Đã lưu toàn văn log thô vào: D:\Sandbox\AIOS_habbit\docs\phieu-viec\ket-qua\open-diag-xcheck-pc0575-tech.log

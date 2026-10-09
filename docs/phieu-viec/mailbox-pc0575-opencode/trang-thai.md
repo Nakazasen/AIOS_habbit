@@ -1,6 +1,7 @@
 # Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
+- `ghi_chu` (tho opencode): 2026-10-09 16:27 +07 - xong ve `OPEN-DIAG-XCHECK-PC0575`: bao cao `docs/phieu-viec/ket-qua/open-diag-xcheck-pc0575.md` (test 13/13 PASS 128.4s; khau 7 0.0055s; rollback 146.1s OK; UI lanh 98/226s + 2 luot am ket do may ban va lane ingest 421 ghi DB luc 16:25; MD5 truoc 492c065f khop goc). Ket luan: lop sua dung, so dau-cuoi lech do dieu kien may. Xin dat `xong-cho-duyet`.
 - `ghi_chu` (tho opencode): 2026-10-09 16:05 +07 - UI that: MOM lanh 98.0s moi thay nut Hoi (anh that 83KB, noi dung so MOM day du) - LECH LON so voi tho chinh 3.02s do may ban; dang do not MOM am + LSU.
 - `ghi_chu` (tho opencode): 2026-10-09 15:48 +07 - giao dien that lan 1 KET: trang chu len, bam MOM nhung nut Hoi qua 120s chua hien (worker BGE ton CPU, may ban do tien trinh tho khac) - se khoi dong sach do lai voi timeout dai hon + chup bang chung. Khau 7 cache van nhanh o muc ky thuat.
 - `ghi_chu` (tho opencode): 2026-10-09 15:29 +07 - duong hoan lui OK: tat-cache bang AIOS_DISABLE...=1 do lai mo lanh 146.1s (ve muc cham nhu truoc sua, khong loi, dung 889/149800 ma 87a3626a85bc); MD5 sau do 492c065f KHOP truoc/sau. Tiep tuc nghiem thu giao dien that.
