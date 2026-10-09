@@ -1,8 +1,9 @@
-﻿# Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
+# Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
 ## Vé hiện tại: SYNTH-TERM-EXTRACT-FIX-HOME (sửa khâu tách thuật ngữ tiếng Việt)
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-09 23:20 +07 — Nhận vé SYNTH-TERM-EXTRACT-FIX-HOME: Cổng gate thông suốt (chỉ mục SQLite nguyên vẹn, các điều kiện sẵn sàng). Đã đính chính kích thước tệp kiểm toán vé trước vào kho (149.473 bytes). Bắt đầu Mục 1 khoanh vùng hàm tách thuật ngữ extract_content_terms và các hư từ tiếng Việt làm sai lệch độ phủ.
 - `ghi_chu` (verdict Muse): 2026-10-09 ~23:18 +07 — **ĐẠT** vé `SYNTH-EVIDENCE-GATE-AUDIT-HOME` + **PHÁT HÀNH** vé `SYNTH-TERM-EXTRACT-FIX-HOME` (prompt.md đã thay). Điều phối kiểm chứng độc lập: tự đối chiếu danh sách 7 câu chẩn đoán ngắn bị chặn trong báo cáo với dữ kiện thô của lượt đo gần nhất — cả 7 câu đều ở chế độ không được gọi mô hình với lý do độ phủ thuật ngữ không đủ, khớp tuyệt đối với tường thuật; kết luận giữ nguyên ngưỡng 0,60 là đúng dữ kiện vì mô phỏng hạ ngưỡng ở mọi mức đều thả lọt toàn bộ câu thiếu bằng chứng thật (tỉ lệ thả lọt sai 100%), và thợ đã thực hiện đúng điều khoản của vé là không áp thay đổi khi bước mô phỏng không sạch. Phát hiện phụ có giá trị nhất của vé: một ca oan có thật nằm ở khâu tách thuật ngữ — các hư từ tiếng Việt bị tính vào tập thuật ngữ độ phủ dù không bao giờ xuất hiện trong tài liệu kỹ thuật, làm một câu mất 3,0 điểm oan; vé sửa thuật ngữ được phát hành ngay để xử lý đúng khâu đó, với kiểm thử bảo vệ hai chiều bắt buộc (gỡ được ca oan nhưng 7 câu thiếu bằng chứng thật phải vẫn bị chặn). Một điểm trừ kỷ luật cần đính chính: kích thước tệp dữ kiện trong báo cáo ghi 152.097 byte, đo thật trên bản đã nộp vào kho là 149.473 byte — lại là lỗi đo trên bản chưa chuẩn hoá xuống dòng đã được nhắc nhiều lần trong ngày; thợ sửa con số này trong báo cáo bằng một commit đính chính kèm vé mới.
 - `bao_cao`: `docs/phieu-viec/ket-qua/synth-term-extract-fix-home.md`
 - Ticket: `SYNTH-TERM-EXTRACT-FIX-HOME` — [NHÀ] sửa khâu tách thuật ngữ. Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`.

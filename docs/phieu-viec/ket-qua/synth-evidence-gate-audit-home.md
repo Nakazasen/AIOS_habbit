@@ -8,7 +8,7 @@
   3. Mô phỏng trên dữ kiện có sẵn: nếu hạ ngưỡng độ phủ cho nhóm câu chẩn đoán ngắn xuống các mức ứng viên thì có bao nhiêu câu được thả, và trong số đó bao nhiêu câu thuộc nhóm "bằng chứng đủ", bao nhiêu câu thuộc nhóm "bằng chứng không đủ". Chỉ đề xuất mức ngưỡng khi mô phỏng cho thấy không thả lọt câu thiếu bằng chứng.
   4. Áp dụng điều khoản Bước 4 của vé: Nếu và chỉ nếu Bước 3 cho kết quả sạch mới áp thay đổi ngưỡng. Nếu Bước 3 không sạch: không áp gì cả, báo cáo kết luận giữ nguyên ngưỡng kèm dữ kiện.
 - **Tệp dữ kiện thô nộp kèm:**
-  - `docs/phieu-viec/ket-qua/ket-qua-synth-evidence-gate-audit-home.json` (152.097 bytes)
+  - `docs/phieu-viec/ket-qua/ket-qua-synth-evidence-gate-audit-home.json` (149.473 bytes đo trên bản nộp kho git blob size; 152.097 bytes trên đĩa Windows CRLF)
 - **Môi trường & Rào cứng:**
   - Python 3.11.14 (`cpython-3.11-windows-x86_64-none`), môi trường repo `AIOS_habbit` nhánh `phieu-viec/rag-fix1`.
   - Cổng kiểm chứng là cơ chế an toàn đóng kín (fail-closed): mọi thay đổi phải có dữ kiện mô phỏng chống lưng và khả năng hoàn lui.
@@ -225,7 +225,7 @@ Trường hợp mất 3.0 điểm của `Q0695` là ca oan có thật, nhưng ng
 
 | Tên tệp trong `docs/phieu-viec/ket-qua/` | Loại tệp | Kích thước thật trên đĩa (Bytes) | Mục đích & Nội dung |
 |:---|:---:|:---:|:---|
-| `ket-qua-synth-evidence-gate-audit-home.json` | JSON | **152.097** | Dữ liệu kiểm toán chi tiết 10 câu, mẩu bằng chứng trích lục và phân bố toàn cảnh 50 câu |
+| `ket-qua-synth-evidence-gate-audit-home.json` | JSON | **149.473** (đo git blob size nộp kho; 152.097 byte đĩa Windows CRLF) | Dữ liệu kiểm toán chi tiết 10 câu, mẩu bằng chứng trích lục và phân bố toàn cảnh 50 câu |
 | `synth-evidence-gate-audit-home.md` | Markdown | **24.783** | Báo cáo kiểm định toàn diện, phân tích bằng chứng bằng tay và chứng minh mô phỏng không sạch |
 
 ---
