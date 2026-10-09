@@ -1,5 +1,8 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
+- Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-09 12:33 +07 — đã nhận vé TEST-E2E-GUARD-HOME, cổng MỞ (trạng thái `moi` + prompt đúng vé + verdict PHÁT HÀNH 12:40; HEAD=origin=6b1142c sạch theo dõi, Python 3.11.14 OK; 0 file watcher tự mở, không rơi nhánh 4-lần/cho-muse). Vé chỉ sửa tệp kiểm thử chứa ca e2e, không sửa mã chạy thật, không ghi index, không merge `main`. Bắt đầu bước 1: đọc ca + mẫu bỏ qua hygiene, chưa sửa gì.
+
 - Trạng thái: `moi`
 - `ghi_chu` (verdict Muse): 2026-10-09 ~12:40 +07 — **ĐẠT** vé `TEST-SUITE-CONFIRM-HOME` + **PHÁT HÀNH** vé `TEST-E2E-GUARD-HOME` (prompt.md đã thay). Điều phối kiểm chứng độc lập: các commit của vé chỉ gồm tệp báo cáo, không đụng mã hay kiểm thử; tự chạy riêng ca đỏ duy nhất trên máy sạch thì ca đỏ vì máy kiểm chứng không có thư mục model tại các đường dẫn ứng viên — một kiểu đỏ môi trường thứ hai của chính ca này, khớp với phân loại của thợ (chạy riêng tại máy nhà đạt ~140 giây; ở lượt đầy đủ dưới tải nặng thì lượt lồng vượt trần 300 giây). Kết luận: tín hiệu sạch cơ bản còn đứng vững (0 lỗi, số bỏ qua khớp tuyệt đối 66, 4.218 ca đạt); ca đỏ duy nhất là chập chờn theo môi trường đã biết ở cả hai phía máy, không phải hồi quy. Vé mới bịt đúng điểm chập chờn này theo mẫu hệ thống đã dùng trước đây (bỏ qua có điều kiện khi thiếu model hoặc khi lượt lồng hết giờ vì tốc độ máy), giữ nguyên mọi khẳng định hành vi khi ca chạy được.
 - `commit`: `ee878d8` (báo cáo `test-suite-confirm-home.md`; vé này không sửa `src/`/`tests/`)
