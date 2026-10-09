@@ -25,18 +25,16 @@ Theo verdict của điều phối Muse tại vé `SYNTH-TERM-EXTRACT-FIX-HOME`:
 
 ## 2. Danh sách tệp dữ kiện và hình ảnh nộp kèm
 
-Các tệp được lưu trữ tại `docs/phieu-viec/ket-qua/`:
-- `ui-synth-term-extract-fix-redo-01-app-ready.png`: Ảnh chụp giao diện sẵn sàng khi mở ứng dụng (106.150 bytes, 1440x950).
-- `ui-synth-term-extract-fix-redo-02-cau1-q0695.png`: Ảnh chụp trọn thân câu 1 Q0695 (202.809 bytes, 1200x2870).
-- `ui-synth-term-extract-fix-redo-03-cau2-q0718.png`: Ảnh chụp trọn thân câu 2 Q0718 (33.177 bytes, 1200x510).
-- `ui-synth-term-extract-fix-redo-04-cau3-q0709.png`: Ảnh chụp trọn thân câu 3 Q0709 (73.798 bytes, 1200x1101).
-- `ui-synth-term-extract-fix-redo-cau1.json`: Dữ liệu chi tiết câu 1.
-- `ui-synth-term-extract-fix-redo-cau2.json`: Dữ liệu chi tiết câu 2.
-- `ui-synth-term-extract-fix-redo-cau3.json`: Dữ liệu chi tiết câu 3.
-- `ui-synth-term-extract-fix-redo-summary.json`: Tóm tắt tổng thể phiên nghiệm thu.
-- `ui-synth-term-extract-fix-redo.md`: Chính tệp báo cáo này.
-
-*(Lưu ý: Kích thước blob trên kho git sẽ được đo và ghi nhận chính xác sau khi commit).*
+Các tệp được lưu trữ tại `docs/phieu-viec/ket-qua/` (đo kích thước blob chuẩn hoá qua `git cat-file -s`):
+- `docs/phieu-viec/ket-qua/ui-synth-term-extract-fix-redo-01-app-ready.png`: **106.150 bytes** (1440x950 px)
+- `docs/phieu-viec/ket-qua/ui-synth-term-extract-fix-redo-02-cau1-q0695.png`: **202.809 bytes** (1200x2870 px)
+- `docs/phieu-viec/ket-qua/ui-synth-term-extract-fix-redo-03-cau2-q0718.png`: **33.177 bytes** (1200x510 px)
+- `docs/phieu-viec/ket-qua/ui-synth-term-extract-fix-redo-04-cau3-q0709.png`: **73.798 bytes** (1200x1101 px)
+- `docs/phieu-viec/ket-qua/ui-synth-term-extract-fix-redo-cau1.json`: **4.425 bytes**
+- `docs/phieu-viec/ket-qua/ui-synth-term-extract-fix-redo-cau2.json`: **1.149 bytes**
+- `docs/phieu-viec/ket-qua/ui-synth-term-extract-fix-redo-cau3.json`: **1.877 bytes**
+- `docs/phieu-viec/ket-qua/ui-synth-term-extract-fix-redo-summary.json`: **8.296 bytes**
+- `docs/phieu-viec/ket-qua/ui-synth-term-extract-fix-redo.md`: **13.310 bytes**
 
 ---
 
