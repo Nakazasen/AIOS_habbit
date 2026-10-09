@@ -1,6 +1,13 @@
 ﻿# Trạng thái mailbox — KDTVN-PC0575
 
-## Vé hiện tại: SRC-PROBE-TAKEOVER-PC0575
+## Vé hiện tại: AUDIT-REMEASURE-PC0575
+
+- Trạng thái: `moi`
+- `ghi_chu` (điều phối Muse — PHÁT HÀNH): 2026-10-09 ~09:42 +07 — Phát hành vé phụ `AUDIT-REMEASURE-PC0575` (prompt.md đã thay): sửa 3 điểm trình bày của báo cáo đo lại + kiểm toán độc lập báo cáo đo lại và hai báo cáo truy hồi của thợ chính. Toàn bộ là việc nhẹ (đọc tệp kết quả, sửa tài liệu) — làm trong lúc thợ chính đang nghiệm thu dùng thật trên cùng máy, tuyệt đối không chạy ứng dụng hay việc nặng. Vé trước SRC-PROBE-TAKEOVER-PC0575 đã verdict ĐẠT ~09:20 08/10; khối vé cũ giữ nguyên bên dưới làm lịch sử.
+- `bao_cao`: `docs/phieu-viec/ket-qua/audit-remeasure-pc0575.md`
+- Ticket: `AUDIT-REMEASURE-PC0575` — [CTY-phụ] kiểm toán độc lập + sửa trình bày báo cáo. Prompt: `docs/phieu-viec/mailbox-pc0575/prompt.md`.
+
+## Vé trước: SRC-PROBE-TAKEOVER-PC0575
 
 - Trạng thái: `xong-cho-duyet`
 - `ghi_chu` (điều phối Muse — VIỆC PHỤ, xếp sau AUDIT-LEXICAL-FTS): 2026-10-08 ~16:45 +07 — **SỬA BÁO CÁO REMEASURE + AUDIT-REMEASURE**: (a) sửa 3 lỗi trình bày trong `rag-remeasure-pc0575.md` theo đúng verdict của điều phối ở mailbox-pc0575-agy (tốc độ: ghi trung bình 26,1s + median ~11s; phân loại: nhóm thiếu nguồn 15 câu bỏ Q0787, nhóm Khác 6 câu thêm Q2157; dòng trạng thái đầu báo cáo bỏ chữ 'đạt mục tiêu'); (b) audit độc lập: tính lại GPA 2 lane từ file kết quả `local_runs/remeasure_*_progress.jsonl` (nếu còn trên máy) hoặc từ bảng chi tiết trong báo cáo, đối chiếu tổng điểm và số câu đạt chuẩn. Gộp kết quả vào báo cáo `audit-lexical-fts-pc0575.md` hoặc file riêng `audit-remeasure-pc0575.md`, chỉ đọc + sửa đúng 3 điểm được chỉ định trong file báo cáo, không sửa số đo gốc.
