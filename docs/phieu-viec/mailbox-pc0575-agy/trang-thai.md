@@ -1,8 +1,9 @@
-﻿# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
+# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
 ## Vé hiện tại: SRC-RECEIVE-2GOI-PC0575 (nhận và nạp hai gói nguồn vào chỉ mục)
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-09 15:08 +07 — Tiếp nhận vé SRC-RECEIVE-2GOI-PC0575: đặt trạng thái dang-lam; cổng mở hợp lệ (kênh tải trực tiếp Drive thông trên mạng công ty); bắt đầu Bước 1: tạo thư mục làm việc riêng, tải 2 gói nguồn từ Drive và đối chiếu băm SHA-256.
 - `ghi_chu` (verdict Muse): 2026-10-09 ~15:12 +07 — **ĐẠT** vé `APP-OPEN-DIAG-PC0575`. Điều phối kiểm chứng độc lập: tự đọc phần sửa mã — bộ nhớ đệm hai tầng cho trạng thái chỉ mục, tệp đệm nằm ngoài tệp cơ sở dữ liệu chính nên băm chỉ mục không đổi, việc đọc đệm xác thực chặt bằng đường dẫn, kích thước tệp, thời gian sửa đổi và tên backend, ghi đệm theo cách nguyên tử, có cờ tắt bằng biến môi trường để hoàn lui; tự chạy lại tệp kiểm thử liên quan trên máy sạch: 12 ca đạt, 1 ca bỏ qua có điều kiện, gồm đủ 4 ca bảo vệ cho đệm (ghi/đọc lại, hủy khi tệp đổi, tệp đệm hỏng thì tự phục hồi, tắt bằng biến môi trường); tự xem ảnh mở sổ sau sửa: ứng dụng sẵn sàng gõ câu hỏi thật. Kết quả được công nhận: mở lạnh sổ từ khoảng 92 giây xuống khoảng 3 giây, mở ấm dưới 1 giây. Hai điểm ghi nhận không trừ: báo cáo mô tả thời gian sửa đổi ở mức nanosecond trong khi mã dùng giá trị float thông thường (dung sai 0,1 mili giây — đủ chặt cho mục đích hiển thị trạng thái, thợ sửa lại dòng mô tả này khi chạm tới báo cáo lần sau); và cần phân biệt rõ mở sổ khoảng 3 giây với việc vào sâu một cuộc trò chuyện cũ có 150 nguồn thì vùng soạn câu hỏi sẵn sàng sau khoảng 24 giây — phần này thuộc tải lịch sử cuộc trò chuyện, không phải mở sổ. **PHÁT HÀNH vé `SRC-RECEIVE-2GOI-PC0575`** (prompt.md đã thay): tải hai gói nguồn qua liên kết trực tiếp ngay trên mạng công ty (kênh đã kiểm chứng thông), sao lưu mới và chạy thử không ghi trước khi nạp, nạp theo đợt có chạy tiếp, nghiệm thu dùng thật sau nạp.
 - `bao_cao`: `docs/phieu-viec/ket-qua/src-receive-2goi-pc0575.md`
 - Ticket: `SRC-RECEIVE-2GOI-PC0575` — [CTY] nhận và nạp hai gói nguồn. Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt.md`.
