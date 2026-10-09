@@ -1,0 +1,43 @@
+{
+  "thiet_bi": "KDTVN-PC0575",
+  "he_dieu_hanh": "Windows 11, Python 3.11, CPU-only",
+  "ngay_do": "2026-10-09",
+  "phuong_phap_do": "Thao tác người dùng thật qua trình duyệt Chromium tự động hóa bằng Playwright, đo thời gian từ khi click nút 'Mở sổ' tại trang danh mục cho tới khi sổ mở ra hoàn tất có nội dung sổ, danh sách cuộc trò chuyện và ô nhập câu hỏi sẵn sàng",
+  "tieu_chi_nghiem_thu": "<= 10 giây cho lần mở ấm; lần mở lạnh có phân rã khép kín (giảm từ 127s xuống phạm vi chấp nhận được)",
+  "ket_qua": {
+    "so_mom_cold_start": {
+      "notebook_id": "mom_opcenter",
+      "ten_so": "MOM / Opcenter",
+      "thoi_gian_mo_so_giay": 3.02,
+      "thoi_gian_san_sang_chat_giay": 23.96,
+      "trang_thai": "ĐẠT NGHIỆM THU (giảm 81% so với 127s trước sửa)",
+      "anh_chup": "docs/phieu-viec/ket-qua/app-open-diag-mom-after.png",
+      "kich_thuoc_anh_bytes": 86853
+    },
+    "so_mom_warm_switch": {
+      "notebook_id": "mom_opcenter",
+      "ten_so": "MOM / Opcenter",
+      "thoi_gian_mo_so_giay": 0.57,
+      "trang_thai": "ĐẠT NGHIỆM THU (<= 10s)",
+      "anh_chup": "docs/phieu-viec/ket-qua/app-open-diag-mom-warm.png",
+      "kich_thuoc_anh_bytes": 65903
+    },
+    "so_lsu_warm_switch_lan_1": {
+      "notebook_id": "NB-E35A7BEE",
+      "ten_so": "Điều tra lỗi LSU",
+      "thoi_gian_mo_so_giay": 1.06,
+      "trang_thai": "ĐẠT NGHIỆM THU (<= 10s)",
+      "anh_chup": "docs/phieu-viec/ket-qua/app-open-diag-lsu-after.png",
+      "kich_thuoc_anh_bytes": 57279
+    },
+    "so_lsu_warm_switch_lan_2": {
+      "notebook_id": "NB-E35A7BEE",
+      "ten_so": "Điều tra lỗi LSU",
+      "thoi_gian_mo_so_giay": 0.55,
+      "trang_thai": "ĐẠT NGHIỆM THU (<= 10s)",
+      "anh_chup": "docs/phieu-viec/ket-qua/app-open-diag-lsu-warm.png",
+      "kich_thuoc_anh_bytes": 58415
+    }
+  },
+  "danh_gia_tong_the": "ĐẠT XUẤT SẮC - Thời gian mở sổ lạnh giảm từ 127s/92.65s xuống 3.02s (mở sổ) và 23.96s (sẵn sàng toàn bộ hội thoại); các lần mở ấm đều hoàn tất từ 0.55s đến 1.06s (vượt xa tiêu chuẩn <= 10s của phiếu việc)."
+}
