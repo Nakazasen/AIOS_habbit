@@ -20,7 +20,7 @@
   - `docs/phieu-viec/ket-qua/ui-synth-term-extract-fix-69cca0f-cau2.json`: **1.387 bytes**
   - `docs/phieu-viec/ket-qua/ui-synth-term-extract-fix-69cca0f-cau3.json`: **1.396 bytes**
   - `docs/phieu-viec/ket-qua/ui-synth-term-extract-fix-69cca0f-summary.json`: **5.121 bytes**
-  - `docs/phieu-viec/ket-qua/synth-term-extract-fix-home.md`: **19.860 bytes**
+  - `docs/phieu-viec/ket-qua/synth-term-extract-fix-home.md`: **19.939 bytes**
 - **Môi trường & Rào cứng:**
   - Python 3.11.14 (`cpython-3.11-windows-x86_64-none`), môi trường repo `AIOS_habbit` nhánh `phieu-viec/rag-fix1`.
   - Giữ nguyên 100% ngưỡng an toàn `min_final_evidence_term_coverage = 0.60` trong `evidence.py`.
