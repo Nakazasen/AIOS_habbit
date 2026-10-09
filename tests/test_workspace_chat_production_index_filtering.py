@@ -9,6 +9,11 @@ Validates:
 from pathlib import Path
 import pytest
 
+from aios_habit.rag_v2 import (
+    RagV2DevConfig,
+    RagV2DevPipeline,
+    SourceSpec,
+)
 from aios_habit.index_domain import (
     get_domain_document_ids,
     load_all_index_specs,
@@ -209,3 +214,57 @@ def test_notebook_short_circuits_while_temporary_enqueues_together(tmp_path: Pat
     )
     assert statuses.get("notebook:nb_src_joint") == adapter.PREP_STATE_READY
     assert statuses.get("temporary:temp_src_joint") == adapter.PREP_STATE_PENDING
+
+
+def test_pipeline_read_only_vs_mutable_missing_source_file_behavior(tmp_path: Path) -> None:
+    """Verifies pipeline behavior for indexed sources whose original file is missing from disk:
+    1. In mutable mode (index_read_only=False): prepare() reports status='missing',
+       and query() sets expected fingerprint to '__source_unavailable__'.
+    2. In read-only mode (index_read_only=True): prepare() recognizes the document from index
+       (status='unchanged'), and query() retrieves successfully without requiring raw file on disk.
+    """
+    runtime = tmp_path / "runtime"
+    source_file = tmp_path / "manual.txt"
+    source_file.write_text("Hướng dẫn bảo trì động cơ bước và laser scanner unit.", encoding="utf-8")
+    source = SourceSpec(source_file, document_id="doc_manual_001")
+
+    # Step 1: Ingest into index in mutable mode
+    cfg_mutable = RagV2DevConfig(runtime_root=runtime, index_read_only=False, max_chunk_chars=120)
+    with RagV2DevPipeline(cfg_mutable) as p_mut:
+        ingest_rep = p_mut.ingest([source])
+        assert ingest_rep.indexed_chunk_count > 0
+
+    # Step 2: Delete original file from disk (simulating deployment without raw sources)
+    source_file.unlink()
+    assert not source_file.is_file()
+
+    # Step 3: Test mutable mode (index_read_only=False) -> MUST retain legacy missing behavior
+    with RagV2DevPipeline(cfg_mutable) as p_mut:
+        ingest_rep_mut = p_mut.ingest([source])
+        assert len(ingest_rep_mut.items) == 1
+        assert ingest_rep_mut.items[0].status == "failed"
+        assert "source_unavailable" in ingest_rep_mut.items[0].warning_codes
+
+        # Query in mutable mode with missing file abstains due to __source_unavailable__
+        query_res = p_mut.query("động cơ bước", [source])
+        assert query_res.evidence_pack.item_count == 0
+        assert "stale_fingerprint_excluded_all_chunks" in query_res.evidence_pack.insufficiency_reasons
+
+    # Step 4: Test read-only mode (index_read_only=True) -> retrieves from index, treated as unchanged
+    cfg_readonly = RagV2DevConfig(
+        runtime_root=runtime,
+        index_read_only=True,
+        ensure_embeddings_on_open=False,
+        max_chunk_chars=120,
+    )
+    with RagV2DevPipeline(cfg_readonly) as p_ro:
+        ingest_rep_ro = p_ro.ingest([source])
+        assert len(ingest_rep_ro.items) == 1
+        assert ingest_rep_ro.items[0].status == "unchanged"
+        assert ingest_rep_ro.items[0].chunk_count > 0
+
+        # Query in read-only mode successfully finds evidence from library.sqlite
+        query_res_ro = p_ro.query("động cơ bước", [source])
+        assert query_res_ro.evidence_pack.item_count > 0
+        assert query_res_ro.evidence_pack.items[0].document_id == "doc_manual_001"
+

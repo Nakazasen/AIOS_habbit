@@ -1,0 +1,248 @@
+[
+  {
+    "id": "CAU_1_LSU_C7620",
+    "title": "Câu 1 - Khối tri thức LSU: Mã lỗi C7620",
+    "question": "Mã lỗi C7620 trên dòng máy Sirius 2 là lỗi gì, nguyên nhân và cách khắc phục theo tài liệu?",
+    "domain": "lsu",
+    "notebook_id": "NB-E35A7BEE",
+    "notebook_title": "Điều tra lỗi LSU",
+    "conversation_id": "conv_eval_stage2_4ab582cb",
+    "trace_id": "trc_e77478634773",
+    "success": true,
+    "elapsed_seconds": 466.47,
+    "error_message": null,
+    "retrieval_summary": "",
+    "domain_routing": {},
+    "summary_count": 0,
+    "top_source_titles": [],
+    "source_provenance_evidence": [
+      {
+        "title": "Sirius 2 _ C7620_報告版 4.pptx",
+        "location_info": "Slide 11",
+        "score": 17.75,
+        "text_excerpt": "Sirius 2 C7620 +90 +45 0 -45 -90 Sirius 2 Bowskew JIG _ Ligh Path （副走査方向ー光路高さ） MAX 1.07 0.58 -0.49 Bk との差分 M_SIM あり 平均値 平均値 C7620 と BEAM 径が読み込めない問題と光路高さの関係 光路高さが 1.24 以上の場合 Camera の読み込める範囲から外れ 光路高さが 1"
+      },
+      {
+        "title": "Sirius 2 _ C7620_報告版 4.pptx",
+        "location_info": "Slide 2",
+        "score": 16.0,
+        "text_excerpt": "2 Sirius 2 C7620 発生状況 : 調整工程 発生状況：色補正後に、 Bk に対する副走査方向の色差値が 70dot 以上 発生 LINE ： C23/24 ：２月１９日→ NG 率が同じ傾向→同時に上昇 発生色： Magenta 発生状況 :LSU LINE 発生状況： Bowskew 調整治具で調整開始時に、 光路高さがさらにプラス側にずれたため、 Camera -90 が Bea"
+      },
+      {
+        "title": "Sirius 2 _ C7620_報告版 4.pptx",
+        "location_info": "Slide 10",
+        "score": 17.0,
+        "text_excerpt": "Sirius 2 C7620 +90 +45 0 -45 -90 C7620 と BEAM 径が読み込めない問題と光路高さの関係 光路高さが 1.24 以上の場合 Camera の読み込める範囲から外れ 光路高さが 1.15 以上の場合 C7620 発生可能性があり ● ： C7620 機の LSU ● ： Ligh Path よみこめないレベル ● ： SIM あり ●： BK の Ligh p"
+      },
+      {
+        "title": "sirius2 beam径確認_240202.xlsx",
+        "location_info": "Sheet: 整理, ô A4:C7",
+        "score": 1.5,
+        "text_excerpt": "Sheet: 整理\nColumns: 状況 | Column B | Column C\nRow 4:  | 1 | JP QAによるSirius2 Printer 26ppm, 21ppm画像評価において、Green Half画像の主走査方向濃度むらが指摘あり\nRow 5:  |  | (Green Half画像｜Lineで出力していない画像)\nRow 6:  | 2 | LSUをJP側でNano"
+      },
+      {
+        "title": "Sirius2_7620.xlsx",
+        "location_info": "Sheet: 7月のTiming値の推移, ô A7619:F7626",
+        "score": 4.0,
+        "text_excerpt": "Sheet: 7月のTiming値の推移\nColumns: Timing: Magenta[mm] | Timing: Yellow[mm] | Timing: Black[mm] | Timing: Cyan[mm] | M-K | Y-K\nRow 7619: 0.143 | 0.131 | -0.669 | -0.585 | =A7618-C7618 | =B7618-C7618\nRow 76"
+      },
+      {
+        "title": "siriud2調整治具_2号機_240411.pptx",
+        "location_info": "Slide 2",
+        "score": 0.5520934829037125,
+        "text_excerpt": "Black 2 ©20 24 KYOCERA Document Solutions Inc. Sirisu2 BEAM 調整治具 確認状況 ■対応内容 1, 2 号機 Beam 径相関実施（ 2Unit で相関取り実施） ①後、 Serial 185, 186 を組立し、調整状態確認 オレンジ： VN 治具 1 号機 青： VN 治具 2 号機 ※ 主走査 Beam 径 -75 mm -45 mm"
+      },
+      {
+        "title": "Dữ liệu tổng hợp CaV2 (1241).xlsx",
+        "location_info": "Sheet: Sheet1, ô A13:BQ13",
+        "score": 0.14668723204749978,
+        "text_excerpt": "40.52576264 | 98.3 | -35.1 | -51.3 | 78.4 |  |  | 5.02 | 53.75 | 3064 | 1922 | 3058 | 1919 |  |  |  | # | 153 | 100 | 98 | 148 | 99 | 132 | 133 | 157 | 134.7 | 1.1 | -13.1 | 117.8 | ## | 2910 | 1884 |"
+      },
+      {
+        "title": "61C1065D8513_B4_Bow_Skew.xlsm",
+        "location_info": "Sheet: 2XC_Bowskew , ô E112076:V112077",
+        "score": 0.13207449730621412,
+        "text_excerpt": "Sheet: 2XC_Bowskew \nColumns: Beam:V:LD1 | Column B | Column C | Column D | Column E | Column F | Column G | Column H | Column I | Column J | Column K | Column L | Column M | Column N | Column O | Colu"
+      },
+      {
+        "title": "61C1065D8513_B4_Bow_Skew.xlsm",
+        "location_info": "Sheet: 2XC_Bowskew , ô E92076:V92079",
+        "score": 0.13078462963587056,
+        "text_excerpt": "Sheet: 2XC_Bowskew \nColumns: Beam:H:LD3 | Column B | Column C | Column D | Column E | Column F | Column G | Column H | Column I | Column J | Column K | Column L | Column M | Column N | Column O | Colu"
+      },
+      {
+        "title": "61C1065D8513_B4_Bow_Skew.xlsm",
+        "location_info": "Sheet: 2XC_Bowskew , ô E57618:V57621",
+        "score": 0.12508242173471973,
+        "text_excerpt": "Sheet: 2XC_Bowskew \nColumns: Beam:V:LD2 | Column B | Column C | Column D | Column E | Column F | Column G | Column H | Column I | Column J | Column K | Column L | Column M | Column N | Column O | Colu"
+      }
+    ],
+    "verbatim_answer": "Dựa trên các nguồn tài liệu được cung cấp, tôi có thể trả lời về mã lỗi C7620 trên dòng máy Sirius 2 như sau:\n\n## Mã lỗi C7620 là gì:\nTheo NGUỒN 2, mã lỗi C7620 xảy ra trong quá trình điều chỉnh (調整工程) với các đặc điểm:\n- Phát sinh sau khi hiệu chỉnh màu (色補正後)\n- Giá trị chênh lệch màu theo hướng phụ quét (副走査方向) so với màu đen (Bk) từ 70dot trở lên\n- Màu phát sinh: Magenta\n- Xảy ra trên LINE C23/24 từ ngày 19 tháng 2\n\n## Nguyên nhân:\nTheo NGUỒN 1 và NGUỒN 3, nguyên nhân chính liên quan đến **độ cao đường ánh sáng (光路高さ)**:\n\n1. **Khi độ cao đường ánh sáng ≥ 1.24**: Camera không thể đọc được do nằm ngoài phạm vi đọc\n2. **Khi độ cao đường ánh sáng ≥ 1.15**: Có khả năng phát sinh C7620\n3. **Trường hợp cụ thể**: Trong quá trình điều chỉnh Bowskew, độ cao đường ánh sáng bị lệch thêm về phía dương, khiến Camera -90 không thể đọc được vị trí Beam\n\nTheo NGUỒN 2, tình trạng này cũng xảy ra tại LSU LINE, đặc biệt là LSU (Magenta) với tỷ lệ NG cao:\n- LOT 5.3.2023: 20/90 = 22% UNIT NG\n- LOT 4.3.2025: 2/84 = 2% UNIT NG  \n- LOT 6.3.2025: 2/90 = 2% UNIT NG\n\n## Cách khắc phục:\nTheo NGUỒN 1, phương pháp khắc phục được đề xuất:\n\n1. **Sử dụng SIM (shim)**: Dán SIM lên LSU để điều chỉnh độ cao đường ánh sáng\n2. **Kết quả cải thiện**: \n   - Trước khi dán SIM: Chênh lệch với Bk là 1.07mm\n   - Sau khi dán SIM: Chênh lệch giảm xuống 0.58mm (cải thiện khoảng 0.5mm)\n3. **Mục tiêu**: Giảm độ cao đường ánh sáng/Light Path xuống 0.8mm để loại bỏ C7620 ERROR\n4. **Dự kiến**: Sử dụng đồ gá LSU sẽ không phát sinh ERROR\n\n**Lưu ý quan trọng**: Bạn nên kiểm tra lại thông tin này trước khi sử dụng vì tài liệu có thể chưa đầy đủ hoặc cần được xác minh thêm từ các nguồn khác.\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng.",
+    "cagent_endpoint": "https://kdtvn-ai.cmcts.vn/api/v1/prediction/1881aa32-c996-4e6f-9257-78246177ba9f",
+    "timestamp": "2026-10-09 11:19:05 +07:00"
+  },
+  {
+    "id": "CAU_2_AUTO_TOANKHO",
+    "title": "Câu 2 - Chế độ Tự động: Toàn kho 889 tài liệu",
+    "question": "Tổng hợp các vấn đề lỗi chính trên line sản xuất LSU theo các báo cáo điều tra?",
+    "domain": "auto",
+    "notebook_id": "NB-E35A7BEE",
+    "notebook_title": "Điều tra lỗi LSU",
+    "conversation_id": "conv_eval_stage2_c5ca7ec2",
+    "trace_id": "trc_0cd643a83f5b",
+    "success": true,
+    "elapsed_seconds": 126.26,
+    "error_message": null,
+    "retrieval_summary": "",
+    "domain_routing": {},
+    "summary_count": 0,
+    "top_source_titles": [],
+    "source_provenance_evidence": [
+      {
+        "title": "Loi KDTPS.xlsx",
+        "location_info": "Sheet: History KDTPS, ô L10151:AC10151",
+        "score": 0.6102255098682553,
+        "text_excerpt": "画像検査時に発生 | *HT : NTT khi in tờ MONO , Check Black , LSU SKEW - > hình ảnh có vạch ngang Màu K | ＋LOG取得済み ＋直前画像確認：問題なし ＋LSU Unit要因 →製造技術 調査中 APC基板によるエラーの再現。 → 電気技術 調査中 → U1,U2 LD driver不良。 JP側は引き続き調査する"
+      },
+      {
+        "title": "Loi KDTPS.xlsx",
+        "location_info": "Sheet: History KDTPS, ô L12172:AC12172",
+        "score": 0.6407778626354518,
+        "text_excerpt": "| *Xác nhận : -Đã thu hồi đủ 3 PCS UNIT LSU trong cùng thùng LSU lỗi ( 1 thùng có 4 pcs LSU ) -LSU phát sinh lỗi ở khay cuối cùng *Triển khai ngang C34 , C35 *Kiểm tra trên LINE : -C33: 0/16 UNIT NG ,"
+      },
+      {
+        "title": "Loi KDTPS.xlsx",
+        "location_info": "Sheet: History KDTPS, ô L7020:AC7020",
+        "score": 25.0,
+        "text_excerpt": "出荷設定の時に発生 | TLXH NG Hiện trạng: NTT thực hiên TLXH -> Màn hình PC hiển thị NG (Print margin Adjustment - Left margin) | ＋ログ取得済み →ラインアウト →製造技術 製造技術の調査内容： RC9検査OKの機械のLSU＋NGの本体：全ての調整検査作業実施、画像、出荷設定：OK NGの"
+      },
+      {
+        "title": "Tài liệu đào tạo LSU_2019.01.18_K.pptx",
+        "location_info": "Slide 25",
+        "score": 16.0,
+        "text_excerpt": "2020/8/14 3-7 Điều chỉnh đường sáng ảnh Điều chỉnh đường sáng ảnh Theo thiết kế quang học có bao gồm đường sáng dài và ngắn, đường sáng càng dài thì vị trí đường sáng chiếu lên ảnh càng dễ bị lệch. Vớ"
+      },
+      {
+        "title": "RE_ Iris LSU Beam径NG多発　異常品質会議2回目.msg",
+        "location_info": "",
+        "score": 12.0,
+        "text_excerpt": "izerId=05272035-b530-41c6-9e63-c45dd5e0ccd3&tenantId=8f7079a2-fa50-494e-b2ba-80399fa89532&threadId=19_meeting_ZWU2NTAyMzEtOWQ4MC00NjA3LWJiZWEtNzlkYjE1ODc5NWI3@thread.v2&messageId=0&language=ja-JP> ___"
+      },
+      {
+        "title": "Iris2020_Cコール自己診断.xlsx",
+        "location_info": "Sheet: JP",
+        "score": 0.6418294728996858,
+        "text_excerpt": "Sheet: JP\nRow 1871: 番号 | 143 |  | \nRow 1872: 現象1 | 現象2 | 条件1 | 条件2\nRow 1873: C7942：LSU EEPROM異常2 | 2箇所読み込みしたデータが8回連続して一致しない。書き込みデータと読み込みデータが8回連続して一致しない。 | 対象：カラー40枚機以上 <br>・備考：M/Kアクセス異常時に点灯 | \nRow 187"
+      },
+      {
+        "title": "Iris2020_Cコール自己診断.xlsx",
+        "location_info": "Sheet: JP, ô A1860:D1869",
+        "score": 0.6344126357441316,
+        "text_excerpt": "Sheet: JP\nRow 1860: 番号 | 142 |  | \nRow 1861: 現象1 | 現象2 | 条件1 | 条件2\nRow 1862: C7941：LSU EEPROM異常 | 2箇所読み込みしたデータが8回連続して一致しない。書き込みデータと読み込みデータが8回連続して一致しない。 | 備考：カラー35枚機以上の場合、C/Yアクセス異常時に点灯 | \nRow 1863: No "
+      },
+      {
+        "title": "【Iris2020】全体配線図_モノクロ_DMT機 MONO.xlsx",
+        "location_info": "Sheet: 2 LSU",
+        "score": 16.0,
+        "text_excerpt": "Sheet: 2 LSU\nColumns: 1 > 2 > 3\nRow 11: 4\nRow 12: 5\nRow 13: 6\nRow 14: 7\n\nSheet: 2 LSU\nColumns: 1 > 2 > 3\nRow 15: 8\nRow 16: 9\nRow 17: 10\nRow 18: 11\n\nSheet: 2 LSU\nColumns: 1 > 2 > 3\nRow 19: 12\nRow 20: 1"
+      },
+      {
+        "title": "Iris2020_Cコール自己診断.xlsx",
+        "location_info": "Sheet: VN, ô A1864:D1867",
+        "score": 15.0,
+        "text_excerpt": "Sheet: VN\nRow 1864: 1 | Reset nguồn điện chính | Dữ liệu EEPROM của LSU bất thường | Yêu cầu tắt nguồn điện và nguồn điện chính. Sau 5s, yêu cầu bật nguồn điện chính và nguồn điện\nRow 1865: 2 | Xác nh"
+      },
+      {
+        "title": "【Iris2020】全体配線図_モノクロ_DMT機 MONO.xlsx",
+        "location_info": "Sheet: 2 LSU",
+        "score": 14.0,
+        "text_excerpt": "Sheet: 2 LSU\nColumns: YC7 > S3B-ZR-SM4A-TF(LF)(SN) > TH\nHeader row 128: YC7\nHeader row 129: S3B-ZR-SM4A-TF(LF)(SN)\nHeader row 130: TH\n\nSheet: 2 LSU\nColumns: 1 > 2 > 3\nHeader row 130: 1\nHeader row 131:"
+      }
+    ],
+    "verbatim_answer": "Dựa trên các báo cáo điều tra được cung cấp, tôi có thể tổng hợp các vấn đề lỗi chính trên line sản xuất LSU như sau:\n\n## Các vấn đề lỗi chính trên line sản xuất LSU:\n\n### 1. Lỗi hình ảnh và chất lượng in\n- **Vạch ngang màu K**: Khi in tờ MONO, Check Black, LSU SKEW xuất hiện hình ảnh có vạch ngang màu K\n- **Lỗi TLXH (Print margin Adjustment)**: Màn hình PC hiển thị NG với lỗi Left margin\n- **LSU SKEW**: Vấn đề độ lệch đường sáng trái phải\n\n### 2. Lỗi linh kiện điện tử\n- **Lỗi LD driver**: Linh kiện U1, U2 LD driver bị lỗi, được xác định là nguyên nhân gây lỗi do bản mạch APC\n- **LSU EEPROM bất thường**: Mã lỗi C7941, C7942 - dữ liệu đọc/ghi không khớp sau 8 lần liên tiếp\n- **Lỗi Beam径NG**: Vấn đề về đường kính beam laser\n\n### 3. Lỗi cơ khí và làm sạch\n- **LSU 清掃モーター異常 (C4600)**: Lỗi motor làm sạch LSU bị khóa\n- **LSU タイプミスマッチ異常 (C4801)**: Máy bản thể và LSU không tương thích\n\n### 4. Vấn đề kết nối và điện\n- **Lỗi kết nối FFC**: Các đầu nối FFC và dây điện không được kết nối đúng cách\n- **Lỗi kết nối giữa các bản mạch**: APC基板（LSU） - エンジン基板, Video基板, Main基板\n\n### 5. Vấn đề chất lượng sản xuất\n- **Lỗi BEAM FRONT**: Phát sinh trong quá trình sản xuất\n- **Vấn đề tiêu cự**: Vị trí tiêu cự khác nhau theo từng độ phóng đại của UNIT\n- **Lỗi đơn phát**: Một số trường hợp được đánh giá là phát sinh đơn phát\n\n### 6. Tình trạng xử lý\n- Đa số các trường hợp đã được **Close** sau khi điều tra\n- Một số trường hợp chuyển cho **電気技術** (Kỹ thuật điện) và **製造技術** (Kỹ thuật sản xuất) tiếp tục điều tra\n- Phía JP (Nhật Bản) tiếp tục theo dõi và điều tra các vấn đề phức tạp\n\n**Lưu ý**: Owner cần kiểm tra lại thông tin trước khi sử dụng vì dữ liệu được tổng hợp từ các báo cáo có thể chưa đầy đủ hoặc cần cập nhật thêm.\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng.",
+    "cagent_endpoint": "https://kdtvn-ai.cmcts.vn/api/v1/prediction/1881aa32-c996-4e6f-9257-78246177ba9f",
+    "timestamp": "2026-10-09 11:21:11 +07:00"
+  },
+  {
+    "id": "CAU_3_MOM_OPCENTER",
+    "title": "Câu 3 - Khối tri thức MOM: Quy trình xử lý bất thường Opcenter",
+    "question": "Hệ thống MOM Opcenter có những quy trình thao tác chuẩn nào khi xảy ra sự cố trên chuyền?",
+    "domain": "mom",
+    "notebook_id": "mom_opcenter",
+    "notebook_title": "MOM / Opcenter",
+    "conversation_id": "conv_eval_stage2_1ba3f05b",
+    "trace_id": "trc_15ef6cf921c3",
+    "success": true,
+    "elapsed_seconds": 75.87,
+    "error_message": null,
+    "retrieval_summary": "",
+    "domain_routing": {},
+    "summary_count": 0,
+    "top_source_titles": [],
+    "source_provenance_evidence": [
+      {
+        "title": "wsc-50e045acef39dbcd38aff8fb.txt",
+        "location_info": "",
+        "score": 15.0,
+        "text_excerpt": "MOM Control PLC Hệ thống xung quanh MOM Hệ thống hiện tại R3 Vị trí Line sản xuất System Phát hành lệnh sản xuất APS ⊸Lập kế hoạh công đoạn Bảng liên kết lệnh Bắt đầu lắp ráp Lắp ráp Điều chỉnh／Kiểm t"
+      },
+      {
+        "title": "wsc-0e3642278207c7c84eba8acd.txt",
+        "location_info": "",
+        "score": 11.0,
+        "text_excerpt": "mcenter rồi đăng ký dưới dạng BOP. BOP sẽ thực hiện liên kết MOM sang Opcenter theo đơn vị ECN (thông báo thay đổi), cập nhật kế hoạch công đoạn và thực hiện chế tạo. Quản lý sản xuất PLM Opcenter MOM"
+      },
+      {
+        "title": "wsc-0e3642278207c7c84eba8acd.txt",
+        "location_info": "",
+        "score": 7.0,
+        "text_excerpt": "1\"> Workflow (Lưu trình công đoạn) <a:bodyPr rot=\"0\" spcFirstLastPara=\"0\" vert=\"horz\" wrap=\"square\" lIns=\"0\" tIns=\"0\" rIns=\"0\" bIns=\"0\" numCol=\"1\" spcCol=\"0\" rtlCol=\"0\" fromWordArt=\"0\" anchor=\"ctr\" an"
+      },
+      {
+        "title": "wsc-f5317d657bb48200fe0fa217.txt",
+        "location_info": "",
+        "score": 5.0,
+        "text_excerpt": "Slide text: <p:sld xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" xmlns:p=\"http://schemas.openxmlformats."
+      },
+      {
+        "title": "wsc-015a1b6d9a94dc147ca10588.txt",
+        "location_info": "",
+        "score": 6.0,
+        "text_excerpt": "©2025 KYOCERA Document Solutions Inc.7 OPCENTER Connect MOM(CNMOM) CN4T OPCENTER EX CR Manufacturing WIP トラッキング 系譜管理 仕様 ワークフロー管理 リーンフロー 工程データ収集 リワーク・返品管理 装置・資産トラッキング ディスパッチ管理 手順電子管理 電子承認 作業者管理 保守管理 ラベ"
+      },
+      {
+        "title": "wsc-e84bb328ced276d4ec291a7b.txt",
+        "location_info": "",
+        "score": 18.0,
+        "text_excerpt": "m] D78=(3) | E78=Truy cập Windows E79=① | F79=ctrlMode F80=・ | G80=Cấu hình xem việc giao tiếp (SLMP) có khả thi với hệ thống cấp cao hơn (MOM) và thiết bị hay không. H81=0: | I81=Chế độ sản xuất tự đ"
+      },
+      {
+        "title": "wsc-2d528c22ed8a8466fba9c9bd.txt",
+        "location_info": "",
+        "score": 20.0,
+        "text_excerpt": "mục lục 11. Chế độ thủ công Chương này không liên quan đến việc tích hợp với hệ thống cấp cao hơn (MOM). Phần này giải thích quy trình lái xe ở chế độ số sàn. 【quan trọng】 Chế độ thủ công là một chức "
+      },
+      {
+        "title": "wsc-2d528c22ed8a8466fba9c9bd.txt",
+        "location_info": "",
+        "score": 18.0,
+        "text_excerpt": "(3) Truy cập Windows ①ctrlMode ・Cấu hình xem việc giao tiếp (SLMP) có khả thi với hệ thống cấp cao hơn (MOM) và thiết bị hay không. 0: Chế độ sản xuất tự động (đã kích hoạt giao tiếp) 1: Chế độ thủ cô"
+      },
+      {
+        "title": "wsc-f287d46f33966942d7ee887c.txt",
+        "location_info": "",
+        "score": 7.0,
+        "text_excerpt": "Slide text: <p:sld xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" xmlns:p=\"http://schemas.openxmlformats."
+      },
+      {
+        "title": "wsc-2d528c22ed8a8466fba9c9bd.txt",
+        "location_info": "",
+        "score": 26.0,
+        "text_excerpt": "mục lục 10. Khôi phục lỗi (khởi động lại) Chương này mô tả quy trình khắc phục khi xảy ra lỗi AGV. [Chính sách cơ bản khi trở về] Tùy thuộc vào hướng di chuyển (tiến, lùi hoặc rẽ), nên quay lại đoạn đ"
+      }
+    ],
+    "verbatim_answer": "Dựa trên các nguồn tài liệu được cung cấp, tôi có thể tìm thấy một số thông tin về quy trình thao tác khi xảy ra sự cố trong hệ thống MOM Opcenter, tuy nhiên thông tin chưa đầy đủ và chi tiết.\n\nTừ các nguồn tài liệu, tôi tìm thấy các thông tin sau:\n\n**1. Quy trình khôi phục lỗi (từ NGUỒN 10 - wsc-2d528c22ed8a8466fba9c9bd.txt):**\n- Khi xảy ra lỗi AGV, có quy trình khắc phục cụ thể\n- Chính sách cơ bản: \"Tùy thuộc vào hướng di chuyển (tiến, lùi hoặc rẽ), nên quay lại đoạn đường ray thẳng an toàn\"\n- Các quy trình khắc phục lỗi chỉ nên được thực hiện sau khi người vận hành đã xác định được vị trí khắc phục an toàn\n- Khi xảy ra lỗi, thông tin lỗi sẽ được hiển thị trên màn hình với mã lỗi và thông báo lỗi\n- Cần điều tra nguyên nhân dựa trên thông tin lỗi\n\n**2. Chế độ thủ công khi có sự cố (từ NGUỒN 7, 8 - wsc-2d528c22ed8a8466fba9c9bd.txt):**\n- Có chế độ thủ công cho phép vận hành trực tiếp mà không cần phối hợp với hệ thống cấp cao hơn (MOM)\n- Chế độ này chỉ nên được thực hiện bởi nhân viên kỹ thuật sản xuất hoặc nhân viên bảo trì thiết bị\n- Cần chuyển lại sang chế độ sản xuất tự động sau khi hoàn thành tác vụ\n\n**3. Cấu hình chế độ điều khiển (từ NGUỒN 6, 8):**\n- ctrlMode: 0 = Chế độ sản xuất tự động (đã kích hoạt giao tiếp), 1 = Chế độ thủ công (chặn liên lạc)\n\nTuy nhiên, **thông tin chưa đủ** để mô tả đầy đủ các quy trình thao tác chuẩn khi xảy ra sự cố trên chuyền trong hệ thống MOM Opcenter. Các nguồn tài liệu chủ yếu tập trung vào lỗi AGV và chế độ thủ công, nhưng không có thông tin chi tiết về:\n- Quy trình xử lý sự cố chung trên chuyền sản xuất\n- Các bước cụ thể khi phát hiện sự cố\n- Quy trình báo cáo và leo thang sự cố\n- Các thao tác khắc phục cụ thể trong MOM Opcenter\n\n**Khuyến nghị:** Owner nên kiểm tra lại và bổ sung thêm tài liệu về quy trình xử lý sự cố tổng thể trong hệ thống MOM Opcenter trước khi sử dụng thông tin này.\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng.",
+    "cagent_endpoint": "https://kdtvn-ai.cmcts.vn/api/v1/prediction/1881aa32-c996-4e6f-9257-78246177ba9f",
+    "timestamp": "2026-10-09 11:22:27 +07:00"
+  }
+]

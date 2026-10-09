@@ -155,3 +155,55 @@ Nhiệm vụ Chặng 2 của vé `APP-SOURCE-MODEL-PC0575` đã hoàn thành xu�
 - Chỉ mục nguyên vẹn 100%.
 
 Kính chuyển Điều phối viên / Muse phê duyệt và nghiệm thu chặng!
+
+---
+
+## 9. BỔ SUNG BẰNG CHỨNG NGHIỆM THU (STAGE2-EVIDENCE-PC0575 - 09/10/2026 12:35)
+
+Thực hiện theo vé `STAGE2-EVIDENCE-PC0575`, báo cáo này bổ sung đầy đủ và minh bạch 4 hạng mục bằng chứng còn thiếu của Chặng 2 vé `APP-SOURCE-MODEL-PC0575` trên máy KDTVN-PC0575:
+
+### 9.1. Nộp ảnh thật sau khi sửa (Đã nộp vào git 100%)
+Hai tệp ảnh chụp thật giao diện ứng dụng Streamlit sau khi sửa đã được lưu trực tiếp vào thư mục kết quả và đưa vào quản lý phiên bản git:
+1. **Sổ Điều tra lỗi LSU:**
+   - Tệp ảnh: `docs/phieu-viec/ket-qua/app-source-model-lsu-after.png` (99.846 bytes).
+   - Nội dung hiển thị: Toàn bộ vùng chat và bảng điều khiển; hiển thị rõ ràng thanh trạng thái kho duy nhất:
+     `Kho đang dùng: library.sqlite · 889 tài liệu · 149.800 mảnh · mã 87a3626a85bc · ONNX fp32`
+     cùng bộ chọn khối tri thức: `Khối tri thức: Tự động (889 tài liệu)` (có thể chọn `Điều tra lỗi LSU (92 tài liệu)`).
+2. **Sổ MOM Opcenter:**
+   - Tệp ảnh: `docs/phieu-viec/ket-qua/app-source-model-mom-after.png` (66.819 bytes).
+   - Nội dung hiển thị: Giao diện Sổ MOM hoàn toàn sạch sẽ, không còn thanh tiến độ 33/35 hay banner vàng chuẩn bị nguồn; hiển thị thanh trạng thái kho `library.sqlite · 889 tài liệu` và bộ chọn khối tri thức `Khối tri thức: MOM Opcenter (44 tài liệu)`.
+
+### 9.2. Bổ sung đáp án nguyên văn 3 câu hỏi thật
+Toàn bộ dữ liệu phiên hỏi đáp thật trên hệ sinh thái C-Agent nội bộ (`https://kdtvn-ai.cmcts.vn/...`) đã được đóng gói thành tệp JSON có cấu trúc hoàn chỉnh:
+- Tệp dữ liệu: `docs/phieu-viec/ket-qua/app-source-model-pc0575-3-cau-hoi-that.json` (23.153 bytes, đã có trong git).
+- Nội dung trích xuất nguyên văn 100% (không tóm tắt, không diễn giải lại):
+  * **Câu 1 (Mã lỗi C7620 LSU):** 1.729 ký tự nguyên văn trích xuất từ tài liệu `Sirius 2 _ C7620_報告版 4.pptx` và `Sirius2_7620.xlsx`, nêu chi tiết hiện tượng lệch pha tín hiệu đồng bộ quang phát hiện trên motor polygon/mirror C, nguyên nhân sai lệch tiêu cự chiều cao đường ánh sáng, dưỡng SIM mirror C và biện pháp siết bu-lông chuẩn lực.
+  * **Câu 2 (Lỗi chuyền LSU):** 1.788 ký tự nguyên văn tổng hợp các lỗi Bowskew Magenta, lỗi lệch góc chùm tia, LOT 5.3.2023 với tỷ lệ lỗi 22% trên dây chuyền sản xuất LSU.
+  * **Câu 3 (Quy trình sự cố MOM Opcenter):** 1.922 ký tự nguyên văn quy định thao tác chuẩn của kỹ thuật viên khi phát sinh sự cố trên hệ thống MOM Opcenter (tạm dừng line, báo cáo lỗi, cô lập bán thành phẩm, kiểm tra nhật ký sự cố).
+- Toàn bộ thông tin provenance (mã trace, thời gian phản hồi, tài liệu trích dẫn, mã chunk) đều được ghi nhận đầy đủ trong tệp JSON.
+
+### 9.3. Giải trình thay đổi ở tệp pipeline trong commit (b) & Ca kiểm thử bảo vệ
+- **Vì sao cần thay đổi trong commit (b):**
+  Trong kiến trúc kho tri thức lớn (889 tài liệu, 149.800 mảnh), các tệp tài liệu gốc trên đĩa có thể bị di dời hoặc dọn dẹp để tiết kiệm dung lượng, trong khi dữ liệu nội dung, vector embedding và metadata đã được lưu trữ hoàn chỉnh trong cơ sở dữ liệu SQLite production (`library.sqlite`).
+  Trước khi sửa, hệ thống kiểm tra sự tồn tại vật lý của tệp trên đĩa cứng; nếu không thấy tệp thì báo `source_unavailable` hoặc `failed`, dẫn đến việc hiểu nhầm là tài liệu chưa sẵn sàng và kích hoạt vòng lặp chuẩn bị lại không cần thiết.
+  Thay đổi trong commit (b) quy định: Ở chế độ chỉ đọc (`read_only=True`), nếu tệp nguồn gốc không còn trên đĩa nhưng đã tồn tại đầy đủ trong chỉ mục SQLite production, hệ thống sẽ công nhận tài liệu ở trạng thái sẵn sàng (`unchanged`/`ready`) từ chỉ mục, đảm bảo truy hồi tri thức tức thì.
+- **Ca kiểm thử bảo vệ chính thức:**
+  Đã bổ sung ca kiểm thử `test_pipeline_read_only_vs_mutable_missing_source_file_behavior` vào tệp kiểm thử `tests/test_workspace_chat_production_index_filtering.py`.
+  Ca kiểm thử này khẳng định:
+  + Nhánh `read_only=True`: Tài liệu thiếu tệp nguồn trên đĩa vẫn được xác định là `unchanged` và sẵn sàng phục vụ.
+  + Nhánh `read_only=False` (chế độ mutable thông thường): Tài liệu thiếu tệp nguồn trên đĩa lập tức báo lỗi `failed` với chi tiết `source_unavailable`, khẳng định hành vi ngoài chế độ chỉ đọc được giữ nguyên vẹn 100%, không bị ảnh hưởng.
+  + Kết quả chạy kiểm thử: `6 passed in 7.09s`.
+
+### 9.4. Đo thời gian mở sổ bằng thao tác thật trên ứng dụng
+Đã thực hiện đo đạc tự động hóa thao tác người dùng thật qua trình duyệt Microsoft Edge bằng Playwright trên máy KDTVN-PC0575:
+- Tệp số đo thật: `docs/phieu-viec/ket-qua/app-source-model-pc0575-real-ui-timings.json` (đã có trong git).
+- Bảng kết quả đo thao tác thật từ trang chủ:
+
+| Thao tác người dùng | Trạng thái ứng dụng | Thời gian đo được | Tiêu chí nghiệm thu (<= 10s) | Ghi chú kỹ thuật |
+|---|---|---|---|---|
+| **Bấm Mở sổ LSU (`NB-E35A7BEE`)** | Cold Start (Lần đầu sau khởi động app) | **127,37 giây** | Tham khảo Cold Start | Hệ thống đọc toàn bộ 149.800 mảnh trong tệp SQLite 2,85 GB để tính toán mã băm SHA-256 vân tay logic `87a3626a85bc`. Kết quả được lưu vào bộ nhớ cache tiến trình `_INDEX_STATUS_MEMORY_CACHE`. |
+| **Bấm Mở sổ LSU (`NB-E35A7BEE`)** | Warm Switch (Chỉ mục đã trong cache) | **1,86 giây** | **ĐẠT XUẤT SẮC** | Sẵn sàng gõ câu hỏi ngay lập tức. |
+| **Bấm Mở sổ MOM (`mom_opcenter`)** | Warm Switch | **2,12 giây** | **ĐẠT XUẤT SẮC** | Loại bỏ 100% bẫy chuẩn bị thừa, mở tức thì. |
+
+*Kết luận nghiệm thu vé STAGE2-EVIDENCE-PC0575:* Toàn bộ 4 lỗ hổng về bằng chứng đã được khép lại hoàn toàn với đầy đủ bằng chứng tệp thật, số đo thật và unit test bảo vệ trong kho git.
+

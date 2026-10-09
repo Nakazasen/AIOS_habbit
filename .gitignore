@@ -88,6 +88,8 @@ local_cases/
 !examples/**/*.png
 !examples/**/*.jpg
 !examples/**/*.jpeg
+!docs/phieu-viec/ket-qua/*.png
+!docs/phieu-viec/ket-qua/**/*.png
 # Synthetic test fixtures are sample data, not real plant data. Without these
 # negations the *.csv/*.xlsx rules above strip them from every clone and the
 # LSU/chart-selector tests fail with FileNotFoundError.
