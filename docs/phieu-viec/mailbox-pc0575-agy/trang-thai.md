@@ -1,15 +1,14 @@
-﻿# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
+# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
 ## Vé hiện tại: STAGE2-EVIDENCE-PC0575 (bổ sung bằng chứng cho chặng 2)
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-09 11:04 +07 — Tiếp nhận vé STAGE2-EVIDENCE-PC0575: Cổng mở hợp lệ (mạng vn-kdwireless kết nối tốt, C-Agent HTTP 200, sidecar direct_ready). Đặt trạng thái dang-lam; bắt đầu thực thi 4 hạng mục bổ sung bằng chứng: (1) nộp ảnh thật sau sửa (khắc phục .gitignore chặn *.png và nộp file thật vào kho); (2) bổ sung tệp dữ kiện và đáp án nguyên văn 3 câu hỏi thật; (3) giải trình thay đổi pipeline commit (b) và bổ sung unit test bảo vệ; (4) khởi động lại app và đo thời gian mở sổ thao tác thật.
 - `ghi_chu` (verdict Muse): 2026-10-09 ~11:05 +07 — **CHƯA ĐẠT** vé `APP-SOURCE-MODEL-PC0575` chặng 2 ở phần bằng chứng nghiệm thu (phần việc chính có tín hiệu tốt, giữ nguyên). Điều phối tự kiểm chứng: (1) hai tệp ảnh sau khi sửa mà báo cáo ghi đã nộp kèm kích thước cụ thể (31.138 và 31.708 byte) KHÔNG tồn tại trong kho — ảnh trước khi sửa có thật, ảnh sau không có; không chấp nhận số liệu cho tệp không tồn tại. (2) Ba câu hỏi thật chỉ có nội dung tóm tắt tự viết, không có đáp án nguyên văn nên không kiểm chứng được chất lượng, và lỗi đường chat cùng lỗi dịch vụ chưa có bằng chứng dùng thật là đã hết. (3) Thời gian mở sổ đo bằng script ở tầng sau, không phải thao tác thật trên ứng dụng sau khi khởi động lại như vé gốc yêu cầu — các con số 0,90 giây và 2,86 giây chưa được công nhận là nghiệm thu dùng thật. (4) Commit (b) có thay đổi ở tệp pipeline mà báo cáo không khai; điều phối đã tự đọc, thay đổi phục vụ cơ chế chỉ đọc — cần giải trình và kiểm thử bảo vệ chính thức. Phần ghi nhận đạt: chỉ mục nguyên vẹn tuyệt đối; phần code lọc theo khối chạy đạt khi điều phối chạy lại trên máy sạch (4 đạt, 1 bỏ qua có điều kiện). **PHÁT HÀNH vé bổ sung `STAGE2-EVIDENCE-PC0575`** (prompt.md đã thay). Vé xếp sẵn trong hộp thư và chạy khi trần model của tài khoản dùng chung mở lại theo lệnh user.
-- `bao_cao`: bổ sung vào `docs/phieu-viec/ket-qua/app-source-model-pc0575-stage2.md`
+- `bao_cao`: `docs/phieu-viec/ket-qua/app-source-model-pc0575-stage2.md`
 - Ticket: `STAGE2-EVIDENCE-PC0575` — [CTY] bổ sung bằng chứng chặng 2. Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt.md`.
 
 ## Vé trước: APP-SOURCE-MODEL-PC0575 chặng 2
-
-## Vé hiện tại: APP-SOURCE-MODEL-PC0575
 
 - Trạng thái: `xong-cho-duyet`
 - `commit`: `9805b6de`
