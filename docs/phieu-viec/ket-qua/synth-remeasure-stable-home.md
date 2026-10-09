@@ -30,7 +30,7 @@
   - `docs/phieu-viec/ket-qua/ui-synth-redo-cau2-q0718.json`: **1.458 bytes**
   - `docs/phieu-viec/ket-qua/ui-synth-redo-cau3-q0709.json`: **2.115 bytes**
   - `docs/phieu-viec/ket-qua/ui-synth-redo-summary.json`: **8.064 bytes**
-  - `docs/phieu-viec/ket-qua/synth-remeasure-stable-home.md`: *(sẽ cập nhật sau commit)*
+  - `docs/phieu-viec/ket-qua/synth-remeasure-stable-home.md`: **23.703 bytes**
 - **Trạng thái:** `HOÀN THÀNH - NỘP XONG-CHO-DUYET`.
 
 ---
