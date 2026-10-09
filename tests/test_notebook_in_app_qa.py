@@ -34,10 +34,10 @@ def mock_llm_env(monkeypatch, provider="openai_compatible", url="http://localhos
     monkeypatch.setenv("AIOS_LLM_LOCALITY", locality)
 
 def test_in_app_qa_blocks_cloud_local_export(monkeypatch):
-    # TEST-SUITE-HYGIENE-HOME: quyet dinh chu so huu 2026-09-29 (`f27081d`,
-    # DATA_POLICY.md) da go chan gui local_only len provider. Cloud + export
-    # local tu dong doi sang cloud_safe (`notebook_qa.py:213`) va an noi dung
-    # local_only trong prompt (khong chan som, khong goi provider that).
+    # TEST-SUITE-HYGIENE-HOME: owner decision 2026-09-29 (`f27081d`,
+    # DATA_POLICY.md) lifted the local_only provider block. Cloud + local
+    # export now auto-switches to cloud_safe (`notebook_qa.py:213`) with
+    # local_only content redacted in the prompt (no early block, mocked LLM).
     mock_llm_env(monkeypatch, locality="cloud")
 
     sent_prompt = None

@@ -765,9 +765,9 @@ class TestAntigravityBridgeCallsAndRouting:
     """Stress tests on bridge calling, privacy enforcement, and route_workspace_chat_submission."""
 
     def test_call_antigravity_bridge_privacy_guard(self, monkeypatch) -> None:
-        # TEST-SUITE-HYGIENE-HOME: quyet dinh chu so huu 2026-09-29 (`941c31c`,
-        # DATA_POLICY.md) da go chan local_only — cau noi phai thu goi thay vi
-        # chan som. Mock transport de test hermetic (khong phu thuoc DNS mang).
+        # TEST-SUITE-HYGIENE-HOME: owner decision 2026-09-29 (`941c31c`,
+        # DATA_POLICY.md) lifted the local_only block — the bridge must attempt
+        # the call instead of short-circuiting. Mock the transport for hermeticity.
         attempts: list = []
 
         def fake_urlopen(req, timeout=None):

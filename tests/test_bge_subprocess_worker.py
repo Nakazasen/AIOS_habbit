@@ -295,11 +295,10 @@ def test_bge_subprocess_worker_crash_handling() -> None:
 
 
 def test_query_never_starts_worker_and_reuses_explicit_worker(monkeypatch, tmp_path) -> None:
-    # TEST-SUITE-HYGIENE-HOME: bo qua co dieu kien khi timeout do tai may
-    # (full suite song song). Ly do: lexical that tren may nay 2,7-13,6s/ca,
-    # full suite de nhieu worker song song gay qua han 30s mac dinh; chay le
-    # test van xanh (40s). Khong che lap loi chuc nang — chi bo qua khi ma loi
-    # dung la bge_worker_query_timeout (fail-closed dung), kem ly do.
+    # TEST-SUITE-HYGIENE-HOME: conditional skip on host-load timeouts (parallel
+    # full suite). Real lexical queries take 2.7-13.6 s here and parallel
+    # workers can exceed the 30 s default; the test passes alone (40 s). Only
+    # the exact fail-closed timeout code skips — never mask real failures.
     document = tmp_path / "source.txt"
     document.write_text("WARM-101 is indexed before query.", encoding="utf-8")
     config = RagV2DevConfig(runtime_root=tmp_path / "runtime", retrieval_profile="lexical")

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import hashlib
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -99,8 +99,24 @@ def _render(outcome) -> str:
     return chat_action.render_outcome(outcome)
 
 
-def _sha(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+def _dump_logical(db_path: Path) -> list:
+    # Logical content snapshot: immune to WAL storage churn (checkpoint page
+    # moves change file bytes without changing any row).
+    con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    try:
+        tables = [
+            row[0]
+            for row in con.execute(
+                "SELECT name FROM sqlite_master "
+                "WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+            )
+        ]
+        return [
+            (table, sorted((tuple(r) for r in con.execute(f'SELECT * FROM "{table}"')), key=repr))
+            for table in tables
+        ]
+    finally:
+        con.close()
 
 
 def test_builtin_registry_includes_interview_module():
@@ -177,11 +193,14 @@ def test_topic_filter_excludes_other_sessions(tmp_path):
 
 
 def test_dispatch_is_read_only(tmp_path):
+    # TEST-SUITE-HYGIENE-HOME: compare logical rows, not raw file bytes. WAL
+    # storage churn (checkpoint page moves during import) changes the SHA
+    # without changing any row — diagnosed 2026-10-09: 28/28 tables identical.
     db_path = _seed_store(tmp_path)
-    before = _sha(db_path)
+    before = _dump_logical(db_path)
     before_files = {path.name for path in tmp_path.iterdir()}
     _ask(QUESTION, db_path)
-    assert _sha(db_path) == before
+    assert _dump_logical(db_path) == before
     assert {path.name for path in tmp_path.iterdir()} == before_files
 
 

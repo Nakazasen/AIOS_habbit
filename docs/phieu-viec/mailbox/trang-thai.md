@@ -1,6 +1,7 @@
 ﻿# Trạng thái mailbox
 
 - Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-09 07:38 +07 — OMP mốc: **chẩn đoán + sửa xong 2 ca mới** — interview SHA: nội dung 28 bảng giống hệt, chỉ WAL churn đổi byte (`load_builtin_actions` import visual_maps sau expert_interview checkpoint 192KB) → so sánh logic thay SHA file, 12/12 xanh; slow 600s: pip offline full-RAG quá chậm trên máy (đỏ cả khi chạy lẻ) → skip chỉ khi đúng TimeoutExpired + comment tiếng Anh. Đang chạy suite cuối chốt số.
 - `ghi_chu`: 2026-10-09 06:54 +07 — OMP mốc: **full chốt xong 2 failed / 4216 passed / 65 skipped (34 phút)** — 23 ca vé đã hết (0 failed/0 errors cũ; skipped tăng đúng 19+1 điều kiện), nhưng lòi **2 ca mới ngoài bảng kê**: `test_dispatch_is_read_only` (SHA DB đổi sau dispatch — đỏ cả khi chạy lẻ) + `test_clean_machine_full_isolated_venv_installation` (timeout 600s khi máy tải nặng). Theo vé: DỪNG chẩn đoán, không sửa che lấp. Đang truy gốc 2 ca mới.
 - `ghi_chu`: 2026-10-09 06:20 +07 — OMP mốc: **nhóm đụng xanh 36 passed / 19 skipped + cổng sạch** (compileall OK, `cli audit` PASS, import app OK, `diff src/` rỗng). Đang chạy full suite chốt số cuối (~22 phút) rồi viết báo cáo.
 - `ghi_chu`: 2026-10-09 06:15 +07 — OMP mốc: **sửa xong hết 23 ca** — 19 thiếu tệp thành skip có điều kiện; 2 test lạc hậu privacy cập nhật theo quyết định gỡ chặn 29/9 (`941c31c`/`f27081d`); kho máy 889→quan hệ (auto bao hết, miền rời nhau, tổng khớp); BGE flaky thành skip khi đúng mã timeout tải nặng. Compile sạch, `diff src/` rỗng. Đang chạy lại nhóm đã đụng.

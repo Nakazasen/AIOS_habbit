@@ -37,12 +37,12 @@ ALL_SOURCES = [
 
 @pytest.fixture(scope="module")
 def conn():
-    # TEST-SUITE-HYGIENE-HOME: skip co dieu kien khi tep nguon cua may khac vang mat.
-    # Khi tep co mat, test chay that nhu cu (khong bo qua vo dieu kien).
+    # TEST-SUITE-HYGIENE-HOME: conditional skip when another machine's source
+    # files are absent. When present, tests run for real (never skipped blindly).
     missing = [str(path) for path, _ in ALL_SOURCES if not path.exists()]
     if missing:
         pytest.skip(
-            "thieu tep nguon cua may khac (AIOS_DATA_DIR=%s): %s"
+            "source files of another machine are missing (AIOS_DATA_DIR=%s): %s"
             % (DATA, "; ".join(missing))
         )
     c = sqlite3.connect(":memory:")

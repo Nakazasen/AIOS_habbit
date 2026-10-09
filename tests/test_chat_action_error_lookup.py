@@ -42,8 +42,8 @@ REAL_CODES = ["F000", "C7620", "C3200", "C4701", "C0030"]
 
 @pytest.fixture(scope="module")
 def real_db(tmp_path_factory):
-    # TEST-SUITE-HYGIENE-HOME: skip co dieu kien khi tep nguon cua may khac vang mat.
-    # Khi tep co mat, test chay that nhu cu (khong bo qua vo dieu kien).
+    # TEST-SUITE-HYGIENE-HOME: conditional skip when another machine's source
+    # files are absent. When present, tests run for real (never skipped blindly).
     _need = [
         HISTORY_XLSX,
         f"{DATA_ROOT}/Bang ma loi/02XC_功能定義書_JAM一覧 (1).xls",
@@ -52,7 +52,7 @@ def real_db(tmp_path_factory):
     _missing = [p for p in _need if not os.path.exists(p)]
     if _missing:
         pytest.skip(
-            "thieu tep nguon cua may khac: %s" % "; ".join(_missing)
+            "source files of another machine are missing: %s" % "; ".join(_missing)
         )
     db_path = tmp_path_factory.mktemp("b1") / "error_cases_real.db"
     conn = connect(str(db_path))

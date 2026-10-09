@@ -47,10 +47,9 @@ def test_domain_document_map_counts() -> None:
 
 
 def test_production_index_specs_retrieval() -> None:
-    # TEST-SUITE-HYGIENE-HOME: ky vong tuyet doi 889 gan voi kho cua may khac.
-    # Chuyen sang quan he dung voi du lieu dau vao cua chinh test: tong so tai
-    # lieu trong kho hien tai + anh xa theo kho hien hanh, khong doi y nghia
-    # loc theo mien (disjoint + auto bao het + tong cac mien = tong kho).
+    # TEST-SUITE-HYGIENE-HOME: absolute count 889 belongs to another machine's
+    # store. Assert relations over this test's own input instead, keeping the
+    # domain-filter meaning (disjoint + auto covers all + sums match).
     prod_db = Path("local_runs/workspace_chat_rag_v2_production/bge_m3_hybrid/collections/tri_thuc/library.sqlite")
     if not prod_db.is_file():
         pytest.skip("Production database not present on this machine")
