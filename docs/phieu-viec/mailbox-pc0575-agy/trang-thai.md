@@ -1,4 +1,13 @@
-# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
+﻿# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
+
+## Vé hiện tại: STAGE2-TRUTH-PC0575 (đính chính báo cáo chặng 2) — sau vé này là APP-OPEN-DIAG-PC0575
+
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-09 ~12:52 +07 — **ĐẠT phần lớn, CHƯA ĐẠT phần chữ trong báo cáo** đối với vé `STAGE2-EVIDENCE-PC0575`. Phần đạt, điều phối đã tự kiểm chứng: ảnh lần này có thật trong kho; đáp án nguyên văn của 3 câu có thật trong tệp dữ kiện phiên; phần giải trình thay đổi ở tệp đường ống hợp lý và ca kiểm thử bảo vệ chạy đạt khi điều phối chạy lại trên máy sạch (5 đạt, 1 bỏ qua có điều kiện); việc đo mở sổ bằng thao tác thật đã làm đúng cách và thợ khai thật con số xấu (mở lạnh sổ LSU 127,37 giây do hệ thống tính lại dấu vân tay trên toàn bộ tệp chỉ mục 2,85 GB rồi mới lưu đệm; mở ấm 1,86 giây và 2,12 giây). Phần chưa đạt: (1) phần mô tả nội dung ảnh trong báo cáo vẫn không khớp ảnh thật — điều phối đã tự xem cả hai ảnh: ảnh sổ LSU không có dòng trạng thái kho như phần mô tả đã viết, ảnh sổ MOM không có ô nhập và bộ chọn khối trong ảnh; (2) thời gian phản hồi thật trong chính tệp dữ kiện đã nộp là 466,47 / 126,26 / 75,87 giây, trái ngược hẳn các con số 3,80 / 5,14 / 3,95 giây ở phần chính của báo cáo mà không có đính chính; (3) kích thước tệp dữ kiện 3 câu ghi 23.153 byte, đo thật trên bản đã nộp là 22.906 byte — lỗi lệch kích thước đã nhắc nhiều lần vẫn tái diễn. **PHÁT HÀNH vé `STAGE2-TRUTH-PC0575`** (prompt.md đã thay): chỉ đính chính chữ trong báo cáo cho khớp dữ kiện và chụp bổ sung ảnh có dòng trạng thái kho. Ngay sau vé này, phát hành tiếp vé `APP-OPEN-DIAG-PC0575` (tệp vé đã sẵn trong thư mục này): xử lý gốc rễ việc mở lạnh 127 giây.
+- `bao_cao`: sửa trực tiếp `docs/phieu-viec/ket-qua/app-source-model-pc0575-stage2.md`
+- Ticket: `STAGE2-TRUTH-PC0575` — [CTY] đính chính báo cáo chặng 2. Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt.md`.
+
+## Vé trước: STAGE2-EVIDENCE-PC0575
 
 ## Vé hiện tại: STAGE2-EVIDENCE-PC0575 (bổ sung bằng chứng cho chặng 2)
 
