@@ -1,6 +1,7 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
-- Trạng thái: `xong-cho-duyet`
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-09 ~13:08 +07 — **ĐẠT** vé `TEST-NESTED-GUARD-SCAN-HOME` + **PHÁT HÀNH** vé `TEST-ABSOLUTE-COUNT-FIX-HOME` (prompt.md đã thay). Điều phối kiểm chứng độc lập tại đúng các dòng được nêu trong bảng: ca đếm trên chỉ mục thật ghim cứng 149.800 mảnh và 889 tài liệu; ca bản đồ miền ghim 889 / 92 / 681 / 44 / 72 — cả hai đều đúng như bảng rà soát mô tả, và commit của vé chỉ gồm tệp báo cáo. Bảng 12 mục phân loại hợp lý: ngoài hai ca này, các mẫu còn lại đều đã có bảo vệ, dùng dữ liệu giả, hoặc có trần đủ rộng nên chỉ cần theo dõi. Vé mới sửa đúng hai ca đó sang khẳng định quan hệ (khớp giữa các đường đọc, các miền rời nhau và cộng lại bằng tổng), không giữ lại con số tuyệt đối nào của kho hiện tại — kể cả chuỗi vân tay ở ca đếm, điều phối bổ sung điểm này so với bảng rà soát.
 - `commit`: `f53dfc7` (báo cáo `test-nested-guard-scan-home.md` bảng 12 dòng; vé này không sửa `src/`/`tests/`)
 - `bao_cao`: `docs/phieu-viec/ket-qua/test-nested-guard-scan-home.md`
 - `ghi_chu`: 2026-10-09 12:55 +07 — đã nhận vé TEST-NESTED-GUARD-SCAN-HOME, cổng MỞ (trạng thái `moi` + prompt đúng vé + verdict ĐẠT E2E-GUARD 12:56 phát hành vé mới; HEAD=origin=d362d4e sạch theo dõi, Python 3.11.14 OK; 0 file watcher tự mở, không rơi nhánh 4-lần/cho-muse). Vé chỉ đọc + báo cáo, không sửa gì. Bắt đầu bước 1: rà 3 mẫu rủi ro, chưa sửa gì.
