@@ -1,0 +1,133 @@
+{
+  "so_mom_lan_1_lanh": {
+    "step_name": "(a) Bấm vào sổ MOM - Mở lần đầu sau khởi động app (LẠNH)",
+    "notebook_id": "mom_opcenter",
+    "is_cold": true,
+    "timings": {
+      "1_tai_khoi_tao_trang": 5.2301,
+      "2_doc_metadata_so": 0.0025,
+      "3_liet_ke_cuoc_tro_chuyen": 0.002,
+      "4_truy_van_co_so_du_lieu_hoi_thoai": 0.0888,
+      "5_chuan_bi_pham_vi_nguon": 6.4875,
+      "6_nap_mo_hinh_worker_nen": 0.0111,
+      "7_dong_trang_thai_kho_va_van_tay": 80.8133,
+      "7_chi_tiet_trang_thai_kho": {
+        "7_1_sqlite_connect": 0.0052,
+        "7_2_count_chunks": 1.3321,
+        "7_3_count_distinct_docs": 0.0026,
+        "7_4_compute_logical_fingerprint": 79.4578
+      },
+      "8_cac_khau_khac": 0.0007,
+      "tong_thoi_gian_toan_trinh_s": 92.6546
+    },
+    "details": {
+      "notebook_title": "MOM / Opcenter",
+      "collection_id": "tri_thuc",
+      "conversation_count": 9,
+      "active_conv_id": "CONV-EEA591C6",
+      "message_count": 24,
+      "notebook_sources_count": 150,
+      "enabled_selections_count": 146,
+      "worker_warmed": false,
+      "index_db_path": "D:\\Sandbox\\AIOS_habbit\\local_runs\\workspace_chat_rag_v2_production\\bge_m3_hybrid\\collections\\tri_thuc\\library.sqlite",
+      "status_line": "Kho đang dùng: library.sqlite · 889 tài liệu · 149800 mảnh · mã 87a3626a85bc · ONNX fp32"
+    },
+    "tong_thoi_gian_s": 92.6546
+  },
+  "so_mom_lan_2_am": {
+    "step_name": "(b) Bấm vào sổ MOM - Mở lần thứ hai (ẤM)",
+    "notebook_id": "mom_opcenter",
+    "is_cold": false,
+    "timings": {
+      "1_tai_khoi_tao_trang": 0.0,
+      "2_doc_metadata_so": 0.0015,
+      "3_liet_ke_cuoc_tro_chuyen": 0.0013,
+      "4_truy_van_co_so_du_lieu_hoi_thoai": 0.0012,
+      "5_chuan_bi_pham_vi_nguon": 0.0054,
+      "6_nap_mo_hinh_worker_nen": 0.0052,
+      "7_dong_trang_thai_kho_va_van_tay": 0.0059,
+      "7_chi_tiet_trang_thai_kho": {
+        "7_0_in_memory_cache_hit": 0.0
+      },
+      "8_cac_khau_khac": 0.0007,
+      "tong_thoi_gian_toan_trinh_s": 0.0312
+    },
+    "details": {
+      "notebook_title": "MOM / Opcenter",
+      "collection_id": "tri_thuc",
+      "conversation_count": 9,
+      "active_conv_id": "CONV-EEA591C6",
+      "message_count": 24,
+      "notebook_sources_count": 150,
+      "enabled_selections_count": 146,
+      "worker_warmed": false,
+      "index_db_path": "D:\\Sandbox\\AIOS_habbit\\local_runs\\workspace_chat_rag_v2_production\\bge_m3_hybrid\\collections\\tri_thuc\\library.sqlite",
+      "status_line": "Kho đang dùng: library.sqlite · 889 tài liệu · 149800 mảnh · mã 87a3626a85bc · ONNX fp32"
+    },
+    "tong_thoi_gian_s": 0.0312
+  },
+  "so_lsu_lan_1": {
+    "step_name": "(c1) Bấm vào sổ LSU (NB-E35A7BEE) - Lần đầu (sau khi MOM đã nạp)",
+    "notebook_id": "NB-E35A7BEE",
+    "is_cold": false,
+    "timings": {
+      "1_tai_khoi_tao_trang": 0.0,
+      "2_doc_metadata_so": 0.0015,
+      "3_liet_ke_cuoc_tro_chuyen": 0.0013,
+      "4_truy_van_co_so_du_lieu_hoi_thoai": 0.0018,
+      "5_chuan_bi_pham_vi_nguon": 0.0024,
+      "6_nap_mo_hinh_worker_nen": 0.0032,
+      "7_dong_trang_thai_kho_va_van_tay": 0.004,
+      "7_chi_tiet_trang_thai_kho": {
+        "7_0_in_memory_cache_hit": 0.0
+      },
+      "8_cac_khau_khac": 0.001,
+      "tong_thoi_gian_toan_trinh_s": 0.0268
+    },
+    "details": {
+      "notebook_title": "Điều tra lỗi LSU",
+      "collection_id": "tri_thuc",
+      "conversation_count": 5,
+      "active_conv_id": "CONV-9C730D76",
+      "message_count": 72,
+      "notebook_sources_count": 494,
+      "enabled_selections_count": 50,
+      "worker_warmed": false,
+      "index_db_path": "D:\\Sandbox\\AIOS_habbit\\local_runs\\workspace_chat_rag_v2_production\\bge_m3_hybrid\\collections\\tri_thuc\\library.sqlite",
+      "status_line": "Kho đang dùng: library.sqlite · 889 tài liệu · 149800 mảnh · mã 87a3626a85bc · ONNX fp32"
+    },
+    "tong_thoi_gian_s": 0.0268
+  },
+  "so_lsu_lan_2_am": {
+    "step_name": "(c2) Bấm vào sổ LSU (NB-E35A7BEE) - Lần thứ hai (ẤM)",
+    "notebook_id": "NB-E35A7BEE",
+    "is_cold": false,
+    "timings": {
+      "1_tai_khoi_tao_trang": 0.0,
+      "2_doc_metadata_so": 0.0012,
+      "3_liet_ke_cuoc_tro_chuyen": 0.0016,
+      "4_truy_van_co_so_du_lieu_hoi_thoai": 0.0016,
+      "5_chuan_bi_pham_vi_nguon": 0.0022,
+      "6_nap_mo_hinh_worker_nen": 0.0037,
+      "7_dong_trang_thai_kho_va_van_tay": 0.0059,
+      "7_chi_tiet_trang_thai_kho": {
+        "7_0_in_memory_cache_hit": 0.0
+      },
+      "8_cac_khau_khac": 0.0005,
+      "tong_thoi_gian_toan_trinh_s": 0.0287
+    },
+    "details": {
+      "notebook_title": "Điều tra lỗi LSU",
+      "collection_id": "tri_thuc",
+      "conversation_count": 5,
+      "active_conv_id": "CONV-9C730D76",
+      "message_count": 72,
+      "notebook_sources_count": 494,
+      "enabled_selections_count": 50,
+      "worker_warmed": false,
+      "index_db_path": "D:\\Sandbox\\AIOS_habbit\\local_runs\\workspace_chat_rag_v2_production\\bge_m3_hybrid\\collections\\tri_thuc\\library.sqlite",
+      "status_line": "Kho đang dùng: library.sqlite · 889 tài liệu · 149800 mảnh · mã 87a3626a85bc · ONNX fp32"
+    },
+    "tong_thoi_gian_s": 0.0287
+  }
+}
