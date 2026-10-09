@@ -1,0 +1,29 @@
+{
+  "ma_ve": "CONFIG-GOLIVE-AUDIT-HOME",
+  "conversation_id": "CONV-GOLIVE-90S7",
+  "cau_hoi": "C7620中Magenta相对Black的副扫描色差达到多少会成为NG？",
+  "thoi_gian_mo_app_toi_khi_go_duoc_giay": 33.56,
+  "thoi_gian_tu_bam_hoi_toi_dap_an_giay": 631.46,
+  "model_phuc_vu": "inclusionai/ling-3.1-flash:free",
+  "provenance": {
+    "operational_mode": "external_api",
+    "provider_name": "AI trong máy tương thích OpenAI (inclusionai/ling-3.1-flash:free)",
+    "model_name": "inclusionai/ling-3.1-flash:free"
+  },
+  "trace": {
+    "trace_id": "trc_09c2c471ba34",
+    "status": "insufficient_evidence",
+    "reason": "No valid citations found in answer text from enabled sources"
+  },
+  "do_dai_dap_an_ky_tu": 1744,
+  "dap_an_nguyen_van": "**Tóm tắt:**\nTrong các nguồn được cung cấp, chỉ có một bản ghi liên quan đến C7620 nêu giá trị lệch màu cụ thể: 70.04[dot] — nhưng đây là độ lệch theo **chiều quét (走査方向)**, không phải chiều **phụ quét (副扫描)**, và nguồn không nêu ngưỡng NG chính thức.\n\n**Điều đã xác nhận:**\n- NGUỒN 1 (Loi KDTPS.xlsx, Sheet: History KDTPS, ô L11433:AC11433) ghi: lỗi C7620 phát sinh do \"Regist Calib NG\", với \"走査方向における色ズレ量は、黒い（K）に比べてMagenta（M）の右側が70.04[dot]\" — tức độ lệch màu theo chiều quét, phía bên phải của Magenta (M) so với Đen (K) là **70.04[dot]** tại thời điểm xảy ra C7620.\n- Bản ghi này được xử lý như lỗi không tái hiện (\"不具合が再現しなくて再現しない不良として処理して機械を流す\"), cơ khí đang xác nhận LSU Unit.\n\n**Điểm chưa đủ bằng chứng:**\n- Nguồn chỉ ghi giá trị **70.04[dot]** là giá trị quan sát được khi C7620 xảy ra, **không nói rõ đây là ngưỡng NG** (tức không có câu \"đạt X[dot] thì NG\").\n- Câu hỏi hỏi về **phụ quét (副扫描)**, nhưng nguồn chỉ đề cập **chiều quét chính (走査方向)** — chưa có bằng chứng về ngưỡng lệch màu phụ quét giữa Magenta và Black.\n- Các nguồn còn lại (NGUỒN 2–14) không chứa thông tin ngưỡng色差 cho C7620.\n\n**Việc cần kiểm tra tiếp:**\n- Xác nhận trong tài liệu tiêu chuẩn/CTTT (ví dụ CTTT 0220101 được nhắc ở NGUỒN 2, hoặc ĐƯKC 26288 ở NGUỒN 3) xem có quy định ngưỡng dot lệch màu chính/phụ quét để判定 NG cho C7620 hay không.\n- Kiểm tra lại với bộ phận KTCT/電気技術 đang xác nhận LSU Unit trong NGUỒN 1 để có giá trị ngưỡng chính thức.\n\n**Nguồn đã dùng:** NGUỒN 1 (Loi KDTPS.xlsx, Sheet: History KDTPS, ô L11433:AC11433).\n\n*Lưu ý: Vui lòng owner kiểm tra lại trước khi sử dụng — hiện chưa đủ bằng chứng để khẳng định ngưỡng NG chính thức cho phụ quét色差 Magenta so với Black trong C7620.*\n\nĐây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng.",
+  "anh_chup": {
+    "config-golive-audit-home-90s7-01-app-ready.png": 102050,
+    "config-golive-audit-home-90s7-02-answer.png": 89001
+  },
+  "sha256_index_truoc": "45eb0e072893f802d71ab201cfbb2b29c36e2b0a31313fa79fc55a025b65b7c0",
+  "sha256_index_sau": "45eb0e072893f802d71ab201cfbb2b29c36e2b0a31313fa79fc55a025b65b7c0",
+  "index_byte_sau": 2942201856,
+  "index_khong_doi": true,
+  "ghi_chu": "Lượt dùng thật qua giao diện Streamlit thật (cổng tách 8551, CPU-only, lane tổng hợp ghim Nakazasen Router như vé APP-E2E-POOL-HOME). Đáp án trọn vẹn do tầng 1 của chuỗi 3 tầng phục vụ; máy đang chạy song song lượt kiểm thử full-suite của thợ khác nên thời gian bị đội."
+}
