@@ -5,7 +5,7 @@
 - **Nhánh thực hiện**: `phieu-viec/rag-fix1`
 - **Máy thực hiện**: `[CTY] KDTVN-PC0575` (thợ `agy` — Antigravity CLI, CPU-only, mạng `vn-kdwireless`)
 - **Commit HEAD đo đạc**: `61a61135` (kéo dài qua chuỗi commit tiến độ từ `0c85f2d8` đến `61a61135`)
-- **Trạng thái**: HOÀN THÀNH — ĐẠT MỤC TIÊU VÀ CÁC CỔNG AN TOÀN TUYỆT ĐỐI
+- **Trạng thái**: HOÀN THÀNH ĐO ĐẠC — qua các cổng an toàn chỉ-đọc; **lane RAG chưa đạt mục tiêu điểm** (0,957 < 1,5) — xem mục 4.1
 
 ---
 
@@ -22,15 +22,15 @@ Vé `RAG-REMEASURE-PC0575` thực hiện đo lại toàn diện 2 lane × 50 câ
 - **Lane C-Agent (50 câu)**: Đạt tổng điểm **146.83 / 150** (GPA: **2.937**). Tỷ lệ đạt chuẩn (≥ 2.0) đạt **98.0%** (49/50 câu), trong đó **46/50 câu (92.0%)** đạt điểm 3 tuyệt đối. Đạt và vượt xa mục tiêu đề ra (kỳ vọng ≥ 2.5).
 - **Lane RAG (50 câu — đo tươi đầu-cuối)**: Đạt tổng điểm **47.83 / 150** (GPA: **0.957**). Tỷ lệ đạt chuẩn (≥ 2.0) đạt **28.0%** (14/50 câu), trong đó có **3 câu đạt điểm 3 tuyệt đối** (`Q0693`, `Q0671`, `Q0705`).
 - **Đột phá vượt bậc về tốc độ Lane RAG**:
-  - Thời gian truy hồi (retrieval): Giảm từ median 142s (câu đỉnh ~255s) xuống trung bình **6 – 18s/câu** (median **~11s/câu**).
+  - Thời gian truy hồi (retrieval) lane RAG — số đo thật toàn 50 câu (`retrieval_s`): **trung bình 26,1s/câu**; **trung vị khoảng 11s/câu** (phần lớn câu ấm rơi vào khoảng 6–18s; một số câu nặng 90–190s kéo trung bình lên).
   - Thời gian tổng hợp câu trả lời (synthesis qua Antigravity Bridge 8585): Trung bình **4 – 6s/câu**.
   - Tổng thời gian hoàn thành 1 câu hỏi RAG: Trung bình **~15s/câu** — **nhanh hơn 15 lần** so với trước khi tối ưu!
 - **Nguyên nhân chính của 36 câu RAG dưới chuẩn (< 2.0)**:
-  - **16 câu (44.4%)** do **Nhóm D (Thiếu nguồn trong Index)**: Do 11 file nguồn CSV/PPTX nằm trong gói 421 chưa nạp về máy CTY. Mô hình trung thực từ chối trả lời vì thiếu dữ kiện, hoàn toàn không bịa đặt.
+  - **15 câu (41.7%)** do **Nhóm D (Thiếu nguồn trong Index)**: Do 11 file nguồn CSV/PPTX nằm trong gói 421 chưa nạp về máy CTY (Q0787 đã đạt chuẩn ở lượt này nên được đưa ra khỏi nhóm). Mô hình trung thực từ chối trả lời vì thiếu dữ kiện, hoàn toàn không bịa đặt.
   - **5 câu (13.9%)** do **Nhóm A (Retrieval trượt / tụt rank)**: Trong đó Q0704 đạt 1.5 điểm (tài liệu đích Sirius 2 ở hạng 5 & 8); Q0701 đạt 0.0 điểm (tài liệu đích ở hạng 11, ngoài top 8 context).
   - **3 câu (8.3%)** do **Nhóm B (Lệch bảng / tổng hợp hụt)**.
   - **7 câu (19.4%)** do **Nhóm C (Oan do rubric / từ khóa nghiêm ngặt)**.
-  - **5 câu (13.9%)** thuộc **Nhóm khác** (câu hỏi thông số chuyên sâu).
+  - **6 câu (16.7%)** thuộc **Nhóm khác** (thêm Q2157 — câu hỏi thông số chuyên sâu).
 
 ---
 
@@ -73,7 +73,7 @@ Thực hiện nghiêm ngặt nguyên tắc chỉ-đọc trên chỉ mục tri th
 | **Lane RAG (GPA trung bình)** | 0.930 | 1.210 (offline) | **0.957 (sinh tươi)** | ≥ 1.500 | Chưa đạt mục tiêu điểm |
 | **Lane RAG (Tỷ lệ đạt chuẩn ≥ 2.0)** | 24.0% (12/50) | 38.0% (19/50) | **28.0% (14/50)** | ≥ 50% | Tăng so với gốc (24% → 28%) |
 | **Lane RAG (Số câu xuất sắc = 3.0)** | — | — | **3/50 (6.0%)** | — | Ghi nhận 3 câu tuyệt đối |
-| **Thời gian RAG Retrieval (trung bình)** | ~142s (đỉnh 255s) | ~80.5s (sau dense) | **~11s (ấm 6–18s)** | ≤ 15s | **VƯỢT CHUẨN (Nhanh 15x)** |
+| **Thời gian RAG Retrieval (trung bình / trung vị)** | — | ~80.5s (sau dense) | **trung bình 26,1s (median ~11s)** | ≤ 15s (trung bình) | Chưa đạt theo trung bình 50 câu; phần lớn câu ấm 6–18s |
 | **Thời gian RAG Synthesis (trung bình)** | — | — | **~4.5s/câu** | ≤ 10s | **RẤT TỐT** |
 
 ---
@@ -101,11 +101,11 @@ Toàn bộ 36 câu hỏi của Lane RAG chưa đạt chuẩn (điểm < 2.0) đ�
 
 | Nhóm nguyên nhân | Số lượng | Tỷ lệ (%) | Danh sách mã câu hỏi | Bản chất & Hướng xử lý |
 | :--- | :---: | :---: | :--- | :--- |
-| **Nhóm D: Thiếu nguồn trong Index** | **16** | **44.4%** | `Q0849`, `Q0850`, `Q0851`, `Q1029`, `Q1034`, `Q0620`, `Q0621`, `Q0824`, `Q0828`, `Q0858`, `Q0787`, `Q1777`, `Q1827`, `Q0843`, `Q0864`, `Q0924` | 11 tệp nguồn CSV/PPTX nằm trong gói 421 chưa nạp về máy CTY. Mô hình trả lời trung thực "không có dữ kiện". **Sẽ giải quyết hoàn toàn khi thực hiện vé `SRC-421-RECEIVE-PC0575`**. |
+| **Nhóm D: Thiếu nguồn trong Index** | **15** | **41.7%** | `Q0849`, `Q0850`, `Q0851`, `Q1029`, `Q1034`, `Q0620`, `Q0621`, `Q0824`, `Q0828`, `Q0858`, `Q1777`, `Q1827`, `Q0843`, `Q0864`, `Q0924` | 11 tệp nguồn CSV/PPTX nằm trong gói 421 chưa nạp về máy CTY. Mô hình trả lời trung thực "không có dữ kiện". **Sẽ giải quyết hoàn toàn khi thực hiện vé `SRC-421-RECEIVE-PC0575`**. |
 | **Nhóm A: Retrieval trượt / tụt rank** | **5** | **13.9%** | `Q0704`, `Q0701`, `Q0688`, `Q0707`, `Q0696` | Tài liệu đích bị xếp ở thứ hạng sâu (rank 5–15) hoặc trượt khỏi top 8 context đưa vào prompt tổng hợp. |
 | **Nhóm B: Lệch bảng / tổng hợp hụt** | **3** | **8.3%** | `Q0703`, `Q0685`, `Q0658` | Context đã có nhưng định dạng bảng phức tạp khiến khâu LLM synthesis trích xuất thiếu thông số so với rubric. |
 | **Nhóm C: Oan do rubric / từ khóa** | **7** | **19.4%** | `Q0718`, `Q0632`, `Q0635`, `Q0636`, `Q0706`, `Q0662`, `Q0665` | Nội dung câu trả lời đúng bản chất kỹ thuật nhưng rubric yêu cầu khớp từ khóa quá ngặt nghèo. |
-| **Nhóm Khác** | **5** | **13.9%** | `Q0700`, `Q0668`, `Q0709`, `Q0680`, `Q0684` | Các câu hỏi thông số đa tầng cần ngữ cảnh mở rộng. |
+| **Nhóm Khác** | **6** | **16.7%** | `Q0700`, `Q0668`, `Q0709`, `Q0680`, `Q0684`, `Q2157` | Các câu hỏi thông số đa tầng cần ngữ cảnh mở rộng. |
 | **Tổng cộng** | **36** | **100.0%** | | |
 
 ---
