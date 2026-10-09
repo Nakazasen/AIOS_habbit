@@ -1,6 +1,7 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
 - Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-09 12:30 +07 — Mốc chạy xong vé `TEST-SUITE-CONFIRM-HOME`: pytest toàn bộ xong sau ~79,6 phút — 1 failed, 4218 passed, 66 skipped (`done.marker exit=1`). Skip khớp đúng mốc 66 của vé dọn dẹp. Ca đỏ duy nhất: `test_packaged_desktop_e2e_rag_to_atlas` (lồng pytest con timeout 300s). Đang phân loại + viết báo cáo, chưa chạm `src/`/`tests/`.
 - `ghi_chu`: 2026-10-09 12:14 +07 — Heartbeat vé `TEST-SUITE-CONFIRM-HOME`: pytest nền tới ~77% (log 4.862 → 6.968 byte, xả dồn lúc 12:02; worker còn sống, CPU vẫn tăng chậm). Chưa chạm `src/`/`tests/`.
 - `ghi_chu`: 2026-10-09 12:03 +07 — Heartbeat vé `TEST-SUITE-CONFIRM-HOME`: pytest nền tới ~50% (log 4.052 → 4.862 byte). Chưa chạm `src/`/`tests/`.
 - `ghi_chu`: 2026-10-09 11:52 +07 — Heartbeat vé `TEST-SUITE-CONFIRM-HOME`: pytest nền chạy lại sau quãng chậm (log 3.566 → 4.052 byte lúc 11:40, tới ~42%; thấy 1 `F` quanh ~38% — chưa phân loại vội, chờ chạy xong). Máy đang tải nặng (OMP cùng chạy app thật + BGE) nên lượt này chậm hơn mốc cũ. Chưa chạm `src/`/`tests/`.
