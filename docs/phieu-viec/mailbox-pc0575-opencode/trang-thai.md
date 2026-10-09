@@ -1,6 +1,7 @@
 # Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
 - Trạng thái: `dang-lam`
+- `ghi_chu` (tho opencode): 2026-10-09 16:05 +07 - UI that: MOM lanh 98.0s moi thay nut Hoi (anh that 83KB, noi dung so MOM day du) - LECH LON so voi tho chinh 3.02s do may ban; dang do not MOM am + LSU.
 - `ghi_chu` (tho opencode): 2026-10-09 15:48 +07 - giao dien that lan 1 KET: trang chu len, bam MOM nhung nut Hoi qua 120s chua hien (worker BGE ton CPU, may ban do tien trinh tho khac) - se khoi dong sach do lai voi timeout dai hon + chup bang chung. Khau 7 cache van nhanh o muc ky thuat.
 - `ghi_chu` (tho opencode): 2026-10-09 15:29 +07 - duong hoan lui OK: tat-cache bang AIOS_DISABLE...=1 do lai mo lanh 146.1s (ve muc cham nhu truoc sua, khong loi, dung 889/149800 ma 87a3626a85bc); MD5 sau do 492c065f KHOP truoc/sau. Tiep tuc nghiem thu giao dien that.
 - `ghi_chu` (tho opencode): 2026-10-09 15:26 +07 - do ky thuat xong: MOM lanh 14.56s (khau 7 chi 0.0055s, khau 1+5 cham do may ban), MOM am 0.024s, LSU lan1 0.026s, LSU lan2 0.029s; chi tiet o open-diag-xcheck-pc0575-timings.json. Tiep tuc thu duong hoan lui tat-cache.
