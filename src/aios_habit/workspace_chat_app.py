@@ -1187,7 +1187,12 @@ def _run_chat_turn_async(
     evidence_items = []
     retrieval_summary = ""
 
-    if query_relevant_sources:
+    from aios_habit.workspace_chat_rag_v2_adapter import is_production_index_available
+    should_retrieve = bool(
+        query_relevant_sources or (forced_domain is not None and is_production_index_available())
+    )
+
+    if should_retrieve:
         ret_res = _attempt_retrieval()
         if cancellation_event is not None and cancellation_event.is_set():
             return (False, "", None, "Đã dừng yêu cầu AI.")

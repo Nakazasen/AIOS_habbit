@@ -97,6 +97,17 @@ def is_production_sealed_collection(collection_id: str | None) -> bool:
     return False
 
 
+def is_production_index_available(config: Optional[WorkspaceChatRagV2CanaryConfig] = None) -> bool:
+    """Return True if the pinned unified production index (library.sqlite) exists on disk."""
+    try:
+        from aios_habit.workspace_chat_models import DEFAULT_COLLECTION_ID
+        resolved = config or WorkspaceChatRagV2CanaryConfig.from_env()
+        prod_pipe_cfg = _pipeline_config(resolved, "bge_m3_hybrid", read_only=True, collection_id=DEFAULT_COLLECTION_ID)
+        return bool(prod_pipe_cfg.index_path.is_file())
+    except Exception:
+        return False
+
+
 PREPARATION_LEDGER_TABLE = "source_preparation_ledger"
 PREPARATION_LEDGER_SCHEMA_VERSION = "1.0.0"
 
@@ -3506,10 +3517,14 @@ def retrieve_workspace_chat_evidence(
         pass
     has_notebook_sources = any(getattr(s, "source_scope", "") == SOURCE_SCOPE_NOTEBOOK for s in sources)
     has_forced_domain = bool(forced_domain and str(forced_domain).strip().lower() != "auto")
-    use_prod_domain_specs = bool(is_prod_index and prod_pipe_cfg and (has_notebook_sources or has_forced_domain))
+    use_prod_domain_specs = bool(is_prod_index and prod_pipe_cfg)
 
     if use_prod_domain_specs and prod_pipe_cfg:
-        target_domain = forced_domain if has_forced_domain else (domain_route.domain if domain_route else None)
+        target_domain = (
+            forced_domain
+            if has_forced_domain
+            else (domain_route.domain if domain_route and getattr(domain_route, "applied", False) else None)
+        )
         domain_specs = index_domain.get_specs_for_domain(target_domain, prod_pipe_cfg.index_path)
         temp_sources = tuple(s for s in sources if getattr(s, "source_scope", "") == SOURCE_SCOPE_TEMPORARY)
         semantic_sources = tuple(domain_specs) + temp_sources
