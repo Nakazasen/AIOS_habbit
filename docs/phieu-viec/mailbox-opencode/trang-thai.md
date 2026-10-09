@@ -1,6 +1,7 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
 - Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-09 11:06 +07 — Heartbeat vé `TEST-SUITE-CONFIRM-HOME`: pytest nền vẫn chạy (log 0 → 1.460 byte, tới ~15%, có `s` rải rác đúng kiểu bỏ qua có điều kiện — chưa phân loại vội, chờ chạy xong). Chưa chạm `src/`/`tests/`.
 - `ghi_chu`: 2026-10-09 10:55 +07 — Mốc chạy nền vé `TEST-SUITE-CONFIRM-HOME`: đầu nhánh chạy là `683554f` (sau rebase qua `288fc3d` của PC0575, nội dung vé giữ nguyên); tiến trình pytest toàn bộ đã khởi động tách phiên (log `local_runs/test-suite-confirm-home/pytest-full.log` + `.err.log`, `done.marker` khi xong; tạm `D:\pytest-tmp` do ổ C còn ~4,2GB); Python 3.11.14 qua uv OK. Chưa chạm `src/`/`tests/`. Heartbeat tiếp theo ~15 phút.
 - `ghi_chu`: 2026-10-09 10:51 +07 — Nhận vé `TEST-SUITE-CONFIRM-HOME`, cổng MỞ (trạng thái `moi` + prompt đúng vé + verdict PHÁT HÀNH 10:37 mở băng tạm thời; HEAD=origin=57aa2a7 sạch theo dõi, Python 3.11.14 OK; không rơi nhánh 4-lần/cho-muse). Vé chỉ chạy + báo cáo, không sửa `src/`/`tests/`, không ghi index, không merge `main`. Bắt đầu bước 1: ghi commit đầu nhánh + chạy toàn bộ pytest.
 
