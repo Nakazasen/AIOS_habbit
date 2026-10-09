@@ -1,5 +1,15 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
+## Vé hiện tại: SYNTH-REMEASURE-STABLE-HOME (đo lặp hai lượt để có con số chất lượng quyết định)
+
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse): 2026-10-10 ~01:05 +07 — **ĐẠT phần chính — CHƯA ĐẠT phần nghiệm thu dùng thật** vé `SYNTH-TERM-EXTRACT-FIX-HOME` + **PHÁT HÀNH** vé `SYNTH-REMEASURE-STABLE-HOME` (prompt.md đã thay, kèm Mục 0 đính chính và làm lại). Phần chính được công nhận — điều phối kiểm chứng độc lập: (1) commit mã `dba1483` chỉ đụng `evidence.py`, `query_planning.py` và tệp test mới; `index.py` nguyên vẹn, ngưỡng 0,60 không đổi, hàm `extract_evidence_terms` loại đúng 8 hư từ như báo cáo; (2) tự cộng lại từ tệp dữ kiện thô 50 câu: tổng 69,84/150 (trung bình 1,397) khớp tuyệt đối; `Q0695` độ phủ 1,0000 đạt trọn 3,0 điểm; cả 7 câu chẩn đoán ngắn vẫn bị chặn đúng, độ phủ khớp từng câu; phân bố chế độ 3 validated / 39 fallback / 8 không gọi mô hình khớp; (3) 10/11 kích thước tệp trong báo cáo khớp blob trên kho. Phần nghiệm thu dùng thật CHƯA ĐẠT: đáp án ghi cho câu `Q0718` trùng nguyên văn đáp án của `Q0709` (cùng 730 ký tự, không trả lời câu hỏi DMT–PMT); mã phiên của câu 2 và 3 là `CONV-ENTITY-20958ED` — phiên của vé cũ `SYNTH-CONTEXT-ENTITY-HOME` — trong khi câu 1 ở phiên mới `CONV-6034EFB8`; điều phối tự mở cả 3 ảnh: ảnh câu 2 và câu 3 không chứa thân đáp án (ảnh câu 3 thậm chí không có câu hỏi `Q0709` trong khung), ảnh câu 1 cũng không chứa thân đáp án — trái yêu cầu ảnh chứa đáp án trọn thân. Điểm trừ kỷ luật: kích thước báo cáo ghi 19.860 byte, đo thật trên blob đã nộp là 19.939 byte — lỗi lệch kích thước lại tái diễn. Hai tồn đọng này thành Mục 0 của vé mới (đính chính con số bằng commit riêng; làm lại nghiệm thu 3 câu trong phiên hoàn toàn mới, nộp báo cáo bổ sung). Về chất lượng: lượt đo 69,84 thấp hơn mốc 72,33 chủ yếu do dao động của mô hình miễn phí — chỉ 1 câu tăng là `Q0695` (+3,0, đúng mục tiêu vé), 5 câu giảm đều thuộc nhóm dao động đã biết; kết luận quyết định giao cho vé đo lặp hai lượt, không kết luận từ một lượt.
+- `bao_cao`: `docs/phieu-viec/ket-qua/synth-remeasure-stable-home.md`
+- Ticket: `SYNTH-REMEASURE-STABLE-HOME` — [NHÀ] đo lặp hai lượt để có con số chất lượng quyết định. Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`.
+- `hang-cho`: (trống — điều phối xếp việc tiếp theo theo kết quả của vé này).
+
+## Vé trước: SYNTH-TERM-EXTRACT-FIX-HOME (sửa khâu tách thuật ngữ tiếng Việt)
+
 ## Vé hiện tại: SYNTH-TERM-EXTRACT-FIX-HOME (sửa khâu tách thuật ngữ tiếng Việt)
 
 - Trạng thái: `xong-cho-duyet`
