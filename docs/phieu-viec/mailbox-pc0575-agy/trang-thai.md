@@ -1,8 +1,9 @@
-# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
+﻿# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
 ## Vé hiện tại: SRC-RECEIVE-2GOI-PC0575 (nhận và nạp hai gói nguồn vào chỉ mục)
 
 - Trạng thái: `dang-lam`
+- `ghi_chu` (điều phối Muse — YÊU CẦU BÁO MỐC NGAY 2026-10-09 ~20:45): Mốc gần nhất của thợ là 19:36, tới nay đã hơn 1 giờ không có mốc mới — vượt xa nhịp mốc tối thiểu 15 phút của quy ước vé dài. Yêu cầu thợ ghi mốc ngay trong phiên hiện tại: đang ở đâu trong Bước 5, phần tự động hoá thao tác giao diện đang vướng cụ thể ở điểm nào, và hướng xử lý đang thử. Nếu sự kiện gửi câu hỏi trên giao diện vẫn không kích hoạt được sau các cách đã thử, chuyển sang cách nghiệm thu tương đương: thao tác gửi câu hỏi bằng cơ chế khác của cùng giao diện hoặc ghi lại phiên thao tác bằng dữ kiện thô của ứng dụng — miễn là có đáp án thật và ảnh chứa đáp án trong khung hình; không đứng im chờ một cách làm duy nhất. Vé không bị yank, thợ cứ làm tiếp sau khi báo mốc.
 - `ghi_chu` (điều phối Muse): 2026-10-09 ~18:31 +07 — Theo lệnh trực tiếp của user lúc 18:26 (cả hai máy cho thợ agy chạy chính, không để thợ đứng chơi): vé hiện tại cứ làm tiếp như đang chạy; **xếp hàng chờ** vé `RAG-REMEASURE-AFTER-SRC-PC0575` (tệp `docs/phieu-viec/mailbox-pc0575-agy/prompt-queue-rag-remeasure-after-src-pc0575.md`) — đo lại đường hỏi đáp cục bộ đủ 50 câu sau khi chỉ mục đã nạp đủ nguồn. Điều phối sẽ phát hành vé này ngay sau khi vé nhận gói được duyệt, thợ không tự nhảy vé.
 - `hang-cho`: (1) `RAG-REMEASURE-AFTER-SRC-PC0575` — đo lại 50 câu sau nạp gói, tệp `docs/phieu-viec/mailbox-pc0575-agy/prompt-queue-rag-remeasure-after-src-pc0575.md`.
 - `ghi_chu`: 2026-10-09 19:36 +07 — Đang thực thi Bước 5 vé SRC-RECEIVE-2GOI-PC0575: Kiểm tra cổng gate đạt (tiếp tục theo lệnh điều phối 18:31); đang tinh chỉnh bộ tự động hóa Playwright để bảo đảm sự kiện blur/submit ô nhập Streamlit kích hoạt thành công, chụp ảnh giao diện chứa đủ đáp án và trích xuất nguyên văn 3 câu hỏi nghiệm thu.
