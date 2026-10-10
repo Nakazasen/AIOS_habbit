@@ -4,6 +4,7 @@ Generic converter adapters for RAG v2.
 import os
 import hashlib
 import datetime
+import posixpath
 import zipfile
 import xml.etree.ElementTree as ET
 from html.parser import HTMLParser
@@ -606,6 +607,42 @@ class PowerPointDocumentConverterAdapter(BaseDocumentConverterAdapter):
                             texts.append(t.text)
                     
                     slide_text = " ".join(texts).strip()
+
+                    # Trích xuất ghi chú diễn giả (Speaker Notes) nếu có
+                    notes_text = ""
+                    slide_rel_name = f"ppt/slides/_rels/{posixpath.basename(slide_name)}.rels"
+                    notes_target = None
+                    if slide_rel_name in archive.namelist():
+                        try:
+                            rel_root = ET.fromstring(archive.read(slide_rel_name))
+                            for rel in rel_root.iter('{http://schemas.openxmlformats.org/package/2006/relationships}Relationship'):
+                                rel_type = rel.attrib.get('Type', '')
+                                if rel_type.endswith('/notesSlide') or rel_type == 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide':
+                                    target = rel.attrib.get('Target', '')
+                                    if target:
+                                        notes_target = posixpath.normpath(posixpath.join(posixpath.dirname(slide_name), target))
+                                        break
+                        except Exception:
+                            pass
+                    if not notes_target or notes_target not in archive.namelist():
+                        fallback = f"ppt/notesSlides/notesSlide{slide_idx}.xml"
+                        if fallback in archive.namelist():
+                            notes_target = fallback
+
+                    if notes_target and notes_target in archive.namelist():
+                        try:
+                            notes_root = ET.fromstring(archive.read(notes_target))
+                            note_texts = [t.text for t in notes_root.iter('{http://schemas.openxmlformats.org/drawingml/2006/main}t') if t.text]
+                            notes_text = " ".join(note_texts).strip()
+                        except Exception:
+                            pass
+
+                    if notes_text:
+                        if slide_text:
+                            slide_text = f"{slide_text}\n[Ghi chú diễn giả]: {notes_text}"
+                        else:
+                            slide_text = f"[Ghi chú diễn giả]: {notes_text}"
+
                     paragraphs = [p.strip() for p in slide_text.split("\n\n") if p.strip()]
                     if not paragraphs:
                         paragraphs = [""]

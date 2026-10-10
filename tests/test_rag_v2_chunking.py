@@ -310,3 +310,79 @@ def test_summary_text_does_not_change_when_flag_is_on(monkeypatch):
         if chunk.file_type == "document_summary"
     )
     assert on.text == off.text
+
+
+def test_wide_csv_chunking_with_serial_and_judgement():
+    # Giả lập dòng CSV dài ~5.000 ký tự với hơn 200 cột
+    header_cols = ["DATE", "TIME", "S/N", "Mode"]
+    for i in range(700):
+        header_cols.append(f"Sensor_Meas_{i:03d}[mm]")
+    header_cols.extend(["Judge:Black", "Judge:Magenta", "Judge:Cyan", "Judge:Yellow", "TotalJudge"])
+
+    row_vals = ["2026/08/12", "16:14:30", "61C1068E7022", "UnitTest"]
+    for i in range(700):
+        row_vals.append(f"{100.12345 + i * 0.05:.5f}")
+    row_vals.extend(["OK", "OK", "NG", "OK", "NG"])
+
+    header_line = ",".join(header_cols)
+    row_line = ",".join(row_vals)
+    assert len(row_line) >= 4800, f"Dòng test phải đủ dài ~5000 ký tự, thực tế: {len(row_line)}"
+
+    csv_content = f"{header_line}\n{row_line}"
+    element = make_element(
+        element_id="elem-wide-csv",
+        file_type="csv",
+        source_name="2026_08_UnitTest.csv",
+        source_path="/data/2026_08_UnitTest.csv",
+        text=csv_content,
+    )
+
+    chunker = StructureAwareChunker(max_chars=900)
+    chunks = chunker.chunk_elements([element])
+
+    children = [c for c in chunks if c.retrievable]
+    parents = [c for c in chunks if not c.retrievable]
+
+    assert len(children) >= 4, f"Dòng ~5000 ký tự phải chia thành nhiều mảnh, thực tế {len(children)}"
+    assert len(parents) >= 1
+
+    # Kiểm tra liên kết tiêu đề–dòng và kích thước giới hạn
+    for c in children:
+        assert len(c.text) <= 900
+        # Mảnh con phải giữ được liên kết tiêu đề-dòng (Row 1, S/N)
+        assert "Row 1" in c.text
+        assert "S/N: 61C1068E7022" in c.text
+        # Mảnh chứa serial phải chứa luôn các cột phán định của chính dòng đó
+        assert "Judge:Cyan: NG" in c.text
+        assert "Judge:Black: OK" in c.text
+        assert "TotalJudge: NG" in c.text
+        # Có chứa dữ liệu cột chi tiết
+        assert "Sensor_Meas_" in c.text
+
+
+def test_short_csv_chunking_unchanged():
+    # CSV hàng ngắn: không dòng nào vượt quá max_chars
+    header_line = "ID,Name,Status"
+    data_lines = [
+        "1,Alpha,OK",
+        "2,Beta,OK",
+        "3,Gamma,NG",
+    ]
+    csv_content = f"{header_line}\n" + "\n".join(data_lines)
+    element = make_element(
+        element_id="elem-short-csv",
+        file_type="csv",
+        source_name="short.csv",
+        source_path="/data/short.csv",
+        text=csv_content,
+    )
+
+    chunker = StructureAwareChunker(max_chars=900)
+    assert not chunker._is_wide_csv_element(element, csv_content)
+
+    chunks = chunker.chunk_elements([element])
+    children = [c for c in chunks if c.retrievable]
+    # Với CSV hàng ngắn, hành vi giữ nguyên như text element thông thường
+    assert len(children) == 1
+    assert "Alpha" in children[0].text
+    assert "Row 1" not in children[0].text

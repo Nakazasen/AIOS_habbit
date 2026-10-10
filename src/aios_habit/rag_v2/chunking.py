@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field, replace
+import csv
 import hashlib
 import json
 import re
@@ -139,8 +140,11 @@ class StructureAwareChunker:
             text = self._element_text(element)
             if not text:
                 continue
+            csv_raw_text = element.text or text
             if element.element_type == ElementType.TABLE and element.table is not None:
                 chunks.extend(self._chunk_table(element, text))
+            elif self._is_wide_csv_element(element, csv_raw_text):
+                chunks.extend(self._chunk_wide_csv_element(element, csv_raw_text))
             else:
                 chunks.extend(self._chunk_text_element(element, text))
 
@@ -409,6 +413,159 @@ class StructureAwareChunker:
                     representation_role="parent",
                     retrievable=False,
                 ))
+        return chunks
+
+    def _is_wide_csv_element(self, element: DocumentElement, text: str) -> bool:
+        ft = (element.file_type or "").lower().lstrip(".")
+        ext = (element.source_name or element.source_path or "").lower()
+        if ft != "csv" and not ext.endswith(".csv"):
+            return False
+        lines = [l for l in text.splitlines() if l.strip()]
+        if len(lines) < 2:
+            return False
+        try:
+            headers = list(csv.reader([lines[0]]))[0]
+        except Exception:
+            return False
+        if len(headers) < 2:
+            return False
+        return any(len(line) > self.max_chars for line in lines[1:])
+
+    @staticmethod
+    def _extract_wide_row_prefix(
+        headers: List[str],
+        row_values: List[str],
+        row_idx: int,
+    ) -> Tuple[str, List[int], List[int]]:
+        key_indices: List[int] = []
+        judge_indices: List[int] = []
+        for idx, h in enumerate(headers):
+            hl = h.lower().strip()
+            if any(k in hl for k in ("s/n", "serial", "mã", "code", "id", "date", "time", "ngay", "gio", "mode", "model", "lot")):
+                key_indices.append(idx)
+            if any(j in hl for j in ("judge", "verdict", "totaljudge", "total_judge", "result", "status", "phán định", "phandinh", "kết quả", "ketqua")):
+                judge_indices.append(idx)
+        if not key_indices:
+            key_indices = list(range(min(4, len(headers))))
+
+        key_parts = []
+        for i in key_indices:
+            if i < len(row_values) and i < len(headers):
+                val = row_values[i].strip()
+                if val:
+                    key_parts.append(f"{headers[i]}: {val}")
+        judge_parts = []
+        for i in judge_indices:
+            if i < len(row_values) and i < len(headers):
+                val = row_values[i].strip()
+                if val:
+                    judge_parts.append(f"{headers[i]}: {val}")
+
+        prefix_items = [f"Row {row_idx}"] + key_parts + judge_parts
+        prefix_str = " | ".join(prefix_items)
+        return prefix_str, key_indices, judge_indices
+
+    def _chunk_wide_csv_element(
+        self,
+        element: DocumentElement,
+        text: str,
+    ) -> List[DocumentChunk]:
+        lines = [l for l in text.splitlines() if l.strip()]
+        if not lines:
+            return []
+        try:
+            headers = list(csv.reader([lines[0]]))[0]
+        except Exception:
+            headers = [h.strip() for h in lines[0].split(",")]
+
+        chunks: List[DocumentChunk] = []
+        child_index = 0
+        parent_id = f"{element.element_id}::wide-csv-parent"
+
+        for row_idx, row_line in enumerate(lines[1:], start=1):
+            try:
+                row_values = list(csv.reader([row_line]))[0]
+            except Exception:
+                row_values = [v.strip() for v in row_line.split(",")]
+
+            prefix_str, key_idx, judge_idx = self._extract_wide_row_prefix(
+                headers, row_values, row_idx
+            )
+
+            if len(row_line) <= self.max_chars:
+                row_text = f"{prefix_str}\n{row_line}"
+                chunks.append(self._build_chunk(
+                    element,
+                    row_text,
+                    child_index,
+                    parent_element_ids=(parent_id,),
+                    representation_role="child",
+                ))
+                child_index += 1
+                continue
+
+            budget = max(self.max_chars - len(prefix_str) - 8, 200)
+
+            data_items = []
+            for col_i in range(len(row_values)):
+                if col_i in judge_idx or col_i in key_idx:
+                    continue
+                if col_i < len(headers):
+                    val = row_values[col_i].strip()
+                    if val:
+                        data_items.append(f"{headers[col_i]}: {val}")
+
+            if not data_items:
+                chunks.append(self._build_chunk(
+                    element,
+                    prefix_str,
+                    child_index,
+                    parent_element_ids=(parent_id,),
+                    representation_role="child",
+                ))
+                child_index += 1
+                continue
+
+            current_items: List[str] = []
+            current_len = 0
+            for item in data_items:
+                add_len = len(item) + (3 if current_items else 0)
+                if current_items and current_len + add_len > budget:
+                    c_text = f"{prefix_str} | " + " | ".join(current_items)
+                    chunks.append(self._build_chunk(
+                        element,
+                        c_text,
+                        child_index,
+                        parent_element_ids=(parent_id,),
+                        representation_role="child",
+                    ))
+                    child_index += 1
+                    current_items = [item]
+                    current_len = len(item)
+                else:
+                    current_items.append(item)
+                    current_len += add_len
+
+            if current_items:
+                c_text = f"{prefix_str} | " + " | ".join(current_items)
+                chunks.append(self._build_chunk(
+                    element,
+                    c_text,
+                    child_index,
+                    parent_element_ids=(parent_id,),
+                    representation_role="child",
+                ))
+                child_index += 1
+
+        parent_preview = "\n".join(lines[:min(len(lines), 15)])
+        chunks.append(self._build_chunk(
+            element,
+            parent_preview,
+            0,
+            element_ids=(parent_id,),
+            representation_role="parent",
+            retrievable=False,
+        ))
         return chunks
 
     def _chunk_table(self, element: DocumentElement, raw_text: str) -> List[DocumentChunk]:

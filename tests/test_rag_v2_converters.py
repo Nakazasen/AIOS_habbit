@@ -304,6 +304,50 @@ def test_powerpoint_document_converter_success():
         os.remove(pptx_path)
 
 
+def test_powerpoint_document_converter_with_speaker_notes():
+    adapter = PowerPointDocumentConverterAdapter()
+    
+    with tempfile.NamedTemporaryFile(suffix=".pptx", delete=False) as f:
+        pptx_path = f.name
+
+    with zipfile.ZipFile(pptx_path, "w") as z:
+        # Slide 1 with rels and speaker notes
+        z.writestr(
+            "ppt/slides/slide1.xml",
+            '<?xml version="1.0" encoding="UTF-8"?><p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:t>Thân slide 1: Tỷ lệ lỗi JIG</a:t></p:sld>'
+        )
+        z.writestr(
+            "ppt/slides/_rels/slide1.xml.rels",
+            '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide" Target="../notesSlides/notesSlide1.xml"/></Relationships>'
+        )
+        z.writestr(
+            "ppt/notesSlides/notesSlide1.xml",
+            '<?xml version="1.0" encoding="UTF-8"?><p:notes xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:t>Ghi chú diễn giả: BOWSKEW 4 BEAM tăng từ 25.42% lên 49.49% vào tháng 03/2026.</a:t></p:notes>'
+        )
+        # Slide 2 without notes (unchanged behavior)
+        z.writestr(
+            "ppt/slides/slide2.xml",
+            '<?xml version="1.0" encoding="UTF-8"?><p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:t>Thân slide 2 không có ghi chú</a:t></p:sld>'
+        )
+
+    try:
+        ctx = ConversionContext(document_id="doc-pptx-notes")
+        elements = adapter.convert(pptx_path, ctx)
+        assert len(elements) == 2
+        # Slide 1 must contain speaker notes data
+        assert "Thân slide 1" in elements[0].text
+        assert "25.42%" in elements[0].text
+        assert "49.49%" in elements[0].text
+        assert "tháng 03/2026" in elements[0].text
+        assert elements[0].slide == 1
+        # Slide 2 without notes must not change behavior
+        assert elements[1].text == "Thân slide 2 không có ghi chú"
+        assert elements[1].slide == 2
+        assert "[Ghi chú diễn giả]" not in elements[1].text
+    finally:
+        os.remove(pptx_path)
+
+
 def test_unsupported_and_missing_files():
     registry = ConverterRegistry()
     ctx_soft = ConversionContext(fail_soft=True)
