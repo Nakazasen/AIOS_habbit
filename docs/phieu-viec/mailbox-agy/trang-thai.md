@@ -1,6 +1,15 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
-## Vé hiện tại: WATCHER-ESCALATE-FIX-PUSH-HOME (đẩy bản sửa watcher lên kho agent-mailbox + nạp lại watcher)
+## Vé hiện tại: MISSING5-PARSER-FIX-HOME (sửa bộ trích xuất PPTX + bộ chia mảnh CSV hàng rộng, nạp lại 2 tệp)
+
+- Trạng thái: `moi`
+- `ghi_chu`: 2026-10-11 01:29 +07 — **PHÁT HÀNH** vé `MISSING5-PARSER-FIX-HOME` (prompt.md đã thay bằng nội dung vé đã xếp hàng). Hàng chờ tiếp theo: `MISSING5-EMBED-COMPLETE-HOME` → `Q0668-BLOCK-FIX-HOME` (đã gồm bổ sung đồng bộ bộ sưu tập theo khối) → `CSV-STRUCTURED-LANE-HOME`, điều phối phát hành lần lượt khi từng vé khép.
+- `ghi_chu` (verdict Muse): 2026-10-11 01:29 +07 — **ĐẠT** vé `WATCHER-ESCALATE-FIX-PUSH-HOME`; vé cha `WATCHER-ESCALATE-FIX-HOME` coi như đã khép toàn bộ. Điều phối kiểm chứng trực tiếp trên kho từ xa: tip nhánh `main` của `Nakazasen/agent-mailbox` hiện là `8c54e92982229c192542257884d480cbf392543b` (đúng mã báo cáo trích, commit cha `4688829e`), diff gồm cả hai tệp watcher (+187/−80 mỗi tệp) với đủ các thành phần của bản sửa đã duyệt (tách khối hiện hành, đọc tên vé hiện hành, ghi UTF-8 không BOM bằng WriteAllText). Như vậy commit này vốn được tạo cục bộ trong vé cha lúc 00:52 và chỉ được đẩy lên ở vé hoàn thiện — khép lại đúng theo yêu cầu. Việc nạp lại hai watcher lúc 01:08:17 ở khoảng trống an toàn (hộp thư opencode đang `moi`, không có tiến trình chạy dở) được ghi nhận; tiến trình watcher mới đã chạy bằng bản mã đã sửa.
+- `bao_cao`: `docs/phieu-viec/ket-qua/missing5-parser-fix-home.md`
+- Ticket: `MISSING5-PARSER-FIX-HOME` — [NHÀ] sửa parser PPTX/chunker CSV + nạp lại 2 tệp. Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`.
+- `hang-cho`: (1) `MISSING5-EMBED-COMPLETE-HOME` — tệp `docs/phieu-viec/mailbox-agy/prompt-queue-missing5-embed-complete-home.md`. (2) `Q0668-BLOCK-FIX-HOME` — tệp `.../prompt-queue-q0668-block-fix-home.md` (đã bổ sung phạm vi đồng bộ bộ sưu tập theo khối). (3) `CSV-STRUCTURED-LANE-HOME` — tệp `.../prompt-queue-csv-structured-lane-home.md`. (4) Chuyển nhà hộp thư sang kho điều phối khi tới lượt. (5) `WORK-HABIT-LEARNING-DESIGN-HOME` — vẫn bị CỔNG ƯU TIÊN khoá.
+
+## Vé trước: WATCHER-ESCALATE-FIX-PUSH-HOME (đẩy bản sửa watcher lên kho agent-mailbox + nạp lại watcher)
 
 - Trạng thái: `xong-cho-duyet`
 - `commit`: `2fed4d7`
