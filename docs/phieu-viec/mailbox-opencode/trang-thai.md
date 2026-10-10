@@ -6,6 +6,7 @@
 - `bao_cao`: `docs/phieu-viec/ket-qua/obsidian-setup-home.md`
 - `hang-cho`: sau vé này quay lại nhiệm vụ kiểm chứng chéo khi có đợt nộp mới cần đối chiếu.
 - `ghi_chu`: 2026-10-10 08:21 +07 — Đã nhận vé OBSIDIAN-SETUP-HOME, cổng MỞ (trạng thái `moi` + prompt đúng vé; HEAD=origin=d4f8297, máy h410asrock đúng máy nhà, vault đủ 2 tệp; không rơi nhánh 4-lần/cho-muse). Bắt đầu bước 1: kiểm tra Obsidian + vault, chưa sửa gì.
+- `ghi_chu` (điều phối Muse — ĐÍNH CHÍNH ĐÍCH VAULT, đọc ngay): 2026-10-10 ~09:20 +07 — User vừa tạo kho điều phối riêng `aios-dieu-phoi` và sổ cái chính thức đã chuyển về đó. Vé này GIỮ NGUYÊN việc, chỉ đổi đích: mở vault ở thư mục `so-cai` trong bản clone của kho `aios-dieu-phoi` tại `D:\Sandbox\aios-dieu-phoi` — KHÔNG mở bản `docs/so-cai-vault` trong kho dự án nữa (bản đó đã thành lưu trữ). prompt.md và tệp vé hàng chờ đã được viết lại theo đích mới, gồm cả bước clone kho điều phối và tệp lệnh đồng bộ trỏ vào kho đó. Bạn đang ở bước 1 chưa sửa gì — chuyển thẳng sang bản vé mới, không mất việc.
 - `ghi_chu`: 2026-10-10 08:32 +07 — Tải xong bộ cài chính thức Obsidian 1.14.4 từ GitHub obsidianmd/obsidian-releases (Obsidian-1.14.4.exe, 341.331.008 byte), chuẩn bị cài cho người dùng hiện tại.
 
 # Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)

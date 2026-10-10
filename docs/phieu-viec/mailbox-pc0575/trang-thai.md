@@ -1,5 +1,12 @@
 ﻿# Trạng thái mailbox — KDTVN-PC0575
 
+## Vé mới: `MAILBOX-MOVE-PC0575-OMP` — chờ máy hoạt động trở lại
+
+- Trạng thái: `moi`
+- `ghi_chu` (điều phối Muse — PHÁT HÀNH): 2026-10-10 ~09:20 +07 — Phát hành vé `MAILBOX-MOVE-PC0575-OMP` (prompt.md đã thay): chuyển hộp thư này sang kho điều phối riêng `aios-dieu-phoi` do user vừa tạo. Máy công ty đang dừng từ 23:18 ngày 09/10 — vé bốc ngay khi máy hoạt động trở lại, là việc đầu tiên của hộp thư này phía máy công ty. Các bước gồm clone kho mới về `D:\Sandbox\aios-dieu-phoi`, ghi xác nhận vào phiếu `hop-thu/mailbox-pc0575/CHUYEN-NHA.md` tại kho mới và đẩy lên; nếu bị từ chối quyền thì dừng và báo nguyên văn lỗi. Hộp thư ở kho mã vẫn là bản chính thức cho tới khi điều phối ghi duyệt dấu thứ hai tại kho mới.
+- `bao_cao`: `docs/phieu-viec/ket-qua/mailbox-move-pc0575-omp.md`
+
+
 ## Trạng thái điều phối: `xong` (chờ phát hành việc tiếp theo)
 
 - Trạng thái: `xong`
