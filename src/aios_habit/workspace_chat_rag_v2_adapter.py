@@ -3416,9 +3416,20 @@ def _select_domain_route(
         def _collection_exists(collection_id: str) -> bool:
             return _domain_index_ready(config, collection_id)
 
-        return index_domain.select_domain_collection(
+        route = index_domain.select_domain_collection(
             detected, base_collection_id, collection_exists=_collection_exists
         )
+        if route is not None and not route.applied and _domain_index_ready(config, base_collection_id):
+            # Kho hop nhat library.sqlite chua toan bo cac khoi tri thuc.
+            # Loc pham vi qua truong document_id trong library.sqlite thay vi tach roi file DB.
+            return index_domain.DomainRoute(
+                base_collection_id,
+                route.domain,
+                True,
+                "tu dong chon khoi %s (loc qua chi muc)" % index_domain.DOMAIN_DISPLAY.get(route.domain, route.domain),
+                detected,
+            )
+        return route
     except Exception as error:  # routing must never break retrieval
         LOGGER.warning("Domain routing skipped: %s", _safe_reason(error))
         return None

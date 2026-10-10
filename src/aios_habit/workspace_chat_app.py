@@ -4338,6 +4338,10 @@ else:
                         )
 
                         knowledge_block_key = f"wsc_knowledge_block_{active_conversation.id}"
+                        if knowledge_block_key not in st.session_state:
+                            query_block = str(get_query_param("block") or "").strip().lower()
+                            if query_block in _DOMAINS or query_block == "auto":
+                                st.session_state[knowledge_block_key] = query_block
                         knowledge_block_value = str(
                             st.session_state.get(knowledge_block_key, "auto") or "auto"
                         )
