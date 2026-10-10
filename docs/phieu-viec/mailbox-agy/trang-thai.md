@@ -1,6 +1,15 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
-## Vé hiện tại: MISSING5-RETRIEVAL-DIAG-HOME (chẩn đoán vì sao 5 tệp đã nạp mà nhóm câu đích vẫn bị chặn)
+## Vé hiện tại: WATCHER-ESCALATE-FIX-HOME (sửa watcher hộp thư leo thang ghi đè trạng thái)
+
+- Trạng thái: `moi`
+- `ghi_chu`: 2026-10-11 00:41 +07 — **PHÁT HÀNH CHÍNH THỨC** vé `WATCHER-ESCALATE-FIX-HOME` (prompt.md đã thay bằng nội dung vé đã xếp hàng). Hàng chờ sau vé này đã xếp sẵn theo thứ tự phụ thuộc: (1) `MISSING5-PARSER-FIX-HOME`, (2) `MISSING5-EMBED-COMPLETE-HOME`, (3) `Q0668-BLOCK-FIX-HOME`, (4) `CSV-STRUCTURED-LANE-HOME` — điều phối phát hành lần lượt khi từng vé khép.
+- `ghi_chu` (verdict Muse): 2026-10-11 00:41 +07 — **ĐẠT** vé `MISSING5-RETRIEVAL-DIAG-HOME`. Điều phối kiểm chứng độc lập các phát hiện quyết định, không chỉ đọc báo cáo: (1) Tệp dữ kiện thô kiểm kê khớp tuyệt đối với bảng trong báo cáo: hai tệp lớn có đúng 0 vector trên 26.907 mảnh có thể truy hồi (BowOverAdjust 22.054 + Spec 4.853), ba tệp nhỏ đủ 100%; tổng 31.233 mảnh = 27.529 mảnh có thể truy hồi + 3.704 mảnh cha — giải thích trọn vẹn con số từng gây nghi ngờ ở verdict nạp. (2) Điều phối tự mở gói nguồn v2 và xác nhận nguyên văn: số liệu đích của `Q0620` (từ 25,42% lên 49,49%, BOWSKEW 4 BEAM, tháng 03/2026) nằm trong ghi chú diễn giả của slide 1 — bộ trích xuất PPTX bỏ qua phần này nên dữ kiện chưa từng vào chỉ mục. (3) Tự đếm tệp BowOverAdjust trong gói nguồn: đúng 3.153 bản ghi như chẩn đoán; phân bố màu trong báo cáo cộng lại khớp tổng (1.304 + 1.035 + 814 = 3.153). (4) Dòng UnitTest chứa serial dài ~5.000 ký tự, serial ở ký tự 20 — cơ chế cắt lát 1.000 ký tự tách serial khỏi cột phán định đứng vững. Bốn nguyên nhân gốc được xếp hạng và được công nhận làm căn cứ phát vé sửa: [1] 4/7 câu đích là câu thống kê toàn tệp — truy hồi top-k không thể tính đúng, cần làn truy vấn có cấu trúc; [2] thiếu 100% vector của 2 tệp lớn; [3] lỗi trích xuất PPTX (bỏ ghi chú diễn giả) và lỗi chia mảnh CSV hàng rộng; [4] Mục 0.2 đã rõ gốc: tệp đích của `Q0668` chỉ thuộc khối `dieu_tra_loi` (0 mảnh trong khối `lsu`) trong khi kịch bản giao diện ép chọn khối `lsu`. Chuỗi vé sửa đã xếp hàng theo thứ tự phụ thuộc ngay trong lượt này (parser → nhúng bổ sung → sửa khối Q0668 → làn cấu trúc CSV). Vé chẩn đoán hoàn thành đúng hợp đồng chỉ đọc: không ghi chỉ mục, không sửa mã, không đổi ngưỡng.
+- `bao_cao`: `docs/phieu-viec/ket-qua/missing5-retrieval-diag-home.md`
+- Ticket: `WATCHER-ESCALATE-FIX-HOME` — [NHÀ] sửa watcher hộp thư leo thang. Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`.
+- `hang-cho`: (1) `MISSING5-PARSER-FIX-HOME` — tệp `docs/phieu-viec/mailbox-agy/prompt-queue-missing5-parser-fix-home.md`. (2) `MISSING5-EMBED-COMPLETE-HOME` — tệp `.../prompt-queue-missing5-embed-complete-home.md`. (3) `Q0668-BLOCK-FIX-HOME` — tệp `.../prompt-queue-q0668-block-fix-home.md`. (4) `CSV-STRUCTURED-LANE-HOME` — tệp `.../prompt-queue-csv-structured-lane-home.md`. (5) Chuyển nhà hộp thư sang kho điều phối, điều phối phát hành khi tới lượt. (6) `WORK-HABIT-LEARNING-DESIGN-HOME` — vẫn bị CỔNG ƯU TIÊN khoá.
+
+## Vé trước: MISSING5-RETRIEVAL-DIAG-HOME (chẩn đoán vì sao 5 tệp đã nạp mà nhóm câu đích vẫn bị chặn)
 
 - Trạng thái: `xong-cho-duyet`
 - `commit`: `2ce8763`
