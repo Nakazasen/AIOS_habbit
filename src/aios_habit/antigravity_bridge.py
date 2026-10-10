@@ -1075,6 +1075,8 @@ def route_workspace_chat_submission(
     if was_cancelled():
         return (False, "", None, "Đã dừng yêu cầu AI.")
 
+    if backend == "cagent":
+        backend = "cagent_api"
     if backend not in {"gemini_web", "cagent_api", "nakazasen_router", "local"}:
         return (False, "", None, "Lựa chọn cầu nối AI không hợp lệ.")
 

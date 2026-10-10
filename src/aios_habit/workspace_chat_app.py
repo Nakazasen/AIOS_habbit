@@ -1227,7 +1227,7 @@ def _run_chat_turn_async(
     chat_history: tuple = (),
     user_raw_input: str = "",
     answer_language: str = "vi",
-    ai_backend: str = "cagent",
+    ai_backend: str = "nakazasen_router",
     cagent_endpoint_url: str = "",
     cancellation_event: Any = None,
     user_message_id: str = "",
