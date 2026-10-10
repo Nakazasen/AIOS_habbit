@@ -1,4 +1,4 @@
-﻿# VÉ: OBSIDIAN-SETUP-HOME (cài Obsidian và mở vault sổ cái tại máy nhà)
+# VÉ: OBSIDIAN-SETUP-HOME (cài Obsidian và mở vault sổ cái tại máy nhà)
 
 - Mã vé: `OBSIDIAN-SETUP-HOME`
 - Role gợi ý: TINY/SMOL (opencode — thợ phụ tạm thời, máy nhà h410asrock). Việc nhẹ, không gọi mô hình nặng.

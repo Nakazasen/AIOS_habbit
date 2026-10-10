@@ -1,5 +1,13 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
+- Vé: `OBSIDIAN-SETUP-HOME`
+- Trạng thái: `moi`
+- `ghi_chu` (điều phối Muse — PHÁT HÀNH): 2026-10-10 ~08:20 +07 — Phát hành vé `OBSIDIAN-SETUP-HOME` cho thợ phụ tạm thời ở máy nhà (prompt.md đã thay). Theo lệnh user ngày 10/10, sổ cái chuyển từ Notion sang Obsidian; toàn bộ nội dung đã nằm trong vault `docs/so-cai-vault` của chính kho này. Vé nhẹ: cài Obsidian tại máy nhà, mở vault, tạo tệp lệnh đồng bộ một chạm cho sổ, kiểm chứng đồng bộ bằng một dòng trong README của vault kèm ảnh chụp Obsidian đang mở sổ. Rào: không sửa nội dung các mục cũ của sổ, không cài plugin ngoài mặc định, không đụng chỉ mục production.
+- `bao_cao`: `docs/phieu-viec/ket-qua/obsidian-setup-home.md`
+- `hang-cho`: sau vé này quay lại nhiệm vụ kiểm chứng chéo khi có đợt nộp mới cần đối chiếu.
+
+# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
+
 - Trạng thái: `xong`
 - `ghi_chu` (verdict Muse): 2026-10-09 ~13:20 +07 — **ĐẠT** vé `TEST-ABSOLUTE-COUNT-FIX-HOME`. Điều phối kiểm chứng độc lập: tự chạy lại hai tệp chứa hai ca vừa sửa trên máy sạch — 13 ca đạt, 2 ca bỏ qua có điều kiện đúng thiết kế (vắng chỉ mục production tại máy kiểm chứng); phần thay đổi khớp yêu cầu của vé (bỏ toàn bộ số ghim của kho hiện tại ở cả hai ca, kể cả chuỗi vân tay, đổi sang khẳng định quan hệ). Chuỗi việc về tín hiệu kiểm thử của thợ phụ tạm thời tới đây đã khép trọn: bộ kiểm thử sạch, ca chập chờn đã bịt, các ca ghim số tuyệt đối đã đổi sang quan hệ. Việc tiếp theo của thợ phụ tạm thời ở máy nhà (kiểm chứng chéo khi có đợt nộp mới cần đối chiếu) sẽ phát hành khi tới lượt.
 - `ghi_chu` (verdict Muse): 2026-10-09 ~13:08 +07 — **ĐẠT** vé `TEST-NESTED-GUARD-SCAN-HOME` + **PHÁT HÀNH** vé `TEST-ABSOLUTE-COUNT-FIX-HOME` (prompt.md đã thay). Điều phối kiểm chứng độc lập tại đúng các dòng được nêu trong bảng: ca đếm trên chỉ mục thật ghim cứng 149.800 mảnh và 889 tài liệu; ca bản đồ miền ghim 889 / 92 / 681 / 44 / 72 — cả hai đều đúng như bảng rà soát mô tả, và commit của vé chỉ gồm tệp báo cáo. Bảng 12 mục phân loại hợp lý: ngoài hai ca này, các mẫu còn lại đều đã có bảo vệ, dùng dữ liệu giả, hoặc có trần đủ rộng nên chỉ cần theo dõi. Vé mới sửa đúng hai ca đó sang khẳng định quan hệ (khớp giữa các đường đọc, các miền rời nhau và cộng lại bằng tổng), không giữ lại con số tuyệt đối nào của kho hiện tại — kể cả chuỗi vân tay ở ca đếm, điều phối bổ sung điểm này so với bảng rà soát.

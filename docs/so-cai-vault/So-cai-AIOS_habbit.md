@@ -6,6 +6,15 @@
 
 ## Nhật ký (mới nhất ở trên cùng)
 
+## Cập nhật 2026-10-10 ~08:20 +07 — Sổ cái chuyển từ Notion sang Obsidian (đây là mục đầu tiên ghi tại nhà mới)
+
+- Theo lệnh của user sáng 10/10, sổ cái chuyển hẳn từ Notion sang Obsidian. Lý do: workspace Notion ở gói Free đã chạm trần số khối, đang trong thời gian ân hạn tới 09:04 ngày 11/10; sau mốc đó việc ghi tiếp phụ thuộc vào nâng cấp trả phí. Obsidian dùng tệp Markdown thuần lưu trên đĩa — không giới hạn số mục, không phụ thuộc hạn mức của bất kỳ dịch vụ nào.
+- Toàn bộ nội dung sổ trên Notion (khoảng 222 nghìn ký tự, gần 1.500 dòng, tính tới mục trạng thái máy công ty lúc 07:50 ngày 10/10) đã được trích xuất nguyên vẹn vào tệp này. Bản Notion giữ nguyên làm bản lưu trữ lịch sử, không ghi thêm từ thời điểm chuyển đổi.
+- Đồng bộ hai chiều giữa máy nhà, máy công ty và máy của điều phối viên đi qua kho git của dự án (thư mục `docs/so-cai-vault`, nhánh đang làm việc) — cùng kênh các hộp thư của thợ đang dùng hằng ngày. Phương án kho git riêng cho vault không thực hiện được vì mã truy cập hiện tại không có quyền tạo kho mới; dùng kho chung là phương án sẵn có và đã kiểm chứng. Mỗi máy sẽ có một tệp lệnh đồng bộ một chạm do thợ thiết lập trong vé cài đặt.
+- Bộ cài Obsidian bản 1.14.4 (bản mới nhất tại thời điểm chuyển đổi) đã được tải về máy của điều phối viên và chạy thử mở vault thành công. Vé cài đặt đã phát hành cho thợ phụ tạm thời ở cả hai máy: máy nhà làm ngay; máy công ty nằm trong hàng chờ và chỉ chạy khi máy hoạt động trở lại (máy đang dừng từ 23:18 ngày 09/10).
+- Từ mục này trở đi, mọi verdict, phát vé và quyết định của dự án ghi tại tệp này thay cho Notion.
+
+
 Trang đối soát duy nhất giữa Vinh và Muse. Quy ước: **mỗi lần chốt gì → Muse ghi vào đây; mỗi lần bắt đầu việc → Muse đọc lại trang này.**
 ---
 ## 1. Đích cuối cùng
