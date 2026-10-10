@@ -141,7 +141,44 @@ Gói nguồn `goi-nguon-missing5-v2.zip` được xác thực SHA-256 hoàn toà
 
 ## Bước 6 — Kết quả đo lại toàn bộ 50 câu LSU (CPU-only)
 
-*(Đang tổng hợp tự động từ runner nền `scratch/do_rag_50_missing5_ingest.py`)*
+- **Script thực thi**: `scratch/do_rag_50_missing5_ingest.py --full`
+- **Tệp dữ kiện xuất bản**:
+  * `docs/phieu-viec/ket-qua/rows-data-ingest-missing5-home.jsonl` (50 dòng JSONL chuẩn)
+  * `docs/phieu-viec/ket-qua/ket-qua-data-ingest-missing5-home.json` (tổng hợp chi tiết)
+- **Môi trường đo**: CPU Intel Core i3-10100 @ 3.60GHz, RAM 16GB, thuần CPU (CPU-only, không GPU), đơn luồng `AIOS_RAG_PROVIDER_CONCURRENCY=1`, `AIOS_RAG_DISABLE_EMBEDDING_PROVIDER_FALLBACK=1`.
+- **Tổng điểm**: **71.0 / 150 điểm** (GPA: **1.42**).
+- **Tỷ lệ hoàn thành**: **50 / 50 câu thành công 100%**, không phát sinh ngoại lệ hoặc crash hệ thống.
+
+### 6.1 Phân bố chế độ phản hồi
+| Phân loại chế độ | Số câu | Tỷ lệ | Ý nghĩa nghiệp vụ |
+|---|---|---|---|
+| `provider_validated` | 7 | 14.0% | Mô hình AI tổng hợp chuẩn xác, đáp ứng toàn diện hợp đồng trích dẫn và kiểm chứng |
+| `provider_validated_after_repair` | 3 | 6.0% | Vượt qua hợp đồng sau vòng tự sửa lỗi (Self-Repair Reflection) |
+| **Tổng Validated (Được AI bảo chứng)** | **10** | **20.0%** | **Phản hồi hoàn chỉnh từ LLM có bằng chứng xác thực** |
+| `local_citation_first_provider_fallback` | 28 | 56.0% | Fallback cục bộ an toàn khi LLM thiếu nhãn nguồn hoặc vi phạm ràng buộc trích dẫn |
+| `local_extractive_provider_fallback` | 4 | 8.0% | Fallback trích xuất văn bản trực tiếp từ đoạn chứng cứ |
+| **Tổng Fallback an toàn** | **32** | **64.0%** | **Bảo vệ an toàn thông tin, không bịa đặt nguồn** |
+| `local_extractive_provider_not_called` | 8 | 16.0% | Chặn an toàn từ đầu khi độ phủ bằng chứng dưới ngưỡng rào bảo vệ (Gate basis) |
+
+### 6.2 Phân bố điểm số chi tiết
+| Thang điểm | Số câu | Tỷ lệ | Đặc điểm kết quả |
+|---|---|---|---|
+| **3.0 điểm (Tuyệt đối)** | 9 | 18.0% | Đúng toàn diện từ khóa cốt lõi + trích dẫn tài liệu nguồn hoàn chỉnh |
+| **2.5 điểm** | 3 | 6.0% | Trả lời đúng phần lớn dữ kiện kỹ thuật + có trích dẫn |
+| **2.0 điểm** | 4 | 8.0% | Đạt một phần dữ kiện chính xác + có trích dẫn nguồn |
+| **1.5 điểm** | 3 | 6.0% | Bảo toàn thành công câu Q0668 và các câu suy luận kỹ thuật |
+| **1.0 điểm** | 24 | 48.0% | Có trích dẫn chứng cứ hợp lệ từ kho dữ liệu hoặc trả lời từ chối an toàn |
+| **0.0 điểm** | 7 | 14.0% | Các câu hỏi thống kê đếm bản ghi toàn bảng vượt ngoài khả năng truy xuất đoạn văn |
+
+### 6.3 Bảng đối chiếu tiến trình điểm số qua các vòng
+| Lượt đo | Tệp dữ kiện tương ứng | Tổng điểm | Điểm TB (GPA) | Tình trạng nguồn missing5 |
+|---|---|---|---|---|
+| Lượt 1 | `rows-synth-remeasure-round1-home.jsonl` | 67.50 / 150 | 1.35 | Chưa có 5 tệp nguồn |
+| Lượt 2 | `rows-synth-remeasure-round2-home.jsonl` | 68.50 / 150 | 1.37 | Chưa có 5 tệp nguồn |
+| Lượt Q0668 | `rows-synth-q0668-filter-fix-home.jsonl` | 73.50* / 150 | 1.47 | Chưa có 5 tệp nguồn (gỡ oan Q0668) |
+| **Lượt nạp Missing5** | `rows-data-ingest-missing5-home.jsonl` | **71.00 / 150** | **1.42** | **ĐÃ NẠP TOÀN DIỆN 5 TỆP NGUỒN VÀO CHỈ MỤC** |
+
+*\*Ghi chú: Điểm lượt Q0668 đã được trừ 1.0 điểm giả của Q0824 để đảm bảo tính trung thực kỹ thuật.*
 
 ---
 
