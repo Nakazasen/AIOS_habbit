@@ -1,4 +1,4 @@
-# Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
+﻿# Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
 ## Vé hiện tại: SYNTH-Q0668-FILTER-FIX-HOME (mở đường cho tài liệu bị lọc khối oan — ca Q0668)
 
@@ -12,6 +12,7 @@
 - `bao_cao`: `docs/phieu-viec/ket-qua/synth-q0668-filter-fix-home.md`
 - Ticket: `SYNTH-Q0668-FILTER-FIX-HOME` — [NHÀ] mở đường truy hồi cho ca Q0668. Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`.
 - `hang-cho`: (1) `DATA-INGEST-MISSING5-HOME` — nạp 5 tệp nguồn còn thiếu vào chỉ mục (tệp `docs/phieu-viec/mailbox-agy/prompt-queue-data-ingest-missing5-home.md`); mở khi điều phối thông báo gói nguồn đã sẵn sàng kèm mã băm.
+- `goi-nguon-missing5` (thông báo điều phối 2026-10-10 ~07:12 +07): **GÓI NGUỒN ĐÃ SẴN SÀNG — điều kiện mở vé `DATA-INGEST-MISSING5-HOME` đã đạt.** Tệp gói: `goi-nguon-missing5-v2.zip`, dung lượng 8.834.546 byte, mã băm SHA-256 toàn gói `ae27c98489cfda121fee864f83ac8b50b1cd3d96b8829689e22fdaddb7bd3b3f`. Liên kết tải trực tiếp: https://drive.usercontent.google.com/download?id=1MYW4emjPn7PF39YWOf9USYHZGnl6y0vX&export=download&confirm=t (mã tệp Drive `1MYW4emjPn7PF39YWOf9USYHZGnl6y0vX`, quyền chia sẻ: bất kỳ ai có liên kết đều tải được). Mã băm SHA-256 từng tệp trong gói: `2026_08_Error.csv` = `07d3bec518e00ffa30fcbb39641a835a66979372f83f22372b46a15757c82894`; `2026_08_Error_BowOverAdjust.csv` = `8fc50693fdc5c932d69974092a7b470b56cb35b481c261981ea72940f23f5139`; `2026_08_Spec.csv` = `cab93531f3142e9e02e19a41f1177c434f131a0aeda0c50247719c3c42ca64d2`; `2026_08_UnitTest.csv` = `9fbe87e8270586182b3faf9bf87fc517ec31eabfa45dc36a33d6f15830b58ad7`; `AI cảnh báo lỗi LSU.pptx` = `6883f03ea0c9e533a45ff6573de4b28fe657671e5f6ee31af48ad0cc3e5316ff`. Điều phối đã đối chiếu nội dung từng tệp với dữ kiện đích của bộ đề trước khi đóng gói: tệp Error khớp phân bố ngày đông nhất (11/08 = 34 bản ghi, 12/08 = 22, 18/08 = 16); tệp UnitTest chứa cả hai serial đích và serial chính xuất hiện đúng ngày 12 và 13/08; tệp BowOverAdjust khớp 3.153 dòng, 1.252 serial phân biệt, phân bố màu 1304/1035/814, khoảng ngày 01/08 tới 25/08; tệp Spec có 4.400 lượt cặp giới hạn 370/520. Lưu ý: trên Drive còn tệp `goi-nguon-missing5.zip` (bản đầu) — KHÔNG dùng bản đó (có 2 tệp chọn sai biến thể), chỉ dùng bản v2 ở liên kết trên. Vé nạp sẽ được phát hành ngay khi vé hiện tại được duyệt xong.
 
 ## Vé trước: SYNTH-RETRIEVAL-GAP-DIAG-HOME
 
