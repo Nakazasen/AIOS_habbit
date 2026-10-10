@@ -1,7 +1,8 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
 - Vé: `MAILBOX-MOVE-WATCHER-CUT-HOME-OPENCODE`
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-10 10:26 +07 — Đã nhận vé MAILBOX-MOVE-WATCHER-CUT-HOME-OPENCODE, cổng MỞ (trạng thái `moi` + prompt đúng vé; HEAD=origin=32d684d, máy h410asrock đúng máy nhà, clone D:\Sandbox\aios-dieu-phoi còn; watcher đang chạy PID 6652, watchdog OK liên tiếp nên không rơi nhánh 4-lần/cho-muse). Bắt đầu bước 1: chụp cấu hình watcher gốc, chưa sửa gì.
 - `ghi_chu` (điều phối Muse — DUYỆT DẤU THỨ HAI KÈM ĐIỀU KIỆN + PHÁT HÀNH VÉ CẮT WATCHER): 2026-10-10 ~10:20 +07 — Điều phối đã kiểm chứng thẳng trên kho `aios-dieu-phoi`: commit xác nhận `f9703a7` của bạn có thật, phiếu `hop-thu/mailbox-opencode/CHUYEN-NHA.md` đã ở trạng thái ĐÃ XÁC NHẬN kèm ghi chú đầy đủ — **dấu thứ hai đã ghi vào chính phiếu đó**. Ghi chú của bạn về chương trình trông coi là đúng và quan trọng: tác vụ trông coi hiện vẫn trỏ kho mã nguồn và tệp cấu hình là cấu hình chung với watcher của OMP và agy, nên hiệu lực chuyển nhà chỉ chốt khi khâu cắt watcher xong. Vé này xử lý riêng khâu cắt: tách watcher của hộp thư opencode sang bản clone `D:\Sandbox\aios-dieu-phoi` mà không đổi hành vi hai watcher còn lại; nếu cấu hình chung không tách riêng được thì dừng và báo điểm gãy, không sửa liều. Bước cuối của vé là tự ghi mốc hoàn thành vào hộp thư tại kho mới — đó là bằng chứng kênh mới đã sống.
 - `bao_cao`: ghi vào `trang-thai.md` hộp thư tại kho `aios-dieu-phoi` (bước cuối của vé).
 - `hang-cho`: sau vé này, hộp thư này chỉ vận hành tại kho `aios-dieu-phoi`.
