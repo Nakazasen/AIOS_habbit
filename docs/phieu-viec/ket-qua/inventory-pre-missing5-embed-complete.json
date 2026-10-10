@@ -1,0 +1,39 @@
+{
+  "timestamp": "2026-10-11 03:32:57",
+  "database": "C:\\AIOS_workspace_chat_rag_v2_production\\bge_m3_hybrid\\collections\\tri_thuc\\library.sqlite",
+  "size_bytes": 3312238592,
+  "sha256": "5d2dc88bceff47c996cc41063ada8ed5184b3f437a2ea898034981814c46f8db",
+  "integrity": "ok",
+  "total_documents": 894,
+  "total_chunks": 181511,
+  "retrievable_chunks": 149350,
+  "parent_chunks": 32161,
+  "dense_embeddings": 122783,
+  "sparse_embeddings": 122783,
+  "total_missing_dense": 26907,
+  "total_missing_sparse": 26907,
+  "missing_documents": [
+    {
+      "source_name": "2026_08_Error_BowOverAdjust.csv",
+      "document_id": "wsc-8eb2a5d21b75fa88307223b1",
+      "total_chunks": 25213,
+      "retrievable_chunks": 22054,
+      "parent_chunks": 3159,
+      "dense_count": 0,
+      "sparse_count": 0,
+      "missing_dense": 22054,
+      "missing_sparse": 22054
+    },
+    {
+      "source_name": "2026_08_Spec.csv",
+      "document_id": "wsc-d4df39c14101e40ebad88a91",
+      "total_chunks": 5303,
+      "retrievable_chunks": 4853,
+      "parent_chunks": 450,
+      "dense_count": 0,
+      "sparse_count": 0,
+      "missing_dense": 4853,
+      "missing_sparse": 4853
+    }
+  ]
+}
