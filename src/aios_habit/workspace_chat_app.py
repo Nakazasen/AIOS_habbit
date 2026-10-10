@@ -1701,6 +1701,7 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
         TAO_VU_DIEU_TRA,
         VE_BIEU_DO,
         XEM_TIEN_DO_VU,
+        XU_HUONG_LOG_TINH,
         _khong_dau,
     )
 
@@ -1806,6 +1807,18 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
             except Exception:
                 pass
         return van_ban or None
+    if y_dinh == XU_HUONG_LOG_TINH:
+        try:
+            from aios_habit.production_prediction.jig_chat_wire import (
+                _quyet_dinh_xu_huong_log_tinh,
+            )
+
+            ket_qua = _quyet_dinh_xu_huong_log_tinh(q_text)
+            if ket_qua and ket_qua.handled:
+                return ket_qua.assistant_text or None
+        except Exception:
+            return None
+        return None
     if y_dinh == CANH_BAO_NGUONG:
         from aios_habit.threshold_alert_chat import xu_ly_cau_lenh
 

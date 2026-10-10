@@ -16,6 +16,7 @@ from typing import Dict, Optional, Tuple
 
 # Recognized intents. "hoi_tai_lieu" is the default fallback.
 CANH_BAO_NGUONG = "canh_bao_nguong"      # threshold alert request
+XU_HUONG_LOG_TINH = "xu_huong_log_tinh"  # static log SMA trend analysis request
 VE_BIEU_DO = "ve_bieu_do"                # chart request (runs the JIG chart branch)
 XEM_TIEN_DO_VU = "xem_tien_do_vu"        # view progress of active case
 LAP_CAY_4M_VU = "lap_cay_4m_vu"          # build 4M + Why-Why tree for active case
@@ -30,6 +31,7 @@ DU_LIEU_DAN = "du_lieu_dan"              # pasted CSV/log block in the message
 
 TAT_CA_Y_DINH = (
     CANH_BAO_NGUONG,
+    XU_HUONG_LOG_TINH,
     VE_BIEU_DO,
     XEM_TIEN_DO_VU,
     LAP_CAY_4M_VU,
@@ -54,6 +56,18 @@ def _khong_dau(text: str) -> str:
 
 # Priority order: specific intents first, generic ones last.
 _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
+    (
+        XU_HUONG_LOG_TINH,
+        (
+            "canh bao xu huong", "phan tich xu huong",
+            "xu huong sma", "canh bao sma",
+            "cong sma", "sma(20)", "sma 20",
+            "xu huong log tinh", "canh bao log tinh", "quet log tinh",
+            "chieu cong", "chieu xu huong",
+            "doan troi", "bat thuong lien tiep",
+            "diem bat thuong don le",
+        ),
+    ),
     (
         CANH_BAO_NGUONG,
         (
@@ -305,6 +319,17 @@ def extract_slots(text: str, intent: str) -> Dict[str, str]:
         m = mau.search(clean)
         if m:
             slots["ten_so"] = m.group(1).strip().strip("\"'")
+    elif intent == XU_HUONG_LOG_TINH:
+        slots_trend: Dict[str, str] = {}
+        m_csv = re.search(r'"([^"]+\.csv)"|(\S+\.csv)', clean, re.IGNORECASE)
+        if m_csv:
+            slots_trend["tep_csv"] = m_csv.group(1) or m_csv.group(2)
+        norm_c = _khong_dau(clean)
+        if "chieu cong" in norm_c or "don le" in norm_c:
+            slots_trend["chieu_kiem_tra"] = "chieu_cong"
+        elif "chieu xu huong" in norm_c or "lien tiep" in norm_c or "doan troi" in norm_c:
+            slots_trend["chieu_kiem_tra"] = "chieu_xu_huong"
+        return slots_trend
     return slots
 
 
@@ -318,6 +343,7 @@ def giai_thich_y_dinh(intent: str) -> str:
     """Short Vietnamese note shown in chat so the user sees what the app understood."""
     return {
         CANH_BAO_NGUONG: "Tôi hiểu đây là yêu cầu cảnh báo ngưỡng.",
+        XU_HUONG_LOG_TINH: "Tôi hiểu bạn muốn phân tích xu hướng SMA(20) trên log tĩnh.",
         VE_BIEU_DO: "Tôi hiểu bạn muốn vẽ biểu đồ.",
         XEM_TIEN_DO_VU: "Tôi hiểu bạn muốn xem tiến độ vụ điều tra.",
         LAP_CAY_4M_VU: "Tôi hiểu bạn muốn lập cây điều tra 4M và chuỗi Why-Why.",
@@ -336,6 +362,7 @@ def nhan_y_dinh(intent: str) -> str:
     """Short Vietnamese label for one intent (section header in a merged reply)."""
     return {
         CANH_BAO_NGUONG: "Cảnh báo ngưỡng",
+        XU_HUONG_LOG_TINH: "Phân tích xu hướng SMA(20)",
         VE_BIEU_DO: "Vẽ biểu đồ",
         XEM_TIEN_DO_VU: "Tiến độ vụ điều tra",
         LAP_CAY_4M_VU: "Cây điều tra 4M & Why-Why",

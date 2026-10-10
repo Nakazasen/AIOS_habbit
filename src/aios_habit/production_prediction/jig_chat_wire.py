@@ -243,6 +243,55 @@ def _xu_ly_lenh_nhap_tep(
     )
 
 
+def is_trend_static_intent(text: str) -> bool:
+    """Nhan dien lenh phan tich xu huong SMA(20) tren log tinh (DESKTOP-SMA-STATIC-WIRE-HOME)."""
+    norm = _norm(text)
+    if "chieu cong" in norm or "chiều cổng" in norm:
+        return True
+    if "chieu xu huong" in norm or "chiều xu hướng" in norm or "doan troi" in norm or "đoạn trôi" in norm:
+        return True
+    if "sma" in norm and ("xu huong" in norm or "xu hướng" in norm or "canh bao" in norm or "cảnh báo" in norm or "log tinh" in norm or "log tĩnh" in norm):
+        return True
+    if ("xu huong" in norm or "xu hướng" in norm) and ("log tinh" in norm or "log tĩnh" in norm or "csv" in norm or "log" in norm):
+        return True
+    if "sma(20)" in norm or "sma 20" in norm:
+        return True
+    return False
+
+
+def _quyet_dinh_xu_huong_log_tinh(
+    text: str,
+    kho_log_path: str | Path = MAC_DINH_KHO_PATH,
+    kho_nguong: Optional[KhoNguong] = None,
+) -> JigChatOutcome:
+    """Chay quet hang loat xu huong SMA(20) tren log tinh, tra ve ket qua tong hop day du."""
+    from aios_habit.production_prediction.static_log_trend import quet_xu_huong_log_tinh
+
+    hop = _MAU_DUONG_DAN_CSV.search(text or "")
+    duong_dan = (hop.group(1) or hop.group(2)) if hop else ""
+
+    norm = _norm(text)
+    chieu = ""
+    if "chieu cong" in norm or "chiều cổng" in norm or "don le" in norm or "đơn lẻ" in norm:
+        chieu = "chieu_cong"
+    elif "chieu xu huong" in norm or "chiều xu hướng" in norm or "doan troi" in norm or "đoạn trôi" in norm or "lien tiep" in norm or "liên tiếp" in norm:
+        chieu = "chieu_xu_huong"
+
+    try:
+        kq = quet_xu_huong_log_tinh(
+            duong_dan_hoac_ten=duong_dan,
+            kho_log_path=kho_log_path,
+            kho_nguong=kho_nguong,
+            chieu_kiem_tra=chieu,
+        )
+        return JigChatOutcome(handled=True, assistant_text=kq.van_ban)
+    except Exception as loi:
+        return JigChatOutcome(
+            handled=True,
+            assistant_text=f"⚠️ Lỗi khi phân tích xu hướng log tĩnh: {loi}",
+        )
+
+
 def _la_lenh_chon_bieu_do(text: str) -> bool:
     """True khi user chon loai bieu do de ve ngay (khac lenh cau hinh mail)."""
     norm = _norm(text)
@@ -879,6 +928,10 @@ def decide_jig_action(
             assistant_text=reply,
             chart_png=anh_canh_bao,
             chart_meta=meta_canh_bao,
+        )
+    if is_trend_static_intent(text):
+        return _quyet_dinh_xu_huong_log_tinh(
+            text, kho_log_path=kho_log_path, kho_nguong=kho
         )
     if is_chart_intent(text):
         return _quyet_dinh_ve_bieu_do(
