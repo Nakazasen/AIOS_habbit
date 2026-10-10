@@ -84,17 +84,36 @@ def record_dispatched_alert(conv_id: str, alert_id: str) -> None:
         _DISPATCHED_ALERT_KEYS.add((conv_id, alert_id))
 
 
+ACTIVE_CONV_FILE = Path("local_cases") / "rt_active_conversation.txt"
+
+
 def set_active_rt_conversation(conv_id: str) -> None:
     """Register current active conversation ID viewed by the user."""
     global _ACTIVE_CONV_ID
+    cleaned = str(conv_id or "").strip()
+    if not cleaned:
+        return
     with _LOCK:
-        if conv_id:
-            _ACTIVE_CONV_ID = str(conv_id).strip()
+        _ACTIVE_CONV_ID = cleaned
+    try:
+        ACTIVE_CONV_FILE.parent.mkdir(parents=True, exist_ok=True)
+        ACTIVE_CONV_FILE.write_text(cleaned, encoding="utf-8")
+    except Exception:
+        pass
 
 
 def get_active_rt_conversation() -> Optional[str]:
-    """Retrieve current active conversation ID, falling back to latest stored."""
+    """Retrieve current active conversation ID, prioritizing disk synchronization."""
     global _ACTIVE_CONV_ID
+    try:
+        if ACTIVE_CONV_FILE.exists():
+            val = ACTIVE_CONV_FILE.read_text(encoding="utf-8").strip()
+            if val:
+                with _LOCK:
+                    _ACTIVE_CONV_ID = val
+                return val
+    except Exception:
+        pass
     with _LOCK:
         if _ACTIVE_CONV_ID:
             return _ACTIVE_CONV_ID

@@ -2766,6 +2766,11 @@ else:
     active_conversation = None
     if active_conv_id:
         active_conversation = load_conversation(active_conv_id)
+        try:
+            from aios_habit.production_prediction.rt_app_wire import set_active_rt_conversation
+            set_active_rt_conversation(active_conv_id)
+        except Exception:
+            pass
 
     current_ui_locale = getattr(active_conversation, "ui_locale", "vi") if active_conversation else st.session_state.get("wsc_global_ui_locale", "vi")
     current_answer_language = getattr(active_conversation, "answer_language", "vi") if active_conversation else st.session_state.get("wsc_global_answer_language", "vi")
