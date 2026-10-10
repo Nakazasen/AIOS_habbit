@@ -1,6 +1,12 @@
 ﻿# Trạng thái mailbox
 
 - Vé: `MAILBOX-MOVE-HOME-OMP`
+- Trạng thái: `xong`
+- `ghi_chu` (điều phối Muse — HUỶ VÉ): 2026-10-10 ~21:05 +07 — **HUỶ VÉ** theo luật phân vai mới của user (21:01 10/10/2026): ngừng dùng thợ OMP ở cả hai máy. Vé chuyển nhà hộp thư OMP HUỶ — hộp thư OMP đóng băng tại kho mã, không chuyển nhà, không phát vé mới cho làn OMP. Từ nay: cần audit giao opencode; việc nhỏ/bulk giao agy; việc quan trọng giao Antigravity 2.0.
+
+# Trạng thái mailbox
+
+- Vé: `MAILBOX-MOVE-HOME-OMP`
 - Trạng thái: `moi`
 - `ghi_chu` (điều phối Muse — PHÁT HÀNH): 2026-10-10 ~09:20 +07 — Phát hành vé `MAILBOX-MOVE-HOME-OMP` (prompt.md đã thay): chuyển hộp thư này sang kho điều phối riêng `aios-dieu-phoi` do user vừa tạo. Đây là hộp thư phi công của đợt chuyển nhà — các bước gồm clone kho mới, ghi xác nhận vào phiếu `hop-thu/mailbox/CHUYEN-NHA.md` tại kho mới và đẩy lên; nếu bị từ chối quyền thì dừng và báo nguyên văn lỗi. Hộp thư ở kho mã vẫn là bản chính thức cho tới khi điều phối ghi duyệt dấu thứ hai tại kho mới.
 - `bao_cao`: `docs/phieu-viec/ket-qua/mailbox-move-home-omp.md`

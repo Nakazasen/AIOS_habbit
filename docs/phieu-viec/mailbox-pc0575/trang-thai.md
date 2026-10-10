@@ -1,4 +1,9 @@
-﻿# Trạng thái mailbox — KDTVN-PC0575
+﻿## Vé: `MAILBOX-MOVE-PC0575-OMP` — HUỶ
+
+- Trạng thái: `xong`
+- `ghi_chu` (điều phối Muse — HUỶ VÉ): 2026-10-10 ~21:05 +07 — **HUỶ VÉ** theo luật phân vai mới của user (21:01 10/10/2026): ngừng dùng thợ OMP ở cả hai máy. Vé chuyển nhà hộp thư OMP HUỶ — hộp thư OMP đóng băng tại kho mã, không chuyển nhà, không phát vé mới cho làn OMP. Từ nay: cần audit giao opencode; việc nhỏ/bulk giao agy; việc quan trọng giao Antigravity 2.0.
+
+# Trạng thái mailbox — KDTVN-PC0575
 
 ## Vé mới: `MAILBOX-MOVE-PC0575-OMP` — chờ máy hoạt động trở lại
 
