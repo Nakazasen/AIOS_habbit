@@ -3,6 +3,7 @@
 ## Vé hiện tại: MISSING5-RETRIEVAL-DIAG-HOME (chẩn đoán vì sao 5 tệp đã nạp mà nhóm câu đích vẫn bị chặn)
 
 - Trạng thái: `xong-cho-duyet`
+- `commit`: `2ce8763`
 - `ghi_chu`: 2026-10-11 00:32 +07 — HOÀN TẤT VÉ MISSING5-RETRIEVAL-DIAG-HOME: Đã chẩn đoán tận gốc 5 mục: (1) Kiểm kê 26.907 mảnh của 2 tệp lớn thiếu 100% vector; 3.704 mảnh là parent chunks retrievable=0; (2) Truy vết 8 câu: 4 câu thống kê toàn tệp CSV bị giới hạn RAG top-k, 2 câu lỗi bóc tách/chia mảnh, 2 câu thiếu vector; (3) Q0620 số liệu nằm ở notesSlide1.xml bị parser bỏ qua; Q0824 dòng CSV bị cắt 1000 ký tự làm tách rời nhãn; điểm 1.0 là artefact của hàm chấm chuỗi "ng"; (4) Q0668 giao diện thất bại do test ép chọn block=lsu trong khi tệp đích nằm ở block dieu_tra_loi; (5) Đề xuất 4 phương án kỹ thuật xếp hạng theo đóng góp.
 - `ghi_chu`: 2026-10-11 00:20 +07 — TIẾN ĐỘ: Đã xong Mục 1 (kiểm kê production: 26.907 mảnh của 2 tệp lớn thiếu 100% vector, 3.704 mảnh là parent chunks retrievable=0) & Mục 3 (Q0620 số liệu nằm ở notesSlide1.xml bị bỏ sót khi parse; Q0824 dòng CSV 5000 ký tự bị cắt lát 1000 ký tự tách rời nhãn). Đang chạy Mục 2 truy vết 8 câu trên pipeline RAG v2.
 - `ghi_chu`: 2026-10-11 00:13 +07 — ĐÃ NHẬN VÉ MISSING5-RETRIEVAL-DIAG-HOME: Bắt đầu chẩn đoán chỉ đọc production (Mục 1 kiểm kê chỉ đọc 5 tệp mới).
