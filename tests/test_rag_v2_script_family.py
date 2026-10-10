@@ -72,3 +72,24 @@ def test_should_retry_thin_results():
         lexical_weight=lexical_w, dense_weight=dense_w, sparse_weight=sparse_w
     )
     assert ranking.dense_weight > ranking.lexical_weight > 0
+
+
+def test_plan_has_cjk_variants():
+    from types import SimpleNamespace
+    from aios_habit.rag_v2.script_family import plan_has_cjk_variants
+
+    plan_cjk = SimpleNamespace(variants=[SimpleNamespace(text="製造履歴の登録手順")])
+    assert plan_has_cjk_variants(plan_cjk) is True
+
+    # Mixed query like Q0620: 11 CJK chars, 13 Latin chars
+    plan_mixed = SimpleNamespace(
+        variants=[SimpleNamespace(text="2026年3月のBOWSKEW 4 BEAM NG率はいくつですか。")]
+    )
+    assert plan_has_cjk_variants(plan_mixed) is True
+
+    plan_latin = SimpleNamespace(variants=[SimpleNamespace(text="What is the error code?")])
+    assert plan_has_cjk_variants(plan_latin) is False
+
+    plan_empty = SimpleNamespace(variants=[])
+    assert plan_has_cjk_variants(plan_empty) is False
+

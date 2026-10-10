@@ -36,7 +36,11 @@ def majority_script(texts: Sequence[str]) -> Optional[str]:
 
 def plan_has_cjk_variants(plan: object) -> bool:
     variants = getattr(plan, "variants", ()) or ()
-    return any(script_family(getattr(item, "text", "")) == "cjk" for item in variants)
+    return any(
+        script_family(getattr(item, "text", "")) in {"cjk", "mixed"}
+        or bool(_CJK_RE.search(getattr(item, "text", "")))
+        for item in variants
+    )
 
 
 def corpus_needs_cjk_query_expansion(query: str, corpus_texts: Iterable[str]) -> bool:
