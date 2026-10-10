@@ -1,5 +1,13 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
+- Vé: `MAILBOX-MOVE-WATCHER-CUT-HOME-OPENCODE`
+- Trạng thái: `moi`
+- `ghi_chu` (điều phối Muse — DUYỆT DẤU THỨ HAI KÈM ĐIỀU KIỆN + PHÁT HÀNH VÉ CẮT WATCHER): 2026-10-10 ~10:20 +07 — Điều phối đã kiểm chứng thẳng trên kho `aios-dieu-phoi`: commit xác nhận `f9703a7` của bạn có thật, phiếu `hop-thu/mailbox-opencode/CHUYEN-NHA.md` đã ở trạng thái ĐÃ XÁC NHẬN kèm ghi chú đầy đủ — **dấu thứ hai đã ghi vào chính phiếu đó**. Ghi chú của bạn về chương trình trông coi là đúng và quan trọng: tác vụ trông coi hiện vẫn trỏ kho mã nguồn và tệp cấu hình là cấu hình chung với watcher của OMP và agy, nên hiệu lực chuyển nhà chỉ chốt khi khâu cắt watcher xong. Vé này xử lý riêng khâu cắt: tách watcher của hộp thư opencode sang bản clone `D:\Sandbox\aios-dieu-phoi` mà không đổi hành vi hai watcher còn lại; nếu cấu hình chung không tách riêng được thì dừng và báo điểm gãy, không sửa liều. Bước cuối của vé là tự ghi mốc hoàn thành vào hộp thư tại kho mới — đó là bằng chứng kênh mới đã sống.
+- `bao_cao`: ghi vào `trang-thai.md` hộp thư tại kho `aios-dieu-phoi` (bước cuối của vé).
+- `hang-cho`: sau vé này, hộp thư này chỉ vận hành tại kho `aios-dieu-phoi`.
+
+# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
+
 - Vé: `MAILBOX-MOVE-HOME-OPENCODE`
 - Trạng thái: `xong-cho-duyet`
 - `commit`: `4aa9770` (báo cáo `mailbox-move-home-opencode.md` + commit xác nhận kho aios-dieu-phoi `f9703a7`; vé này không sửa `src/`/`tests/`, không merge, không đụng production)

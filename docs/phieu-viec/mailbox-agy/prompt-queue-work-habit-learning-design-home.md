@@ -1,0 +1,30 @@
+# VÉ: WORK-HABIT-LEARNING-DESIGN-HOME (thiết kế lớp học thói quen công việc cho AIOS theo cơ chế Hermes)
+
+- Mã vé: `WORK-HABIT-LEARNING-DESIGN-HOME`
+- Role gợi ý: PLAN (agy — thợ chính, máy nhà h410asrock). Vé THIẾT KẾ: chỉ đọc mã và viết tài liệu, không viết mã chạy thật.
+- Báo cáo kiêm sản phẩm: `docs/phieu-viec/ket-qua/work-habit-learning-design-home.md` (tài liệu thiết kế, tiếng Việt).
+- Bối cảnh: ngày 10/10/2026 user duyệt hướng: AIOS_habbit cần một lớp "học thói quen công việc" lấy cảm hứng từ cơ chế của Hermes Agent (dự án mã nguồn mở, giấy phép MIT của Nous Research) — KHÔNG fork mã Hermes vào AIOS. Hermes mạnh ở vòng học khép kín gồm ba cơ chế: (1) bộ nhớ bền có cấu trúc kèm tóm tắt nén định kỳ, (2) kỹ năng thủ tục — đóng gói một quy trình thành đơn vị tái dùng được và tự cải thiện qua dùng thật, (3) mô hình người dùng được cập nhật liên tục. AIOS đã có sẵn nền một phần: vòng feedback tại khung chat (lưu `local_cases/answer_feedback.jsonl`, có hàm thống kê), sổ vụ việc điều tra lỗi ở `local_cases`, lịch sử hội thoại, log JIG/LSU. Vé này thiết kế cách nối các mảnh đó thành lớp học thói quen công việc, để điều phối chia vé code ngay sau đó mà không phải hỏi lại.
+- Nguyên tắc đích (user đã chốt ở các lượt trước, thiết kế phải tuân thủ): giao diện chat-first — một ô nhập, một vùng trả lời, tính năng chui vào trong câu trả lời, cấm thêm dãy nút; mọi tính năng phải có đủ ba điểm của vòng cải thiện liên tục (điểm hứng feedback tại chỗ, metric đo được, vòng xem lại/cải thiện); đích nghiệp vụ là điều tra lỗi LSU và tra cứu tri thức công ty.
+
+## Việc phải làm
+
+1. **Rà soát hiện trạng (chỉ đọc):** liệt kê các nguồn dữ kiện thói quen đã tồn tại trong mã hiện hành — vòng feedback đáp án (`answer_feedback`, thống kê feedback), sổ vụ việc và dữ kiện ca điều tra ở `local_cases`, lịch sử hội thoại/phiên hỏi đáp, các action theo ngữ cảnh trong câu trả lời, log JIG/LSU. Với mỗi nguồn: dữ kiện gì đang được ghi, ghi ở đâu, ai đọc, thiếu điểm hứng nào. Không suy đoán — mọi khẳng định về mã hiện hành phải dẫn đúng tệp/hàm.
+2. **Thiết kế mô hình dữ kiện thói quen công việc:** các thực thể cần ghi (ca điều tra đã mở và các bước đã làm, mã lỗi/jig/line hay tra, câu hỏi lặp lại, kết luận đã chốt của từng ca, ngưỡng/chỉ số hay xem), định dạng lưu trữ cục bộ tại máy trong `local_cases` (chọn JSONL hay SQLite cục bộ và nêu lý do), vòng đời của dữ kiện (ghi mới, tóm tắt nén định kỳ theo kiểu bộ nhớ Hermes để không phình, thời hạn lưu, cơ chế quên). Mọi dữ kiện thói quen nằm ngoài kho tri thức và ngoài chỉ mục hỏi đáp.
+3. **Thiết kế cách thói quen làm thay đổi hành vi trả lời — bằng ví dụ thật của LSU:** viết ít nhất ba kịch bản đầu-cuối cụ thể, ví dụ: mở một ca lỗi mới thì câu trả lời tự kèm ngữ cảnh ca tương tự gần nhất và các bước điều tra đã làm lần trước; hỏi lại một mã lỗi đã từng điều tra thì đáp án nhớ kết luận cũ và chỉ rõ khác biệt dữ kiện mới; người dùng hay xem một ngưỡng thì cảnh báo xu hướng ưu tiên đúng ngưỡng đó. Mỗi kịch bản nêu rõ: dữ kiện thói quen nào được dùng, hiển thị ở đâu trong thân câu trả lời (không thêm nút), và người dùng tắt/bỏ qua gợi ý đó bằng cách nào ngay trong hội thoại.
+4. **Thiết kế định dạng "kỹ năng nghiệp vụ":** một quy trình điều tra đóng gói thành đơn vị tái dùng (điều kiện kích hoạt, các bước, dữ kiện cần thu ở mỗi bước, mẫu kết luận), kèm một kỹ năng mẫu viết trọn vẹn cho quy trình điều tra lỗi LSU Bước 1–2. Nêu cách người dùng tạo mới/chỉnh sửa kỹ năng bằng câu lệnh trong chat (không qua màn hình quản trị riêng), và cách kỹ năng tự cải thiện: feedback chê ở đáp án dùng kỹ năng đó đi vào đâu, ai/cái gì sửa kỹ năng, sửa xong kiểm chứng lại thế nào.
+5. **Thiết kế metric chứng minh lớp học này có ích** (bắt buộc theo luật vòng cải thiện liên tục): chọn tối đa bốn metric đo được tại máy — gợi ý: thời gian từ lúc mở ca tới bước điều tra đầu tiên hoàn thành; tỉ lệ câu hỏi lặp được trả lời kèm ngữ cảnh ca cũ; tỉ lệ feedback tích cực trên đáp án có dùng thói quen so với đáp án không dùng; số lần kỹ năng nghiệp vụ được tái dùng. Nêu cách đo từng metric từ dữ kiện đã thiết kế ở mục 2, và ngưỡng nào thì coi là đạt để triển khai tiếp.
+6. **Rủi ro và rào chắn:** học nhầm thói quen (kết luận sai của một ca bị mang sang ca khác), rò rỉ ngữ cảnh giữa các ca/người dùng khác nhau trên cùng máy, phình dữ liệu cục bộ, xung đột giữa thói quen và bằng chứng mới trong kho tri thức (luật: bằng chứng trong kho luôn thắng thói quen — thiết kế phải thể hiện luật này ở khâu truy hồi/trả lời). Bắt buộc có thiết kế cho: tắt toàn bộ lớp học thói quen bằng một câu lệnh/công tắc, và xoá sạch hồ sơ thói quen đã lưu.
+7. **Lộ trình chia vé triển khai:** chia thành các vé code nhỏ theo thứ tự phụ thuộc (gợi ý P1 hứng dữ kiện + lưu trữ, P2 dùng thói quen trong trả lời, P3 kỹ năng nghiệp vụ), mỗi vé ghi rõ: phạm vi, tệp dự kiến đụng, tiêu chí nghiệm thu dùng thật, metric kiểm chứng. Đánh dấu vé nào phải chờ DATA-INGEST-MISSING5-HOME khép (nếu có phụ thuộc).
+
+## Sản phẩm bàn giao
+
+- Tài liệu thiết kế tại đường dẫn báo cáo ở đầu vé, gồm: bảng ánh xạ cơ chế Hermes → thiết kế tương ứng trong AIOS (mỗi dòng ghi rõ lấy ý tưởng gì, vì sao hợp/không hợp với bối cảnh công ty), kết quả rà soát hiện trạng có dẫn tệp/hàm, và đủ bảy mục việc ở trên. Tài liệu phải đủ chi tiết để điều phối viết vé code triển khai ngay.
+- Nếu trong lúc thiết kế phát hiện một phần đã tồn tại sẵn trong mã (ví dụ một nửa cơ chế kỹ năng), ghi rõ để không thiết kế trùng.
+
+## Rào cứng
+
+- Chỉ đọc mã và viết tài liệu thiết kế: không sửa `src/`, không sửa `tests/`, không ghi chỉ mục, không merge `main`.
+- Ranh giới dữ kiện: lớp học này chỉ học THÓI QUEN CÔNG VIỆC tại máy người dùng; thiết kế không được đề xuất thu thập dữ kiện đời tư, không gửi dữ kiện thói quen ra ngoài máy, không đưa dữ kiện thói quen vào kho tri thức/chỉ mục.
+- Nếu tham khảo tài liệu hoặc mã công khai của Hermes thì ghi rõ nguồn và giấy phép MIT trong tài liệu; chỉ lấy cơ chế/ý tưởng, không chép mã vào tài liệu thiết kế.
+- Kích thước tệp trong báo cáo đo trên bản đã nộp vào kho sau khi commit.
+- Mốc tiến độ tối thiểu 15 phút/lần.
