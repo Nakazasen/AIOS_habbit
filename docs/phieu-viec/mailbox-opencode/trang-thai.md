@@ -6,6 +6,7 @@
 - `bao_cao`: `docs/phieu-viec/ket-qua/obsidian-setup-home.md`
 - `hang-cho`: sau vé này quay lại nhiệm vụ kiểm chứng chéo khi có đợt nộp mới cần đối chiếu.
 - `ghi_chu`: 2026-10-10 08:21 +07 — Đã nhận vé OBSIDIAN-SETUP-HOME, cổng MỞ (trạng thái `moi` + prompt đúng vé; HEAD=origin=d4f8297, máy h410asrock đúng máy nhà, vault đủ 2 tệp; không rơi nhánh 4-lần/cho-muse). Bắt đầu bước 1: kiểm tra Obsidian + vault, chưa sửa gì.
+- `ghi_chu`: 2026-10-10 08:32 +07 — Tải xong bộ cài chính thức Obsidian 1.14.4 từ GitHub obsidianmd/obsidian-releases (Obsidian-1.14.4.exe, 341.331.008 byte), chuẩn bị cài cho người dùng hiện tại.
 
 # Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
