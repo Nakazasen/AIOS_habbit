@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-10-11 03:57:50",
+  "timestamp": "2026-10-11 04:09:52",
   "total_to_process": 26907,
-  "processed": 832,
-  "percent": 3.09,
+  "processed": 1152,
+  "percent": 4.28,
   "speed_chunks_per_sec": 0.6,
-  "elapsed_minutes": 22.07,
-  "eta_minutes": 691.7,
+  "elapsed_minutes": 34.11,
+  "eta_minutes": 762.56,
   "status": "IN_PROGRESS"
 }
