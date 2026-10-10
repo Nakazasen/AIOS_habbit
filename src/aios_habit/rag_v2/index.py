@@ -5129,9 +5129,17 @@ class LocalChunkIndex:
                 signals["exact_entity_body_boost"] = min(3.5 * float(body_hits), 7.0)
 
             query_lower = query_text.lower()
-            if any(k in query_lower for k in ("nominal", "dung sai", "giới hạn", "kích thước")):
-                if any(k in text_lower for k in ("+0.", "-0.", "dung sai", "=e", "nominal", "kích thước")):
-                    signals["exact_spec_tolerance_boost"] = 3.0
+            is_summary = bool(metadata.get("is_document_summary")) or "[document architecture & summary]" in text_lower[:200]
+            if not is_summary and any(k in query_lower for k in ("nominal", "dung sai", "giới hạn", "kích thước")):
+                has_spec_formula = (
+                    ("=e" in text_lower and any(sym in text_lower for sym in ("+0.", "-0.", "±")))
+                    or ("+0." in text_lower and "-0." in text_lower)
+                    or "dung sai" in text_lower
+                )
+                if has_spec_formula:
+                    signals["exact_spec_tolerance_boost"] = 4.0
+                    if len(entities) >= 2 and (title_hits + prefix_hits + body_hits) >= len(entities):
+                        signals["exact_all_entities_match_boost"] = 4.0
 
         if target_matches:
             signals["target_term_match_count"] = float(len(target_matches))

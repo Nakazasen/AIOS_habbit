@@ -279,9 +279,33 @@ def _stable_evidence_id(pack_id: str, chunk_id: str, rank: int) -> str:
     return f"EVD-{hashlib.md5(raw).hexdigest()[:8].upper()}"
 
 
-def _make_snippet(text: str, max_chars: int) -> str:
+def _make_snippet(
+    text: str,
+    max_chars: int,
+    target_terms: Sequence[str] = (),
+) -> str:
     if len(text) <= max_chars:
         return text
+    if target_terms:
+        text_lower = text.lower()
+        first_pos = -1
+        sorted_terms = sorted((t.lower() for t in target_terms if len(t) >= 2), key=len, reverse=True)
+        for term in sorted_terms:
+            pos = text_lower.find(term)
+            if pos != -1:
+                if first_pos == -1 or pos < first_pos:
+                    first_pos = pos
+        if first_pos != -1:
+            start = max(0, first_pos - max_chars // 3)
+            end = min(len(text), start + max_chars)
+            if end - start < max_chars:
+                start = max(0, end - max_chars)
+            res = text[start:end]
+            if start > 0:
+                res = "..." + res
+            if end < len(text):
+                res = res + "..."
+            return res
     return text[:max_chars] + "..."
 
 
@@ -743,7 +767,8 @@ def build_evidence_pack(
         evidence_id = _stable_evidence_id(pack_id, result.chunk_id, rank)
         citation_id = f"[{rank}]"
         citation_label = result.source_name or result.source_path or "unknown"
-        snippet = _make_snippet(result.text, config.max_snippet_chars)
+        query_target_terms = tuple(query_plan.target_terms) if query_plan and query_plan.target_terms else ()
+        snippet = _make_snippet(result.text, config.max_snippet_chars, target_terms=query_target_terms)
         location = _extract_location(result.metadata)
 
         # Extract element types from metadata
