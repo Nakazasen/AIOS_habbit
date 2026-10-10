@@ -650,9 +650,21 @@ def la_lenh_nguong(text: str) -> bool:
     if not cau:
         return False
     co_dong_tu = any(
-        tu in cau for tu in ("nguong", "gioi han", "dat nguong", "xoa nguong")
+        tu in cau for tu in (
+            "nguong",
+            "dat nguong",
+            "xoa nguong",
+            "dat gioi han",
+            "xoa gioi han",
+            "cai gioi han",
+            "gioi han tren",
+            "gioi han duoi",
+        )
     )
     if not co_dong_tu:
+        return False
+    # Không giành lấy câu hỏi tri thức RAG (hỏi nominal, giới hạn nào/bao nhiêu...).
+    if any(h in cau for h in ("nominal", "gioi han nao", "gioi han bao nhieu", "la gi", "the nao", "tai sao")):
         return False
     # Không giành lấy lệnh cấu hình cảnh báo chung (email/giãn cách/gộp tin).
     if any(tu in cau for tu in ("email", "gian cach", "gop tin", "bang cau hinh", "cau hinh canh bao")):

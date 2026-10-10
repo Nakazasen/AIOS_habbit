@@ -369,6 +369,9 @@ def test_lenh_nguong_khong_gianh_lenh_cau_hinh_canh_bao():
     assert la_lenh_nguong("đổi ngưỡng 90%") is False
     assert la_lenh_nguong("thêm email to.truong@congty.local") is False
     assert la_lenh_nguong("đổi giãn cách 60 phút") is False
+    # Câu hỏi tri thức RAG không bị bắt nhầm làm lệnh cấu hình ngưỡng.
+    assert la_lenh_nguong("g1 và g2 có nominal và giới hạn nào?") is False
+    assert la_lenh_nguong("giới hạn của chi tiết là bao nhiêu?") is False
 
 
 def test_dat_nguong_qua_chat_roi_xem_lai_va_xoa():
