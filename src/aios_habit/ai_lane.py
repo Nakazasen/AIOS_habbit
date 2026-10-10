@@ -89,15 +89,15 @@ def select_ai_backend(
             backend=BACKEND_GEMINI_WEB,
             reason_vi="Cầu nối Gemini đang sẵn sàng.",
         )
-    if cagent_endpoint.strip():
-        return LaneDecision(
-            backend=BACKEND_CAGENT,
-            reason_vi="Đã cấu hình endpoint C-Agent.",
-        )
     if router_keys_present and not router_cooling_down:
         return LaneDecision(
             backend=BACKEND_ROUTER,
             reason_vi="Đã cấu hình khóa cloud cho Router.",
+        )
+    if cagent_endpoint.strip():
+        return LaneDecision(
+            backend=BACKEND_CAGENT,
+            reason_vi="Đã cấu hình endpoint C-Agent.",
         )
     return LaneDecision(
         backend=BACKEND_LOCAL,
