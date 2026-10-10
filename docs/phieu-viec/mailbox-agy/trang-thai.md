@@ -1,6 +1,15 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
-## Vé hiện tại: MISSING5-PARSER-FIX-HOME (sửa bộ trích xuất PPTX + bộ chia mảnh CSV hàng rộng, nạp lại 2 tệp)
+## Vé hiện tại: MISSING5-EMBED-COMPLETE-HOME (nhúng bổ sung toàn bộ mảnh còn thiếu vector)
+
+- Trạng thái: `moi`
+- `ghi_chu`: 2026-10-11 03:26 +07 — **PHÁT HÀNH** vé `MISSING5-EMBED-COMPLETE-HOME` (prompt.md đã thay bằng nội dung vé đã xếp hàng). Hàng chờ tiếp theo: `Q0668-BLOCK-FIX-HOME` → `CSV-STRUCTURED-LANE-HOME` (đã bổ sung hai việc chuyển tiếp từ verdict PARSER-FIX), điều phối phát hành lần lượt khi từng vé khép.
+- `ghi_chu` (verdict Muse): 2026-10-11 03:26 +07 — **ĐẠT** vé `MISSING5-PARSER-FIX-HOME` theo đúng phạm vi vé, kèm hai việc chuyển tiếp ghi rõ. Điều phối kiểm chứng độc lập: (1) Mã sửa có thật ở hai commit mốc — `857111f` (bộ trích xuất PPTX đọc ghi chú diễn giả + bộ chia mảnh CSV hàng rộng giữ liên kết serial ↔ cột phán định, kèm kiểm thử) và `0a2682b` (nhận diện câu hỏi lai Latin–CJK ở script_family, là điều kiện để mảnh PPTX lên hạng 1). (2) Nạp lại an toàn và khớp manifest tuyệt đối: sao lưu trước nạp có mã băm đúng vân tay production trước sửa (`c5a9d524...`), toàn vẹn ok; tổng mảnh 181.033 → 181.511 (+478), mảnh PPTX 8 → 12, mảnh UnitTest 112 → 586, mọi mảnh mới đều có đủ vector dày/thưa và FTS. (3) Q0620 ĐẠT 3,0/3,0 — điều phối tự đọc tệp rows thô: đáp án chứa đúng 49,49% và 25,42% kèm 3 trích dẫn từ chính tệp PPTX. (4) Q0824: bộ chia mảnh đã chữa xong phần của nó (hai dòng của serial đích vào hạng 2 và 3 của gói bằng chứng, đủ cả 4 cột phán định) nhưng đáp án vẫn bị chặn bởi cổng độ phủ từ vựng đa ngữ (câu hỏi tiếng Nhật, bằng chứng tiếng Anh) — gốc rễ đã tinh chỉnh, không còn là lỗi chia mảnh; việc khép Q0824 chuyển sang vé `CSV-STRUCTURED-LANE-HOME` kèm ca này. Điểm trừ hồ sơ: ảnh giao diện Q0620 nộp kèm chụp lúc đáp án còn đang ở bước tổng hợp, không chứa thân đáp án — bằng chứng giao diện cho Q0620 vì thế chưa có, và được chuyển thành yêu cầu bắt buộc trong nghiệm thu của vé làn cấu trúc (cùng ca Q0824 trên giao diện).
+- `bao_cao`: `docs/phieu-viec/ket-qua/missing5-embed-complete-home.md`
+- Ticket: `MISSING5-EMBED-COMPLETE-HOME` — [NHÀ] nhúng bổ sung vector cho toàn bộ mảnh còn thiếu. Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`.
+- `hang-cho`: (1) `Q0668-BLOCK-FIX-HOME` — tệp `docs/phieu-viec/mailbox-agy/prompt-queue-q0668-block-fix-home.md` (đã gồm đồng bộ bộ sưu tập theo khối). (2) `CSV-STRUCTURED-LANE-HOME` — tệp `.../prompt-queue-csv-structured-lane-home.md` (đã bổ sung ca Q0824 + bằng chứng giao diện Q0620/Q0824). (3) Chuyển nhà hộp thư sang kho điều phối khi tới lượt. (4) `WORK-HABIT-LEARNING-DESIGN-HOME` — vẫn bị CỔNG ƯU TIÊN khoá.
+
+## Vé trước: MISSING5-PARSER-FIX-HOME (sửa bộ trích xuất PPTX + bộ chia mảnh CSV hàng rộng, nạp lại 2 tệp)
 
 - Trạng thái: `xong-cho-duyet`
 - `commit`: `0a2682b`

@@ -19,3 +19,10 @@
 
 - Tuân thủ chuẩn sản phẩm: tính năng phải có điểm hứng phản hồi tại chỗ, metric đo được và vòng xem lại như mọi tính năng mới khác.
 - Không đổi bộ đề/thang chấm. Mốc tiến độ tối thiểu 15 phút/lần kèm điểm kiểm; commit checkpoint theo mốc.
+
+## Bổ sung phạm vi của điều phối (2026-10-11, từ verdict MISSING5-PARSER-FIX-HOME)
+
+Hai việc chuyển tiếp bắt buộc, ngoài 4 câu thống kê gốc của vé:
+
+1. **Ca Q0824 (so sánh phán định của một serial giữa hai ngày)**: bộ chia mảnh đã chữa xong (hai dòng đích vào hạng 2 và 3 của gói bằng chứng, đủ cột phán định) nhưng đáp án bị cổng độ phủ từ vựng đa ngữ chặn (câu hỏi tiếng Nhật, bằng chứng tiếng Anh, lý do `final_evidence_query_coverage_below_threshold`). Làn có cấu trúc phải trả lời được ca này từ chính bảng dữ liệu (tra dòng theo serial + so sánh hai ngày) mà không phụ thuộc độ phủ từ vựng của câu hỏi, và đáp án phải khớp sự thật của hai dòng (cả hai ngày đều OK ở mọi cột phán định → Pattern không đổi).
+2. **Bằng chứng giao diện cho Q0620 và Q0824**: trong nghiệm thu của vé này, chạy cả hai câu trên giao diện thật và nộp ảnh chứa TRỌN thân đáp án đã hoàn tất (không chấp nhận ảnh chụp lúc còn đang xử lý) — đây là phần bằng chứng giao diện còn thiếu của vé PARSER-FIX.
