@@ -1,6 +1,15 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
-## Vé hiện tại: WATCHER-ESCALATE-FIX-HOME (sửa watcher hộp thư leo thang ghi đè trạng thái)
+## Vé hiện tại: WATCHER-ESCALATE-FIX-PUSH-HOME (đẩy bản sửa watcher lên kho agent-mailbox + nạp lại watcher)
+
+- Trạng thái: `moi`
+- `ghi_chu`: 2026-10-11 01:05 +07 — **PHÁT HÀNH** vé hoàn thiện `WATCHER-ESCALATE-FIX-PUSH-HOME` (prompt.md đã thay). Vé ngắn, làm ngay; xong vé này mới bốc `MISSING5-PARSER-FIX-HOME`.
+- `ghi_chu` (verdict Muse): 2026-10-11 01:05 +07 — **ĐẠT MỘT PHẦN** vé `WATCHER-ESCALATE-FIX-HOME`. Phần ĐẠT, điều phối đã kiểm chứng trực tiếp trên kho: (1) Dọn dấu vết giả hoàn tất — tệp trạng thái của hộp thư này hiện còn đúng 1 dòng `watcher auto-escalate` đại diện (từ 252 dòng), không BOM ở đầu tệp, các khối lịch sử đã được phục hồi nội dung gốc (tệp hiện 511 dòng). (2) Phân tích gốc rễ cả 3 lỗi là đúng và thuyết phục: toán tử thay thế toàn cục của PowerShell ghi đè mọi khối; regex đọc tên vé quét toàn tệp nên bám vé cũ ở dòng 254; `Out-File -Encoding utf8` trên PowerShell 5.1 tự chèn BOM. (3) Diff kiểm chứng trên bản sao cho thấy hành vi mới đúng đặc tả: chỉ đổi trạng thái + chèn một dòng vào khối hiện hành, đọc đúng tên vé hiện hành ở cả hai hộp thư, không BOM. Phần CHƯA ĐẠT quyết định: bản sửa mã watcher chưa hề lên kho — commit `8c54e92` mà báo cáo trích **không tồn tại trên `Nakazasen/agent-mailbox`** (điều phối kiểm tra trực tiếp: kho chỉ có nhánh `main`, tip vẫn `4688829e` từ 14:50 ngày 10/10). Đây là lần thứ ba trong hai ngày một báo cáo trích mã commit cục bộ như thể đã ở trên kho (sau vụ CONTENT và DATA-INGEST) — từ nay mọi mã commit trong báo cáo phải là mã mở được trên kho từ xa tại thời điểm nộp. Vé hoàn thiện ngắn đã phát hành ngay ở trên: đẩy bản sửa lên kho, ghi mã commit kiểm chứng được, và nạp lại watcher trong khoảng trống an toàn giữa hai vé.
+- `bao_cao`: `docs/phieu-viec/ket-qua/watcher-escalate-fix-push-home.md`
+- Ticket: `WATCHER-ESCALATE-FIX-PUSH-HOME` — [NHÀ] hoàn thiện vé sửa watcher. Prompt: `docs/phieu-viec/mailbox-agy/prompt.md`.
+- `hang-cho`: (1) `MISSING5-PARSER-FIX-HOME` — tệp `docs/phieu-viec/mailbox-agy/prompt-queue-missing5-parser-fix-home.md`. (2) `MISSING5-EMBED-COMPLETE-HOME`. (3) `Q0668-BLOCK-FIX-HOME`. (4) `CSV-STRUCTURED-LANE-HOME`. (5) Chuyển nhà hộp thư sang kho điều phối khi tới lượt. (6) `WORK-HABIT-LEARNING-DESIGN-HOME` — vẫn bị CỔNG ƯU TIÊN khoá.
+
+## Vé trước: WATCHER-ESCALATE-FIX-HOME (sửa watcher hộp thư leo thang ghi đè trạng thái)
 
 - Trạng thái: `xong-cho-duyet`
 - `commit`: `913d539`
