@@ -3,6 +3,7 @@
 ## Vé hiện tại: MISSING5-EMBED-COMPLETE-HOME (nhúng bổ sung toàn bộ mảnh còn thiếu vector)
 
 - Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-11 03:47 +07 — **TIẾN ĐỘ**: Đang chạy Bước 2 nhúng bổ sung vector BGE-M3 ONNX; đã nhúng và commit an toàn 384/26.907 mảnh (1,4%), tốc độ 0,6 chunks/s; checkpoint transaction lưu trực tiếp vào DB sau mỗi 64 mảnh; tiến trình chạy ổn định.
 - `ghi_chu`: 2026-10-11 03:34 +07 — **TIẾN ĐỘ**: Hoàn tất Bước 1 kiểm kê production trước chạy (đúng 26.907 mảnh thiếu vector: BowOverAdjust 22.054 + Spec 4.853; 892 tài liệu khác đủ 100%), integrity ok; đã sao lưu SHA256 an toàn (`library.sqlite.bak-20261011-pre-missing5-embed-complete`, 3.312.238.592 B, SHA `5d2dc88b...f8db`, khớp 100%). Bắt đầu Bước 2 nhúng bổ sung theo đợt có điểm kiểm.
 - `ghi_chu`: 2026-10-11 03:29 +07 — **ĐÃ NHẬN VÉ** `MISSING5-EMBED-COMPLETE-HOME`: Bắt đầu thực hiện Bước 1 kiểm kê toàn bộ mảnh còn thiếu vector theo từng tài liệu trong production.
 - `ghi_chu`: 2026-10-11 03:26 +07 — **PHÁT HÀNH** vé `MISSING5-EMBED-COMPLETE-HOME` (prompt.md đã thay bằng nội dung vé đã xếp hàng). Hàng chờ tiếp theo: `Q0668-BLOCK-FIX-HOME` → `CSV-STRUCTURED-LANE-HOME` (đã bổ sung hai việc chuyển tiếp từ verdict PARSER-FIX), điều phối phát hành lần lượt khi từng vé khép.
