@@ -1,4 +1,8 @@
-﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
+# Trạng thái mailbox-opencode (thợ opencode — máy nhà h410asrock) — ĐÃ CHUYỂN NHÀ
+- Trạng thái: `xong`
+- `ghi_chu` (điều phối Muse): 2026-10-10 ~13:12 +07 — **ĐÓNG BĂNG hộp thư này.** Verdict ĐẠT vé `MAILBOX-MOVE-WATCHER-CUT-HOME-OPENCODE` đã ghi tại hộp thư mới. Từ mốc này hộp thư hiệu lực duy nhất của opencode máy nhà là `hop-thu/mailbox-opencode` trong kho `Nakazasen/aios-dieu-phoi` (nhánh `main`, bản clone `D:\Sandbox\aios-dieu-phoi`). Không phát hành, không nhận, không ghi thêm bất kỳ vé/mốc nào tại hộp thư kho mã này nữa.
+
+# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
 - Vé: `MAILBOX-MOVE-WATCHER-CUT-HOME-OPENCODE`
 - Trạng thái: `xong-cho-duyet`
