@@ -1,10 +1,11 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
 - Vé: `OBSIDIAN-SETUP-HOME`
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
 - `ghi_chu` (điều phối Muse — PHÁT HÀNH): 2026-10-10 ~08:20 +07 — Phát hành vé `OBSIDIAN-SETUP-HOME` cho thợ phụ tạm thời ở máy nhà (prompt.md đã thay). Theo lệnh user ngày 10/10, sổ cái chuyển từ Notion sang Obsidian; toàn bộ nội dung đã nằm trong vault `docs/so-cai-vault` của chính kho này. Vé nhẹ: cài Obsidian tại máy nhà, mở vault, tạo tệp lệnh đồng bộ một chạm cho sổ, kiểm chứng đồng bộ bằng một dòng trong README của vault kèm ảnh chụp Obsidian đang mở sổ. Rào: không sửa nội dung các mục cũ của sổ, không cài plugin ngoài mặc định, không đụng chỉ mục production.
 - `bao_cao`: `docs/phieu-viec/ket-qua/obsidian-setup-home.md`
 - `hang-cho`: sau vé này quay lại nhiệm vụ kiểm chứng chéo khi có đợt nộp mới cần đối chiếu.
+- `ghi_chu`: 2026-10-10 08:21 +07 — Đã nhận vé OBSIDIAN-SETUP-HOME, cổng MỞ (trạng thái `moi` + prompt đúng vé; HEAD=origin=d4f8297, máy h410asrock đúng máy nhà, vault đủ 2 tệp; không rơi nhánh 4-lần/cho-muse). Bắt đầu bước 1: kiểm tra Obsidian + vault, chưa sửa gì.
 
 # Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
