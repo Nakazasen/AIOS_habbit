@@ -1,7 +1,11 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
 - Vé: `MAILBOX-MOVE-WATCHER-CUT-HOME-OPENCODE`
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
+- `commit`: `04de849` kho aios-dieu-phoi (khối xong-cho-duyet ở hộp thư kho mới; các mốc kho mã: `7841a6e` nhận vé, `828b3b4` chụp+tách, `10c8092` đăng ký task)
+- `bao_cao`: `hop-thu/mailbox-opencode/trang-thai.md` tại kho `aios-dieu-phoi` (commit `04de849`)
+- `ghi_chu`: 2026-10-10 10:33 +07 — Mốc kiểm chứng cắt xong: watcher MỚI đã bốc mốc kho mới (state riêng -dieu-phoi chuyển dang-lam → xong-cho-duyet lúc 10:31:15, đúng sau đẩy 04de849, pollFails=0, ticketsDone ghi nhận) trong khi watcher CŨ vẫn dang-lam ở kho mã (cập nhật 10:32:25) — hai kênh đọc đúng hai kho. Đính chính giờ: hai mốc trước ghi sớm đồng hồ (thực tế ~10:24 và ~10:27, giờ chuẩn máy 10:32).
+- `ghi_chu`: 2026-10-10 10:33 +07 — XONG chờ duyệt, đã chuyển kênh — xem hộp thư tại kho aios-dieu-phoi (hop-thu/mailbox-opencode, commit 04de849). Task cũ giữ nguyên chưa xóa theo rào cứng; hoàn lui: tắt/xóa 2 task *-dieu-phoi. Từ mốc này chỉ nhận vé tại kho mới.
 - `ghi_chu`: 2026-10-10 10:26 +07 — Đã nhận vé MAILBOX-MOVE-WATCHER-CUT-HOME-OPENCODE, cổng MỞ (trạng thái `moi` + prompt đúng vé; HEAD=origin=32d684d, máy h410asrock đúng máy nhà, clone D:\Sandbox\aios-dieu-phoi còn; watcher đang chạy PID 6652, watchdog OK liên tiếp nên không rơi nhánh 4-lần/cho-muse). Bắt đầu bước 1: chụp cấu hình watcher gốc, chưa sửa gì.
 - `ghi_chu`: 2026-10-10 10:35 +07 — Mốc chụp + tách xong: cấu hình gốc đã lưu (task MailboxWatcher-opencode trỏ Watch-Mailbox.ps1 + MailboxDir docs/phieu-viec/mailbox-opencode, config chung aiosDir AIOS_habbit/repo AIOS_habbit/nhánh rag-fix1; token đã che khi ghi báo cáo); file gốc OMP/agy giữ nguyên. Bản cắt mới: Watch-Mailbox-opencode-dieu-phoi.ps1 (repo aios-dieu-phoi/main, aiosDir D:\Sandbox\aios-dieu-phoi, tag -dieu-phoi riêng mutex/log) + Watchdog bản cắt; API kho mới đọc được bằng token (trang-thai.md 93.059 byte). Kế tiếp: đăng ký 2 task mới, giữ task cũ.
 - `ghi_chu`: 2026-10-10 10:42 +07 — Mốc đăng ký xong: 2 task mới MailboxWatcher-opencode-dieu-phoi + MailboxWatchdog-opencode-dieu-phoi đã Ready; task mới chạy PID 1176, 3 task cũ (OMP/agy/opencode) giữ nguyên đường dẫn kho mã nguồn; file Watch-Mailbox.ps1 + config.local.ps1 gốc không sửa. Kế tiếp: chờ 1 chu kỳ poll (~90s) kiểm chứng watcher mới đọc hộp thư kho mới.
