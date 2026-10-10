@@ -190,55 +190,64 @@ st.html('''
             }
         }
 
-        /* AI-IDE style composer: attachment preview, toolbar, model picker. */
+        /* Modern AI assistant unified composer (DESKTOP-COMPOSER-UX-HOME) */
         [class*="st-key-wsc-composer-"] {
             position: relative !important;
-            border-radius: 22px !important;
+            border-radius: 24px !important;
             background: #FFFFFF !important;
-            border-color: #E2E8F0 !important;
-            box-shadow: none !important;
+            border: 1px solid #E2E8F0 !important;
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.03) !important;
             padding: 0.7rem 0.85rem !important;
-            margin-bottom: 0.75rem !important;
+            margin-bottom: 0.5rem !important;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+        }
+        [class*="st-key-wsc-composer-"]:focus-within {
+            border-color: #3B82F6 !important;
+            box-shadow: 0 4px 24px -2px rgba(59, 130, 246, 0.12), 0 2px 8px -1px rgba(0, 0, 0, 0.04) !important;
         }
         [class*="st-key-wsc-composer-"][data-testid="stVerticalBlock"] {
-            gap: 4px !important;
-            padding: 0.5rem 0.7rem !important;
+            gap: 2px !important;
+            padding: 0.25rem 0.35rem !important;
         }
         [class*="st-key-wsc-composer-"] [data-testid="stVerticalBlock"] {
-            gap: 0.45rem !important;
+            gap: 0.35rem !important;
         }
         [class*="st-key-wsc-composer-"] [data-testid="stVerticalBlockBorderWrapper"] {
-            padding: 0.55rem 0.7rem !important;
+            padding: 0.25rem 0.35rem !important;
+            border: none !important;
         }
         [class*="st-key-wsc-composer-"] [data-testid="stHorizontalBlock"] {
-            margin-top: 0 !important;
+            align-items: center !important;
+            margin-top: 0.25rem !important;
             margin-bottom: 0 !important;
+            gap: 6px !important;
         }
         [class*="st-key-wsc-composer-"] [data-testid="stTextArea"],
         [class*="st-key-wsc-composer-"] [data-testid="stTextArea"] > div,
         [class*="st-key-wsc-composer-"] [data-testid="stTextArea"] [data-baseweb="textarea"] {
-            height: 72px !important;
-            min-height: 72px !important;
             margin: 0 !important;
+            background: transparent !important;
+            border: 0 !important;
+            box-shadow: none !important;
         }
         [class*="st-key-wsc-composer-"] [data-testid="stTextArea"] textarea {
-            height: 62px !important;
-            min-height: 62px !important;
-            max-height: 62px !important;
+            min-height: 52px !important;
+            height: auto !important;
+            max-height: 180px !important;
             border: 0 !important;
-            border-radius: 15px !important;
+            border-radius: 0 !important;
             background: transparent !important;
             box-shadow: none !important;
-            padding: 0.45rem 0.35rem !important;
-        }
-        [class*="st-key-wsc-composer-"] [data-testid="stTextArea"] > div,
-        [class*="st-key-wsc-composer-"] [data-testid="stTextArea"] [data-baseweb="textarea"] {
-            background: transparent !important;
-            border: 0 !important;
-            box-shadow: none !important;
+            padding: 0.25rem 0.15rem !important;
+            font-size: 0.95rem !important;
+            line-height: 1.5 !important;
+            color: #0F172A !important;
+            resize: none !important;
         }
         [class*="st-key-wsc-composer-"] [data-testid="stTextArea"] textarea:focus {
             box-shadow: none !important;
+            border: 0 !important;
+            outline: none !important;
         }
         [class*="st-key-wsc-composer-"] > [data-testid="stElementContainer"]:has([data-testid="stHtml"]) {
             position: absolute !important;
@@ -246,119 +255,176 @@ st.html('''
             height: 0 !important;
             overflow: hidden !important;
         }
-        [class*="st-key-wsc-composer-"] [data-testid="stPopover"] button,
-        [class*="st-key-wsc-composer-"] [data-testid="stSelectbox"] button {
-            border-radius: 10px !important;
-        }
-        [class*="st-key-wsc-composer-"] [data-testid="stButton"] button[kind="primary"] {
-            min-width: 44px !important;
-            min-height: 44px !important;
-            width: auto !important;
-            height: 44px !important;
-            padding: 0 0.85rem !important;
-            border-radius: 12px !important;
-            font-weight: 700 !important;
-            white-space: nowrap !important;
-        }
-        [class*="st-key-wsc-action-"] {
-            display: flex !important;
-            justify-content: flex-end !important;
-            align-items: flex-end !important;
-            gap: 8px !important;
-        }
-        [class*="st-key-wsc-shortcut-hint-"] {
-            display: flex !important;
-            justify-content: flex-end !important;
-            align-items: center !important;
-            color: #475569 !important;
-            width: 100% !important;
-        }
-        [class*="st-key-wsc-shortcut-hint-"] > [data-testid="stElementContainer"] {
-            width: auto !important;
-        }
-        [class*="st-key-wsc-shortcut-hint-"] [data-testid="stCaptionContainer"] {
-            white-space: nowrap !important;
-            text-align: right !important;
-        }
-        [class*="st-key-wsc-action-"] [data-testid="stButton"] button p {
-            white-space: nowrap !important;
-            overflow-wrap: normal !important;
-            word-break: keep-all !important;
-        }
-        [class*="st-key-wsc-action-"] [data-testid="stButton"] button svg {
-            width: 1.15rem !important;
-            height: 1.15rem !important;
-        }
-        /* Nhãn nút gắn không bao giờ tràn ra ngoài khung composer: cột hẹp ở
-           cửa sổ hẹp làm chữ nowrap tràn cả hai phía (ROUND5 verify 04/10). */
-        [class*="st-key-wsc-attachment-"] [data-testid="stPopover"] button p {
-            white-space: nowrap !important;
-            overflow-wrap: normal !important;
-            word-break: keep-all !important;
+        /* Attachment button: compact paperclip */
+        [class*="st-key-wsc-attachment-"] [data-testid="stPopover"] button {
+            width: 34px !important;
+            height: 34px !important;
+            min-width: 34px !important;
+            min-height: 34px !important;
+            max-width: 100% !important;
             overflow: hidden !important;
-            text-overflow: ellipsis !important;
+            border-radius: 50% !important;
+            padding: 0 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            background: #F8FAFC !important;
+            border: 1px solid #E2E8F0 !important;
+            color: #64748B !important;
+            transition: all 0.15s ease !important;
+        }
+        [class*="st-key-wsc-attachment-"] [data-testid="stPopover"] button * {
             min-width: 0 !important;
         }
-        [class*="st-key-wsc-attachment-"] [data-testid="stPopover"] button {
-            min-width: 44px !important;
-            width: auto !important;
-            max-width: 100% !important;
-            height: 44px !important;
-            padding: 0 0.75rem !important;
-            justify-content: center !important;
+        [class*="st-key-wsc-attachment-"] [data-testid="stPopover"] button:hover {
+            background: #F1F5F9 !important;
+            border-color: #CBD5E1 !important;
+            color: #0F172A !important;
+        }
+        [class*="st-key-wsc-attachment-"] [data-testid="stPopover"] button [data-testid="stMarkdownContainer"],
+        [class*="st-key-wsc-attachment-"] [data-testid="stPopover"] button p {
+            display: none !important;
             white-space: nowrap !important;
             overflow: hidden !important;
-        }
-        /* Các vỏ flex giữa nút và chữ phải co lại được, nếu không nhãn dài
-           đẩy nội dung vượt bề ngang của nút. */
-        [class*="st-key-wsc-attachment-"] [data-testid="stPopover"] button * {
+            text-overflow: ellipsis !important;
             min-width: 0 !important;
         }
         [class*="st-key-wsc-attachment-"] [data-testid="stPopover"] button > svg:last-child {
             display: none !important;
         }
-        /* Công tắc khối tri thức: một dòng mờ dưới ô nhập, không nổi như nút. */
-        [class*="st-key-wsc-block-"] [data-testid="stPopover"] button {
-            min-height: 1.9rem !important;
-            height: 1.9rem !important;
-            padding: 0 0.4rem !important;
-            border: 0 !important;
-            background: transparent !important;
+        [class*="st-key-wsc-attachment-"] [data-testid="stPopover"] button svg {
+            width: 1.15rem !important;
+            height: 1.15rem !important;
+        }
+        /* Status chips: Knowledge Block, Search Preference, C-Agent */
+        [class*="st-key-wsc-block-"] [data-testid="stPopover"] button,
+        [class*="st-key-wsc-pref-"] [data-testid="stPopover"] button,
+        [class*="st-key-wsc-cagent-"] [data-testid="stPopover"] button {
+            height: 32px !important;
+            min-height: 32px !important;
+            padding: 0 10px !important;
+            border-radius: 16px !important;
+            border: 1px solid #E2E8F0 !important;
+            background: #F8FAFC !important;
             color: #475569 !important;
+            font-size: 0.8rem !important;
             font-weight: 500 !important;
-        }
-        [class*="st-key-wsc-block-"] [data-testid="stPopover"] button p {
-            font-size: 0.82rem !important;
             white-space: nowrap !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 4px !important;
+            transition: all 0.15s ease !important;
         }
-        [class*="st-key-wsc_search_pref_"] [data-baseweb="select"] > div {
-            min-height: 1.9rem !important;
-            height: 1.9rem !important;
-            font-size: 0.82rem !important;
+        [class*="st-key-wsc-block-"] [data-testid="stPopover"] button:hover,
+        [class*="st-key-wsc-pref-"] [data-testid="stPopover"] button:hover,
+        [class*="st-key-wsc-cagent-"] [data-testid="stPopover"] button:hover {
+            background: #F1F5F9 !important;
+            border-color: #CBD5E1 !important;
+            color: #0F172A !important;
         }
-        [class*="st-key-wsc_search_pref_"] [data-baseweb="select"] div,
-        [class*="st-key-wsc_search_pref_"] [data-baseweb="select"] span {
+        [class*="st-key-wsc-block-"] [data-testid="stPopover"] button p,
+        [class*="st-key-wsc-pref-"] [data-testid="stPopover"] button p,
+        [class*="st-key-wsc-cagent-"] [data-testid="stPopover"] button p {
             font-size: 0.8rem !important;
             white-space: nowrap !important;
+            margin: 0 !important;
         }
-        [class*="st-key-wsc_search_pref_"] [data-baseweb="select"] > div {
-            min-width: 0 !important;
+        [class*="st-key-wsc-block-"] [data-testid="stPopover"] button svg:last-child,
+        [class*="st-key-wsc-pref-"] [data-testid="stPopover"] button svg:last-child,
+        [class*="st-key-wsc-cagent-"] [data-testid="stPopover"] button svg:last-child {
+            width: 0.85rem !important;
+            height: 0.85rem !important;
+            opacity: 0.6 !important;
         }
-        [class*="st-key-wsc_search_pref_"] [data-baseweb="select"] div[title] {
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
+        /* Shortcut hint */
+        [class*="st-key-wsc-shortcut-hint-"] {
+            display: flex !important;
+            justify-content: flex-end !important;
+            align-items: center !important;
+            width: 100% !important;
+        }
+        [class*="st-key-wsc-shortcut-hint-"] [data-testid="stCaptionContainer"] {
+            color: #94A3B8 !important;
+            font-size: 0.75rem !important;
+            white-space: nowrap !important;
+            text-align: right !important;
+            margin: 0 !important;
+        }
+        /* Circular Send button with arrow icon */
+        [class*="st-key-wsc-action-"] {
+            display: flex !important;
+            justify-content: flex-end !important;
+            align-items: center !important;
+            gap: 8px !important;
+        }
+        [class*="st-key-wsc-action-"] [data-testid="stButton"] button {
+            width: 44px !important;
+            height: 44px !important;
+            min-width: 44px !important;
+            min-height: 44px !important;
+            border-radius: 50% !important;
+            padding: 0 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            background: #0369A1 !important;
+            border: 0 !important;
+            box-shadow: 0 2px 6px rgba(3, 105, 161, 0.28) !important;
+            transition: all 0.15s ease !important;
+        }
+        [class*="st-key-wsc-action-"] [data-testid="stButton"] button:hover {
+            background: #0284C7 !important;
+            transform: scale(1.05) !important;
+        }
+        [class*="st-key-wsc-action-"] [data-testid="stButton"] button [data-testid="stMarkdownContainer"],
+        [class*="st-key-wsc-action-"] [data-testid="stButton"] button p {
+            display: none !important;
+            white-space: nowrap !important;
+        }
+        [class*="st-key-wsc-action-"] [data-testid="stButton"] button svg {
+            width: 1.25rem !important;
+            height: 1.25rem !important;
+            fill: #FFFFFF !important;
         }
         [class*="st-key-wsc-composer-"] [data-testid="stImage"] img {
             border-radius: 10px !important;
             border: 1px solid rgba(148, 163, 184, 0.38) !important;
         }
+        /* Auxiliary expanders around chat: unified visual language (Requirement 4) */
+        [data-testid="stExpander"] {
+            border-radius: 16px !important;
+            border: 1px solid #E2E8F0 !important;
+            background: #FFFFFF !important;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02) !important;
+            margin-bottom: 0.6rem !important;
+            overflow: hidden !important;
+            transition: border-color 0.15s ease !important;
+        }
+        [data-testid="stExpander"]:hover {
+            border-color: #CBD5E1 !important;
+        }
+        [data-testid="stExpander"] details {
+            border: 0 !important;
+        }
+        [data-testid="stExpander"] summary {
+            padding: 0.6rem 0.95rem !important;
+            border-radius: 16px !important;
+            color: #334155 !important;
+            font-size: 0.88rem !important;
+            font-weight: 500 !important;
+        }
+        [data-testid="stExpander"] summary:hover {
+            color: #0F172A !important;
+            background: #F8FAFC !important;
+        }
+        [data-testid="stExpander"] [data-testid="stExpanderDetails"] {
+            padding: 0.75rem 1rem !important;
+            border-top: 1px solid #F1F5F9 !important;
+        }
         @media (max-width: 360px) {
             [class*="st-key-wsc-composer-"] {
-                border-radius: 16px !important;
-            }
-            [class*="st-key-wsc-composer-"] [data-testid="stButton"] button[kind="primary"] {
-                min-width: 44px !important;
-                min-height: 44px !important;
+                border-radius: 18px !important;
+                padding: 0.6rem !important;
             }
             [class*="st-key-wsc-shortcut-hint-"] {
                 display: none !important;
@@ -4343,107 +4409,39 @@ else:
                         label_visibility="visible",
                     )
 
-                    # Dòng mờ dưới ô nhập (không chen vào hàng nút):
-                    # trạng thái lane AI · công tắc khối tri thức · mức tìm kiếm.
-                    lane_status_col, block_switch_col, search_level_col = st.columns([4.2, 2.8, 3.2], vertical_alignment="center")
-                    with lane_status_col:
-                        # UX-CHAT-CORE #3: lane tu dong chon (giong header legacy).
-                        from aios_habit.ai_lane import auto_backend_for_conversation as _auto_lane
-                        from aios_habit.ai_lane import backend_label_vi as _lane_label
-                        from aios_habit.ai_router import provider_env_presence as _env_presence
+                    # Hiển thị ảnh đính kèm xem trước ngay dưới ô nhập chữ nếu có
+                    user_attached_image = st.session_state.get(pasted_image_key)
+                    if user_attached_image is not None:
+                        preview_col, preview_text_col, preview_remove_col = st.columns([1, 8, 2], vertical_alignment="center")
+                        with preview_col:
+                            st.image(user_attached_image.getvalue(), width=64)
+                        with preview_text_col:
+                            st.caption(f"📎 {user_attached_image.name}")
+                        with preview_remove_col:
+                            if st.button(t("remove_attached_image", locale=current_ui_locale), key=f"wsc_remove_image_{active_conversation.id}", type="tertiary"):
+                                st.session_state.pop(pasted_image_key, None)
+                                st.session_state.wsc_upload_version += 1
+                                safe_rerun()
 
-                        _toolbar_lane = _auto_lane(
-                            f"wsc_ai_lane_{active_conversation.id}",
-                            st.session_state,
-                            bridge_available=bool(
-                                getattr(get_antigravity_bridge_health(), "is_available", False)
-                            ),
-                            cagent_endpoint=(
-                                os.environ.get("AIOS_CAGENT_API_URL", "").strip()
-                                or "https://kdtvn-ai.cmcts.vn/api/v1/prediction/1881aa32-c996-4e6f-9257-78246177ba9f"
-                            ),
-                            router_keys_present=any(_env_presence(os.environ).values()),
-                            manual_override=os.environ.get("AIOS_AI_BACKEND", ""),
-                        )
-                        selected_ai_backend = _toolbar_lane.backend
-                        st.caption(
-                            "Đang dùng: "
-                            + _lane_label(selected_ai_backend)
-                            + (" (tự động)" if _toolbar_lane.automatic else " (ghim tay)")
-                        )
-                        if selected_ai_backend == "cagent_api":
-                            with st.popover(t("cagent_config_popover", locale=current_ui_locale), icon=":material/settings:"):
-                                cagent_endpoint_key = f"wsc_cagent_endpoint_{active_conversation.id}"
-                                configured_cagent_endpoint = (
-                                    os.environ.get("AIOS_CAGENT_API_URL", "").strip()
-                                    or "https://kdtvn-ai.cmcts.vn/api/v1/prediction/1881aa32-c996-4e6f-9257-78246177ba9f"
-                                )
-                                cagent_endpoint = st.text_input(
-                                    t("cagent_endpoint_label", locale=current_ui_locale),
-                                    value=configured_cagent_endpoint,
-                                    placeholder="https://.../api/v1/prediction/<AgentFlow-ID>",
-                                    key=cagent_endpoint_key,
-                                    help=t("cagent_endpoint_help", locale=current_ui_locale),
-                                ).strip()
-                                if cagent_endpoint:
-                                    os.environ["AIOS_CAGENT_API_URL"] = cagent_endpoint
-                    with block_switch_col:
-                        # Công tắc chọn khối tri thức: mặc định "Tự động" (router
-                        # như cũ); bấm mới bung 4 lựa chọn, không thêm toolbar/tab.
-                        from aios_habit.index_domain import (
-                            DOMAINS as _DOMAINS,
-                            DOMAIN_LSU as _DOMAIN_LSU,
-                            DOMAIN_DIEU_TRA_LOI as _DOMAIN_DIEU_TRA_LOI,
-                            DOMAIN_MOM as _DOMAIN_MOM,
-                        )
+                    # Cấu hình AI backend / lane tự động
+                    from aios_habit.ai_lane import auto_backend_for_conversation as _auto_lane
+                    from aios_habit.ai_lane import backend_label_vi as _lane_label
+                    from aios_habit.ai_router import provider_env_presence as _env_presence
 
-                        knowledge_block_key = f"wsc_knowledge_block_{active_conversation.id}"
-                        if knowledge_block_key not in st.session_state:
-                            query_block = str(get_query_param("block") or "").strip().lower()
-                            if query_block in _DOMAINS or query_block == "auto":
-                                st.session_state[knowledge_block_key] = query_block
-                        knowledge_block_value = str(
-                            st.session_state.get(knowledge_block_key, "auto") or "auto"
-                        )
-                        def _format_block_label(key: str, name: str) -> str:
-                            counts = {
-                                "auto": 889,
-                                _DOMAIN_LSU: 92,
-                                _DOMAIN_DIEU_TRA_LOI: 681,
-                                _DOMAIN_MOM: 44,
-                            }
-                            cnt = counts.get(key, 0)
-                            unit = "件" if current_ui_locale == "ja" else ("份" if current_ui_locale == "zh-CN" else "tài liệu")
-                            return f"{name} ({cnt} {unit})"
-
-                        block_choices = {
-                            "auto": _format_block_label("auto", t("knowledge_block_auto", locale=current_ui_locale)),
-                            _DOMAIN_LSU: _format_block_label(_DOMAIN_LSU, t("knowledge_block_lsu", locale=current_ui_locale)),
-                            _DOMAIN_DIEU_TRA_LOI: _format_block_label(_DOMAIN_DIEU_TRA_LOI, t("knowledge_block_dieu_tra_loi", locale=current_ui_locale)),
-                            _DOMAIN_MOM: _format_block_label(_DOMAIN_MOM, t("knowledge_block_mom", locale=current_ui_locale)),
-                        }
-                        if knowledge_block_value not in block_choices:
-                            knowledge_block_value = "auto"
-                        with st.container(key=f"wsc-block-{active_conversation.id}"):
-                            with st.popover(
-                                f"{t('knowledge_block_label', locale=current_ui_locale)}: {block_choices[knowledge_block_value]}",
-                                help=t("knowledge_block_help", locale=current_ui_locale),
-                            ):
-                                for _block_value in ("auto", *_DOMAINS):
-                                    if st.button(
-                                        block_choices[_block_value],
-                                        key=f"wsc_block_pick_{active_conversation.id}_{_block_value}",
-                                        use_container_width=True,
-                                        type=(
-                                            "primary"
-                                            if _block_value == knowledge_block_value
-                                            else "secondary"
-                                        ),
-                                    ):
-                                        st.session_state[knowledge_block_key] = _block_value
-                                        safe_rerun()
-                    # UX-CHAT-CORE #3: selected_ai_backend da do lane tu dong quyet dinh
-                    # o tren; khong doc lai tu session key cua selectbox cu (da bo).
+                    _toolbar_lane = _auto_lane(
+                        f"wsc_ai_lane_{active_conversation.id}",
+                        st.session_state,
+                        bridge_available=bool(
+                            getattr(get_antigravity_bridge_health(), "is_available", False)
+                        ),
+                        cagent_endpoint=(
+                            os.environ.get("AIOS_CAGENT_API_URL", "").strip()
+                            or "https://kdtvn-ai.cmcts.vn/api/v1/prediction/1881aa32-c996-4e6f-9257-78246177ba9f"
+                        ),
+                        router_keys_present=any(_env_presence(os.environ).values()),
+                        manual_override=os.environ.get("AIOS_AI_BACKEND", ""),
+                    )
+                    selected_ai_backend = _toolbar_lane.backend
                     cagent_endpoint_url = (
                         str(st.session_state.get(f"wsc_cagent_endpoint_{active_conversation.id}", "")).strip()
                         or os.environ.get("AIOS_CAGENT_API_URL", "").strip()
@@ -4452,6 +4450,43 @@ else:
                     )
                     ai_backend = selected_ai_backend
 
+                    # Khối tri thức (Knowledge block)
+                    from aios_habit.index_domain import (
+                        DOMAINS as _DOMAINS,
+                        DOMAIN_LSU as _DOMAIN_LSU,
+                        DOMAIN_DIEU_TRA_LOI as _DOMAIN_DIEU_TRA_LOI,
+                        DOMAIN_MOM as _DOMAIN_MOM,
+                    )
+
+                    knowledge_block_key = f"wsc_knowledge_block_{active_conversation.id}"
+                    if knowledge_block_key not in st.session_state:
+                        query_block = str(get_query_param("block") or "").strip().lower()
+                        if query_block in _DOMAINS or query_block == "auto":
+                            st.session_state[knowledge_block_key] = query_block
+                    knowledge_block_value = str(
+                        st.session_state.get(knowledge_block_key, "auto") or "auto"
+                    )
+                    def _format_block_label(key: str, name: str) -> str:
+                        counts = {
+                            "auto": 889,
+                            _DOMAIN_LSU: 92,
+                            _DOMAIN_DIEU_TRA_LOI: 681,
+                            _DOMAIN_MOM: 44,
+                        }
+                        cnt = counts.get(key, 0)
+                        unit = "件" if current_ui_locale == "ja" else ("份" if current_ui_locale == "zh-CN" else "tài liệu")
+                        return f"{name} ({cnt} {unit})"
+
+                    block_choices = {
+                        "auto": _format_block_label("auto", t("knowledge_block_auto", locale=current_ui_locale)),
+                        _DOMAIN_LSU: _format_block_label(_DOMAIN_LSU, t("knowledge_block_lsu", locale=current_ui_locale)),
+                        _DOMAIN_DIEU_TRA_LOI: _format_block_label(_DOMAIN_DIEU_TRA_LOI, t("knowledge_block_dieu_tra_loi", locale=current_ui_locale)),
+                        _DOMAIN_MOM: _format_block_label(_DOMAIN_MOM, t("knowledge_block_mom", locale=current_ui_locale)),
+                    }
+                    if knowledge_block_value not in block_choices:
+                        knowledge_block_value = "auto"
+
+                    # Chế độ tìm kiếm (Search preference)
                     current_pref = getattr(active_conversation, "search_preference", "auto")
                     deep_search = get_workspace_chat_deep_search_availability()
                     pref_options = ["auto", "deep"] if deep_search.available else ["auto"]
@@ -4463,25 +4498,15 @@ else:
                         "auto": t("search_preference_auto", locale=current_ui_locale),
                         "deep": t("search_preference_deep", locale=current_ui_locale),
                     }
-                    with search_level_col:
-                        chosen_pref = st.selectbox(
-                            t("search_level", locale=current_ui_locale),
-                            options=pref_options,
-                            index=1 if current_pref == "deep" else 0,
-                            format_func=lambda value: pref_labels.get(value, value),
-                            key=f"wsc_search_pref_{active_conversation.id}",
-                            help=t("search_level_help", locale=current_ui_locale),
-                            label_visibility="collapsed",
-                        )
-                    if chosen_pref != current_pref:
-                        update_conversation_search_preference(active_conversation.id, chosen_pref)
-                        active_conversation.search_preference = chosen_pref
-                    # Hàng dưới cùng chỉ còn nút [+] đính kèm bên trái và nút
-                    # Hỏi bên phải; gợi ý phím nằm sát nút gửi, không chen nhau.
-                    toolbar_attach_col, toolbar_hint_col, toolbar_action_col = st.columns([4.0, 4.9, 2.1], vertical_alignment="center")
+
+                    # Hàng công cụ nằm TRONG thẻ, dưới ô nhập (Requirement 2)
+                    toolbar_attach_col, toolbar_block_col, toolbar_pref_col, toolbar_cagent_col, toolbar_hint_col, toolbar_action_col = st.columns(
+                        [0.55, 3.2, 2.0, 1.8, 3.3, 0.65], vertical_alignment="center"
+                    )
+
                     with toolbar_attach_col:
                         with st.container(key=f"wsc-attachment-{active_conversation.id}"):
-                            with st.popover(t("attach_popover", locale=current_ui_locale), help=t("attach_screenshot_help", locale=current_ui_locale), icon=":material/add:"):
+                            with st.popover(t("attach_popover", locale=current_ui_locale), help=t("attach_screenshot_help", locale=current_ui_locale), icon=":material/attach_file:"):
                                 uploaded_image = st.file_uploader(
                                     t("attach_screenshot_label", locale=current_ui_locale),
                                     type=["png", "jpg", "jpeg", "webp", "bmp"],
@@ -4506,9 +4531,71 @@ else:
                                             "clipboard-image.png", image_buffer.getvalue()
                                         )
                                         safe_rerun()
+                                if uploaded_image is not None:
+                                    st.session_state[pasted_image_key] = uploaded_image
+
+                    with toolbar_block_col:
+                        with st.container(key=f"wsc-block-{active_conversation.id}"):
+                            with st.popover(
+                                f"📚 {block_choices[knowledge_block_value]}",
+                                help=t("knowledge_block_help", locale=current_ui_locale),
+                            ):
+                                for _block_value in ("auto", *_DOMAINS):
+                                    if st.button(
+                                        block_choices[_block_value],
+                                        key=f"wsc_block_pick_{active_conversation.id}_{_block_value}",
+                                        use_container_width=True,
+                                        type=(
+                                            "primary"
+                                            if _block_value == knowledge_block_value
+                                            else "secondary"
+                                        ),
+                                    ):
+                                        st.session_state[knowledge_block_key] = _block_value
+                                        safe_rerun()
+
+                    with toolbar_pref_col:
+                        with st.container(key=f"wsc-pref-{active_conversation.id}"):
+                            with st.popover(
+                                f"⚡ {pref_labels.get(current_pref, current_pref)}",
+                                help=t("search_level_help", locale=current_ui_locale),
+                            ):
+                                for _opt in pref_options:
+                                    if st.button(
+                                        pref_labels.get(_opt, _opt),
+                                        key=f"wsc_pref_pick_{active_conversation.id}_{_opt}",
+                                        use_container_width=True,
+                                        type="primary" if _opt == current_pref else "secondary",
+                                    ):
+                                        update_conversation_search_preference(active_conversation.id, _opt)
+                                        active_conversation.search_preference = _opt
+                                        safe_rerun()
+
+                    with toolbar_cagent_col:
+                        with st.container(key=f"wsc-cagent-{active_conversation.id}"):
+                            with st.popover(
+                                "⚙️ C-Agent",
+                                help=t("cagent_config_popover", locale=current_ui_locale),
+                            ):
+                                cagent_endpoint_key = f"wsc_cagent_endpoint_{active_conversation.id}"
+                                configured_cagent_endpoint = (
+                                    os.environ.get("AIOS_CAGENT_API_URL", "").strip()
+                                    or "https://kdtvn-ai.cmcts.vn/api/v1/prediction/1881aa32-c996-4e6f-9257-78246177ba9f"
+                                )
+                                cagent_endpoint = st.text_input(
+                                    t("cagent_endpoint_label", locale=current_ui_locale),
+                                    value=configured_cagent_endpoint,
+                                    placeholder="https://.../api/v1/prediction/<AgentFlow-ID>",
+                                    key=cagent_endpoint_key,
+                                    help=t("cagent_endpoint_help", locale=current_ui_locale),
+                                ).strip()
+                                if cagent_endpoint:
+                                    os.environ["AIOS_CAGENT_API_URL"] = cagent_endpoint
+
                     with toolbar_hint_col:
                         with st.container(key=f"wsc-shortcut-hint-{active_conversation.id}"):
                             st.caption("Ctrl+↵")
+
                     is_waiting_for_sources = bool(
                         pending_submission
                         and pending_submission.get("conversation_id") == active_conversation.id
@@ -4544,6 +4631,7 @@ else:
                                     type="primary",
                                     help=labels["ai_action"],
                                 )
+
                     st.html(
                         """
                         <script>
@@ -4556,7 +4644,7 @@ else:
                               );
                               if (sendButton && !sendButton.disabled) {
                                 event.preventDefault();
-                                sendButton.click();
+                              sendButton.click();
                               }
                             }
                           }, true);
@@ -4565,20 +4653,7 @@ else:
                         """,
                         unsafe_allow_javascript=True,
                     )
-                    user_attached_image = uploaded_image or st.session_state.get(pasted_image_key)
-                    if user_attached_image is not None:
-                        preview_col, preview_text_col, preview_remove_col = st.columns([1, 8, 2])
-                        with preview_col:
-                            st.image(user_attached_image.getvalue(), width=78)
-                        with preview_text_col:
-                            st.caption(f"📎 {user_attached_image.name}")
-                        with preview_remove_col:
-                            if st.button(t("remove_attached_image", locale=current_ui_locale), key=f"wsc_remove_image_{active_conversation.id}", type="tertiary"):
-                                st.session_state.pop(pasted_image_key, None)
-                                st.session_state.wsc_upload_version += 1
-                                safe_rerun()
-                    if not deep_search.available:
-                        st.caption(t("deep_search_unavailable", locale=current_ui_locale))
+
                     if get_jig_session_type() == "truc_ban" or st.session_state.get("wsc_last_chart_png"):
                         render_jig_stream_pause_control(active_conversation.id, current_ui_locale)
                     # Thẻ đề xuất gửi mail cảnh báo: dùng lại đúng ảnh đang xem
@@ -4596,6 +4671,18 @@ else:
                             )
                         except Exception:
                             pass
+
+                # Dòng trạng thái rút gọn dưới thẻ soạn thảo (Requirement 3)
+                lane_mode_str = "tự động" if _toolbar_lane.automatic else "ghim tay"
+                search_status_str = (
+                    "Chế độ Tìm kỹ hơn đã sẵn sàng."
+                    if deep_search.available
+                    else "Tìm kỹ hơn chưa được bật. Chế độ Tự động vẫn sẵn sàng tìm kiếm."
+                )
+                st.caption(
+                    "Đang dùng: "
+                    + f"{_lane_label(selected_ai_backend)} ({lane_mode_str}) · {search_status_str}"
+                )
 
                 if ask_submitted and pending_submission:
                     # A fresh submit intentionally replaces an older waiting

@@ -113,24 +113,21 @@ def test_composer_toolbar_labels_stay_on_one_line() -> None:
     assert "nowrap" in attach
     assert "anywhere" not in attach
     assert "nowrap" in ask
-    # ROUND5-UX-COMPOSER: dim meta line under the input (lane status | block
-    # switch | search level) and a bottom row that only carries [+] and Hỏi.
-    assert "st.columns([4.2, 2.8, 3.2]" in source
-    assert "st.columns([4.0, 4.9, 2.1]" in source
+    assert "toolbar_action_col" in source
 
 
 def test_composer_toolbar_row_keeps_only_attach_and_send_buttons() -> None:
-    """ROUND5-UX-COMPOSER: the lane caption and search dropdown must not sit in
-    the same row as the attach/send buttons again (that caused text overlap)."""
+    """DESKTOP-COMPOSER-UX-HOME: the lane caption is moved under the composer card
+    as a single muted status line; the toolbar row contains attachment, chips, and send button."""
     source = _app_source()
     toolbar = source.split(
-        "toolbar_attach_col, toolbar_hint_col, toolbar_action_col = st.columns(",
+        "toolbar_action_col = st.columns(",
         1,
     )[1]
     toolbar = toolbar.split("st.html(", 1)[0]
 
-    assert 'with st.container(key=f"wsc-attachment-' in toolbar
-    assert 'with st.container(key=f"wsc-action-' in toolbar
+    assert 'with toolbar_attach_col:' in toolbar
+    assert 'with toolbar_action_col:' in toolbar
     assert '"Đang dùng: "' not in toolbar
     assert "st.selectbox" not in toolbar
 
@@ -206,9 +203,6 @@ def test_composer_has_narrow_viewport_guard() -> None:
     assert "@media (max-width: 360px)" in source
     assert "st-key-wsc-composer-" in source
     assert "padding: 0.7rem 0.85rem" in source
-    assert "gap: 4px !important" in source
-    assert "height: 72px !important" in source
-    assert "height: 62px !important" in source
 
 
 def test_new_assistant_answer_auto_scrolls_without_a_manual_jump_button() -> None:
@@ -548,8 +542,14 @@ def test_image_only_question_passes_the_no_sources_gate() -> None:
     'insufficient_context' gates — the image text IS the context."""
     source = _app_source()
 
-    assert "if not enabled_selections and not one_shot_image_text:" in source
-    assert "if not non_empty_sources and not one_shot_image_text:" in source
+    assert (
+        "if not enabled_selections and not one_shot_image_text:" in source
+        or "if not prod_index_ready and not enabled_selections and not one_shot_image_text:" in source
+    )
+    assert (
+        "if not non_empty_sources and not one_shot_image_text:" in source
+        or "if not prod_index_ready and not non_empty_sources and not one_shot_image_text:" in source
+    )
 
 
 def test_add_source_expander_label_has_single_plus() -> None:
