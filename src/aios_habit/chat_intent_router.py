@@ -17,6 +17,7 @@ from typing import Dict, Optional, Tuple
 # Recognized intents. "hoi_tai_lieu" is the default fallback.
 CANH_BAO_NGUONG = "canh_bao_nguong"      # threshold alert request
 VE_BIEU_DO = "ve_bieu_do"                # chart request (runs the JIG chart branch)
+TAO_VU_DIEU_TRA = "tao_vu_dieu_tra"      # create an investigation case via chat
 TAO_SO = "tao_so"                        # create a notebook
 MO_SO = "mo_so"                          # open a notebook
 HO_SO_DIEU_TRA = "ho_so_dieu_tra"        # open the investigation case workspace
@@ -28,6 +29,7 @@ DU_LIEU_DAN = "du_lieu_dan"              # pasted CSV/log block in the message
 TAT_CA_Y_DINH = (
     CANH_BAO_NGUONG,
     VE_BIEU_DO,
+    TAO_VU_DIEU_TRA,
     TAO_SO,
     MO_SO,
     HO_SO_DIEU_TRA,
@@ -60,6 +62,20 @@ _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
         VE_BIEU_DO,
         (
             "ve bieu do",
+        ),
+    ),
+    (
+        TAO_VU_DIEU_TRA,
+        (
+            "tao vu dieu tra",
+            "tao ho so dieu tra",
+            "lap vu dieu tra",
+            "mo vu dieu tra",
+            "tao ca loi",
+            "ghi nhan loi",
+            "bao loi moi",
+            "su co line",
+            "loi line",
         ),
     ),
     (
@@ -151,11 +167,90 @@ def classify_all_intents(text: str) -> list:
     return found
 
 
+def extract_case_entities(text: str) -> Dict[str, str]:
+    """Extract case entities (phenomenon, error_code, line, machine_type) from Vietnamese chat."""
+    clean = (text or "").strip()
+    if not clean:
+        return {
+            "phenomenon": "",
+            "error_code": "",
+            "line": "",
+            "machine_type": "",
+        }
+
+    # 1. Error code (C, F, J, or JAM + 3-4 digits)
+    code_match = re.search(
+        r"\b(?:(JAM)\s*-?\s*(\d{3,4})|([CFJcfj])\s*-?\s*(\d{3,4}))\b",
+        clean,
+    )
+    error_code = ""
+    if code_match:
+        if code_match.group(1):
+            error_code = f"{code_match.group(1).upper()}{code_match.group(2)}"
+        elif code_match.group(3):
+            error_code = f"{code_match.group(3).upper()}{code_match.group(4)}"
+
+    # 2. Line (Line, Chuyen, Day chuyen + ID)
+    line_match = re.search(
+        r"(?:ở\s+|tai\s+|tại\s+)?\b(?:line|chuyền|chuyen|dây\s*chuyền|day\s*chuyen)\s*([A-Za-z0-9_-]+)",
+        clean,
+        re.IGNORECASE,
+    )
+    line = ""
+    if line_match:
+        line_val = line_match.group(1).strip()
+        line = f"Line {line_val.upper()}"
+
+    # 3. Machine / Model
+    machine_type = ""
+    m_match = re.search(
+        r"\b(máy\s+in|may\s+in|máy\s+photo|may\s+photo|máy\s+dán|may\s+dan|máy\s+hàn|may\s+han|máy\s+quét|may\s+quet|máy\s+đóng\s+gói|may\s+dong\s+goi|iris[A-Za-z0-9_-]*|polaris[A-Za-z0-9_-]*|kairos[A-Za-z0-9_-]*|virgo[A-Za-z0-9_-]*|bizhub[A-Za-z0-9_-]*)\b",
+        clean,
+        re.IGNORECASE,
+    )
+    if m_match:
+        machine_type = m_match.group(1).strip()
+    else:
+        m_exp = re.search(
+            r"(?:model|dòng\s*máy|dong\s*may|thiết\s*bị|thiet\s*bi|máy|may)\s*[:\s]\s*([A-Za-z0-9_-]+)",
+            clean,
+            re.IGNORECASE,
+        )
+        if m_exp:
+            machine_type = m_exp.group(1).strip()
+
+    # 4. Phenomenon: strip intent prefix and line clause
+    prefix_re = re.compile(
+        r"^(?:(?:tạo|lap|lập|mở|mo)\s+(?:vụ|vu|hồ\s+sơ|ho\s+so|ca|yêu\s+cầu|yeu\s+cau)?(?:\s+(?:điều\s+tra|dieu\s+tra))?(?:\s+(?:lỗi|loi))?(?:\s+(?:mới|moi))?|(?:ghi\s+nhận|báo|bao)\s+lỗi(?:\s+mới)?|sự\s+cố|su\s+co)\s*[:,-]?\s*",
+        re.IGNORECASE,
+    )
+    remainder = prefix_re.sub("", clean).strip()
+    if line_match:
+        remainder = re.sub(
+            r"(?:ở\s+|tai\s+|tại\s+)?\b(?:line|chuyền|chuyen|dây\s*chuyền|day\s*chuyen)\s*[A-Za-z0-9_-]+",
+            "",
+            remainder,
+            flags=re.IGNORECASE,
+        ).strip()
+    phenomenon = re.sub(r"\s+", " ", remainder).strip(" :,-.")
+    if not phenomenon:
+        phenomenon = clean
+
+    return {
+        "phenomenon": phenomenon,
+        "error_code": error_code,
+        "line": line,
+        "machine_type": machine_type,
+    }
+
+
 def extract_slots(text: str, intent: str) -> Dict[str, str]:
-    """Extract simple slots for a few intents (notebook title...)."""
+    """Extract simple slots for a few intents (notebook title, case entities...)."""
     slots: Dict[str, str] = {}
     clean = (text or "").strip()
-    if intent == TAO_SO:
+    if intent == TAO_VU_DIEU_TRA:
+        return extract_case_entities(clean)
+    elif intent == TAO_SO:
         mau = re.compile(
             r"(?:tạo|tao)\s+sổ(?:\s+tài\s+liệu)?\s+(.+)$",
             re.IGNORECASE,
@@ -182,6 +277,7 @@ def giai_thich_y_dinh(intent: str) -> str:
     return {
         CANH_BAO_NGUONG: "Tôi hiểu đây là yêu cầu cảnh báo ngưỡng.",
         VE_BIEU_DO: "Tôi hiểu bạn muốn vẽ biểu đồ.",
+        TAO_VU_DIEU_TRA: "Tôi hiểu bạn muốn tạo vụ điều tra lỗi mới.",
         TAO_SO: "Tôi hiểu bạn muốn tạo sổ tài liệu mới.",
         MO_SO: "Tôi hiểu bạn muốn mở một sổ tài liệu.",
         HO_SO_DIEU_TRA: "Tôi hiểu bạn muốn mở hồ sơ điều tra.",
@@ -197,6 +293,7 @@ def nhan_y_dinh(intent: str) -> str:
     return {
         CANH_BAO_NGUONG: "Cảnh báo ngưỡng",
         VE_BIEU_DO: "Vẽ biểu đồ",
+        TAO_VU_DIEU_TRA: "Tạo vụ điều tra",
         TAO_SO: "Tạo sổ",
         MO_SO: "Mở sổ",
         HO_SO_DIEU_TRA: "Hồ sơ điều tra",

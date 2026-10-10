@@ -609,12 +609,15 @@ def render_chat_bubble(
                 )
             from aios_habit.agent_work_artifact import extract_chat_artifact_metadata
             from aios_habit import chat_interview_ui as _chat_interview_ui
+            from aios_habit import chat_action_create_case as _chat_create_case
             raw_content = str(msg.content or "")
-            # Interactive markers (interview session / suggestion feedback) are
+            # Interactive markers (interview session / suggestion feedback / case preview) are
             # rendered as widgets below; strip them from the markdown body.
             display_content = _chat_interview_ui.strip_interactive_markers(raw_content)
+            display_content = _chat_create_case.strip_case_preview_marker(display_content)
             interview_session_id = _chat_interview_ui.extract_interview_session_id(raw_content)
             suggestion_cards = _chat_interview_ui.extract_suggestion_markers(raw_content)
+            case_preview_data = _chat_create_case.extract_case_preview_marker(raw_content)
             artifact_meta = extract_chat_artifact_metadata(raw_content)
             if artifact_meta:
                 work_id = str(artifact_meta.get("work_id", "")).strip()
@@ -850,6 +853,13 @@ def render_chat_bubble(
                     st,
                     _card.get("suggestion_id", ""),
                     expert=_card.get("expert", ""),
+                )
+            if case_preview_data:
+                _chat_create_case.render_case_preview_widget(
+                    st,
+                    case_preview_data,
+                    conversation_id=conversation_id,
+                    message_id=str(msg.id or ""),
                 )
 
             # Vong lap cai thien lien tuc: feedback cau tra loi ngay tren khung chat.

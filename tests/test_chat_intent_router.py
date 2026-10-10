@@ -142,3 +142,48 @@ def test_nhan_va_giai_thich_ve_bieu_do():
     assert nhan_y_dinh(VE_BIEU_DO) == "Vẽ biểu đồ"
     assert giai_thich_y_dinh(VE_BIEU_DO) != ""
     assert VE_BIEU_DO in TAT_CA_Y_DINH
+
+
+def test_tao_vu_dieu_tra_intents():
+    from aios_habit.chat_intent_router import TAO_VU_DIEU_TRA, classify_intent
+
+    assert classify_intent("Tạo vụ điều tra lỗi mới: máy in báo lỗi kẹt giấy ở line 3") == TAO_VU_DIEU_TRA
+    assert classify_intent("tạo vụ điều tra kẹt giấy") == TAO_VU_DIEU_TRA
+    assert classify_intent("lập vụ điều tra sự cố") == TAO_VU_DIEU_TRA
+    assert classify_intent("tao ca loi C7620") == TAO_VU_DIEU_TRA
+    assert classify_intent("ghi nhận lỗi JAM4709") == TAO_VU_DIEU_TRA
+    assert classify_intent("báo lỗi mới tại line 3") == TAO_VU_DIEU_TRA
+
+
+def test_extract_case_entities_full():
+    from aios_habit.chat_intent_router import extract_case_entities
+
+    ent1 = extract_case_entities("Tạo vụ điều tra lỗi mới: máy in báo lỗi kẹt giấy ở line 3")
+    assert ent1["phenomenon"] == "máy in báo lỗi kẹt giấy"
+    assert ent1["line"] == "Line 3"
+    assert ent1["machine_type"] == "máy in"
+    assert ent1["error_code"] == ""
+
+    ent2 = extract_case_entities("Tạo ca lỗi C7620 máy Polaris ở line C33")
+    assert ent2["error_code"] == "C7620"
+    assert ent2["line"] == "Line C33"
+    assert ent2["machine_type"] == "Polaris"
+
+    ent3 = extract_case_entities("ghi nhận lỗi JAM4709 kẹt giấy")
+    assert ent3["error_code"] == "JAM4709"
+    assert "kẹt giấy" in ent3["phenomenon"]
+
+
+def test_khong_pha_hanh_vi_cu():
+    from aios_habit.chat_intent_router import (
+        HOI_TAI_LIEU,
+        TAO_SO,
+        classify_intent,
+    )
+
+    # Tra cuu loi khong bi cuop boi TAO_VU_DIEU_TRA
+    assert classify_intent("tra cứu lỗi kẹt giấy") == HOI_TAI_LIEU
+    assert classify_intent("tra cuu loi C7620") == HOI_TAI_LIEU
+    # Tao so khong bi cuop
+    assert classify_intent("tạo sổ Sổ nghiệm thu") == TAO_SO
+

@@ -1600,9 +1600,35 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
         HO_SO_DIEU_TRA,
         MO_SO,
         TAO_SO,
+        TAO_VU_DIEU_TRA,
         VE_BIEU_DO,
+        _khong_dau,
     )
 
+    norm_q = _khong_dau(q_text)
+    if norm_q in ("xac nhan", "xac nhan tao vu", "dong y tao vu") and st.session_state.get("wsc_pending_case_preview"):
+        from aios_habit.chat_action_create_case import execute_confirm_case
+        preview_data = st.session_state.pop("wsc_pending_case_preview")
+        conv_id = getattr(active_conversation, "id", "") or ""
+        return execute_confirm_case(preview_data, conversation_id=conv_id)
+
+    if y_dinh == TAO_VU_DIEU_TRA:
+        from aios_habit.chat_action_create_case import (
+            extract_case_preview_marker,
+            render_preview_card_text,
+        )
+
+        conv_id = getattr(active_conversation, "id", "") or ""
+        preview_text = render_preview_card_text(
+            text=q_text,
+            slots=slots,
+            conversation_id=conv_id,
+            notebook_id=active_nb_id or "",
+        )
+        marker_data = extract_case_preview_marker(preview_text)
+        if marker_data:
+            st.session_state["wsc_pending_case_preview"] = marker_data
+        return preview_text
     if y_dinh == HO_SO_DIEU_TRA:
         st.session_state.wsc_show_case_workspace = True
         st.session_state.wsc_show_lsu_data_gate = False

@@ -67,6 +67,7 @@ BUILTIN_ACTION_MODULES: Tuple[str, ...] = (
     # LOG-STREAM: nap file log lon theo stream, khong cat 50k dong.
     "aios_habit.chat_action_log_stream",
     "aios_habit.chat_action_draft_approval",
+    "aios_habit.chat_action_create_case",
     "aios_habit.chat_action_error_lookup",
 )
 
