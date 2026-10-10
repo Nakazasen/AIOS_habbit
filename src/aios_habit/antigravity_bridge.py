@@ -18,6 +18,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+import concurrent.futures
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping, Sequence
@@ -1246,7 +1247,18 @@ def route_workspace_chat_submission(
             workspace_id=notebook_id or "default",
             consent_memory_fingerprint=consent_memory_fingerprint,
         )
-        result = generate_workspace_ai_answer(request, object())
+        router_timeout = int(os.environ.get("AIOS_ROUTER_TIMEOUT_SECONDS", "30"))
+        try:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                router_future = executor.submit(generate_workspace_ai_answer, request, object())
+                result = router_future.result(timeout=router_timeout)
+        except concurrent.futures.TimeoutError:
+            LOGGER.warning("Nakazasen Router timed out after %ds; transferring to next backend in failover chain", router_timeout)
+            return (False, "", None, f"Nakazasen Router hết thời gian chờ ({router_timeout}s).")
+        except Exception as exc:
+            LOGGER.warning("Nakazasen Router execution error: %s", exc)
+            return (False, "", None, f"Lỗi Nakazasen Router: {exc}")
+
         LOGGER.info(
             "BRIDGE NAKAZASEN ROUTER RESULT: ok=%s provider=%s model=%s reason=%s error=%s",
             result.ok,

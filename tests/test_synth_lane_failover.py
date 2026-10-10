@@ -214,3 +214,40 @@ def test_local_fallback_preserves_ocr_extracted_text(monkeypatch, mock_store_and
     assert "1250 Hz" in assistant_content
     assert "14.2 ms" in assistant_content
     assert "DAT_CHUAN_PASS" in assistant_content
+
+
+def test_router_timeout_falls_back_to_local_extractive(monkeypatch, mock_store_and_trace):
+    """When router hangs longer than AIOS_ROUTER_TIMEOUT_SECONDS, timeout triggers local fallback."""
+    import time
+    def hanging_router_answer(request, context):
+        time.sleep(2.0)
+        return WorkspaceAIAnswerResult(ok=True, answer_text="Late answer")
+
+    monkeypatch.setenv("AIOS_ROUTER_TIMEOUT_SECONDS", "1")
+    monkeypatch.setattr("aios_habit.workspace_chat_ai_answer.generate_workspace_ai_answer", hanging_router_answer)
+
+    ev_items = [
+        {"evidence_id": "EV-TO", "title": "Tài liệu kiểm định", "text": "Độ chính xác đạt 99.9%."}
+    ]
+
+    ok, msg, badge, err = bridge.route_workspace_chat_submission(
+        question="Tài liệu kiểm định nói gì?",
+        evidence_items=ev_items,
+        packed_sources=(),
+        conversation_id="CONV-ROUTER-TIMEOUT",
+        notebook_id="NB-1",
+        retrieval_applied=True,
+        retrieved_sources=(),
+        retrieval_summary="Đang tra cứu tài liệu.",
+        current_keys=(),
+        chat_history=(),
+        user_raw_input="Tài liệu kiểm định nói gì?",
+        backend="nakazasen_router",
+    )
+
+    assert ok is True
+    assert badge is not None
+    assert badge.get("fallback_used") is True
+    assert badge.get("operational_mode") == "local_grounded_fallback"
+    assert "Độ chính xác đạt 99.9%" in mock_store_and_trace["messages"][-1].content
+
