@@ -19,3 +19,12 @@
 
 - Không đổi ngưỡng cổng. Không dùng cách "sửa kịch bản test cho qua" thay cho sửa phân loại/định tuyến thật.
 - Mốc tiến độ tối thiểu 15 phút/lần kèm điểm kiểm.
+
+## Bổ sung phạm vi của điều phối (2026-10-11, từ verdict đợt quét B1)
+
+Đợt quét `DESKTOP-KNOWLEDGE-BLOCK-QA-HOME` phát hiện thêm một lệch đồng bộ cùng họ với lệch khối của Q0668, xử lý luôn trong vé này:
+
+- Nhãn chip khối trên giao diện ghi "Tự động (889 tài liệu)" trong khi chỉ mục hợp nhất đang dùng có 894 tài liệu sau đợt nạp missing5.
+- Năm tệp nguồn mới nạp (nhóm LSU) chỉ tồn tại trong chỉ mục hợp nhất `tri_thuc`, chưa có trong các bộ sưu tập theo khối — vé chẩn đoán đã đo khối `lsu` có 0 mảnh của các tệp này. Người dùng chọn khối LSU trên giao diện vì thế không bao giờ chạm được dữ liệu mới nạp.
+
+Yêu cầu bổ sung: đồng bộ 5 tệp mới vào đúng bộ sưu tập theo khối của chúng (kèm đủ vector theo quy chuẩn như vé nhúng bổ sung), bảo đảm số đếm tài liệu hiển thị trên chip khối khớp với dữ liệu thật của từng khối sau đồng bộ, và nghiệm thu bằng một câu hỏi giao diện chọn khối LSU có trích đúng một tệp mới. Nếu cách sửa phân loại ở phần chính của vé đã bao phủ việc này thì ghi rõ trong báo cáo, không làm hai lần.
