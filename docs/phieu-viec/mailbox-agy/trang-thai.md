@@ -3,6 +3,7 @@
 ## Vé hiện tại: MISSING5-EMBED-COMPLETE-HOME (nhúng bổ sung toàn bộ mảnh còn thiếu vector)
 
 - Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-11 05:08 +07 — **TIẾN ĐỘ**: Đang chạy Bước 2 nhúng bổ sung vector BGE-M3 ONNX; đã nhúng và commit an toàn 2.880/26.907 mảnh (10,7%), tốc độ 0,6 chunks/s; checkpoint transaction mỗi 64 mảnh lưu bền vững vào DB.
 - `ghi_chu`: 2026-10-11 04:52 +07 — **TIẾN ĐỘ**: Đang chạy Bước 2 nhúng bổ sung vector BGE-M3 ONNX; đã nhúng và commit an toàn 2.432/26.907 mảnh (9,0%), tốc độ 0,6 chunks/s; checkpoint transaction mỗi 64 mảnh lưu bền vững vào DB.
 - `ghi_chu`: 2026-10-11 04:41 +07 — **TIẾN ĐỘ**: Đang chạy Bước 2 nhúng bổ sung vector BGE-M3 ONNX; đã nhúng và commit an toàn 2.048/26.907 mảnh (7,6%), tốc độ 0,6 chunks/s; checkpoint transaction mỗi 64 mảnh lưu bền vững vào DB.
 - `ghi_chu`: 2026-10-11 04:25 +07 — **TIẾN ĐỘ**: Đang chạy Bước 2 nhúng bổ sung vector BGE-M3 ONNX; đã nhúng và commit an toàn 1.472/26.907 mảnh (5,5%), tốc độ 0,5 chunks/s; checkpoint transaction mỗi 64 mảnh lưu bền vững vào DB.
