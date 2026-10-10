@@ -10,6 +10,7 @@
 - `ghi_chu`: 2026-10-10 08:32 +07 — Tải xong bộ cài chính thức Obsidian 1.14.4 từ GitHub obsidianmd/obsidian-releases (Obsidian-1.14.4.exe, 341.331.008 byte), chuẩn bị cài cho người dùng hiện tại.
 - `ghi_chu`: 2026-10-10 08:52 +07 — Cài xong Obsidian 1.14.4 cho người dùng hiện tại (C:\Users\Admin\AppData\Local\Programs\Obsidian\Obsidian.exe, kiểm tra bản mới nhất báo 1.14.4 đã mới nhất). Tiếp theo: mở vault docs/so-cai-vault.
 - `ghi_chu`: 2026-10-10 09:18 +07 — Đã đọc bản đính chính đích vault 09:15 (prompt.md mới): vault thật ở kho aios-dieu-phoi thư mục so-cai, bản docs/so-cai-vault đã thành lưu trữ. Giữ kết quả cài Obsidian 1.14.4, chuyển sang clone kho điều phối về D:\Sandbox\aios-dieu-phoi.
+- `ghi_chu`: 2026-10-10 09:27 +07 — Clone xong kho aios-dieu-phoi về D:\Sandbox\aios-dieu-phoi (nhánh main, commit 5577b4e), thấy vault so-cai đủ README + So-cai-AIOS_habbit.md (mục mới nhất 09:25 ghi đợt chuyển hộp thư). Tiếp theo: mở vault trong Obsidian.
 
 # Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
