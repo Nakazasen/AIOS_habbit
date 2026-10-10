@@ -2,7 +2,8 @@
 
 ## Vé hiện tại: MISSING5-PARSER-FIX-HOME (sửa bộ trích xuất PPTX + bộ chia mảnh CSV hàng rộng, nạp lại 2 tệp)
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-11 01:31 +07 — **ĐÃ NHẬN VÉ** `MISSING5-PARSER-FIX-HOME`: Bắt đầu thực hiện sửa bộ trích xuất PPTX (ghi chú diễn giả) và bộ chia mảnh CSV hàng rộng (giữ liên kết tiêu đề-dòng).
 - `ghi_chu`: 2026-10-11 01:29 +07 — **PHÁT HÀNH** vé `MISSING5-PARSER-FIX-HOME` (prompt.md đã thay bằng nội dung vé đã xếp hàng). Hàng chờ tiếp theo: `MISSING5-EMBED-COMPLETE-HOME` → `Q0668-BLOCK-FIX-HOME` (đã gồm bổ sung đồng bộ bộ sưu tập theo khối) → `CSV-STRUCTURED-LANE-HOME`, điều phối phát hành lần lượt khi từng vé khép.
 - `ghi_chu` (verdict Muse): 2026-10-11 01:29 +07 — **ĐẠT** vé `WATCHER-ESCALATE-FIX-PUSH-HOME`; vé cha `WATCHER-ESCALATE-FIX-HOME` coi như đã khép toàn bộ. Điều phối kiểm chứng trực tiếp trên kho từ xa: tip nhánh `main` của `Nakazasen/agent-mailbox` hiện là `8c54e92982229c192542257884d480cbf392543b` (đúng mã báo cáo trích, commit cha `4688829e`), diff gồm cả hai tệp watcher (+187/−80 mỗi tệp) với đủ các thành phần của bản sửa đã duyệt (tách khối hiện hành, đọc tên vé hiện hành, ghi UTF-8 không BOM bằng WriteAllText). Như vậy commit này vốn được tạo cục bộ trong vé cha lúc 00:52 và chỉ được đẩy lên ở vé hoàn thiện — khép lại đúng theo yêu cầu. Việc nạp lại hai watcher lúc 01:08:17 ở khoảng trống an toàn (hộp thư opencode đang `moi`, không có tiến trình chạy dở) được ghi nhận; tiến trình watcher mới đã chạy bằng bản mã đã sửa.
 - `bao_cao`: `docs/phieu-viec/ket-qua/missing5-parser-fix-home.md`
