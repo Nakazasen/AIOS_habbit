@@ -1,0 +1,15 @@
+{
+  "thoi_gian": "2026-10-10T08:31:07.368958",
+  "model": "inclusionai/ling-3.1-flash:free",
+  "tong_cau": 50,
+  "tong_diem": 74.5,
+  "diem_trung_binh": 1.49,
+  "so_cau_3_diem": 12,
+  "che_do": {
+    "validated": 21,
+    "fallback": 22,
+    "not_called": 7
+  },
+  "index_sha256": "45eb0e072893f802d71ab201cfbb2b29c36e2b0a31313fa79fc55a025b65b7c0",
+  "index_bytes": 2942201856
+}
