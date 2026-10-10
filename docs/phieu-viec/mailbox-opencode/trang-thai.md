@@ -1,7 +1,8 @@
 ﻿# Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
 - Vé: `OBSIDIAN-SETUP-HOME`
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
+- `commit`: `5cc4c5e` (báo cáo `obsidian-setup-home.md` + ảnh `obsidian-setup-home.png` 205.586 byte; 2 commit kho aios-dieu-phoi: `1076bcd` đồng bộ dòng kiểm chứng, `a542acf` tệp lệnh `dong-bo-so-cai.ps1`; vé này không sửa `src/`/`tests/`, không merge `main`, không đụng production)
 - `ghi_chu` (điều phối Muse — PHÁT HÀNH): 2026-10-10 ~08:20 +07 — Phát hành vé `OBSIDIAN-SETUP-HOME` cho thợ phụ tạm thời ở máy nhà (prompt.md đã thay). Theo lệnh user ngày 10/10, sổ cái chuyển từ Notion sang Obsidian; toàn bộ nội dung đã nằm trong vault `docs/so-cai-vault` của chính kho này. Vé nhẹ: cài Obsidian tại máy nhà, mở vault, tạo tệp lệnh đồng bộ một chạm cho sổ, kiểm chứng đồng bộ bằng một dòng trong README của vault kèm ảnh chụp Obsidian đang mở sổ. Rào: không sửa nội dung các mục cũ của sổ, không cài plugin ngoài mặc định, không đụng chỉ mục production.
 - `bao_cao`: `docs/phieu-viec/ket-qua/obsidian-setup-home.md`
 - `hang-cho`: sau vé này quay lại nhiệm vụ kiểm chứng chéo khi có đợt nộp mới cần đối chiếu.
@@ -13,6 +14,7 @@
 - `ghi_chu`: 2026-10-10 09:27 +07 — Clone xong kho aios-dieu-phoi về D:\Sandbox\aios-dieu-phoi (nhánh main, commit 5577b4e), thấy vault so-cai đủ README + So-cai-AIOS_habbit.md (mục mới nhất 09:25 ghi đợt chuyển hộp thư). Tiếp theo: mở vault trong Obsidian.
 - `ghi_chu`: 2026-10-10 09:20 +07 — Mở vault so-cai trong Obsidian 1.14.4 thành công, thấy So-cai-AIOS_habbit.md (mục mới nhất 09:25 đợt chuyển hộp thư), ảnh obsidian-setup-home.png đã chụp. Tiếp theo: tạo tệp đồng bộ một chạm.
 - `ghi_chu`: 2026-10-10 09:28 +07 — Đồng bộ thật xong: dòng kiểm chứng 09:22 đã lên origin/main kho aios-dieu-phoi (commit 1076bcd), tệp lệnh dong-bo-so-cai.ps1 đã nộp (commit a542acf). Tiếp theo: ghi báo cáo + xin duyệt.
+- `ghi_chu`: 2026-10-10 09:35 +07 — XONG chờ duyệt vé OBSIDIAN-SETUP-HOME: đủ 6 bước (cài 1.14.4 chính thức, mở vault so-cai thấy sổ mục mới nhất 09:25, tệp lệnh một chạm BOM đúng hành vi, dòng kiểm chứng lên từ xa đã xác minh, ảnh Obsidian nộp kèm). Chờ Muse review.
 
 # Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
