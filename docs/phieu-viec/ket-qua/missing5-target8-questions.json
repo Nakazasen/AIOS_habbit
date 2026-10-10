@@ -1,0 +1,115 @@
+{
+  "Q0849": {
+    "stt": 5,
+    "id": "Q0849",
+    "question": "File có bao nhiêu record lỗi và phạm vi ngày nào?",
+    "reference_answer": "Có`3.153 record`, từ`2026/08/01` đến`2026/08/25`, liên quan tới`1.252 Serial` khác nhau. Tất cả record có Abstract=`BowOverAdjustment`. Nguồn file: `2026_08_Error_BowOverAdjust.csv`.",
+    "source": "`lsu/batch-21.md` (Batch 21)",
+    "focus": "Số lượng record lỗi và phạm vi ngày của log BowOverAdjustment",
+    "expected_keywords": [
+      "3.153 record",
+      "2026/08/01",
+      "2026/08/25",
+      "1.252 Serial"
+    ],
+    "requires_citation": true
+  },
+  "Q0850": {
+    "stt": 6,
+    "id": "Q0850",
+    "question": "Yellow、Cyan、Magenta分别有多少件？",
+    "reference_answer": "Yellow=`1304件`、Cyan=`1035件`、Magenta=`814件`。Yellow最多。来源文件：`2026_08_Error_BowOverAdjust.csv`.",
+    "source": "`lsu/batch-21.md` (Batch 21)",
+    "focus": "Phân bố số lượng lỗi theo màu Yellow, Cyan, Magenta trong file BowOverAdjust",
+    "expected_keywords": [
+      "1304件",
+      "1035件",
+      "814件"
+    ],
+    "requires_citation": true
+  },
+  "Q1034": {
+    "stt": 9,
+    "id": "Q1034",
+    "question": "哪一天Error Record最多？",
+    "reference_answer": "`2026/08/11`最多，有`34笔`；之后为`08/12=22`、`08/18=16`、`08/21=12`、`08/25=10`。来源文件：`2026_08_Error.csv`.",
+    "source": "`lsu/batch-25.md` (Batch 25)",
+    "focus": "Ngày phát sinh số lượng record lỗi nhiều nhất trong tháng 8 (11/08/2026)",
+    "expected_keywords": [
+      "2026/08/11",
+      "34笔",
+      "08/12=22",
+      "08/18=16"
+    ],
+    "requires_citation": true
+  },
+  "Q0620": {
+    "stt": 10,
+    "id": "Q0620",
+    "question": "2026年3月のBOWSKEW 4 BEAM NG率はいくつですか。",
+    "reference_answer": "資料ではIris Jig BOWSKEW 4 BEAMが25.42%から上昇し、2026年3月に49.49%へ達したと説明されています。出典ファイル：AI cảnh báo lỗi LSU.pptx.",
+    "source": "`lsu/batch-16.md` (Batch 16)",
+    "focus": "Tỷ lệ NG của JIG trọng điểm BOWSKEW 4 BEAM tháng 3/2026 (49.49%)",
+    "expected_keywords": [
+      "25.42%",
+      "49.49%"
+    ],
+    "requires_citation": true
+  },
+  "Q0824": {
+    "stt": 12,
+    "id": "Q0824",
+    "question": "`61C1068E7022`は8月12日と13日で判定Patternが変わりましたか。",
+    "reference_answer": "変わっていません。両方ともTotal=`NG`、Black=`OK`、Magenta=`OK`、Cyan=`NG`、Yellow=`OK`です。出典ファイル：`2026_08_UnitTest.csv`.",
+    "source": "`lsu/batch-21.md` (Batch 21)",
+    "focus": "Thay đổi pattern phán định của serial 61C1068E7022 giữa ngày 12 và 13/8",
+    "expected_keywords": [
+      "NG",
+      "OK"
+    ],
+    "requires_citation": true
+  },
+  "Q0828": {
+    "stt": 17,
+    "id": "Q0828",
+    "question": "Có thể khẳng định Black Skew là nguyên nhân duy nhất của mọi Total NG trong file không?",
+    "reference_answer": "Không. Có record Total NG nhưng Black vẫn `OK`, ví dụ `61C1068E6778` hoặc `61C1068E7022`; lỗi có thể nằm ở Cyan/Yellow. File không xác nhận Black Skew là nguyên nhân duy nhất. Nguồn file: `2026_08_UnitTest.csv`.",
+    "source": "`lsu/batch-21.md` (Batch 21)",
+    "focus": "Phân tích Black Skew có phải nguyên nhân duy nhất của mọi Total NG không",
+    "expected_keywords": [
+      "OK",
+      "61C1068E6778",
+      "61C1068E7022"
+    ],
+    "requires_citation": true
+  },
+  "Q0668": {
+    "stt": 40,
+    "id": "Q0668",
+    "question": "g1 và g2 có nominal và giới hạn nào?",
+    "reference_answer": "Cả g1 và g2 dùng nominal `13.81`, dung sai `+0.12 / -0.05`, tức giới hạn trên `13.93`, giới hạn dưới `13.76`. Các giá trị đọc được khoảng `13.845–13.856`, đều được đánh giá `O`. Nguồn file: `3V2ND19040-MOUNT LD BLOCK LOT 18.8.2026.xlsx`.",
+    "source": "`lsu/batch-17.md` (Batch 17)",
+    "focus": "Thông số nominal và giới hạn dung sai của g1 và g2 (13.81 +0.12/-0.05)",
+    "expected_keywords": [
+      "13.81",
+      "+0.12 / -0.05",
+      "13.93",
+      "13.76"
+    ],
+    "requires_citation": true
+  },
+  "Q0843": {
+    "stt": 43,
+    "id": "Q0843",
+    "question": "Cặp giới hạn Current phổ biến nhất là bao nhiêu?",
+    "reference_answer": "Cặp phổ biến nhất là Lower=`370 mA`, Upper=`520 mA`, xuất hiện trong`4.399 record`. Nguồn file: `2026_08_Spec.csv`.",
+    "source": "`lsu/batch-21.md` (Batch 21)",
+    "focus": "Cặp giới hạn dòng điện Current (Lower 370 mA, Upper 520 mA) phổ biến nhất",
+    "expected_keywords": [
+      "370 mA",
+      "520 mA",
+      "4.399 record"
+    ],
+    "requires_citation": true
+  }
+}

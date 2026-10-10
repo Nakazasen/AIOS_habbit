@@ -1,0 +1,478 @@
+{
+  "production_summary": {
+    "distinct_docs": 894,
+    "total_chunks": 181033,
+    "retrievable_chunks": 148860,
+    "total_dense": 122293,
+    "total_sparse": 122293
+  },
+  "target_files": {
+    "2026_08_Error.csv": [
+      {
+        "document_id": "wsc-03bf475fc208c02f741d4013",
+        "source_name": "2026_08_Error.csv",
+        "source_path": "C:/tmp/missing5_staging/2026_08_Error.csv",
+        "file_type": "csv",
+        "total_chunks": 597,
+        "retrievable_chunks": 517,
+        "non_retrievable_chunks": 80,
+        "dense_embeddings": 517,
+        "sparse_embeddings": 517,
+        "missing_dense": 0,
+        "missing_sparse": 0
+      }
+    ],
+    "2026_08_Error_BowOverAdjust.csv": [
+      {
+        "document_id": "wsc-8eb2a5d21b75fa88307223b1",
+        "source_name": "2026_08_Error_BowOverAdjust.csv",
+        "source_path": "C:/tmp/missing5_staging/2026_08_Error_BowOverAdjust.csv",
+        "file_type": "csv",
+        "total_chunks": 25213,
+        "retrievable_chunks": 22054,
+        "non_retrievable_chunks": 3159,
+        "dense_embeddings": 0,
+        "sparse_embeddings": 0,
+        "missing_dense": 22054,
+        "missing_sparse": 22054
+      }
+    ],
+    "2026_08_Spec.csv": [
+      {
+        "document_id": "wsc-d4df39c14101e40ebad88a91",
+        "source_name": "2026_08_Spec.csv",
+        "source_path": "C:/tmp/missing5_staging/2026_08_Spec.csv",
+        "file_type": "csv",
+        "total_chunks": 5303,
+        "retrievable_chunks": 4853,
+        "non_retrievable_chunks": 450,
+        "dense_embeddings": 0,
+        "sparse_embeddings": 0,
+        "missing_dense": 4853,
+        "missing_sparse": 4853
+      }
+    ],
+    "2026_08_UnitTest.csv": [
+      {
+        "document_id": "wsc-4bd2e353e19864fe786358c5",
+        "source_name": "2026_08_UnitTest.csv",
+        "source_path": "C:/tmp/missing5_staging/2026_08_UnitTest.csv",
+        "file_type": "csv",
+        "total_chunks": 112,
+        "retrievable_chunks": 97,
+        "non_retrievable_chunks": 15,
+        "dense_embeddings": 97,
+        "sparse_embeddings": 97,
+        "missing_dense": 0,
+        "missing_sparse": 0
+      }
+    ],
+    "AI cảnh báo lỗi LSU.pptx": [
+      {
+        "document_id": "wsc-f6782ff77c152a5c9a416ad8",
+        "source_name": "AI cảnh báo lỗi LSU.pptx",
+        "source_path": "C:/tmp/missing5_staging/AI cảnh báo lỗi LSU.pptx",
+        "file_type": "document_summary",
+        "total_chunks": 1,
+        "retrievable_chunks": 1,
+        "non_retrievable_chunks": 0,
+        "dense_embeddings": 8,
+        "sparse_embeddings": 8,
+        "missing_dense": -7,
+        "missing_sparse": -7
+      },
+      {
+        "document_id": "wsc-f6782ff77c152a5c9a416ad8",
+        "source_name": "AI cảnh báo lỗi LSU.pptx",
+        "source_path": "C:/tmp/missing5_staging/AI cảnh báo lỗi LSU.pptx",
+        "file_type": "pptx",
+        "total_chunks": 7,
+        "retrievable_chunks": 7,
+        "non_retrievable_chunks": 0,
+        "dense_embeddings": 8,
+        "sparse_embeddings": 8,
+        "missing_dense": -1,
+        "missing_sparse": -1
+      }
+    ]
+  },
+  "fts_match_counts": {
+    "2026_08_Error.csv": {
+      "2026/08/11": {
+        "fts_match_count": 57,
+        "like_match_count": 69
+      },
+      "34": {
+        "fts_match_count": 7,
+        "like_match_count": 376
+      },
+      "Error": {
+        "fts_match_count": 517,
+        "like_match_count": 261
+      }
+    },
+    "2026_08_Error_BowOverAdjust.csv": {
+      "BowOverAdjustment": {
+        "fts_match_count": 3153,
+        "like_match_count": 6306
+      },
+      "3153": {
+        "fts_match_count": 100,
+        "like_match_count": 170
+      },
+      "1252": {
+        "fts_match_count": 88,
+        "like_match_count": 149
+      },
+      "2026/08/01": {
+        "fts_match_count": 124,
+        "like_match_count": 248
+      },
+      "2026/08/25": {
+        "fts_match_count": 173,
+        "like_match_count": 346
+      },
+      "Yellow": {
+        "fts_match_count": 1320,
+        "like_match_count": 2628
+      },
+      "Cyan": {
+        "fts_match_count": 1052,
+        "like_match_count": 2092
+      },
+      "Magenta": {
+        "fts_match_count": 831,
+        "like_match_count": 1651
+      },
+      "1304": {
+        "fts_match_count": 113,
+        "like_match_count": 195
+      },
+      "1035": {
+        "fts_match_count": 31,
+        "like_match_count": 42
+      },
+      "814": {
+        "fts_match_count": 5,
+        "like_match_count": 2701
+      }
+    },
+    "2026_08_Spec.csv": {
+      "Current": {
+        "fts_match_count": 1,
+        "like_match_count": 2
+      },
+      "370": {
+        "fts_match_count": 4399,
+        "like_match_count": 4812
+      },
+      "520": {
+        "fts_match_count": 4399,
+        "like_match_count": 4812
+      },
+      "4399": {
+        "fts_match_count": 1,
+        "like_match_count": 0
+      },
+      "370 mA": {
+        "fts_match_count": 0,
+        "like_match_count": 0
+      },
+      "520 mA": {
+        "fts_match_count": 0,
+        "like_match_count": 0
+      }
+    },
+    "2026_08_UnitTest.csv": {
+      "61C1068E7022": {
+        "fts_match_count": 2,
+        "like_match_count": 4
+      },
+      "61C1068E6778": {
+        "fts_match_count": 1,
+        "like_match_count": 2
+      },
+      "Black Skew": {
+        "fts_match_count": 0,
+        "like_match_count": 0
+      },
+      "Total": {
+        "fts_match_count": 0,
+        "like_match_count": 4
+      },
+      "NG": {
+        "fts_match_count": 7,
+        "like_match_count": 16
+      },
+      "OK": {
+        "fts_match_count": 9,
+        "like_match_count": 18
+      }
+    },
+    "AI cảnh báo lỗi LSU.pptx": {
+      "BOWSKEW": {
+        "fts_match_count": 2,
+        "like_match_count": 2
+      },
+      "49.49%": {
+        "fts_match_count": 0,
+        "like_match_count": 0
+      },
+      "49.49": {
+        "fts_match_count": 0,
+        "like_match_count": 0
+      },
+      "25.42%": {
+        "fts_match_count": 0,
+        "like_match_count": 0
+      },
+      "25.42": {
+        "fts_match_count": 0,
+        "like_match_count": 0
+      },
+      "2026年3月": {
+        "fts_match_count": 0,
+        "like_match_count": 0
+      },
+      "Iris Jig": {
+        "fts_match_count": 0,
+        "like_match_count": 0
+      },
+      "BOWSKEW 4 BEAM": {
+        "fts_match_count": 2,
+        "like_match_count": 2
+      }
+    }
+  },
+  "comparison_old_files": [
+    {
+      "document_id": "wsc-9c82b1ca2e1898a8d9d03e8b",
+      "source_name": "61C1065D8513_B4_Bow_Skew.xlsm",
+      "file_type": "xlsm",
+      "total_chunks": 61760,
+      "retrievable_chunks": 43625,
+      "non_retrievable_chunks": 18135,
+      "dense_embeddings": 43625,
+      "sparse_embeddings": 43625,
+      "coverage_ratio": 1.0
+    },
+    {
+      "document_id": "wsc-4fc7eb76bdc2e05c08b3f0f6",
+      "source_name": "Loi KDTPS.xlsx",
+      "file_type": "xlsx",
+      "total_chunks": 39870,
+      "retrievable_chunks": 39798,
+      "non_retrievable_chunks": 72,
+      "dense_embeddings": 39798,
+      "sparse_embeddings": 39798,
+      "coverage_ratio": 1.0
+    },
+    {
+      "document_id": "wsc-1c0b142abf2ca0242306ede2",
+      "source_name": "2xd_smkdj_jpnサービスアニュアル.pdf",
+      "file_type": "pdf",
+      "total_chunks": 3942,
+      "retrievable_chunks": 3169,
+      "non_retrievable_chunks": 773,
+      "dense_embeddings": 3169,
+      "sparse_embeddings": 3169,
+      "coverage_ratio": 1.0
+    },
+    {
+      "document_id": "wsc-0c56778d7c1842c109f826cc",
+      "source_name": "2xd_smkdj_jpnサービスアニュアル.pdf",
+      "file_type": "pdf",
+      "total_chunks": 3276,
+      "retrievable_chunks": 2703,
+      "non_retrievable_chunks": 573,
+      "dense_embeddings": 2704,
+      "sparse_embeddings": 2704,
+      "coverage_ratio": 1.0004
+    },
+    {
+      "document_id": "wsc-921d7a6025bee08cedda051d",
+      "source_name": "tổng hợp dữ liệu dán tape.xlsx",
+      "file_type": "xlsx",
+      "total_chunks": 3271,
+      "retrievable_chunks": 3258,
+      "non_retrievable_chunks": 13,
+      "dense_embeddings": 3259,
+      "sparse_embeddings": 3259,
+      "coverage_ratio": 1.0003
+    },
+    {
+      "document_id": "wsc-adecf154c98b3e3e80b04510",
+      "source_name": "【Iris2020】全体配線図_上位_DMT.xlsx",
+      "file_type": "xlsx",
+      "total_chunks": 2677,
+      "retrievable_chunks": 1361,
+      "non_retrievable_chunks": 1316,
+      "dense_embeddings": 1362,
+      "sparse_embeddings": 1362,
+      "coverage_ratio": 1.0007
+    },
+    {
+      "document_id": "wsc-d1a2c5999f4354c2d267aa08",
+      "source_name": "KTD-2025-02-1000-Iris2024-WASE TONNER BOX IS NOT INSTALL.xlsx",
+      "file_type": "xlsx",
+      "total_chunks": 2142,
+      "retrievable_chunks": 2091,
+      "non_retrievable_chunks": 51,
+      "dense_embeddings": 2092,
+      "sparse_embeddings": 2092,
+      "coverage_ratio": 1.0005
+    },
+    {
+      "document_id": "wsc-4f26d0e7608e6c64c120ee67",
+      "source_name": "【Iris2020】全体配線図_下位_DMT機.xlsx",
+      "file_type": "xlsx",
+      "total_chunks": 2131,
+      "retrievable_chunks": 972,
+      "non_retrievable_chunks": 1159,
+      "dense_embeddings": 973,
+      "sparse_embeddings": 973,
+      "coverage_ratio": 1.001
+    },
+    {
+      "document_id": "wsc-432a22c2094aae27455e1ee7",
+      "source_name": "sirius2 beam径確認_240202.xlsx",
+      "file_type": "xlsx",
+      "total_chunks": 1429,
+      "retrievable_chunks": 1175,
+      "non_retrievable_chunks": 254,
+      "dense_embeddings": 1176,
+      "sparse_embeddings": 1176,
+      "coverage_ratio": 1.0009
+    },
+    {
+      "document_id": "wsc-0603d773386b44af8c901ddf",
+      "source_name": "Iris2020_Cコール自己診断.xlsx",
+      "file_type": "xlsx",
+      "total_chunks": 1312,
+      "retrievable_chunks": 819,
+      "non_retrievable_chunks": 493,
+      "dense_embeddings": 819,
+      "sparse_embeddings": 819,
+      "coverage_ratio": 1.0
+    },
+    {
+      "document_id": "wsc-ab3c54ac9b8321fae82a5ba7",
+      "source_name": "Sirius2_7620.xlsx",
+      "file_type": "xlsx",
+      "total_chunks": 1146,
+      "retrievable_chunks": 1122,
+      "non_retrievable_chunks": 24,
+      "dense_embeddings": 1122,
+      "sparse_embeddings": 1122,
+      "coverage_ratio": 1.0
+    },
+    {
+      "document_id": "wsc-4735306c379b381ed7eceb15",
+      "source_name": "【Iris2020】全体配線図_モノクロ_DMT機 MONO.xlsx",
+      "file_type": "xlsx",
+      "total_chunks": 981,
+      "retrievable_chunks": 606,
+      "non_retrievable_chunks": 375,
+      "dense_embeddings": 607,
+      "sparse_embeddings": 607,
+      "coverage_ratio": 1.0017
+    },
+    {
+      "document_id": "wsc-c30c3e4f14dea65ed0d89754",
+      "source_name": "【Iris2020】PF全体配線図.xlsx",
+      "file_type": "xlsx",
+      "total_chunks": 640,
+      "retrievable_chunks": 345,
+      "non_retrievable_chunks": 295,
+      "dense_embeddings": 346,
+      "sparse_embeddings": 346,
+      "coverage_ratio": 1.0029
+    },
+    {
+      "document_id": "wsc-ab3ed0277c9e671ac3587bd0",
+      "source_name": "6778_CyCav_F_2025.11.13.xlsm",
+      "file_type": "xlsm",
+      "total_chunks": 590,
+      "retrievable_chunks": 371,
+      "non_retrievable_chunks": 219,
+      "dense_embeddings": 372,
+      "sparse_embeddings": 372,
+      "coverage_ratio": 1.0027
+    },
+    {
+      "document_id": "wsc-e0c617eb98b847bd3b20be64",
+      "source_name": "RE__Iris_LSU_Beam径NG多発_異常品質会議3回目.msg",
+      "file_type": "msg",
+      "total_chunks": 568,
+      "retrievable_chunks": 568,
+      "non_retrievable_chunks": 0,
+      "dense_embeddings": 568,
+      "sparse_embeddings": 568,
+      "coverage_ratio": 1.0
+    },
+    {
+      "document_id": "wsc-26df7c4233241be5cc7c83d6",
+      "source_name": "302L745040.pdf",
+      "file_type": "pdf",
+      "total_chunks": 555,
+      "retrievable_chunks": 397,
+      "non_retrievable_chunks": 158,
+      "dense_embeddings": 397,
+      "sparse_embeddings": 397,
+      "coverage_ratio": 1.0
+    },
+    {
+      "document_id": "wsc-2340acdb03f71fc0a04fd77f",
+      "source_name": "dữ liệu tổng hợp.xlsx",
+      "file_type": "xlsx",
+      "total_chunks": 500,
+      "retrievable_chunks": 352,
+      "non_retrievable_chunks": 148,
+      "dense_embeddings": 352,
+      "sparse_embeddings": 352,
+      "coverage_ratio": 1.0
+    },
+    {
+      "document_id": "wsc-5687e116c9f381661d10bd77",
+      "source_name": "tổng hợp dữ liệu XY_Target 2021.04.12.xlsx",
+      "file_type": "xlsx",
+      "total_chunks": 482,
+      "retrievable_chunks": 303,
+      "non_retrievable_chunks": 179,
+      "dense_embeddings": 303,
+      "sparse_embeddings": 303,
+      "coverage_ratio": 1.0
+    },
+    {
+      "document_id": "wsc-d033c2b9d2357d76e850dc05",
+      "source_name": "bowskew_nano_6AE10ZXA9910_2510221.xlsm",
+      "file_type": "xlsm",
+      "total_chunks": 419,
+      "retrievable_chunks": 321,
+      "non_retrievable_chunks": 98,
+      "dense_embeddings": 321,
+      "sparse_embeddings": 321,
+      "coverage_ratio": 1.0
+    },
+    {
+      "document_id": "wsc-18003f087932b2e7e326c931",
+      "source_name": "302L745040.pdf",
+      "file_type": "pdf",
+      "total_chunks": 395,
+      "retrievable_chunks": 303,
+      "non_retrievable_chunks": 92,
+      "dense_embeddings": 304,
+      "sparse_embeddings": 304,
+      "coverage_ratio": 1.0033
+    }
+  ],
+  "old_documents_overall_summary": {
+    "total_docs": 889,
+    "total_chunks": 149800,
+    "retrievable_chunks": 121331,
+    "non_retrievable_chunks": 28469,
+    "total_dense_embeddings": 121671,
+    "total_sparse_embeddings": 121671,
+    "coverage_ratio": 1.0028
+  }
+}

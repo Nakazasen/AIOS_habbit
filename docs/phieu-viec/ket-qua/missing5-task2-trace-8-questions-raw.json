@@ -1,0 +1,2620 @@
+{
+  "Q0849": {
+    "qid": "Q0849",
+    "question": "File có bao nhiêu record lỗi và phạm vi ngày nào?",
+    "target_file": "2026_08_Error_BowOverAdjust.csv",
+    "search_time_sec": 25.78,
+    "intent_category": "diagnosis",
+    "content_terms": [
+      "file",
+      "có",
+      "bao",
+      "nhiêu",
+      "record",
+      "lỗi",
+      "và",
+      "phạm",
+      "vi",
+      "ngày",
+      "nào"
+    ],
+    "target_terms": [
+      "file",
+      "có",
+      "bao",
+      "nhiêu",
+      "record",
+      "lỗi",
+      "và",
+      "phạm",
+      "vi",
+      "ngày",
+      "nào"
+    ],
+    "target_found_in_top15": false,
+    "target_ranks_in_top15": [],
+    "top15_hits": [
+      {
+        "rank": 1,
+        "chunk_id": "6c9bac66ce4d2389d3abb117a6cae1d07584c188ebe4b65e4fac0ad207fed931",
+        "document_id": "wsc-4fc7eb76bdc2e05c08b3f0f6",
+        "source_name": "Loi KDTPS.xlsx",
+        "score": 0.5561,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "- KTSX xác nhận bị lỗi File LOG của phần mềm đồ gá, Nguyên nhân do máy tính đang dùng phần mềm OPEN OFFICE, - Đ/s: không dùng phần mềm OPEN OFFICE nữa"
+      },
+      {
+        "rank": 2,
+        "chunk_id": "fa0d8b763ee443b7dfb05a49a0b6af90eb99f30dff729e59204e6c5d97b37d5e",
+        "document_id": "wsc-1e085174af345d01afbf88d6",
+        "source_name": "wsc-1e085174af345d01afbf88d6.txt",
+        "score": 9.5,
+        "is_target": false,
+        "matched_terms": [
+          "có",
+          "record",
+          "lỗi"
+        ],
+        "term_coverage": 0.2727,
+        "text_preview": "Kinh nghiệm: - Không chỉ kiểm tra “có kế hoạch xuất kho hay không”, mà phải kiểm tra queue có bị record lỗi chặn hay không. - SUP_PROCESS đúng trên MO"
+      },
+      {
+        "rank": 3,
+        "chunk_id": "33a745b922316f583e3ecb0bca2a91c4b4ef37dcef80d6534a30b9a6ce5d60fa",
+        "document_id": "wsc-8108791a3914d7a95a6d92b2",
+        "source_name": "FW    IRIS2020 (High Model) QA_C0650_08_Dec.msg",
+        "score": 0.5898,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "Please check log file"
+      },
+      {
+        "rank": 4,
+        "chunk_id": "9d13bad13693e1a386cecc2f5edf63c270a88fc49ed338a78bb8c35ec0fe3f64",
+        "document_id": "wsc-4fc7eb76bdc2e05c08b3f0f6",
+        "source_name": "Loi KDTPS.xlsx",
+        "score": 16.0,
+        "is_target": false,
+        "matched_terms": [
+          "lỗi",
+          "và",
+          "phạm",
+          "vi"
+        ],
+        "term_coverage": 0.3636,
+        "text_preview": "- Khi điều chỉnh máy, kỹ thuật viên chủ quan, cho rằng điều chỉnh máy nhanh, không ảnh hưởng gì nên đã không báo cho công nhân ngồi máy và không tắt b"
+      },
+      {
+        "rank": 5,
+        "chunk_id": "9e503b14aa26a7173d3bdd72ce839b14d8558a325928304c4a3b84e72567b940",
+        "document_id": "wsc-5a00ba9fac8d8d001a25cd2e",
+        "source_name": "KTD-2025-06-0606-Iris2024-C33-Operation-Màn hình hiển thị bất thường.xlsx",
+        "score": 0.1437,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "[DOCUMENT ARCHITECTURE & SUMMARY]  ## INTRODUCTION File Excel: KTD-2025-06-0606-Iris2024-C33-Operation-Màn_hình_hiển_thị_bất_thường.xlsx Trang tính: B"
+      },
+      {
+        "rank": 6,
+        "chunk_id": "45d7e3777a21da7503659da5a6ecf3d910ec99fc7dd2687c9cd8f65e90435bd9",
+        "document_id": "wsc-8108791a3914d7a95a6d92b2",
+        "source_name": "FW    IRIS2020 (High Model) QA_C0650_08_Dec.msg",
+        "score": 0.5762,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "And in your log file, there is below files."
+      },
+      {
+        "rank": 7,
+        "chunk_id": "59e773b8cfbc705bc146c0fa926c0e8b0c5505ee2fb5bc2a27f9ce2283b24a2c",
+        "document_id": "wsc-db302660f24c7eb178d7d63f",
+        "source_name": "KTD-2025-08-0841-Iris2024-C35-A8-C0980.xlsx",
+        "score": 0.137,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "[DOCUMENT ARCHITECTURE & SUMMARY]  ## INTRODUCTION File Excel: KTD-2025-08-0841-Iris2024-C35-A8-C0980.xlsx Trang tính: Bao cao dieu tra B3=Báo cáo điề"
+      },
+      {
+        "rank": 8,
+        "chunk_id": "b92c9ef62d4cda41a651b97b6a63707bd79524174448589351208cf003a0c4de",
+        "document_id": "wsc-4fc7eb76bdc2e05c08b3f0f6",
+        "source_name": "Loi KDTPS.xlsx",
+        "score": 15.0,
+        "is_target": false,
+        "matched_terms": [
+          "có",
+          "lỗi",
+          "phạm",
+          "vi"
+        ],
+        "term_coverage": 0.3636,
+        "text_preview": "Thiết bị đo nhiệt độ phát xạ của đồ gá cũng cao, như vậy Việc JIG phán định quá nhiệt là chính xác ( Target Temp là 90) JIG phát hiện lỗi chứ không ph"
+      },
+      {
+        "rank": 9,
+        "chunk_id": "66998e6ce455e296bf8bfb18ae1367bf83c8fc565f160a430afb10d786201d40",
+        "document_id": "wsc-51548ca220d6ccc9ec419c8c",
+        "source_name": "wsc-51548ca220d6ccc9ec419c8c.txt",
+        "score": 0.5722,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "©2025 KYOCERA Document Solutions Inc. 品質連携テーブル_調査開始 日時 シリアルNo 最新フラグ 工程ID 不良現象01 不良現象02 原因 処置 担当 状態 詳細情報保存先 ID DATE_TIME S_NO LATEST_FLAG PROCESS_ID DE"
+      },
+      {
+        "rank": 10,
+        "chunk_id": "306f246bf8d449353c61c20d222f5297bf0195e3a5dd73d34fc5cb1947a79bfc",
+        "document_id": "wsc-b8e070d7922d230f40d44077",
+        "source_name": "KTD-2025-02-0169-Iris2024-C35-A1-C6930.xlsx",
+        "score": 0.1334,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "[DOCUMENT ARCHITECTURE & SUMMARY]  ## INTRODUCTION File Excel: KTD-2025-02-0169-Iris2024-C35-A1-C6930.xlsx Trang tính: Bao cao dieu tra B3=Báo cáo điề"
+      },
+      {
+        "rank": 11,
+        "chunk_id": "3e80f351831f86981f5cc55927cbf4f5dc17a9df06ebb12972d0fa1fc5976ee5",
+        "document_id": "wsc-230baee36cd917aefc37d5e9",
+        "source_name": "AllItems.html",
+        "score": 0.5629,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "更新日時"
+      },
+      {
+        "rank": 12,
+        "chunk_id": "67d57fab9415568af9f3f3858fc083a1f1c1748ce4c06fb971245b37ea76e9f5",
+        "document_id": "wsc-ae919f9d40ab92796f266111",
+        "source_name": "KTD-2025-07-0787-Iris2024-C34-A6-Error56.xlsx",
+        "score": 0.1331,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "[DOCUMENT ARCHITECTURE & SUMMARY]  ## INTRODUCTION File Excel: KTD-2025-07-0787-Iris2024-C34-A6-Error56.xlsx Trang tính: Bao cao dieu tra B3=Báo cáo đ"
+      },
+      {
+        "rank": 13,
+        "chunk_id": "b04141cb0d8fb596fd9b4020d2ba05d15f537edcc36309ba7624d9e04ea2deb0",
+        "document_id": "wsc-6a046a4aa7aec6ba0e6d7b44",
+        "source_name": "KTD-2025-10-1074-Iris2024-C33-ISU-Dính hàn.xlsx",
+        "score": 0.1329,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "[DOCUMENT ARCHITECTURE & SUMMARY]  ## INTRODUCTION File Excel: KTD-2025-10-1074-Iris2024-C33-ISU-Dính_hàn.xlsx Trang tính: Bao cao dieu tra B3=Báo cáo"
+      },
+      {
+        "rank": 14,
+        "chunk_id": "d3a5b70e1fbcca68c5c227689d116640bc28d3dc7a15f4a925207937a22750d3",
+        "document_id": "wsc-0c56778d7c1842c109f826cc",
+        "source_name": "2xd_smkdj_jpnサービスアニュアル.pdf",
+        "score": 0.5582,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "6-18 メンテナンスモード ＞ メンテナンスモード [CONFIDENTIAL] (10) Service Call Log # Count. Service Code Date and Time 過去の自己診断エラーの発生 回数を1～8回まで記録。 過去の自己診断エラー発生回 数が8回に満たない"
+      },
+      {
+        "rank": 15,
+        "chunk_id": "fc06d200acf715ba742f1dbde55a385aaa944aad04a8989356f6743856346655",
+        "document_id": "wsc-1633f597b1735e8e340903da",
+        "source_name": "KTD-2025-03-0239-Iris2024-C35-A7-C0980.xlsx",
+        "score": 0.1328,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "[DOCUMENT ARCHITECTURE & SUMMARY]  ## INTRODUCTION File Excel: KTD-2025-03-0239-Iris2024-C35-A7-C0980.xlsx Trang tính: Bao cao dieu tra B3=Báo cáo điề"
+      }
+    ],
+    "target_found_in_evidence_pack": false,
+    "evidence_item_count": 3,
+    "evidence_items": [
+      {
+        "citation_id": "[1]",
+        "chunk_id": "fa0d8b763ee443b7dfb05a49a0b6af90eb99f30dff729e59204e6c5d97b37d5e",
+        "source_name": "wsc-1e085174af345d01afbf88d6.txt",
+        "is_target": false,
+        "preview": "Kinh nghiệm: - Không chỉ kiểm tra “có kế hoạch xuất kho hay không”, mà phải kiểm tra queue có bị record lỗi chặn hay không. - SUP_PROCESS đúng trên MO"
+      },
+      {
+        "citation_id": "[2]",
+        "chunk_id": "9d13bad13693e1a386cecc2f5edf63c270a88fc49ed338a78bb8c35ec0fe3f64",
+        "source_name": "Loi KDTPS.xlsx",
+        "is_target": false,
+        "preview": "- Khi điều chỉnh máy, kỹ thuật viên chủ quan, cho rằng điều chỉnh máy nhanh, không ảnh hưởng gì nên đã không báo cho công nhân ngồi máy và không tắt b"
+      },
+      {
+        "citation_id": "[3]",
+        "chunk_id": "b92c9ef62d4cda41a651b97b6a63707bd79524174448589351208cf003a0c4de",
+        "source_name": "Loi KDTPS.xlsx",
+        "is_target": false,
+        "preview": "Thiết bị đo nhiệt độ phát xạ của đồ gá cũng cao, như vậy Việc JIG phán định quá nhiệt là chính xác ( Target Temp là 90) JIG phát hiện lỗi chứ không ph"
+      }
+    ],
+    "answer_mode": "EvidenceAnswerMode.ABSTAIN",
+    "lexical_passed": false,
+    "lexical_coverage": 0.5,
+    "lexical_threshold": 0.6,
+    "semantic_threshold": 0.55,
+    "semantic_max_score": 0.0,
+    "semantic_rejection_reasons": [
+      "missing_dense_score",
+      "missing_dense_channel_provenance"
+    ],
+    "best_term_coverage": 0.5455,
+    "final_evidence_term_coverage": 0.5,
+    "hard_insufficiency_reasons": [
+      "final_evidence_query_coverage_below_threshold"
+    ],
+    "insufficiency_reasons": [
+      "incomplete_query_term_coverage",
+      "final_evidence_query_coverage_below_threshold"
+    ],
+    "plan_limitations": [
+      "incomplete_query_term_coverage"
+    ],
+    "local_synthesis_mode": "local_extractive",
+    "local_synthesis_abstained": true,
+    "local_synthesis_abstention_reasons": [
+      "evidence_pack_insufficient",
+      "final_evidence_query_coverage_below_threshold"
+    ],
+    "local_synthesis_answer_preview": "KHÔNG ĐỦ BẰNG CHỨNG: - Corpus được truy xuất không thiết lập được sự kiện hoặc quan hệ mà câu hỏi yêu cầu. - Cần nguồn trực tiếp (ví dụ: tài liệu quy trình, bản ghi hệ thống hoặc hàng dữ liệu có mục t"
+  },
+  "Q0850": {
+    "qid": "Q0850",
+    "question": "Yellow、Cyan、Magenta分别有多少件？",
+    "target_file": "2026_08_Error_BowOverAdjust.csv",
+    "search_time_sec": 3.08,
+    "intent_category": "diagnosis",
+    "content_terms": [
+      "yellow",
+      "cyan",
+      "magenta分别有多少件",
+      "magenta",
+      "分别有多少件",
+      "分别",
+      "别有",
+      "有多",
+      "多少",
+      "少件",
+      "分别有",
+      "别有多",
+      "有多少",
+      "多少件"
+    ],
+    "target_terms": [
+      "yellow",
+      "cyan",
+      "magenta分别有多少件",
+      "magenta",
+      "分别有多少件",
+      "分别",
+      "别有",
+      "有多",
+      "多少",
+      "少件",
+      "分别有",
+      "别有多",
+      "有多少",
+      "多少件"
+    ],
+    "target_found_in_top15": true,
+    "target_ranks_in_top15": [
+      13
+    ],
+    "top15_hits": [
+      {
+        "rank": 1,
+        "chunk_id": "5eb5011d9b54cadbc1b937cfee15a9fb8d0aaa6003535b1cf5416e5ebd2cca92",
+        "document_id": "wsc-4bd2e353e19864fe786358c5",
+        "source_name": "2026_08_UnitTest.csv",
+        "score": 0.5465,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "Yellow,PwmDlyLd13:Yellow,PwmDlyLd14:Yellow, Current[mA], Voltage[V], Temperature, Humidity[%], BD Black Timing[mm], BD Magenta Timing[mm],Judge:Black,"
+      },
+      {
+        "rank": 2,
+        "chunk_id": "5cb19f998889263e3012b790b296b00f0675f95184cc3d69818f5a0e770baddd",
+        "document_id": "wsc-894cf7bc9e15b9980ad7e6fb",
+        "source_name": "DATA_Matome.xlsx",
+        "score": 33.5,
+        "is_target": false,
+        "matched_terms": [
+          "yellow",
+          "cyan",
+          "magenta"
+        ],
+        "term_coverage": 0.2143,
+        "text_preview": "BeamPosY:Cyan:+45:AveA[um] | BeamPosX:Cyan:+90:[um] | BeamPosY:Cyan:+90:[um] | BeamPosY:Cyan:+90:AveA[um] | BeamPosX:Magenta:-90:[um] | BeamPosY:Magen"
+      },
+      {
+        "rank": 3,
+        "chunk_id": "d16775bd68d7dce255688fcca00510e1e9eaef275e13bb53318021bd93e8505b",
+        "document_id": "wsc-894cf7bc9e15b9980ad7e6fb",
+        "source_name": "DATA_Matome.xlsx",
+        "score": 0.5373,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "Sheet: Sheet3 Columns: UNIIT | FRONT側 > Black | Cyan | REAR側 > Magenta | Yellow Header row 7:  | FRONT側 |  | REAR側 |  Header row 8: UNIIT | Black | Cy"
+      },
+      {
+        "rank": 4,
+        "chunk_id": "62b28132c944b5b5c742aa2f8e7e0253f7755f5cd7db5b7034ec5f9002bc3da8",
+        "document_id": "wsc-4bd2e353e19864fe786358c5",
+        "source_name": "2026_08_UnitTest.csv",
+        "score": 30.0,
+        "is_target": false,
+        "matched_terms": [
+          "yellow",
+          "cyan"
+        ],
+        "term_coverage": 0.1429,
+        "text_preview": "Cyan:0:LD3[um]:1face,BeamPosX:Cyan:0:LD4[um]:1face,BeamPosY:Cyan:0:LD4[um]:1face,BeamPosX:Cyan:0:LD1_2[um]:1face,BeamPosY:Cyan:0:LD1_2[um]:1face,BeamP"
+      },
+      {
+        "rank": 5,
+        "chunk_id": "41d41a7d732a0e37cccc5c00e48102f59a421ed6cce91cbd5f379d3e776e202b",
+        "document_id": "wsc-894cf7bc9e15b9980ad7e6fb",
+        "source_name": "DATA_Matome.xlsx",
+        "score": 0.5102,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "Sheet: Sheet3 Columns: UNIIT | FRONT側 > Black | Cyan | REAR側 > Magenta | Yellow Row 9: 245 | Skew NG | Skew NG |  |  Row 10: 249 | Skew NG | Skew NG |"
+      },
+      {
+        "rank": 6,
+        "chunk_id": "d802fbcc6102888cb936fb5ffe456dc44af1f0efb2bc8269202338580bb2332a",
+        "document_id": "wsc-ab3c54ac9b8321fae82a5ba7",
+        "source_name": "Sirius2_7620.xlsx",
+        "score": 0.5089,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "Sheet: 6AE1167Q4497 Columns: DATE | TIME | S/N | Timing: Yellow[mm] | Timing: Magenta[mm] | Timing: Cyan[mm] | Timing: Black[mm] | M-K [mm] | M-K [dot"
+      },
+      {
+        "rank": 7,
+        "chunk_id": "38527aea6135229ffa65d78400786df4be046af87671c5316101047d7756edb7",
+        "document_id": "wsc-4bd2e353e19864fe786358c5",
+        "source_name": "2026_08_UnitTest.csv",
+        "score": 33.0,
+        "is_target": false,
+        "matched_terms": [
+          "yellow",
+          "cyan",
+          "magenta"
+        ],
+        "term_coverage": 0.2143,
+        "text_preview": ":LD1_1:[um],BeamDiameter:V:Yellow:+140:-2:LD2:[um],BeamDiameter:V:Yellow:+140:-2:LD3:[um],BeamDiameter:V:Yellow:+140:-2:LD4:[um],BeamPitch:Black:-140["
+      },
+      {
+        "rank": 8,
+        "chunk_id": "decf42a7c315bce3771d1e564bf8449368e0502aa6451240df40ab0bdd01f7a4",
+        "document_id": "wsc-9c82b1ca2e1898a8d9d03e8b",
+        "source_name": "61C1065D8513_B4_Bow_Skew.xlsm",
+        "score": 0.5168,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "Sheet: TABLE Columns: Camera | LD1 H > =D3 | =D14 | =D25 | =D36 | LD1 V > Black | Magenta | Cyan | Yellow Header row 46: Camera | LD1 H |  |  |  | LD1"
+      },
+      {
+        "rank": 9,
+        "chunk_id": "947f51783f286cebc9f8f62afdc0399fb84eaeaa2e09480e8b8e6ed07f7dce91",
+        "document_id": "wsc-9c82b1ca2e1898a8d9d03e8b",
+        "source_name": "61C1065D8513_B4_Bow_Skew.xlsm",
+        "score": 0.4954,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "Sheet: TABLE Columns: Camera | LD1 H > =D3 | =D14 | =D25 | =D36 | LD1 V > Black | Magenta | Cyan | Yellow Row 48: -140 | =N5 | =N16 | =N27 | =N38 | =O"
+      },
+      {
+        "rank": 10,
+        "chunk_id": "348aa9daf5167be3c250b19f83d55db0822ea3a0aee8d5f16a1dce5d9182b1af",
+        "document_id": "wsc-cd81e7da2748a7e06c215ea5",
+        "source_name": "Sirius2_7620.xlsx",
+        "score": 0.5046,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "Trang tính: 7月のTiming値の推移 A1=Timing: Magenta[mm] | B1=Timing: Yellow[mm] | C1=Timing: Black[mm] | D1=Timing: Cyan[mm] | E1=M-K | F1=Y-K A2=0.054 | B2="
+      },
+      {
+        "rank": 11,
+        "chunk_id": "fb795bf593db993053555d822b7ee1679cd7bb5e30438aeec1dd4407d2519fad",
+        "document_id": "wsc-cd81e7da2748a7e06c215ea5",
+        "source_name": "Sirius2_7620.xlsx",
+        "score": 0.5046,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "Trang tính: 7月のTiming値の推移 A1=Timing: Magenta[mm] | B1=Timing: Yellow[mm] | C1=Timing: Black[mm] | D1=Timing: Cyan[mm] | E1=M-K | F1=Y-K A2=0.054 | B2="
+      },
+      {
+        "rank": 12,
+        "chunk_id": "3fd30e87719030d003a879fce1d9ea2ec30f89ff11aad45493ac8785c8d1182d",
+        "document_id": "wsc-9e3e7cbc01ed57332c1384eb",
+        "source_name": "RE__Iris_LSU_Beam径NG多発_異常品質会議2回目.msg",
+        "score": 0.5921,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "Yellow 像高+140"
+      },
+      {
+        "rank": 13,
+        "chunk_id": "b0ca1ade00427873daed9ccf973fc85a251d58622d9d9988e3ccfe8f133fb20c",
+        "document_id": "wsc-8eb2a5d21b75fa88307223b1",
+        "source_name": "2026_08_Error_BowOverAdjust.csv",
+        "score": 37.0,
+        "is_target": true,
+        "matched_terms": [
+          "yellow",
+          "cyan",
+          "magenta"
+        ],
+        "term_coverage": 0.2143,
+        "text_preview": "ck:+140[um],BeamPitch:Magenta:-140[um],BeamPitch:Magenta:-70[um],BeamPitch:Magenta:0[um],BeamPitch:Magenta:+70[um],BeamPitch:Magenta:+140[um],BeamPitc"
+      },
+      {
+        "rank": 14,
+        "chunk_id": "ad40394af3ed28fe1ba23cd951fdb4a941dd8fc65fab611765bfb0e620d82570",
+        "document_id": "wsc-065f01adfd8f91412529410f",
+        "source_name": "Capture.PNG",
+        "score": 0.1849,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "em Loop Time[msec] | | Adjust Takt___ [ [Power [Bow/ston | Black | INPUT a tor info Serial Number Cyan RoboCyl PEND GlampStage Fw A ClampStage Bk A Ro"
+      },
+      {
+        "rank": 15,
+        "chunk_id": "6c15107b15a402a24f0cdbc8e7130afc0d4ea92db70947a9570420637c2e53f7",
+        "document_id": "wsc-45178b002055ced8c13ecd1d",
+        "source_name": "Capture.PNG",
+        "score": 0.1821,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "sec] | | Adjust Takt___ [ [Power [Bow/ston | Black | INPUT a tor info Serial Number Cyan RoboCyl PEND GlampStage Fw A ClampStage Bk A RoboGy!l PG1 Gla"
+      }
+    ],
+    "target_found_in_evidence_pack": true,
+    "evidence_item_count": 4,
+    "evidence_items": [
+      {
+        "citation_id": "[1]",
+        "chunk_id": "5cb19f998889263e3012b790b296b00f0675f95184cc3d69818f5a0e770baddd",
+        "source_name": "DATA_Matome.xlsx",
+        "is_target": false,
+        "preview": "BeamPosY:Cyan:+45:AveA[um] | BeamPosX:Cyan:+90:[um] | BeamPosY:Cyan:+90:[um] | BeamPosY:Cyan:+90:AveA[um] | BeamPosX:Magenta:-90:[um] | BeamPosY:Magen"
+      },
+      {
+        "citation_id": "[2]",
+        "chunk_id": "62b28132c944b5b5c742aa2f8e7e0253f7755f5cd7db5b7034ec5f9002bc3da8",
+        "source_name": "2026_08_UnitTest.csv",
+        "is_target": false,
+        "preview": "Cyan:0:LD3[um]:1face,BeamPosX:Cyan:0:LD4[um]:1face,BeamPosY:Cyan:0:LD4[um]:1face,BeamPosX:Cyan:0:LD1_2[um]:1face,BeamPosY:Cyan:0:LD1_2[um]:1face,BeamP"
+      },
+      {
+        "citation_id": "[3]",
+        "chunk_id": "38527aea6135229ffa65d78400786df4be046af87671c5316101047d7756edb7",
+        "source_name": "2026_08_UnitTest.csv",
+        "is_target": false,
+        "preview": ":LD1_1:[um],BeamDiameter:V:Yellow:+140:-2:LD2:[um],BeamDiameter:V:Yellow:+140:-2:LD3:[um],BeamDiameter:V:Yellow:+140:-2:LD4:[um],BeamPitch:Black:-140["
+      },
+      {
+        "citation_id": "[4]",
+        "chunk_id": "b0ca1ade00427873daed9ccf973fc85a251d58622d9d9988e3ccfe8f133fb20c",
+        "source_name": "2026_08_Error_BowOverAdjust.csv",
+        "is_target": true,
+        "preview": "ck:+140[um],BeamPitch:Magenta:-140[um],BeamPitch:Magenta:-70[um],BeamPitch:Magenta:0[um],BeamPitch:Magenta:+70[um],BeamPitch:Magenta:+140[um],BeamPitc"
+      }
+    ],
+    "answer_mode": "EvidenceAnswerMode.ABSTAIN",
+    "lexical_passed": false,
+    "lexical_coverage": 0.21428571428571427,
+    "lexical_threshold": 0.6,
+    "semantic_threshold": 0.55,
+    "semantic_max_score": 0.5378080501824538,
+    "semantic_rejection_reasons": [
+      "semantic_score_below_threshold"
+    ],
+    "best_term_coverage": 0.2143,
+    "final_evidence_term_coverage": 0.2143,
+    "hard_insufficiency_reasons": [
+      "final_evidence_query_coverage_below_threshold"
+    ],
+    "insufficiency_reasons": [
+      "incomplete_query_term_coverage",
+      "weak_query_term_coverage",
+      "weak_term_coverage",
+      "final_evidence_query_coverage_below_threshold"
+    ],
+    "plan_limitations": [
+      "incomplete_query_term_coverage",
+      "weak_query_term_coverage",
+      "weak_term_coverage"
+    ],
+    "local_synthesis_mode": "local_extractive",
+    "local_synthesis_abstained": true,
+    "local_synthesis_abstention_reasons": [
+      "evidence_pack_insufficient",
+      "final_evidence_query_coverage_below_threshold"
+    ],
+    "local_synthesis_answer_preview": "KHÔNG ĐỦ BẰNG CHỨNG: - Corpus được truy xuất không thiết lập được sự kiện hoặc quan hệ mà câu hỏi yêu cầu. - Cần nguồn trực tiếp (ví dụ: tài liệu quy trình, bản ghi hệ thống hoặc hàng dữ liệu có mục t"
+  },
+  "Q1034": {
+    "qid": "Q1034",
+    "question": "哪一天Error Record最多？",
+    "target_file": "2026_08_Error.csv",
+    "search_time_sec": 2.31,
+    "intent_category": "diagnosis",
+    "content_terms": [
+      "哪一天error",
+      "record最多",
+      "哪一天",
+      "error",
+      "record",
+      "最多",
+      "哪一",
+      "一天"
+    ],
+    "target_terms": [
+      "哪一天error",
+      "record最多",
+      "哪一天",
+      "error",
+      "record",
+      "最多",
+      "哪一",
+      "一天"
+    ],
+    "target_found_in_top15": true,
+    "target_ranks_in_top15": [
+      4,
+      7,
+      11
+    ],
+    "top15_hits": [
+      {
+        "rank": 1,
+        "chunk_id": "0dbdb49998d489752dc4b69a3ded8eb58f5b1b80f9deefb5286902dd3b2c3252",
+        "document_id": "wsc-00557b84e95c9fb3504e582e",
+        "source_name": "RE  「Iris2020下位」　C6900 エラー発生RE  Log C6900_QA.msg",
+        "score": 0.75,
+        "is_target": false,
+        "matched_terms": [
+          "error"
+        ],
+        "term_coverage": 0.125,
+        "text_preview": "(Nguyen Van The) <the.nv@dtvn.kyocera.com <mailto:the.nv@dtvn.kyocera.com> >; Nguyễn Duy Hạnh(Nguyen Duy Hanh) <hanh.nd@dtvn.kyocera.com <mailto:hanh."
+      },
+      {
+        "rank": 2,
+        "chunk_id": "3e80f351831f86981f5cc55927cbf4f5dc17a9df06ebb12972d0fa1fc5976ee5",
+        "document_id": "wsc-230baee36cd917aefc37d5e9",
+        "source_name": "AllItems.html",
+        "score": 0.5923,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "更新日時"
+      },
+      {
+        "rank": 3,
+        "chunk_id": "fb6b010189a7dac411a9c82370c8cf79278b7d3d3e0591b372e0e1e5ddc857fc",
+        "document_id": "wsc-5a00ba9fac8d8d001a25cd2e",
+        "source_name": "KTD-2025-06-0606-Iris2024-C33-Operation-Màn hình hiển thị bất thường.xlsx",
+        "score": 0.0948,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "Trang tính: Error history A2=STT | B2=S/no | C2=Pin26-VDD | D2=Pin26-GND A3=1 | B3=OK | C3=20M Ω | D3=OL A4=2 | B4=BL-SVF101004ANN 1176C-241218-2A0190"
+      },
+      {
+        "rank": 4,
+        "chunk_id": "ae1f24c79ca56bea1c612771ac19b5dc8e2fd1d4e3ab3983e823d8a69a2a01f2",
+        "document_id": "wsc-03bf475fc208c02f741d4013",
+        "source_name": "2026_08_Error.csv",
+        "score": 0.75,
+        "is_target": true,
+        "matched_terms": [
+          "error"
+        ],
+        "term_coverage": 0.125,
+        "text_preview": "Error,283,0,0,0,63.3,61.7,5638,3308,5745,3209,5597,3369,5671,3371,5645,3323,5639,3337,5647,3302,56,63,60,64,58,54,58,57,56,55,54,57,56,54,55,66,65,65,"
+      },
+      {
+        "rank": 5,
+        "chunk_id": "e0ae1fca8058826ba9c1412f4d3d8799e8f1626c866ff0605f6546551cca5c04",
+        "document_id": "wsc-4fc7eb76bdc2e05c08b3f0f6",
+        "source_name": "Loi KDTPS.xlsx",
+        "score": 0.0849,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "ハンディターミナルでてUNIT LOW VOLTAGEのバーコードを読み取ったところ、「Error（There are duplicate serial）」と表示されました。 | *HT : NTT đọc HT2D S/NO .BARCODE, Đọc BARCODE UNIT LOW VOLTA"
+      },
+      {
+        "rank": 6,
+        "chunk_id": "f92b017aefb75cad6b1ccc477fcf0db8d12e97ec74f7acc44e100dd90cb4f119",
+        "document_id": "wsc-230baee36cd917aefc37d5e9",
+        "source_name": "AllItems.html",
+        "score": 0.5752,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "作成日"
+      },
+      {
+        "rank": 7,
+        "chunk_id": "033151b04fc8a0d1eb4fc2d783821b5e2cae6b41524d77e8220a6d15fc1f7e42",
+        "document_id": "wsc-03bf475fc208c02f741d4013",
+        "source_name": "2026_08_Error.csv",
+        "score": 0.75,
+        "is_target": true,
+        "matched_terms": [
+          "error"
+        ],
+        "term_coverage": 0.125,
+        "text_preview": "-865.7,-883.6,-863.6,-829.8,0,0,0,-122760,-14419,-11347,528800,100671,1305,0,0,24.3,33.9,2ND-1002.002.007,2026-07-24,2,0,6410,5643,3300,5643,3300,5643"
+      },
+      {
+        "rank": 8,
+        "chunk_id": "15811257d45256d04e3b24e44b9f22fc9211472a712df637472b82f87f85b9d9",
+        "document_id": "wsc-8108791a3914d7a95a6d92b2",
+        "source_name": "FW    IRIS2020 (High Model) QA_C0650_08_Dec.msg",
+        "score": 0.5584,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "Could you send right log file with above retry result?"
+      },
+      {
+        "rank": 9,
+        "chunk_id": "87de342f3f3b97d70c376e2149cf2e7069a41dd30e884ea1f5767128ce94f01f",
+        "document_id": "wsc-4fc7eb76bdc2e05c08b3f0f6",
+        "source_name": "Loi KDTPS.xlsx",
+        "score": 0.0835,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "U155時Startを押した際にLCC画面に「Error has ocurred」表示 その後、メンテナンスモードからホームページに戻った際、LCC画面にC0350表示 | *HT: Đang làm U155(Ấn Start)=>LCD hiển thị An error has occurre"
+      },
+      {
+        "rank": 10,
+        "chunk_id": "33a745b922316f583e3ecb0bca2a91c4b4ef37dcef80d6534a30b9a6ce5d60fa",
+        "document_id": "wsc-8108791a3914d7a95a6d92b2",
+        "source_name": "FW    IRIS2020 (High Model) QA_C0650_08_Dec.msg",
+        "score": 0.5502,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "Please check log file"
+      },
+      {
+        "rank": 11,
+        "chunk_id": "9cf5a3b5b2839134ddb7bed50c330f32b4f338bee9e5cfc56c7bed82d40ad73b",
+        "document_id": "wsc-03bf475fc208c02f741d4013",
+        "source_name": "2026_08_Error.csv",
+        "score": 0.75,
+        "is_target": true,
+        "matched_terms": [
+          "error"
+        ],
+        "term_coverage": 0.125,
+        "text_preview": "Error,357,0,0,0,63.1,63.5,5624,3303,5662,3328,5616,3218,5741,3220,5667,3278,5663,3298,5670,3260,57,61,62,62,60,56,58,57,57,57,56,56,56,55,57,67,65,65,"
+      },
+      {
+        "rank": 12,
+        "chunk_id": "dca3ff40b90a81fc523b2471e47e18dfd9b5f7eadbf5cd3cf3aea2cc789b3d89",
+        "document_id": "wsc-4fc7eb76bdc2e05c08b3f0f6",
+        "source_name": "Loi KDTPS.xlsx",
+        "score": 0.0831,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "読み込みリーダーでLEAFLET PSTI STATEMENTのバーコードを読み込んだ際に発生 | LK LEAFLET PSTI STATEMENT báo \"Error\" khi chit đọc Barcode Hiện trạng : NTT sử dụng máy chít HT đọc "
+      },
+      {
+        "rank": 13,
+        "chunk_id": "61661f95afd40aae89811e6284263bfb23d2ab2b6cd9a18bd4f773330b51874e",
+        "document_id": "wsc-c903cdc836408d749261e9a1",
+        "source_name": "KTD-2025-07-0787-Iris2024-C34-A6-Error56.xlsx",
+        "score": 0.0758,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "Sheet: 不具合 Columns: 発生日 > 対象機種 > 発生事象 | Column B | 2025.7.29 > IRIS2024 > C34-A6工程でAging 実施画面にError56表示 Row 13:  | その他 | - Row 14: 出荷履歴確認結果 |  | - Row"
+      },
+      {
+        "rank": 14,
+        "chunk_id": "67d57fab9415568af9f3f3858fc083a1f1c1748ce4c06fb971245b37ea76e9f5",
+        "document_id": "wsc-ae919f9d40ab92796f266111",
+        "source_name": "KTD-2025-07-0787-Iris2024-C34-A6-Error56.xlsx",
+        "score": 0.0746,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "[DOCUMENT ARCHITECTURE & SUMMARY]  ## INTRODUCTION File Excel: KTD-2025-07-0787-Iris2024-C34-A6-Error56.xlsx Trang tính: Bao cao dieu tra B3=Báo cáo đ"
+      },
+      {
+        "rank": 15,
+        "chunk_id": "526ca5d8ece512d92bf1e86910c5f88f571226a42794bc1d2adcd92d7095d650",
+        "document_id": "wsc-26df7c4233241be5cc7c83d6",
+        "source_name": "302L745040.pdf",
+        "score": 0.539,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "\u0014"
+      }
+    ],
+    "target_found_in_evidence_pack": true,
+    "evidence_item_count": 4,
+    "evidence_items": [
+      {
+        "citation_id": "[1]",
+        "chunk_id": "0dbdb49998d489752dc4b69a3ded8eb58f5b1b80f9deefb5286902dd3b2c3252",
+        "source_name": "RE  「Iris2020下位」　C6900 エラー発生RE  Log C6900_QA.msg",
+        "is_target": false,
+        "preview": "(Nguyen Van The) <the.nv@dtvn.kyocera.com <mailto:the.nv@dtvn.kyocera.com> >; Nguyễn Duy Hạnh(Nguyen Duy Hanh) <hanh.nd@dtvn.kyocera.com <mailto:hanh."
+      },
+      {
+        "citation_id": "[2]",
+        "chunk_id": "ae1f24c79ca56bea1c612771ac19b5dc8e2fd1d4e3ab3983e823d8a69a2a01f2",
+        "source_name": "2026_08_Error.csv",
+        "is_target": true,
+        "preview": "Error,283,0,0,0,63.3,61.7,5638,3308,5745,3209,5597,3369,5671,3371,5645,3323,5639,3337,5647,3302,56,63,60,64,58,54,58,57,56,55,54,57,56,54,55,66,65,65,"
+      },
+      {
+        "citation_id": "[3]",
+        "chunk_id": "033151b04fc8a0d1eb4fc2d783821b5e2cae6b41524d77e8220a6d15fc1f7e42",
+        "source_name": "2026_08_Error.csv",
+        "is_target": true,
+        "preview": "-865.7,-883.6,-863.6,-829.8,0,0,0,-122760,-14419,-11347,528800,100671,1305,0,0,24.3,33.9,2ND-1002.002.007,2026-07-24,2,0,6410,5643,3300,5643,3300,5643"
+      },
+      {
+        "citation_id": "[4]",
+        "chunk_id": "9cf5a3b5b2839134ddb7bed50c330f32b4f338bee9e5cfc56c7bed82d40ad73b",
+        "source_name": "2026_08_Error.csv",
+        "is_target": true,
+        "preview": "Error,357,0,0,0,63.1,63.5,5624,3303,5662,3328,5616,3218,5741,3220,5667,3278,5663,3298,5670,3260,57,61,62,62,60,56,58,57,57,57,56,56,56,55,57,67,65,65,"
+      }
+    ],
+    "answer_mode": "EvidenceAnswerMode.ABSTAIN",
+    "lexical_passed": false,
+    "lexical_coverage": 0.125,
+    "lexical_threshold": 0.6,
+    "semantic_threshold": 0.55,
+    "semantic_max_score": 0.0,
+    "semantic_rejection_reasons": [
+      "missing_dense_score",
+      "missing_dense_channel_provenance"
+    ],
+    "best_term_coverage": 0.125,
+    "final_evidence_term_coverage": 0.125,
+    "hard_insufficiency_reasons": [
+      "final_evidence_query_coverage_below_threshold"
+    ],
+    "insufficiency_reasons": [
+      "incomplete_query_term_coverage",
+      "weak_query_term_coverage",
+      "weak_term_coverage",
+      "final_evidence_query_coverage_below_threshold"
+    ],
+    "plan_limitations": [
+      "incomplete_query_term_coverage",
+      "weak_query_term_coverage",
+      "weak_term_coverage"
+    ],
+    "local_synthesis_mode": "local_extractive",
+    "local_synthesis_abstained": true,
+    "local_synthesis_abstention_reasons": [
+      "evidence_pack_insufficient",
+      "final_evidence_query_coverage_below_threshold"
+    ],
+    "local_synthesis_answer_preview": "KHÔNG ĐỦ BẰNG CHỨNG: - Corpus được truy xuất không thiết lập được sự kiện hoặc quan hệ mà câu hỏi yêu cầu. - Cần nguồn trực tiếp (ví dụ: tài liệu quy trình, bản ghi hệ thống hoặc hàng dữ liệu có mục t"
+  },
+  "Q0620": {
+    "qid": "Q0620",
+    "question": "2026年3月のBOWSKEW 4 BEAM NG率はいくつですか。",
+    "target_file": "AI cảnh báo lỗi LSU.pptx",
+    "search_time_sec": 2.08,
+    "intent_category": "diagnosis",
+    "content_terms": [
+      "2026年3月のbowskew",
+      "4",
+      "beam",
+      "ng率はいくつですか",
+      "2026",
+      "年",
+      "3",
+      "月の",
+      "bowskew",
+      "ng",
+      "率はいくつですか",
+      "率は",
+      "はい",
+      "いく",
+      "くつ",
+      "つで",
+      "です",
+      "すか",
+      "率はい",
+      "はいく",
+      "いくつ",
+      "くつで",
+      "つです",
+      "ですか"
+    ],
+    "target_terms": [
+      "2026年3月のbowskew",
+      "4",
+      "beam",
+      "ng率はいくつですか",
+      "2026",
+      "年",
+      "3",
+      "月の",
+      "bowskew",
+      "ng",
+      "率はいくつですか",
+      "率は",
+      "はい",
+      "いく",
+      "くつ",
+      "つで",
+      "です",
+      "すか",
+      "率はい",
+      "はいく",
+      "いくつ",
+      "くつで",
+      "つです",
+      "ですか"
+    ],
+    "target_found_in_top15": true,
+    "target_ranks_in_top15": [
+      2
+    ],
+    "top15_hits": [
+      {
+        "rank": 1,
+        "chunk_id": "30055953ce8cc17400bd4487f00e474edf6e5485e64ef58bf1d834ff68fc2902",
+        "document_id": "wsc-4fc7eb76bdc2e05c08b3f0f6",
+        "source_name": "Loi KDTPS.xlsx",
+        "score": 0.5709,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "2YJ-1004治具でBOW-SKEW調整時に発生 | Lỗi NG giá trị tia BEAM tại JIG 2YJ-1004 (đồ gá điều chỉnh BOW-SKEW ) 'Hiện Trạng: NTT sau khi thực hiện điều chỉnh BOW-SK"
+      },
+      {
+        "rank": 2,
+        "chunk_id": "76366631e1929150eb2193e518b0d272f6285f6a01b8edf441bad7bde3b7fa83",
+        "document_id": "wsc-f6782ff77c152a5c9a416ad8",
+        "source_name": "AI cảnh báo lỗi LSU.pptx",
+        "score": 0.5914,
+        "is_target": true,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "Biểu đồ cho thấy các JIG thuộc Iris LSU có tỷ lệ NG cao hơn rõ rệt so với các JIG còn lại. Vì vậy, cần ưu tiên cải tiến BOWSKEW 4 BEAM, BOWSKEW 2 BEAM"
+      },
+      {
+        "rank": 3,
+        "chunk_id": "0f9363cb19b39b66a26df40fb578656d7c6d114c23ecf0c9e53c042a3905896e",
+        "document_id": "wsc-bd829b64ef52a3d76ff1747c",
+        "source_name": "RE_ Iris LSU Beam径NG多発　異常品質会議5回目.msg",
+        "score": 0.5608,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "g nào còn thiếu hoặc chưa chính xác, xin vui lòng phản hồi. 1. Tổng hợp các LOT của FRAME LSU, MOUNT LD BLOCK, LENS A trước và sau thay"
+      },
+      {
+        "rank": 4,
+        "chunk_id": "1a625f23ce28c7cc5cc2330626b81b5f4c311ca458ffac78434e7794c58c5370",
+        "document_id": "wsc-bd829b64ef52a3d76ff1747c",
+        "source_name": "RE_ Iris LSU Beam径NG多発　異常品質会議5回目.msg",
+        "score": 0.5257,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "i người Sau cuộc họp bất thường chất lượng lần 4, phía KDC đã phát hành thay đổi 4M cho 6 JIG BEAM nhưng tỷ lệ NG đường kính BEAM có"
+      },
+      {
+        "rank": 5,
+        "chunk_id": "2305ddbebcdd50ee6ade6ce9db91606f8a115e89c456c401d4c8725f594332ff",
+        "document_id": "wsc-4fc7eb76bdc2e05c08b3f0f6",
+        "source_name": "Loi KDTPS.xlsx",
+        "score": 0.5618,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "Beam調整の時に発生 | JIG điều chỉnh BEAM → CHECKS cuối đánh giá NG PITCH Hiện trạng: Đến bước đánh giá cuối, JIG đánh giá NG PITCH | ＋基準値： 39 ~ 44 (μm) ＋ログデー"
+      },
+      {
+        "rank": 6,
+        "chunk_id": "fcbe5b0305139bc15cde01c3327eefd04a2138dd080302469902e644e2ad5065",
+        "document_id": "wsc-4fc7eb76bdc2e05c08b3f0f6",
+        "source_name": "Loi KDTPS.xlsx",
+        "score": 0.5203,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "LSUのBEAM調整時に発生 | JIG điều chỉnh BEAM C0D-1002-2 Điều chỉnh BEAM NG màu K hướng quét chính (H) Hiện trạng : NTT đặt UNIT, LENS CO ấn START điều chỉnh s"
+      },
+      {
+        "rank": 7,
+        "chunk_id": "d8f72adc192faf1f7320c5b6ee969067193ef7d642c804584488394146be5f59",
+        "document_id": "wsc-03bf475fc208c02f741d4013",
+        "source_name": "2026_08_Error.csv",
+        "score": 8.75,
+        "is_target": false,
+        "matched_terms": [
+          "4",
+          "2026",
+          "3"
+        ],
+        "term_coverage": 0.125,
+        "text_preview": "0.1,-868.4,-887.2,-867.4,-831.7,0,0,0,-122787,-13377,-10850,9999,9999,9999,154.0,5.1,24.3,33.9,2ND-1002.002.007,1900-01-01,,,,5643,3300,5643,3300,5643"
+      },
+      {
+        "rank": 8,
+        "chunk_id": "34dd3f415857c2d4712556012261803c0d0e8918d584d2617427b085dc8bae9e",
+        "document_id": "wsc-5bb2e1327274e578dd2c71f4",
+        "source_name": "RE_ Iris LSU Beam径NG多発　異常品質会議3回目.msg",
+        "score": 0.4943,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "6@dtvn.kyocera.com <mailto:the.nt.296@dtvn.kyocera.com> > Subject: RE: Iris LSU Beam径NG多発 異常品質会議2回目 栗原さん お疲れ様です KDTVN品質管理１課Cuongです。 * 基板あり状態は、E0699とE0"
+      },
+      {
+        "rank": 9,
+        "chunk_id": "8fd7ff3f0bcc09c328427b74ae9d405105448c8dcc580df467572dedbfc0731f",
+        "document_id": "wsc-61d4aa19758ed232210b4508",
+        "source_name": "RE__Iris_LSU_Beam径NG多発_異常品質会議5回目.msg",
+        "score": 0.6295,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "※BowSkew治具でのNG率が低いBeam治具が分かれば、"
+      },
+      {
+        "rank": 10,
+        "chunk_id": "94c3fcb93b1a2f46e8b2c6d5511c01d74d8c0f6046b35707fba513020ab2ae96",
+        "document_id": "wsc-03450a3c3f8e3332f141c6bf",
+        "source_name": "KTD-2026-02-0152-Iris2024-C33-A2-TLBĐ NG RFID.xlsx",
+        "score": 13.5,
+        "is_target": false,
+        "matched_terms": [
+          "2026",
+          "3",
+          "ng"
+        ],
+        "term_coverage": 0.125,
+        "text_preview": "Trang tính: Bao cao dieu tra B3=Báo cáo điều tra lỗi/調査報告書 | E3=KTD-2026-02-0152 B5=Người Lập作成者： | C5=Trần Văn Dưỡng B6=Ngày lập作成日： | C6=2026-02-11 "
+      },
+      {
+        "rank": 11,
+        "chunk_id": "b90a672c4732954151c55b2df09dc77f3104ffde2a17b555ad96a9ee1078fb3d",
+        "document_id": "wsc-03bf475fc208c02f741d4013",
+        "source_name": "2026_08_Error.csv",
+        "score": 12.75,
+        "is_target": false,
+        "matched_terms": [
+          "4",
+          "2026",
+          "3"
+        ],
+        "term_coverage": 0.125,
+        "text_preview": "0.3,-867.4,-887.2,-867.1,-832.2,0,0,0,-122757,-13831,-11050,528809,100642,1782,0,0,24.3,42.3,2ND-1002.002.007,2026-08-06,1,0,6301,5643,3300,5643,3300,"
+      },
+      {
+        "rank": 12,
+        "chunk_id": "9a6b830e52cab609e8d5879682cc12363961cca916c0584bba9eea382458831e",
+        "document_id": "wsc-03bf475fc208c02f741d4013",
+        "source_name": "2026_08_Error.csv",
+        "score": 11.75,
+        "is_target": false,
+        "matched_terms": [
+          "4",
+          "2026",
+          "3"
+        ],
+        "term_coverage": 0.125,
+        "text_preview": "0,0,-828.5,-867.4,-883.2,-864.9,-830.4,0,0,0,-122772,-13856,-13397,528809,100676,1168,0,0,24.3,42.3,2ND-1002.002.007,2026-07-31,1,0,6311,5643,3300,564"
+      },
+      {
+        "rank": 13,
+        "chunk_id": "c5be945e3d1a729dde502a5179c1acd79f0759cdf3033188468c006095683c61",
+        "document_id": "wsc-61d4aa19758ed232210b4508",
+        "source_name": "RE__Iris_LSU_Beam径NG多発_異常品質会議5回目.msg",
+        "score": 0.5638,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "BowSkew治具でのNG発生率が低いものが良いと思います。"
+      },
+      {
+        "rank": 14,
+        "chunk_id": "717551d6534c45f1865759290b957966e78d44dfa7da1b232a1af35f56bbf34a",
+        "document_id": "wsc-61d4aa19758ed232210b4508",
+        "source_name": "RE__Iris_LSU_Beam径NG多発_異常品質会議5回目.msg",
+        "score": 0.562,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "2. Phân tích tỷ lệ NG trên 2 BOW SKEW theo từng JIG BEAM. (QC)"
+      },
+      {
+        "rank": 15,
+        "chunk_id": "aacd9c6a7f89a1326d563bab639b1dda0e76e899882416c8581e0fcbca8a65da",
+        "document_id": "wsc-e7c9953864b318aa411f3093",
+        "source_name": "Iris2020Mono_302XF45010Ver2.1.pdf",
+        "score": 0.1807,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "PEN R326 R347 0.1W 100k R335 0.1W 100k R160 0.1W 100k R101 0.1W 11k R109 0.1W 11k R301 0.1W 11k R318 0.1W 11k R343 0.1W 1.5k R149 0.1W 2k R138 0.1W 20"
+      }
+    ],
+    "target_found_in_evidence_pack": false,
+    "evidence_item_count": 4,
+    "evidence_items": [
+      {
+        "citation_id": "[1]",
+        "chunk_id": "d8f72adc192faf1f7320c5b6ee969067193ef7d642c804584488394146be5f59",
+        "source_name": "2026_08_Error.csv",
+        "is_target": false,
+        "preview": "0.1,-868.4,-887.2,-867.4,-831.7,0,0,0,-122787,-13377,-10850,9999,9999,9999,154.0,5.1,24.3,33.9,2ND-1002.002.007,1900-01-01,,,,5643,3300,5643,3300,5643"
+      },
+      {
+        "citation_id": "[2]",
+        "chunk_id": "94c3fcb93b1a2f46e8b2c6d5511c01d74d8c0f6046b35707fba513020ab2ae96",
+        "source_name": "KTD-2026-02-0152-Iris2024-C33-A2-TLBĐ NG RFID.xlsx",
+        "is_target": false,
+        "preview": "Trang tính: Bao cao dieu tra B3=Báo cáo điều tra lỗi/調査報告書 | E3=KTD-2026-02-0152 B5=Người Lập作成者： | C5=Trần Văn Dưỡng B6=Ngày lập作成日： | C6=2026-02-11 "
+      },
+      {
+        "citation_id": "[3]",
+        "chunk_id": "b90a672c4732954151c55b2df09dc77f3104ffde2a17b555ad96a9ee1078fb3d",
+        "source_name": "2026_08_Error.csv",
+        "is_target": false,
+        "preview": "0.3,-867.4,-887.2,-867.1,-832.2,0,0,0,-122757,-13831,-11050,528809,100642,1782,0,0,24.3,42.3,2ND-1002.002.007,2026-08-06,1,0,6301,5643,3300,5643,3300,"
+      },
+      {
+        "citation_id": "[4]",
+        "chunk_id": "9a6b830e52cab609e8d5879682cc12363961cca916c0584bba9eea382458831e",
+        "source_name": "2026_08_Error.csv",
+        "is_target": false,
+        "preview": "0,0,-828.5,-867.4,-883.2,-864.9,-830.4,0,0,0,-122772,-13856,-13397,528809,100676,1168,0,0,24.3,42.3,2ND-1002.002.007,2026-07-31,1,0,6311,5643,3300,564"
+      }
+    ],
+    "answer_mode": "EvidenceAnswerMode.ABSTAIN",
+    "lexical_passed": false,
+    "lexical_coverage": 0.16666666666666666,
+    "lexical_threshold": 0.6,
+    "semantic_threshold": 0.55,
+    "semantic_max_score": 0.0,
+    "semantic_rejection_reasons": [
+      "missing_dense_score",
+      "missing_dense_channel_provenance"
+    ],
+    "best_term_coverage": 0.1667,
+    "final_evidence_term_coverage": 0.1667,
+    "hard_insufficiency_reasons": [
+      "final_evidence_query_coverage_below_threshold"
+    ],
+    "insufficiency_reasons": [
+      "incomplete_query_term_coverage",
+      "weak_query_term_coverage",
+      "weak_term_coverage",
+      "final_evidence_query_coverage_below_threshold"
+    ],
+    "plan_limitations": [
+      "incomplete_query_term_coverage",
+      "weak_query_term_coverage",
+      "weak_term_coverage"
+    ],
+    "local_synthesis_mode": "local_extractive",
+    "local_synthesis_abstained": true,
+    "local_synthesis_abstention_reasons": [
+      "evidence_pack_insufficient",
+      "final_evidence_query_coverage_below_threshold"
+    ],
+    "local_synthesis_answer_preview": "KHÔNG ĐỦ BẰNG CHỨNG: - Corpus được truy xuất không thiết lập được sự kiện hoặc quan hệ mà câu hỏi yêu cầu. - Cần nguồn trực tiếp (ví dụ: tài liệu quy trình, bản ghi hệ thống hoặc hàng dữ liệu có mục t"
+  },
+  "Q0824": {
+    "qid": "Q0824",
+    "question": "`61C1068E7022`は8月12日と13日で判定Patternが変わりましたか。",
+    "target_file": "2026_08_UnitTest.csv",
+    "search_time_sec": 4.54,
+    "intent_category": "diagnosis",
+    "content_terms": [
+      "61c1068e7022",
+      "は8月12日と13日で判定patternが変わりましたか",
+      "は",
+      "8",
+      "月",
+      "12",
+      "日と",
+      "13",
+      "日で判定",
+      "pattern",
+      "が変わりましたか",
+      "日で",
+      "で判",
+      "判定",
+      "日で判",
+      "で判定",
+      "が変",
+      "変わ",
+      "わり",
+      "りま",
+      "まし",
+      "した",
+      "たか",
+      "が変わ",
+      "変わり",
+      "わりま",
+      "りまし",
+      "ました",
+      "したか"
+    ],
+    "target_terms": [
+      "61c1068e7022",
+      "は8月12日と13日で判定patternが変わりましたか",
+      "は",
+      "8",
+      "月",
+      "12",
+      "日と",
+      "13",
+      "日で判定",
+      "pattern",
+      "が変わりましたか",
+      "日で",
+      "で判",
+      "判定",
+      "日で判",
+      "で判定",
+      "が変",
+      "変わ",
+      "わり",
+      "りま",
+      "まし",
+      "した",
+      "たか",
+      "が変わ",
+      "変わり",
+      "わりま",
+      "りまし",
+      "ました",
+      "したか"
+    ],
+    "target_found_in_top15": true,
+    "target_ranks_in_top15": [
+      3,
+      4,
+      11
+    ],
+    "top15_hits": [
+      {
+        "rank": 1,
+        "chunk_id": "2afd1423041c73b02df8dbc9fbb7dc0cee0b1c8378f5bee1dd4a841cf7ad83cb",
+        "document_id": "wsc-03bf475fc208c02f741d4013",
+        "source_name": "2026_08_Error.csv",
+        "score": 0.5148,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "2,51,66,65,67,69,65,68,65,67,70,65,70,65,68,73,67,1504.5,1384.1,1330.3,1346.1,1425.2,1484,1363,1308,1323,1402,1464,1341,1286,1301,1383,1444,1320,1264,"
+      },
+      {
+        "rank": 2,
+        "chunk_id": "ba75e68d1c39b712059f0dd46fc3bea06ab36ec0dd7f2f73dca1e0c50e2609ad",
+        "document_id": "wsc-03bf475fc208c02f741d4013",
+        "source_name": "2026_08_Error.csv",
+        "score": 0.4991,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "72,1113,142.0,5.1,24.3,42.3,2ND-1002.002.007,2026-08-18,1,0,6516,5643,3300,5643,3300,5643,3370,5643,3300 2026/08/25,08:29:54,#1,C9P1068V6163,6d610080,"
+      },
+      {
+        "rank": 3,
+        "chunk_id": "f8d8347c7f6233979dae4a0057ce18d90f46ad700f406155b9623b728b3ed840",
+        "document_id": "wsc-4bd2e353e19864fe786358c5",
+        "source_name": "2026_08_UnitTest.csv",
+        "score": 0.5048,
+        "is_target": true,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": ",68,70,61,61,60,64,64,66,67,73,68,75,76,84,65,66,66,67,65,66,66,68,65,66,67,69,59,60,60,63,61,64,65,72,63,69,72,80,65,66,67,67,66,66,67,67,67,68,68,68"
+      },
+      {
+        "rank": 4,
+        "chunk_id": "370961ab2dc01a0aa76a5bea131de74d5cdd3b46d961ac62ff63a7a19dd5592c",
+        "document_id": "wsc-4bd2e353e19864fe786358c5",
+        "source_name": "2026_08_UnitTest.csv",
+        "score": 20.5,
+        "is_target": true,
+        "matched_terms": [
+          "61c1068e7022",
+          "8",
+          "12",
+          "13"
+        ],
+        "term_coverage": 0.1379,
+        "text_preview": "B01.016,2ND-1004.001.033_No2 2026/08/12,16:14:30,61C1068E7022, UnitTest,36.1,33.3,2.8,0.0,0.0,0.0,5.7,5.8,5.8,5.7,999,999,999,999,999,999,999,999,999,"
+      },
+      {
+        "rank": 5,
+        "chunk_id": "32ef82d4a833c23a0f571a3d9296d6d7085a7da6a771b0ae7dfa483d23153d3a",
+        "document_id": "wsc-ed68732921223c2e64eb1304",
+        "source_name": "matome.xlsx",
+        "score": 0.528,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "61C1068D8813 Ra OR EBEIBEAMZE - H BEAM ( X75Ia)) 19:48:13 Camera: -140fR Camera: -70(%S Camera: Of Camera: 70S Camera: 140f%% (2026.07.10 .p1 Lo2 LD3 "
+      },
+      {
+        "rank": 6,
+        "chunk_id": "94960085c2c7da3331316d01af3dc8b800489009c4ab598d559d5d0b46ec012b",
+        "document_id": "wsc-baf337f476d781df19a8b7e8",
+        "source_name": "FW  2021 11 20週報.msg",
+        "score": 0.5265,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "※11/6以降10件発生"
+      },
+      {
+        "rank": 7,
+        "chunk_id": "e454a760d5ff37259695fe78b013ef22830648a0633b8adabddf8823c650db1a",
+        "document_id": "wsc-61d4aa19758ed232210b4508",
+        "source_name": "RE__Iris_LSU_Beam径NG多発_異常品質会議5回目.msg",
+        "score": 0.5231,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "※#7022は測定できているので、ユニット側の影響？←差が何かを調査要"
+      },
+      {
+        "rank": 8,
+        "chunk_id": "47f85c5dafc8a82d7d2658608f5bd43b41711164bfcc70273526c32b6888a50c",
+        "document_id": "wsc-e0138cd831766c178190b731",
+        "source_name": "3V3TC01010_Drive Assy.pdf",
+        "score": 0.5175,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "9.11.11) ･C61,C62チップサイズ変更 (19.11.11) GND GND +3.3V GND GND GND GND GND GND GND GND GND GND GND +R24V2 +3.3V GND GND +3.3V GND GND GND GND GND GND GND "
+      },
+      {
+        "rank": 9,
+        "chunk_id": "79f43d9456c65dca164d0625723e63ee5144a4f485c09c15e704dcc3c5f66646",
+        "document_id": "wsc-ed68732921223c2e64eb1304",
+        "source_name": "matome.xlsx",
+        "score": 0.5161,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "61C1068D8813 Ra OR EA ARIBEAMG - H BEAM ( XZIaI) 19: 07 Camera: -140fR Camera: -70(%S Camera: Off Camera: 70% Camera: 140f%% (2026.07.10 ii Lo2 LD3 LD"
+      },
+      {
+        "rank": 10,
+        "chunk_id": "5bedfabce07351b271f6d20fbd899a12089f120f2347347612b45e708237f375",
+        "document_id": "wsc-03bf475fc208c02f741d4013",
+        "source_name": "2026_08_Error.csv",
+        "score": 0.4967,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "62,57,67,64,65,70,69,68,65,65,71,69,69,66,66,74,70,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
+      },
+      {
+        "rank": 11,
+        "chunk_id": "3b3b5616fd94d240fd9d30bff10f74ba10cdc4e267eae14a357630bd6db27cf9",
+        "document_id": "wsc-4bd2e353e19864fe786358c5",
+        "source_name": "2026_08_UnitTest.csv",
+        "score": 24.5,
+        "is_target": true,
+        "matched_terms": [
+          "61c1068e7022",
+          "8",
+          "13"
+        ],
+        "term_coverage": 0.1034,
+        "text_preview": "B01.016,2ND-1004.001.033_No2 2026/08/13,15:50:26,61C1068E7022, UnitTest,39.7,33.3,6.4,0.0,0.0,0.0,5.8,5.7,5.8,5.7,999,999,999,999,999,999,999,999,999,"
+      },
+      {
+        "rank": 12,
+        "chunk_id": "fdde44aa2053cb441023787d1c1ebdf270a418c9207e8773999c7464d68a8e3d",
+        "document_id": "wsc-582a992dc46566ab198dabe2",
+        "source_name": "3V2ND19040-MOUNT_LD_BLOCK__LOT_18.8.2026.xlsx",
+        "score": 0.5145,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "IF(AND(Q11<=E11+G11-(G11+H11)*0.1,Q11>=E11-H11+(G11+H11)*0.1),\"O\",\"Caution\")) B12=13 THAM KHẢO | C12=12A | E12=123.5 | F12=± 0.2 | G12=0.2 | H12=0.2 |"
+      },
+      {
+        "rank": 13,
+        "chunk_id": "624e554231316db2bca883278b9fe91dd20e2c8bca3e0a64df6b2e04a5fc1ee1",
+        "document_id": "wsc-256ae84f2d121c011f1bb063",
+        "source_name": "02XC_自己診断表示一覧表.xls",
+        "score": 0.5124,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "15=0.17 | D15=・追加番号：C6960 CT（カレントトランス）基板異常 ・内容変更 - C6130 定着サーミスタ下断線検知 - C6330 定着サーミスタ断線異常(エッジ1) 上記2つのCコールから下記制約を削除 「ただし、ADセレクタが切り替わっているときはこれらの検知は行わず、検"
+      },
+      {
+        "rank": 14,
+        "chunk_id": "9145137f054b70b498ff97d1767642a6be1d9a51a85130d176e1100e3568f7f3",
+        "document_id": "wsc-0ac3ea307df810908f4446a5",
+        "source_name": "3V2ND19040-MOUNT LD BLOCK  LOT 18.8.2026.xlsx",
+        "score": 0.5122,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "Sheet: 18.08.2026 Columns: NO | Vị trí bản vẽ | Kích thước đo | Column D | Dung sai | Column F | Column G | Điểm đo | Dung sai trên | Dung sai dưới | "
+      },
+      {
+        "rank": 15,
+        "chunk_id": "58710646a9ca78d9f7b41f7f8469108f32c2f7d2a97497f49db5b8f3e4da19d1",
+        "document_id": "wsc-baf337f476d781df19a8b7e8",
+        "source_name": "FW  2021 11 20週報.msg",
+        "score": 0.5112,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "処置：線処理方法変更"
+      },
+      {
+        "rank": 16,
+        "chunk_id": "c1a1d8709cc33ae262dd6b1a850d187764b03922456ff341c53448c7d2990fd2",
+        "document_id": "wsc-0ac3ea307df810908f4446a5",
+        "source_name": "3V2ND19040-MOUNT LD BLOCK  LOT 18.8.2026.xlsx",
+        "score": 0.5111,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "Sheet: 18.08.2026 Columns: NO | Vị trí bản vẽ | Kích thước đo | Column D | Dung sai | Column F | Column G | Điểm đo | Dung sai trên | Dung sai dưới | "
+      },
+      {
+        "rank": 17,
+        "chunk_id": "d2fe3bd56f72436e8158856107364ecb457d3a94869570a0219d30638c574247",
+        "document_id": "wsc-ed68732921223c2e64eb1304",
+        "source_name": "matome.xlsx",
+        "score": 0.5108,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "61C1068D8813 Ra OR EA ARIBEAMG - H BEAM ( XZIaI) 19:49:19 Camera: -140fR Camera: -70(%S Camera: Off Camera: 70% Camera: 140f%% (2026.07.10 ii Lo2 LD3 "
+      },
+      {
+        "rank": 18,
+        "chunk_id": "c32f3151abde6621798b45a34b5929d8aad6dff515d0541f13bf19f4ff67a78b",
+        "document_id": "wsc-dd84358aa3c71512eb1de019",
+        "source_name": "Iris_2ND_IH_MP_01基板回路図_302ND47260_20170116.pdf",
+        "score": 0.4941,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "C12D681E R66 1KF z{| TP47 R64 270 NC4 TLP785(D4-GRL,F(C TP43 TP63 R78 180 D9 CRG04(TE85L,Q) A C YC4 B07B-CZHK-B-1(LF)(SN)(V) TP46 U4 BD433M2FP3-CE2 VC"
+      },
+      {
+        "rank": 19,
+        "chunk_id": "8b43a9d7de2d4b93b62155e3f8146c4296b16d15c2ada8dd82c323a34222e88d",
+        "document_id": "wsc-0ac3ea307df810908f4446a5",
+        "source_name": "3V2ND19040-MOUNT LD BLOCK  LOT 18.8.2026.xlsx",
+        "score": 0.5097,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "Sheet: 18.08.2026 Columns: NO | Vị trí bản vẽ | Kích thước đo | Column D | Dung sai | Column F | Column G | Điểm đo | Dung sai trên | Dung sai dưới | "
+      },
+      {
+        "rank": 20,
+        "chunk_id": "16bfa7df72e3a2e9f2dc0b0faaf944573cafbbf206ad9280c1e207715ef5014f",
+        "document_id": "wsc-582a992dc46566ab198dabe2",
+        "source_name": "3V2ND19040-MOUNT_LD_BLOCK__LOT_18.8.2026.xlsx",
+        "score": 0.5093,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "Trang tính: 18.08.2026 B3=●3V2ND19040-MOUNT LD BLOCK | R3=Xác nhận | S3=Đảm nhiệm J4=NG | K4==COUNTIF(R11:R144,\"X\") J5=Caution | K5==COUNTIF(R11:R144,"
+      },
+      {
+        "rank": 21,
+        "chunk_id": "fe1012ea89dccad15acbbed35d2947049b79d7537028b888c94c56e051e27414",
+        "document_id": "wsc-582a992dc46566ab198dabe2",
+        "source_name": "3V2ND19040-MOUNT_LD_BLOCK__LOT_18.8.2026.xlsx",
+        "score": 0.5093,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "Trang tính: 18.08.2026 B3=●3V2ND19040-MOUNT LD BLOCK | R3=Xác nhận | S3=Đảm nhiệm J4=NG | K4==COUNTIF(R11:R144,\"X\") J5=Caution | K5==COUNTIF(R11:R144,"
+      },
+      {
+        "rank": 22,
+        "chunk_id": "2a25297135b042364611467385c2e5dfba2b095d1187ff1cc3122702dfc0d830",
+        "document_id": "wsc-a683f1cdbccec94c8c2e4746",
+        "source_name": "tổng_hợp_dữ_liệu_XY_Target_2021.04.12.xlsx",
+        "score": 0.5092,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "G812=92 | H812=91 | I812=89 | J812=88 | K812=89 | L812=89 | M812=90 | N812=92 | O812=94 | P812=96 | Q812=97 | R812=99 | S812=103 | T812=109 | U812=111"
+      },
+      {
+        "rank": 23,
+        "chunk_id": "b0e7de4155db5ac7910b67a883e51661b4b6041c2e76c6aa6f253f476eed05a5",
+        "document_id": "wsc-a683f1cdbccec94c8c2e4746",
+        "source_name": "tổng_hợp_dữ_liệu_XY_Target_2021.04.12.xlsx",
+        "score": 0.5092,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "G812=92 | H812=91 | I812=89 | J812=88 | K812=89 | L812=89 | M812=90 | N812=92 | O812=94 | P812=96 | Q812=97 | R812=99 | S812=103 | T812=109 | U812=111"
+      },
+      {
+        "rank": 24,
+        "chunk_id": "60df2a97bab8bc37be228cb13a0f1566c7f49a711e013f7190b9703387c342fe",
+        "document_id": "wsc-4fc7eb76bdc2e05c08b3f0f6",
+        "source_name": "Loi KDTPS.xlsx",
+        "score": 0.5084,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "4822MW06(9/30生産品)を先行投入後、50台生産で発生なし →継続発生状況確認 | Khi xác nhận hình ảnh không nhìn ra bước nên đã phán định dựa trên mẫu giới hạn S12-018（dải ngang nguyê"
+      },
+      {
+        "rank": 25,
+        "chunk_id": "4d53fd4282970206878a96c063cc6d69da546eb0bb31b27c1feb4063e6101275",
+        "document_id": "wsc-26df7c4233241be5cc7c83d6",
+        "source_name": "302L745040.pdf",
+        "score": 0.5053,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "6725 \u0013\u0011\u0015\u0018:\u0003\u0017\u001a\u0013 +2.85,.8\u0003(/(&75,&\u0003,1'\u0011&2\u0011\u000f/7'\u0011 5\u0016 .75\u0014\u001b-\u0017\u001a\u0014 &+,3\u00035(6,6725 \u0013\u0011\u0015\u0018:\u0003\u0017\u001a\u0013 52+0\u0003&2\u0011\u000f/7'\u0011 \u0006 50&*)\u0017\u0013\u0015\u0016 &+,3\u00035(6,6725 \u0013\u0011\u0014:\u0003\u0017\u0013\u0015N .$0$<$\u0003(/(&75,&\u0003&"
+      }
+    ],
+    "target_found_in_evidence_pack": true,
+    "evidence_item_count": 9,
+    "evidence_items": [
+      {
+        "citation_id": "[1]",
+        "chunk_id": "2afd1423041c73b02df8dbc9fbb7dc0cee0b1c8378f5bee1dd4a841cf7ad83cb",
+        "source_name": "2026_08_Error.csv",
+        "is_target": false,
+        "preview": "2,51,66,65,67,69,65,68,65,67,70,65,70,65,68,73,67,1504.5,1384.1,1330.3,1346.1,1425.2,1484,1363,1308,1323,1402,1464,1341,1286,1301,1383,1444,1320,1264,"
+      },
+      {
+        "citation_id": "[2]",
+        "chunk_id": "ba75e68d1c39b712059f0dd46fc3bea06ab36ec0dd7f2f73dca1e0c50e2609ad",
+        "source_name": "2026_08_Error.csv",
+        "is_target": false,
+        "preview": "72,1113,142.0,5.1,24.3,42.3,2ND-1002.002.007,2026-08-18,1,0,6516,5643,3300,5643,3300,5643,3370,5643,3300 2026/08/25,08:29:54,#1,C9P1068V6163,6d610080,"
+      },
+      {
+        "citation_id": "[3]",
+        "chunk_id": "f8d8347c7f6233979dae4a0057ce18d90f46ad700f406155b9623b728b3ed840",
+        "source_name": "2026_08_UnitTest.csv",
+        "is_target": true,
+        "preview": ",68,70,61,61,60,64,64,66,67,73,68,75,76,84,65,66,66,67,65,66,66,68,65,66,67,69,59,60,60,63,61,64,65,72,63,69,72,80,65,66,67,67,66,66,67,67,67,68,68,68"
+      },
+      {
+        "citation_id": "[4]",
+        "chunk_id": "370961ab2dc01a0aa76a5bea131de74d5cdd3b46d961ac62ff63a7a19dd5592c",
+        "source_name": "2026_08_UnitTest.csv",
+        "is_target": true,
+        "preview": "B01.016,2ND-1004.001.033_No2 2026/08/12,16:14:30,61C1068E7022, UnitTest,36.1,33.3,2.8,0.0,0.0,0.0,5.7,5.8,5.8,5.7,999,999,999,999,999,999,999,999,999,"
+      },
+      {
+        "citation_id": "[5]",
+        "chunk_id": "32ef82d4a833c23a0f571a3d9296d6d7085a7da6a771b0ae7dfa483d23153d3a",
+        "source_name": "matome.xlsx",
+        "is_target": false,
+        "preview": "61C1068D8813 Ra OR EBEIBEAMZE - H BEAM ( X75Ia)) 19:48:13 Camera: -140fR Camera: -70(%S Camera: Of Camera: 70S Camera: 140f%% (2026.07.10 .p1 Lo2 LD3 "
+      },
+      {
+        "citation_id": "[6]",
+        "chunk_id": "94960085c2c7da3331316d01af3dc8b800489009c4ab598d559d5d0b46ec012b",
+        "source_name": "FW  2021 11 20週報.msg",
+        "is_target": false,
+        "preview": "※11/6以降10件発生"
+      },
+      {
+        "citation_id": "[7]",
+        "chunk_id": "e454a760d5ff37259695fe78b013ef22830648a0633b8adabddf8823c650db1a",
+        "source_name": "RE__Iris_LSU_Beam径NG多発_異常品質会議5回目.msg",
+        "is_target": false,
+        "preview": "※#7022は測定できているので、ユニット側の影響？←差が何かを調査要"
+      },
+      {
+        "citation_id": "[8]",
+        "chunk_id": "47f85c5dafc8a82d7d2658608f5bd43b41711164bfcc70273526c32b6888a50c",
+        "source_name": "3V3TC01010_Drive Assy.pdf",
+        "is_target": false,
+        "preview": "9.11.11) ･C61,C62チップサイズ変更 (19.11.11) GND GND +3.3V GND GND GND GND GND GND GND GND GND GND GND +R24V2 +3.3V GND GND +3.3V GND GND GND GND GND GND GND "
+      },
+      {
+        "citation_id": "[9]",
+        "chunk_id": "3b3b5616fd94d240fd9d30bff10f74ba10cdc4e267eae14a357630bd6db27cf9",
+        "source_name": "2026_08_UnitTest.csv",
+        "is_target": true,
+        "preview": "B01.016,2ND-1004.001.033_No2 2026/08/13,15:50:26,61C1068E7022, UnitTest,39.7,33.3,6.4,0.0,0.0,0.0,5.8,5.7,5.8,5.7,999,999,999,999,999,999,999,999,999,"
+      }
+    ],
+    "answer_mode": "EvidenceAnswerMode.ABSTAIN",
+    "lexical_passed": false,
+    "lexical_coverage": 0.13793103448275862,
+    "lexical_threshold": 0.6,
+    "semantic_threshold": 0.55,
+    "semantic_max_score": 0.5279729359778341,
+    "semantic_rejection_reasons": [
+      "semantic_score_below_threshold"
+    ],
+    "best_term_coverage": 0.1379,
+    "final_evidence_term_coverage": 0.1379,
+    "hard_insufficiency_reasons": [
+      "final_evidence_query_coverage_below_threshold"
+    ],
+    "insufficiency_reasons": [
+      "incomplete_query_term_coverage",
+      "weak_query_term_coverage",
+      "weak_term_coverage",
+      "final_evidence_query_coverage_below_threshold"
+    ],
+    "plan_limitations": [
+      "incomplete_query_term_coverage",
+      "weak_query_term_coverage",
+      "weak_term_coverage"
+    ],
+    "local_synthesis_mode": "local_extractive",
+    "local_synthesis_abstained": true,
+    "local_synthesis_abstention_reasons": [
+      "evidence_pack_insufficient",
+      "final_evidence_query_coverage_below_threshold"
+    ],
+    "local_synthesis_answer_preview": "KHÔNG ĐỦ BẰNG CHỨNG: - Corpus được truy xuất không thiết lập được sự kiện hoặc quan hệ mà câu hỏi yêu cầu. - Cần nguồn trực tiếp (ví dụ: tài liệu quy trình, bản ghi hệ thống hoặc hàng dữ liệu có mục t"
+  },
+  "Q0828": {
+    "qid": "Q0828",
+    "question": "Có thể khẳng định Black Skew là nguyên nhân duy nhất của mọi Total NG trong file không?",
+    "target_file": "2026_08_UnitTest.csv",
+    "search_time_sec": 12.0,
+    "intent_category": "diagnosis",
+    "content_terms": [
+      "có",
+      "thể",
+      "khẳng",
+      "định",
+      "black",
+      "skew",
+      "là",
+      "nguyên",
+      "nhân",
+      "duy",
+      "nhất",
+      "của",
+      "mọi",
+      "total",
+      "ng",
+      "trong",
+      "file",
+      "không"
+    ],
+    "target_terms": [
+      "có",
+      "thể",
+      "khẳng",
+      "định",
+      "black",
+      "skew",
+      "là",
+      "nguyên",
+      "nhân",
+      "duy",
+      "nhất",
+      "của",
+      "mọi",
+      "total",
+      "ng",
+      "trong",
+      "file",
+      "không"
+    ],
+    "target_found_in_top15": false,
+    "target_ranks_in_top15": [],
+    "top15_hits": [
+      {
+        "rank": 1,
+        "chunk_id": "fbe0d8ac6f524a8b31692e2f9430ed9004c4c57ae8fb41bb3f59ae102e58e6a5",
+        "document_id": "wsc-4fc7eb76bdc2e05c08b3f0f6",
+        "source_name": "Loi KDTPS.xlsx",
+        "score": 0.5195,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "Skewをスキャンした際に発生 | NG Bow Skew( màu Y ) | ＋基準値：Max: + 2, Min: -2 →実測値：+2.14 ＋LSUのスキュー印刷 → スキャン：Y色のBow SkewがNG（2.11） LSU M-Yを取り外して再取り付け → LSUのスキュー印刷 → O"
+      },
+      {
+        "rank": 2,
+        "chunk_id": "b0ba5be2fead8d8eb4c4e6b612dc6cfbef091da07472946024e655768677ab0c",
+        "document_id": "wsc-4fc7eb76bdc2e05c08b3f0f6",
+        "source_name": "Loi KDTPS.xlsx",
+        "score": 0.5329,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "SKEWをスキャンした際に発生 | NG Bow Screw ( màu C ) | ＋ログ取得済み ＋基準値：±2, 実測値 10.84 ＋電源OFF・ON→再印字→やり直し：NG ＋ LSU C-K要因 →製造技術、工程QC 調査中 LSUの外観検査を実施し、組立に異常がない。 JIG BOW "
+      },
+      {
+        "rank": 3,
+        "chunk_id": "aadaeab8cf4b2eac81b2a482e2e89fd042715c0c350e5b95621b2a1088b26d92",
+        "document_id": "wsc-4fc7eb76bdc2e05c08b3f0f6",
+        "source_name": "Loi KDTPS.xlsx",
+        "score": 0.5202,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "Skewをスキャンした時に発生 | NG Bow Skew | ＋基準値：-2～＋2 →実測値：2.1；2.23 ＋ログ取得済み ＋再起動→やり直し：再現せず（実測値 1.97；1.67） →製造技術 調査中 Bow-skewは悪いスキュー調整にも影響されるため、スキュー調整を5回やり直し=>OKな"
+      },
+      {
+        "rank": 4,
+        "chunk_id": "78e6db68ab4ccdc0e67ab36436ed7b71d63b32daaa83014dca004acc83407e1e",
+        "document_id": "wsc-9e3e7cbc01ed57332c1384eb",
+        "source_name": "RE__Iris_LSU_Beam径NG多発_異常品質会議2回目.msg",
+        "score": 0.5317,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "・それぞれのユニットで、どんなNGが出ていたのか"
+      },
+      {
+        "rank": 5,
+        "chunk_id": "41d41a7d732a0e37cccc5c00e48102f59a421ed6cce91cbd5f379d3e776e202b",
+        "document_id": "wsc-894cf7bc9e15b9980ad7e6fb",
+        "source_name": "DATA_Matome.xlsx",
+        "score": 0.157,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "Sheet: Sheet3 Columns: UNIIT | FRONT側 > Black | Cyan | REAR側 > Magenta | Yellow Row 9: 245 | Skew NG | Skew NG |  |  Row 10: 249 | Skew NG | Skew NG |"
+      },
+      {
+        "rank": 6,
+        "chunk_id": "faeb455ec74fdb423dbe43a243c503f7eb907c86bfb3710302985ab5a4b38073",
+        "document_id": "wsc-9721b4691a00af18092b3b38",
+        "source_name": "FW  IRIS2020 A-6工程打印RCG画像时发生C2103  2台.msg",
+        "score": 0.5087,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "②原因はNoiseだとおもうので「念のためLOG解析」は不要ですよね？"
+      },
+      {
+        "rank": 7,
+        "chunk_id": "a01db85f72905c52c545d4ce4db82d6e48567563f71c81bbe4094f604b3868d8",
+        "document_id": "wsc-e151054c1fae2e470e72c555",
+        "source_name": "Capture.PNG",
+        "score": 0.1434,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "327.6 1463.7 8995 Vv 85 83 83 -335.3 | 82 +3 +1.70 3 -430 42 0.57 x Y y Ev 88 87 2548.0 14609 | 985.2 83 84 83 84 Skew [um] Light Path [mm] +80 +1.70 "
+      },
+      {
+        "rank": 8,
+        "chunk_id": "b2069eabea59cb7478249c53f1d5045e9720ef2948aa4f54db3bd0ab7fc6af7b",
+        "document_id": "wsc-0603d773386b44af8c901ddf",
+        "source_name": "Iris2020_Cコール自己診断.xlsx",
+        "score": 18.0,
+        "is_target": false,
+        "matched_terms": [
+          "có",
+          "định",
+          "nguyên",
+          "nhân",
+          "nhất",
+          "của",
+          "trong",
+          "không"
+        ],
+        "term_coverage": 0.4444,
+        "text_preview": "Sheet: VN Row 2499: Số | 202 |  |  Row 2500: Hiện trạng1 | Hiện trạng2 | Điều kiện 1 | Điều kiện 2 Row 2501: C8810：bất thường tín hiện giữa DF - Sub C"
+      },
+      {
+        "rank": 9,
+        "chunk_id": "55d9b3e13377dd4276d74e99817db9bbb13805477f2d1d7eebcc82386f78d70e",
+        "document_id": "wsc-8108791a3914d7a95a6d92b2",
+        "source_name": "FW    IRIS2020 (High Model) QA_C0650_08_Dec.msg",
+        "score": 0.4981,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "現在NGの発生している機械にて、デバッガ等を繋ぎ、SSDに保存されているS/No.を抽出する方法はありますでしょうか？"
+      },
+      {
+        "rank": 10,
+        "chunk_id": "b8766b89c47dcc5ee4bea9a73c965b00b5810a0c01c41627e2bd9079c8998057",
+        "document_id": "wsc-2d528c22ed8a8466fba9c9bd",
+        "source_name": "wsc-2d528c22ed8a8466fba9c9bd.txt",
+        "score": 17.0,
+        "is_target": false,
+        "matched_terms": [
+          "có",
+          "thể",
+          "định",
+          "là",
+          "của",
+          "trong",
+          "không"
+        ],
+        "term_coverage": 0.3889,
+        "text_preview": "(9) Ethernet ・Thông tin PLC cho thiết bị thực hiện giao tiếp SLMP ①Địa chỉ IP: PLC ・Địa chỉ IP của PLC thiết bị ②Số cổng: PLC ・Số cổng của PLC thiết b"
+      },
+      {
+        "rank": 11,
+        "chunk_id": "8c158035ee21be4736b06a62a570484bb1d8c9879ec01654bc61a933b08868b1",
+        "document_id": "wsc-cfe180f30fae3c031ffd5951",
+        "source_name": "Tài liệu đào tạo LSU_2019.01.18_K.pptx",
+        "score": 17.0,
+        "is_target": false,
+        "matched_terms": [
+          "có",
+          "thể",
+          "định",
+          "là",
+          "nhất",
+          "của",
+          "không"
+        ],
+        "term_coverage": 0.3889,
+        "text_preview": "2020/8/14 3-6 Điều chỉnh TIMING (Điều chỉnh vị trí bắt đầu vẽ ảnh) TIMING như đã giải thích ở trước để vẽ ảnh ta cần quyết định vị trí thời gian bắt đ"
+      },
+      {
+        "rank": 12,
+        "chunk_id": "c174328aca9345fa0fa9e72b08543f6b44dc3b9459b3051571db3eea2a21d76a",
+        "document_id": "wsc-58a2abb444cee489b6786de3",
+        "source_name": "FW  IRIS2020 A-6工程打印RCG画像时发生C2103  2台.msg",
+        "score": 16.5,
+        "is_target": false,
+        "matched_terms": [
+          "có",
+          "thể",
+          "nguyên",
+          "nhân",
+          "duy",
+          "của",
+          "trong",
+          "không"
+        ],
+        "term_coverage": 0.4444,
+        "text_preview": "Tiêu đề: FW: IRIS2020 A-6工程打印RCG画像时发生C2103 2台 Người gửi: Lã Duy Thông(La Duy Thong) <thong.ld@dtvn.kyocera.com> Ngày gửi: 2021-12-09 18:06:49+07:00 Nộ"
+      },
+      {
+        "rank": 13,
+        "chunk_id": "3f12c48326f3ac013a41d911c591740d7ae0272200b429b3be49ae6411741b0a",
+        "document_id": "wsc-9721b4691a00af18092b3b38",
+        "source_name": "FW  IRIS2020 A-6工程打印RCG画像时发生C2103  2台.msg",
+        "score": 16.5,
+        "is_target": false,
+        "matched_terms": [
+          "có",
+          "thể",
+          "nguyên",
+          "nhân",
+          "duy",
+          "của",
+          "trong",
+          "không"
+        ],
+        "term_coverage": 0.4444,
+        "text_preview": "[DOCUMENT ARCHITECTURE & SUMMARY]  ## INTRODUCTION Tiêu đề: FW: IRIS2020 A-6工程打印RCG画像时发生C2103 2台 Người gửi: Lã Duy Thông(La Duy Thong) <thong.ld@dtvn."
+      },
+      {
+        "rank": 14,
+        "chunk_id": "65e4199d29bd7a5c7dea2699548ce553b4f24b6b7144b4b78943a1fa6eb26fde",
+        "document_id": "wsc-9e3e7cbc01ed57332c1384eb",
+        "source_name": "RE__Iris_LSU_Beam径NG多発_異常品質会議2回目.msg",
+        "score": 0.4941,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "“JIG BOW SKEW”の中にあるデータは、同じ光源部で、BowSkew治具に載せたときのデータですか？"
+      },
+      {
+        "rank": 15,
+        "chunk_id": "7b32f771301bcc03aee94a63808ac6327050ccfc9d29f12be3492706a87a5263",
+        "document_id": "wsc-894cf7bc9e15b9980ad7e6fb",
+        "source_name": "DATA_Matome.xlsx",
+        "score": 0.1381,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "AXIS TITLE 50.00 40.00 30.00 20.00 10.00 0.00 -10.00 -20.00 -30.00 -40.00 -50.00 -60.00 -70.00 -80.00 -90.00 -100.00 -110.00 -120.00 -130.00 -140.00 -"
+      }
+    ],
+    "target_found_in_evidence_pack": false,
+    "evidence_item_count": 5,
+    "evidence_items": [
+      {
+        "citation_id": "[1]",
+        "chunk_id": "b2069eabea59cb7478249c53f1d5045e9720ef2948aa4f54db3bd0ab7fc6af7b",
+        "source_name": "Iris2020_Cコール自己診断.xlsx",
+        "is_target": false,
+        "preview": "Sheet: VN Row 2499: Số | 202 |  |  Row 2500: Hiện trạng1 | Hiện trạng2 | Điều kiện 1 | Điều kiện 2 Row 2501: C8810：bất thường tín hiện giữa DF - Sub C"
+      },
+      {
+        "citation_id": "[2]",
+        "chunk_id": "b8766b89c47dcc5ee4bea9a73c965b00b5810a0c01c41627e2bd9079c8998057",
+        "source_name": "wsc-2d528c22ed8a8466fba9c9bd.txt",
+        "is_target": false,
+        "preview": "(9) Ethernet ・Thông tin PLC cho thiết bị thực hiện giao tiếp SLMP ①Địa chỉ IP: PLC ・Địa chỉ IP của PLC thiết bị ②Số cổng: PLC ・Số cổng của PLC thiết b"
+      },
+      {
+        "citation_id": "[3]",
+        "chunk_id": "8c158035ee21be4736b06a62a570484bb1d8c9879ec01654bc61a933b08868b1",
+        "source_name": "Tài liệu đào tạo LSU_2019.01.18_K.pptx",
+        "is_target": false,
+        "preview": "2020/8/14 3-6 Điều chỉnh TIMING (Điều chỉnh vị trí bắt đầu vẽ ảnh) TIMING như đã giải thích ở trước để vẽ ảnh ta cần quyết định vị trí thời gian bắt đ"
+      },
+      {
+        "citation_id": "[4]",
+        "chunk_id": "c174328aca9345fa0fa9e72b08543f6b44dc3b9459b3051571db3eea2a21d76a",
+        "source_name": "FW  IRIS2020 A-6工程打印RCG画像时发生C2103  2台.msg",
+        "is_target": false,
+        "preview": "Tiêu đề: FW: IRIS2020 A-6工程打印RCG画像时发生C2103 2台 Người gửi: Lã Duy Thông(La Duy Thong) <thong.ld@dtvn.kyocera.com> Ngày gửi: 2021-12-09 18:06:49+07:00 Nộ"
+      },
+      {
+        "citation_id": "[5]",
+        "chunk_id": "3f12c48326f3ac013a41d911c591740d7ae0272200b429b3be49ae6411741b0a",
+        "source_name": "FW  IRIS2020 A-6工程打印RCG画像时发生C2103  2台.msg",
+        "is_target": false,
+        "preview": "[DOCUMENT ARCHITECTURE & SUMMARY]  ## INTRODUCTION Tiêu đề: FW: IRIS2020 A-6工程打印RCG画像时发生C2103 2台 Người gửi: Lã Duy Thông(La Duy Thong) <thong.ld@dtvn."
+      }
+    ],
+    "answer_mode": "EvidenceAnswerMode.ABSTAIN",
+    "lexical_passed": false,
+    "lexical_coverage": 0.5882352941176471,
+    "lexical_threshold": 0.6,
+    "semantic_threshold": 0.55,
+    "semantic_max_score": 0.0,
+    "semantic_rejection_reasons": [
+      "missing_dense_score",
+      "missing_dense_channel_provenance"
+    ],
+    "best_term_coverage": 0.6111,
+    "final_evidence_term_coverage": 0.5882,
+    "hard_insufficiency_reasons": [
+      "final_evidence_query_coverage_below_threshold"
+    ],
+    "insufficiency_reasons": [
+      "incomplete_query_term_coverage",
+      "final_evidence_query_coverage_below_threshold"
+    ],
+    "plan_limitations": [
+      "incomplete_query_term_coverage"
+    ],
+    "local_synthesis_mode": "local_extractive",
+    "local_synthesis_abstained": true,
+    "local_synthesis_abstention_reasons": [
+      "evidence_pack_insufficient",
+      "final_evidence_query_coverage_below_threshold"
+    ],
+    "local_synthesis_answer_preview": "KHÔNG ĐỦ BẰNG CHỨNG: - Corpus được truy xuất không thiết lập được sự kiện hoặc quan hệ mà câu hỏi yêu cầu. - Cần nguồn trực tiếp (ví dụ: tài liệu quy trình, bản ghi hệ thống hoặc hàng dữ liệu có mục t"
+  },
+  "Q0843": {
+    "qid": "Q0843",
+    "question": "Cặp giới hạn Current phổ biến nhất là bao nhiêu?",
+    "target_file": "2026_08_Spec.csv",
+    "search_time_sec": 4.76,
+    "intent_category": "diagnosis",
+    "content_terms": [
+      "cặp",
+      "giới",
+      "hạn",
+      "current",
+      "phổ",
+      "biến",
+      "nhất",
+      "là",
+      "bao",
+      "nhiêu"
+    ],
+    "target_terms": [
+      "cặp",
+      "giới",
+      "hạn",
+      "current",
+      "phổ",
+      "biến",
+      "nhất",
+      "là",
+      "bao",
+      "nhiêu"
+    ],
+    "target_found_in_top15": false,
+    "target_ranks_in_top15": [],
+    "top15_hits": [
+      {
+        "rank": 1,
+        "chunk_id": "83e0296d71ee170223ceb09942e3c1745b18a55fceddfeb6742281a1fd15047b",
+        "document_id": "wsc-4fc7eb76bdc2e05c08b3f0f6",
+        "source_name": "Loi KDTPS.xlsx",
+        "score": 14.25,
+        "is_target": false,
+        "matched_terms": [
+          "giới",
+          "hạn"
+        ],
+        "term_coverage": 0.2,
+        "text_preview": "| *Điều tra: -MAIN TRAY nâng từ dưới lên giới hạn trên sau đó tự động hạ xuống giới hạn dưới và nâng lên giới hạn trên (*) trên màn hình đồ gá mất dần"
+      },
+      {
+        "rank": 2,
+        "chunk_id": "eb51faa5ffda6799b1ef10e8a3f4dbb12509d711a84f423a3a5036a0433274ef",
+        "document_id": "wsc-4fc7eb76bdc2e05c08b3f0f6",
+        "source_name": "Loi KDTPS.xlsx",
+        "score": 10.0,
+        "is_target": false,
+        "matched_terms": [
+          "giới",
+          "hạn"
+        ],
+        "term_coverage": 0.2,
+        "text_preview": "電源ON時に発生 | *HT : NTT lắp FAX ,bật nguồn => C6950 ( Lỗi truyền tín hiệu CPU giới hạn IH ) | ＋Log取得済み ＋電源OFF/ONで再現あり ＋ラインアウト→再現あり →電気技術 調査中 基板外観検査は異常なし "
+      },
+      {
+        "rank": 3,
+        "chunk_id": "9a9ed30e288f538bf19ae4da46273108f14c3400fd34e594b363c794818973bd",
+        "document_id": "wsc-6227ecdc7e605c80494c74d7",
+        "source_name": "Iris2020_Cコール自己診断.xlsx",
+        "score": 14.0,
+        "is_target": false,
+        "matched_terms": [
+          "giới",
+          "hạn"
+        ],
+        "term_coverage": 0.2,
+        "text_preview": "| B318=Xác nhận sensor giới hạn trên Lift PF | C318=sensor giới hạn trên Lift PF 1 không được gắn đúng hoặc có bất thường | D318=Gắn lại sensor giới h"
+      },
+      {
+        "rank": 4,
+        "chunk_id": "3db73a14e8dbd0c54f6a6caee4465dab8ed20be215a2ec34ce57df9ca8017321",
+        "document_id": "wsc-6227ecdc7e605c80494c74d7",
+        "source_name": "Iris2020_Cコール自己診断.xlsx",
+        "score": 12.0,
+        "is_target": false,
+        "matched_terms": [
+          "giới",
+          "hạn"
+        ],
+        "term_coverage": 0.2,
+        "text_preview": "B330=Xác nhận sensor giới hạn trên Lift PF 2 | C330=sensor giới hạn trên Lift PF 2 không được gắn đúng hoặc có bất thường | D330=Gắn lại sensor giới h"
+      },
+      {
+        "rank": 5,
+        "chunk_id": "49a97bd28d74e53a917b28713cee8a864c2cce87b52590fec781d62b57721701",
+        "document_id": "wsc-0603d773386b44af8c901ddf",
+        "source_name": "Iris2020_Cコール自己診断.xlsx",
+        "score": 11.5,
+        "is_target": false,
+        "matched_terms": [
+          "giới",
+          "hạn",
+          "nhất",
+          "là"
+        ],
+        "term_coverage": 0.4,
+        "text_preview": "Sheet: VN Row 289: 5 | Xác nhận kết nối | connector không được kết nối chính xác. Hoặc có bất thường ở dây điện. | làm sạch đầu kết nối connector rồi "
+      },
+      {
+        "rank": 6,
+        "chunk_id": "99fd4f6e0459d16cc37a0a7371df90c57dcc5dbed1a94bd7950dfca53d393dd7",
+        "document_id": "wsc-6227ecdc7e605c80494c74d7",
+        "source_name": "Iris2020_Cコール自己診断.xlsx",
+        "score": 9.75,
+        "is_target": false,
+        "matched_terms": [
+          "giới",
+          "hạn",
+          "nhất",
+          "là"
+        ],
+        "term_coverage": 0.4,
+        "text_preview": "A290=6 | B290=Xác nhận sensor giới hạn trên Lift | C290=Gắn sensor 1 giới hạn trên Lift không đúng.Hoặc là có bất thường | D290=Gắn lại sensor 1 giới "
+      },
+      {
+        "rank": 7,
+        "chunk_id": "ec15e0ee5c1c3d1f411c434bb1b0645cfb8538e36830ea80a3cc6c6e5500209c",
+        "document_id": "wsc-0603d773386b44af8c901ddf",
+        "source_name": "Iris2020_Cコール自己診断.xlsx",
+        "score": 10.5,
+        "is_target": false,
+        "matched_terms": [
+          "giới",
+          "hạn",
+          "nhất"
+        ],
+        "term_coverage": 0.3,
+        "text_preview": "Sheet: VN Columns: Số > Hiện trạng1 > C8B30:bất thường nâng Motor Lift2 (Motor Lift khay dưới) | Hiện trạng2 > Trường hợp liên tục trên 5 lần khi truy"
+      },
+      {
+        "rank": 8,
+        "chunk_id": "58c5cd23b5f291d26b1bf910c0379404cbb808244d3807e89447091a739e491a",
+        "document_id": "wsc-0603d773386b44af8c901ddf",
+        "source_name": "Iris2020_Cコール自己診断.xlsx",
+        "score": 9.5,
+        "is_target": false,
+        "matched_terms": [
+          "giới",
+          "hạn",
+          "nhất"
+        ],
+        "term_coverage": 0.3,
+        "text_preview": "Sheet: VN Row 2613: 4 | Xác nhận Sensor giới hạn trên nâng DP | Sensor giới hạn dưới nâng DP đang không được lắp chính xác hoặc có bất thường | Yêu cầ"
+      },
+      {
+        "rank": 9,
+        "chunk_id": "wsc-f131b2b0169443cf4e1dc576-summary",
+        "document_id": "wsc-f131b2b0169443cf4e1dc576",
+        "source_name": "wsc-f131b2b0169443cf4e1dc576.txt",
+        "score": 6.5,
+        "is_target": false,
+        "matched_terms": [
+          "giới",
+          "hạn",
+          "nhất"
+        ],
+        "term_coverage": 0.3,
+        "text_preview": "[DOCUMENT ARCHITECTURE & SUMMARY]  ## INTRODUCTION Sơ Đồ ERD Ultimate - Hệ Thống Kho Vận Sơ Đồ ERD Ultimate (Có độ dài Data Type) Cập nhật chính xác g"
+      },
+      {
+        "rank": 10,
+        "chunk_id": "0d8e23f495832f8b65c55384403a206413c6ee8e379846e4e8661d1fcb3225a2",
+        "document_id": "wsc-f131b2b0169443cf4e1dc576",
+        "source_name": "wsc-f131b2b0169443cf4e1dc576.txt",
+        "score": 6.5,
+        "is_target": false,
+        "matched_terms": [
+          "giới",
+          "hạn",
+          "nhất"
+        ],
+        "term_coverage": 0.3,
+        "text_preview": "Sơ Đồ ERD Ultimate - Hệ Thống Kho Vận Sơ Đồ ERD Ultimate (Có độ dài Data Type) Cập nhật chính xác giới hạn ký tự (Size) cho từng trường varchar/decima"
+      },
+      {
+        "rank": 11,
+        "chunk_id": "a3ecaac5f1de4d74c0d231aac8db33a9fb68875dfb16985b5c41af5d9fa948eb",
+        "document_id": "wsc-4fc7eb76bdc2e05c08b3f0f6",
+        "source_name": "Loi KDTPS.xlsx",
+        "score": 7.0,
+        "is_target": false,
+        "matched_terms": [
+          "giới",
+          "hạn",
+          "biến"
+        ],
+        "term_coverage": 0.3,
+        "text_preview": "U950前RCG画像を印字中に発生 | *NTT kích lệnh in tờ RCG trước U950-> LCD báo C7103 (giới hạn trên và dưới của cảm biến mực bất thường) | ＋ペーパー先端部がExitに接触、しわ無し →ラ"
+      },
+      {
+        "rank": 12,
+        "chunk_id": "44b24ffbeb587292056d0498fafc8ac0a9ecfd3008e3af606da64a5e6d11d5b3",
+        "document_id": "wsc-fb4f4f8ff43f9f96c9c6ade4",
+        "source_name": "DATA_Matome.xlsx",
+        "score": 0.1193,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "Current:Y[mA] | AKP1=Voltage[V] | AKQ1=ThermistorVoltage[V] | AKR1=Temperature | AKS1=Humidity[%] | AKT1=RefLd_1_X:[um] | AKU1=RefLd_1_Y:[um] | AKV1=R"
+      },
+      {
+        "rank": 13,
+        "chunk_id": "e5e2c1d2294f833991618ec993f3c084a8d2c261c7808065a7c82d0a14dc7ca2",
+        "document_id": "wsc-34567e4bd564d0b1d856f2ef",
+        "source_name": "302XC45030 full.pdf",
+        "score": 0.5939,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "utput, Between All Input and FG : Spec. : ㎅㐓ᣥᣇ : ㍺ධ➃ ~ ㍺ฟ➃, ㍺ධ➃ ~FG DC 500V 4 Secุ ᐃ : 100MΩ Min. Withstand Voltage : Between All Input and FG, Detect"
+      },
+      {
+        "rank": 14,
+        "chunk_id": "8f0f86ebff784910fa435651bde88ef63f30ca0be34d9e29394224a806ac3975",
+        "document_id": "wsc-899180f7d2efddff1577fac6",
+        "source_name": "302XD45010-full.pdf",
+        "score": 0.5904,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "utput, Between All Input and FG : Spec. : ㎅㐓ᣥᣇ : ㍺ධ➃ ~ ㍺ฟ➃, ㍺ධ➃ ~FG DC 500V 4 Secุ ᐃ : 100MΩ Min. Withstand Voltage : Between All Input and FG, Detect"
+      },
+      {
+        "rank": 15,
+        "chunk_id": "9789aad44b48904302fba4f5b01c1840c7055a38969973131ecd88720f023ba2",
+        "document_id": "wsc-8708909fc8c5140efa7389fc",
+        "source_name": "MIRROR mới.png",
+        "score": 0.0971,
+        "is_target": false,
+        "matched_terms": [],
+        "term_coverage": 0.0,
+        "text_preview": "point LD1-1 Xpoint LD1-1 Ypoint LD1-1 Xpoint LD1-1 Ypoint LD1-1 Xpoint 3050 1940 Voltare 5.02 Power -238.8 873.2 -350.2 1017.1 -307.0 8768 -153.0 9547"
+      }
+    ],
+    "target_found_in_evidence_pack": false,
+    "evidence_item_count": 8,
+    "evidence_items": [
+      {
+        "citation_id": "[1]",
+        "chunk_id": "83e0296d71ee170223ceb09942e3c1745b18a55fceddfeb6742281a1fd15047b",
+        "source_name": "Loi KDTPS.xlsx",
+        "is_target": false,
+        "preview": "| *Điều tra: -MAIN TRAY nâng từ dưới lên giới hạn trên sau đó tự động hạ xuống giới hạn dưới và nâng lên giới hạn trên (*) trên màn hình đồ gá mất dần"
+      },
+      {
+        "citation_id": "[2]",
+        "chunk_id": "eb51faa5ffda6799b1ef10e8a3f4dbb12509d711a84f423a3a5036a0433274ef",
+        "source_name": "Loi KDTPS.xlsx",
+        "is_target": false,
+        "preview": "電源ON時に発生 | *HT : NTT lắp FAX ,bật nguồn => C6950 ( Lỗi truyền tín hiệu CPU giới hạn IH ) | ＋Log取得済み ＋電源OFF/ONで再現あり ＋ラインアウト→再現あり →電気技術 調査中 基板外観検査は異常なし "
+      },
+      {
+        "citation_id": "[3]",
+        "chunk_id": "9a9ed30e288f538bf19ae4da46273108f14c3400fd34e594b363c794818973bd",
+        "source_name": "Iris2020_Cコール自己診断.xlsx",
+        "is_target": false,
+        "preview": "| B318=Xác nhận sensor giới hạn trên Lift PF | C318=sensor giới hạn trên Lift PF 1 không được gắn đúng hoặc có bất thường | D318=Gắn lại sensor giới h"
+      },
+      {
+        "citation_id": "[4]",
+        "chunk_id": "3db73a14e8dbd0c54f6a6caee4465dab8ed20be215a2ec34ce57df9ca8017321",
+        "source_name": "Iris2020_Cコール自己診断.xlsx",
+        "is_target": false,
+        "preview": "B330=Xác nhận sensor giới hạn trên Lift PF 2 | C330=sensor giới hạn trên Lift PF 2 không được gắn đúng hoặc có bất thường | D330=Gắn lại sensor giới h"
+      },
+      {
+        "citation_id": "[5]",
+        "chunk_id": "49a97bd28d74e53a917b28713cee8a864c2cce87b52590fec781d62b57721701",
+        "source_name": "Iris2020_Cコール自己診断.xlsx",
+        "is_target": false,
+        "preview": "Sheet: VN Row 289: 5 | Xác nhận kết nối | connector không được kết nối chính xác. Hoặc có bất thường ở dây điện. | làm sạch đầu kết nối connector rồi "
+      },
+      {
+        "citation_id": "[6]",
+        "chunk_id": "99fd4f6e0459d16cc37a0a7371df90c57dcc5dbed1a94bd7950dfca53d393dd7",
+        "source_name": "Iris2020_Cコール自己診断.xlsx",
+        "is_target": false,
+        "preview": "A290=6 | B290=Xác nhận sensor giới hạn trên Lift | C290=Gắn sensor 1 giới hạn trên Lift không đúng.Hoặc là có bất thường | D290=Gắn lại sensor 1 giới "
+      },
+      {
+        "citation_id": "[7]",
+        "chunk_id": "ec15e0ee5c1c3d1f411c434bb1b0645cfb8538e36830ea80a3cc6c6e5500209c",
+        "source_name": "Iris2020_Cコール自己診断.xlsx",
+        "is_target": false,
+        "preview": "Sheet: VN Columns: Số > Hiện trạng1 > C8B30:bất thường nâng Motor Lift2 (Motor Lift khay dưới) | Hiện trạng2 > Trường hợp liên tục trên 5 lần khi truy"
+      },
+      {
+        "citation_id": "[8]",
+        "chunk_id": "58c5cd23b5f291d26b1bf910c0379404cbb808244d3807e89447091a739e491a",
+        "source_name": "Iris2020_Cコール自己診断.xlsx",
+        "is_target": false,
+        "preview": "Sheet: VN Row 2613: 4 | Xác nhận Sensor giới hạn trên nâng DP | Sensor giới hạn dưới nâng DP đang không được lắp chính xác hoặc có bất thường | Yêu cầ"
+      }
+    ],
+    "answer_mode": "EvidenceAnswerMode.ABSTAIN",
+    "lexical_passed": false,
+    "lexical_coverage": 0.4,
+    "lexical_threshold": 0.6,
+    "semantic_threshold": 0.55,
+    "semantic_max_score": 0.5283405221527796,
+    "semantic_rejection_reasons": [
+      "semantic_score_below_threshold"
+    ],
+    "best_term_coverage": 0.5,
+    "final_evidence_term_coverage": 0.4,
+    "hard_insufficiency_reasons": [
+      "final_evidence_query_coverage_below_threshold"
+    ],
+    "insufficiency_reasons": [
+      "incomplete_query_term_coverage",
+      "final_evidence_query_coverage_below_threshold"
+    ],
+    "plan_limitations": [
+      "incomplete_query_term_coverage"
+    ],
+    "local_synthesis_mode": "local_extractive",
+    "local_synthesis_abstained": true,
+    "local_synthesis_abstention_reasons": [
+      "evidence_pack_insufficient",
+      "final_evidence_query_coverage_below_threshold"
+    ],
+    "local_synthesis_answer_preview": "KHÔNG ĐỦ BẰNG CHỨNG: - Corpus được truy xuất không thiết lập được sự kiện hoặc quan hệ mà câu hỏi yêu cầu. - Cần nguồn trực tiếp (ví dụ: tài liệu quy trình, bản ghi hệ thống hoặc hàng dữ liệu có mục t"
+  },
+  "Q0668": {
+    "qid": "Q0668",
+    "question": "g1 và g2 có nominal và giới hạn nào?",
+    "target_file": "3V2ND19040-MOUNT LD BLOCK LOT 18.8.2026.xlsx",
+    "search_time_sec": 4.6,
+    "intent_category": "diagnosis",
+    "content_terms": [
+      "g1",
+      "và",
+      "g2",
+      "có",
+      "nominal",
+      "giới",
+      "hạn",
+      "nào"
+    ],
+    "target_terms": [
+      "g1",
+      "và",
+      "g2",
+      "có",
+      "nominal",
+      "giới",
+      "hạn",
+      "nào"
+    ],
+    "target_found_in_top15": false,
+    "target_ranks_in_top15": [],
+    "top15_hits": [
+      {
+        "rank": 1,
+        "chunk_id": "55b6cd214397a40522587d8bd954ac20e240ad0edcae27042f607e038db4482f",
+        "document_id": "wsc-582a992dc46566ab198dabe2",
+        "source_name": "3V2ND19040-MOUNT_LD_BLOCK__LOT_18.8.2026.xlsx",
+        "score": 17.0,
+        "is_target": false,
+        "matched_terms": [
+          "g1",
+          "g2"
+        ],
+        "term_coverage": 0.25,
+        "text_preview": "| R48==IF(OR(Q48>E48+G48,Q48<E48-H48),\"X\",IF(AND(Q48<=E48+G48-(G48+H48)*0.1,Q48>=E48-H48+(G48+H48)*0.1),\"O\",\"Caution\")) C49=21C | E49=39 | F49=+0.08 -"
+      },
+      {
+        "rank": 2,
+        "chunk_id": "70a50a1e3c360f50e18b6c640c9311ecc9875fa7f0c9a679173b8db419ddc2c3",
+        "document_id": "wsc-61042de75628fa1f2c39831c",
+        "source_name": "KTD-2025-08-0866-DP Iris2020-C2B- Write DP Serial NG.xlsx",
+        "score": 12.5,
+        "is_target": false,
+        "matched_terms": [
+          "g1",
+          "g2"
+        ],
+        "term_coverage": 0.25,
+        "text_preview": "[DOCUMENT ARCHITECTURE & SUMMARY]  ## INTRODUCTION File Excel: KTD-2025-08-0866-DP_Iris2020-C2B-_Write_DP_Serial_NG.xlsx Trang tính: Bao cao dieu tra "
+      },
+      {
+        "rank": 3,
+        "chunk_id": "ab3c8e5a4bdd9562d45c8c8412a0fc5586adbd57f3b413074ae29ed787b649ab",
+        "document_id": "wsc-e3593af86227f29417dcd2b6",
+        "source_name": "KTD-2025-08-0924-Iris2024-C33-A3-C6770.xlsx",
+        "score": 9.75,
+        "is_target": false,
+        "matched_terms": [
+          "g1",
+          "g2",
+          "có"
+        ],
+        "term_coverage": 0.375,
+        "text_preview": "[DOCUMENT ARCHITECTURE & SUMMARY]  ## INTRODUCTION File Excel: KTD-2025-08-0924-Iris2024-C33-A3-C6770.xlsx Trang tính: Bao cao dieu tra B3=Báo cáo điề"
+      },
+      {
+        "rank": 4,
+        "chunk_id": "16b6a36d23066c8d0214ff1bc4e7ce03ab0eed974dd2d6e6905a03e78b3aca3e",
+        "document_id": "wsc-1d4ffd410136f2997f24b84e",
+        "source_name": "DP IF ASSY_7PA1153CJF.pdf",
+        "score": 9.0,
+        "is_target": false,
+        "matched_terms": [
+          "g1",
+          "g2"
+        ],
+        "term_coverage": 0.25,
+        "text_preview": ".W.BOARD ASSY DP IF 7PA1153CJF+GH01 15 of 24 Rev. Date Sign Parts Text Model Note PWB No. Sheet ASSY No. Date Approved Checked Designed 303TC47040 202"
+      },
+      {
+        "rank": 5,
+        "chunk_id": "52d0f18c89b5e57ea358d28c747faf77ce4b4bab84b7f88fd51f1810a6bb7f37",
+        "document_id": "wsc-671647b1c8d9a58a095d1a5c",
+        "source_name": "DP IF ASSY_7PA1153CJF.pdf",
+        "score": 9.0,
+        "is_target": false,
+        "matched_terms": [
+          "g1",
+          "g2"
+        ],
+        "term_coverage": 0.25,
+        "text_preview": "ASSY DP IF 7PA1153CJF+GH01 05 15 of 24 3 2 1 Rev. Date Sign Parts Text Model Note PWB No. Sheet ASSY No. Date Approved Checked Designed 303TC47040 202"
+      },
+      {
+        "rank": 6,
+        "chunk_id": "d62af9105a27e97fd69c508afa277a0cf4189f0bc1012fea6534df8f377a1888",
+        "document_id": "wsc-28d8058750c5ed4dfe17a4cb",
+        "source_name": "MAIN_3V2XF47010_04.pdf",
+        "score": 9.0,
+        "is_target": false,
+        "matched_terms": [
+          "g1",
+          "g2"
+        ],
+        "term_coverage": 0.25,
+        "text_preview": "ASSY No. Date Approved Checked Designed 3V2XF47010 2019/10/8 02XF P.W.BOARD ASSY MAIN 7PA1235CMF+GH01 4 of 42 Rev. Date Sign Parts Text Model Note PWB"
+      },
+      {
+        "rank": 7,
+        "chunk_id": "73c8939877fdccf1adb98756d4eea17cdc5c3405edbfbaba7e19316771442559",
+        "document_id": "wsc-6a25f0b37dc4c45c4ad1874f",
+        "source_name": "MAIN_3V2XC47010_04.pdf",
+        "score": 9.0,
+        "is_target": false,
+        "matched_terms": [
+          "g1",
+          "g2"
+        ],
+        "term_coverage": 0.25,
+        "text_preview": "B8 11 VCC 20 GND 10 TP961 C734 100p 0603 50V R1024 0 TP957 TP1509 R505 22 TP1511 TP1513 TP431 TP433 TP963 TP437 TP419 R489 4.7K RA52 10K 1 2 3 4 5 6 7"
+      },
+      {
+        "rank": 8,
+        "chunk_id": "353bd0ecb25443c7cd89f31d10135a8ca9d49f8a50f2800d6d58dabb52e8716f",
+        "document_id": "wsc-80ec36f258a2e8c9cf0f63f6",
+        "source_name": "T02XC47110_PWB VIDEO ASSY_DMT回路図.pdf",
+        "score": 9.0,
+        "is_target": false,
+        "matched_terms": [
+          "g1",
+          "g2"
+        ],
+        "term_coverage": 0.25,
+        "text_preview": "2N B12 SAT_1_HSYNC_C_P_GO02P A12 SAT_1_HSYNC_D_N_GO03N B11 SAT_1_HSYNC_D_P_GO03P A11 DATA1_A_N_GO60N A21 DATA1_A_P_GO60P B21 DATA1_B_N_GO62N A19 DATA1"
+      },
+      {
+        "rank": 9,
+        "chunk_id": "37e2645d1d144ab7772d550a6297a704e8773875975c6b9ed9c5f302a6865a59",
+        "document_id": "wsc-ac4003964ded9ce76832613b",
+        "source_name": "T02XC47110_PWB VIDEO ASSY_DMT回路図.pdf",
+        "score": 9.0,
+        "is_target": false,
+        "matched_terms": [
+          "g1",
+          "g2"
+        ],
+        "term_coverage": 0.25,
+        "text_preview": "N_GO07N D9 SAT_1_VSYNC_D_P_GO07P C9 SAT_1_HSYNC_A_N_GO00N B13 SAT_1_HSYNC_A_P_GO00P A13 SAT_1_HSYNC_B_N_GO01N D13 SAT_1_HSYNC_B_P_GO01P C13 SAT_1_HSYN"
+      },
+      {
+        "rank": 10,
+        "chunk_id": "d7f0dfe85b2911e9f4916a851e1f40f4d9107b99ce5c13c9dc9e6d7bed4df0d4",
+        "document_id": "wsc-f796eee58f407ed5332b6d2d",
+        "source_name": "MAIN_3V2XF47010_04.pdf",
+        "score": 9.0,
+        "is_target": false,
+        "matched_terms": [
+          "g1",
+          "g2"
+        ],
+        "term_coverage": 0.25,
+        "text_preview": "D ASSY MAIN 7PA1235CMF+GH01 04 6 of 42 3 2 1 Rev. Date Sign Parts Text Model Note PWB No. Sheet ASSY No. Date Approved Checked Designed 3V2XF47010 201"
+      },
+      {
+        "rank": 11,
+        "chunk_id": "ca80466920664e5d78ac480f358fb5f97f42f53028d298fa55f11762b742ff40",
+        "document_id": "wsc-c292106969b26cfd6269485b",
+        "source_name": "sirius2_beam径確認_240202.xlsx",
+        "score": 14.0,
+        "is_target": false,
+        "matched_terms": [
+          "g1",
+          "g2"
+        ],
+        "term_coverage": 0.25,
+        "text_preview": "Trang tính: Sheet19 E1==COUNTA(E12:E52) | G1==COUNTA(G12:G52) C2==AVERAGE(C12:C94) | D2==AVERAGE(D12:D94) | E2==AVERAGE(E12:E94) | G2==AVERAGE(G12:G94"
+      },
+      {
+        "rank": 12,
+        "chunk_id": "a3e45886521a679318d5cdba84e4a6931e14d9a7b9b5350653d2296ee42333a0",
+        "document_id": "wsc-c292106969b26cfd6269485b",
+        "source_name": "sirius2_beam径確認_240202.xlsx",
+        "score": 14.0,
+        "is_target": false,
+        "matched_terms": [
+          "g1",
+          "g2"
+        ],
+        "term_coverage": 0.25,
+        "text_preview": "Trang tính: Sheet19 E1==COUNTA(E12:E52) | G1==COUNTA(G12:G52) C2==AVERAGE(C12:C94) | D2==AVERAGE(D12:D94) | E2==AVERAGE(E12:E94) | G2==AVERAGE(G12:G94"
+      },
+      {
+        "rank": 13,
+        "chunk_id": "75946f1d24fada1d2b7609d2dde682724dbd89d90b48d57e58cc0efafa627fe1",
+        "document_id": "wsc-e3593af86227f29417dcd2b6",
+        "source_name": "KTD-2025-08-0924-Iris2024-C33-A3-C6770.xlsx",
+        "score": 4.0,
+        "is_target": false,
+        "matched_terms": [
+          "g1",
+          "g2"
+        ],
+        "term_coverage": 0.25,
+        "text_preview": "Trang tính: Sheet1 G1=U6 A2=Pin | B2=Q2 | D2=Q1 | G2=Pin - GND | H2=NG | I2=OK B3=Resistor | C3=Diode | D3=Resistor | E3=Diode | G3=1 | H3=2kΩ | I3=2k"
+      },
+      {
+        "rank": 14,
+        "chunk_id": "24d249263c6b163b635ccffb68e27690f92cb4e10f221bc0d0644962d4c800a8",
+        "document_id": "wsc-dd752fb64136606c10e80430",
+        "source_name": "MAIN_3V2XD47010_04.pdf",
+        "score": 8.0,
+        "is_target": false,
+        "matched_terms": [
+          "g1",
+          "g2"
+        ],
+        "term_coverage": 0.25,
+        "text_preview": "M9 VSS N1 VSS T1 VDDQ A1 VDDQ A9 VDDQ C1 VDDQ D9 VDDQ F2 VDDQ F8 VDDQ G1 VDDQ G9 VDDQ J2 VDDQ J8 VSSQ A2 VSSQ A8 VSSQ C9 VSSQ D2 VSSQ D8 VSSQ E3 VSSQ "
+      },
+      {
+        "rank": 15,
+        "chunk_id": "94ab30d417489900674601638efae4e19d81321cecf7cfeb8996e8dcbae0dcad",
+        "document_id": "wsc-1d4ffd410136f2997f24b84e",
+        "source_name": "DP IF ASSY_7PA1153CJF.pdf",
+        "score": 7.0,
+        "is_target": false,
+        "matched_terms": [
+          "g1",
+          "g2"
+        ],
+        "term_coverage": 0.25,
+        "text_preview": "A9 R7 A8 R2 A7 R8 A6 P2 A5 P8 A4 N3 A3 N7 A2 R3 A1 P7 A0 P3 BA1 N8 BA0 N2 BG0 M2 DQ15 D7 DQ14 D3 DQ13 C8 DQ12 C2 DQ11 C7 DQ10 C3 DQ9 B8 DQ8 A3 DQ7 J7 "
+      }
+    ],
+    "target_found_in_evidence_pack": false,
+    "evidence_item_count": 12,
+    "evidence_items": [
+      {
+        "citation_id": "[1]",
+        "chunk_id": "55b6cd214397a40522587d8bd954ac20e240ad0edcae27042f607e038db4482f",
+        "source_name": "3V2ND19040-MOUNT_LD_BLOCK__LOT_18.8.2026.xlsx",
+        "is_target": false,
+        "preview": "| R48==IF(OR(Q48>E48+G48,Q48<E48-H48),\"X\",IF(AND(Q48<=E48+G48-(G48+H48)*0.1,Q48>=E48-H48+(G48+H48)*0.1),\"O\",\"Caution\")) C49=21C | E49=39 | F49=+0.08 -"
+      },
+      {
+        "citation_id": "[2]",
+        "chunk_id": "70a50a1e3c360f50e18b6c640c9311ecc9875fa7f0c9a679173b8db419ddc2c3",
+        "source_name": "KTD-2025-08-0866-DP Iris2020-C2B- Write DP Serial NG.xlsx",
+        "is_target": false,
+        "preview": "[DOCUMENT ARCHITECTURE & SUMMARY]  ## INTRODUCTION File Excel: KTD-2025-08-0866-DP_Iris2020-C2B-_Write_DP_Serial_NG.xlsx Trang tính: Bao cao dieu tra "
+      },
+      {
+        "citation_id": "[3]",
+        "chunk_id": "ab3c8e5a4bdd9562d45c8c8412a0fc5586adbd57f3b413074ae29ed787b649ab",
+        "source_name": "KTD-2025-08-0924-Iris2024-C33-A3-C6770.xlsx",
+        "is_target": false,
+        "preview": "[DOCUMENT ARCHITECTURE & SUMMARY]  ## INTRODUCTION File Excel: KTD-2025-08-0924-Iris2024-C33-A3-C6770.xlsx Trang tính: Bao cao dieu tra B3=Báo cáo điề"
+      },
+      {
+        "citation_id": "[4]",
+        "chunk_id": "16b6a36d23066c8d0214ff1bc4e7ce03ab0eed974dd2d6e6905a03e78b3aca3e",
+        "source_name": "DP IF ASSY_7PA1153CJF.pdf",
+        "is_target": false,
+        "preview": ".W.BOARD ASSY DP IF 7PA1153CJF+GH01 15 of 24 Rev. Date Sign Parts Text Model Note PWB No. Sheet ASSY No. Date Approved Checked Designed 303TC47040 202"
+      },
+      {
+        "citation_id": "[5]",
+        "chunk_id": "52d0f18c89b5e57ea358d28c747faf77ce4b4bab84b7f88fd51f1810a6bb7f37",
+        "source_name": "DP IF ASSY_7PA1153CJF.pdf",
+        "is_target": false,
+        "preview": "ASSY DP IF 7PA1153CJF+GH01 05 15 of 24 3 2 1 Rev. Date Sign Parts Text Model Note PWB No. Sheet ASSY No. Date Approved Checked Designed 303TC47040 202"
+      },
+      {
+        "citation_id": "[6]",
+        "chunk_id": "d62af9105a27e97fd69c508afa277a0cf4189f0bc1012fea6534df8f377a1888",
+        "source_name": "MAIN_3V2XF47010_04.pdf",
+        "is_target": false,
+        "preview": "ASSY No. Date Approved Checked Designed 3V2XF47010 2019/10/8 02XF P.W.BOARD ASSY MAIN 7PA1235CMF+GH01 4 of 42 Rev. Date Sign Parts Text Model Note PWB"
+      },
+      {
+        "citation_id": "[7]",
+        "chunk_id": "73c8939877fdccf1adb98756d4eea17cdc5c3405edbfbaba7e19316771442559",
+        "source_name": "MAIN_3V2XC47010_04.pdf",
+        "is_target": false,
+        "preview": "B8 11 VCC 20 GND 10 TP961 C734 100p 0603 50V R1024 0 TP957 TP1509 R505 22 TP1511 TP1513 TP431 TP433 TP963 TP437 TP419 R489 4.7K RA52 10K 1 2 3 4 5 6 7"
+      },
+      {
+        "citation_id": "[8]",
+        "chunk_id": "353bd0ecb25443c7cd89f31d10135a8ca9d49f8a50f2800d6d58dabb52e8716f",
+        "source_name": "T02XC47110_PWB VIDEO ASSY_DMT回路図.pdf",
+        "is_target": false,
+        "preview": "2N B12 SAT_1_HSYNC_C_P_GO02P A12 SAT_1_HSYNC_D_N_GO03N B11 SAT_1_HSYNC_D_P_GO03P A11 DATA1_A_N_GO60N A21 DATA1_A_P_GO60P B21 DATA1_B_N_GO62N A19 DATA1"
+      },
+      {
+        "citation_id": "[9]",
+        "chunk_id": "37e2645d1d144ab7772d550a6297a704e8773875975c6b9ed9c5f302a6865a59",
+        "source_name": "T02XC47110_PWB VIDEO ASSY_DMT回路図.pdf",
+        "is_target": false,
+        "preview": "N_GO07N D9 SAT_1_VSYNC_D_P_GO07P C9 SAT_1_HSYNC_A_N_GO00N B13 SAT_1_HSYNC_A_P_GO00P A13 SAT_1_HSYNC_B_N_GO01N D13 SAT_1_HSYNC_B_P_GO01P C13 SAT_1_HSYN"
+      },
+      {
+        "citation_id": "[10]",
+        "chunk_id": "d7f0dfe85b2911e9f4916a851e1f40f4d9107b99ce5c13c9dc9e6d7bed4df0d4",
+        "source_name": "MAIN_3V2XF47010_04.pdf",
+        "is_target": false,
+        "preview": "D ASSY MAIN 7PA1235CMF+GH01 04 6 of 42 3 2 1 Rev. Date Sign Parts Text Model Note PWB No. Sheet ASSY No. Date Approved Checked Designed 3V2XF47010 201"
+      },
+      {
+        "citation_id": "[11]",
+        "chunk_id": "ca80466920664e5d78ac480f358fb5f97f42f53028d298fa55f11762b742ff40",
+        "source_name": "sirius2_beam径確認_240202.xlsx",
+        "is_target": false,
+        "preview": "Trang tính: Sheet19 E1==COUNTA(E12:E52) | G1==COUNTA(G12:G52) C2==AVERAGE(C12:C94) | D2==AVERAGE(D12:D94) | E2==AVERAGE(E12:E94) | G2==AVERAGE(G12:G94"
+      },
+      {
+        "citation_id": "[12]",
+        "chunk_id": "a3e45886521a679318d5cdba84e4a6931e14d9a7b9b5350653d2296ee42333a0",
+        "source_name": "sirius2_beam径確認_240202.xlsx",
+        "is_target": false,
+        "preview": "Trang tính: Sheet19 E1==COUNTA(E12:E52) | G1==COUNTA(G12:G52) C2==AVERAGE(C12:C94) | D2==AVERAGE(D12:D94) | E2==AVERAGE(E12:E94) | G2==AVERAGE(G12:G94"
+      }
+    ],
+    "answer_mode": "EvidenceAnswerMode.ANSWER_WITH_LIMITS",
+    "lexical_passed": true,
+    "lexical_coverage": 0.8571428571428571,
+    "lexical_threshold": 0.6,
+    "semantic_threshold": 0.55,
+    "semantic_max_score": 0.5201124588433114,
+    "semantic_rejection_reasons": [
+      "semantic_score_below_threshold"
+    ],
+    "best_term_coverage": 0.375,
+    "final_evidence_term_coverage": 0.8571,
+    "hard_insufficiency_reasons": [],
+    "insufficiency_reasons": [
+      "incomplete_query_term_coverage",
+      "weak_query_term_coverage"
+    ],
+    "plan_limitations": [
+      "incomplete_query_term_coverage",
+      "weak_query_term_coverage"
+    ],
+    "local_synthesis_mode": "local_extractive",
+    "local_synthesis_abstained": true,
+    "local_synthesis_abstention_reasons": [
+      "incomplete_query_term_coverage",
+      "weak_query_term_coverage",
+      "no_supported_answer_section"
+    ],
+    "local_synthesis_answer_preview": "KHÔNG ĐỦ BẰNG CHỨNG: - Corpus được truy xuất không thiết lập được sự kiện hoặc quan hệ mà câu hỏi yêu cầu. - Cần nguồn trực tiếp (ví dụ: tài liệu quy trình, bản ghi hệ thống hoặc hàng dữ liệu có mục t"
+  }
+}
