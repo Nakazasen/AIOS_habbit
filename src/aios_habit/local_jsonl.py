@@ -10,6 +10,7 @@ import uuid
 from collections.abc import Callable, Iterable
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
+import time
 from typing import Any, TypeVar
 
 
@@ -108,7 +109,14 @@ def atomic_write_jsonl_batch(targets: Iterable[tuple[Path, Iterable[Any]]]) -> N
                 backup = path.with_name(f".{path.name}.{token}.bak")
                 shutil.copy2(path, backup)
                 backups.append((path, backup))
-            os.replace(temporary, path)
+            for _attempt in range(5):
+                try:
+                    os.replace(temporary, path)
+                    break
+                except (PermissionError, OSError):
+                    if _attempt == 4:
+                        raise
+                    time.sleep(0.05 * (2 ** _attempt))
             replaced.append((path, backup))
     except Exception:
         LOGGER.exception("Local JSONL persistence failed; attempting rollback")

@@ -611,6 +611,44 @@ def render_chat_bubble(
             from aios_habit import chat_interview_ui as _chat_interview_ui
             from aios_habit import chat_action_create_case as _chat_create_case
             raw_content = str(msg.content or "")
+            # Realtime LSU Alert detection (DESKTOP-LSU-ALERT-WIRE-HOME)
+            _is_realtime_alert = False
+            _is_can_bien = False
+            _alert_jig = ""
+            _alert_id = ""
+
+            _m_alert_marker = re.search(r"<!--\s*aios_realtime_alert:\s*(\{.*?\})\s*-->", raw_content, re.DOTALL)
+            if _m_alert_marker:
+                _is_realtime_alert = True
+                try:
+                    _alert_data = json.loads(_m_alert_marker.group(1))
+                    _alert_id = str(_alert_data.get("alert_id", "") or "")
+                    _alert_jig = str(_alert_data.get("jig_id", "—"))
+                    _alert_metric = str(_alert_data.get("metric", "—"))
+                    _alert_chi_tiet = str(_alert_data.get("chi_tiet", ""))
+                except Exception:
+                    _alert_jig = "—"
+                    _alert_metric = "—"
+                    _alert_chi_tiet = ""
+            elif "Cảnh báo realtime" in raw_content:
+                _is_realtime_alert = True
+                _lines = [l.strip() for l in raw_content.splitlines() if l.strip()]
+                _header_line = next((l for l in _lines if "Cảnh báo realtime" in l), "")
+                _m_match = re.search(
+                    r"Cảnh báo realtime\s*[—–-]\s*(?P<jig>.+?)\s*[—–-]\s*(?P<metric>[^\(\n]+?)(?:\s*\((?P<muc_do>.*?)\))?$",
+                    _header_line,
+                )
+                if _m_match:
+                    _alert_jig = _m_match.group("jig").strip()
+                    _alert_metric = _m_match.group("metric").strip()
+                else:
+                    _alert_jig = "—"
+                    _alert_metric = "—"
+                _detail_lines = [l for l in _lines if "Cảnh báo realtime" not in l and not l.startswith("<!--")]
+                _alert_chi_tiet = "\n".join(_detail_lines) if _detail_lines else ""
+            elif "Cần biến" in raw_content:
+                _is_can_bien = True
+
             # Interactive markers (interview session / suggestion feedback / case preview) are
             # rendered as widgets below; strip them from the markdown body.
             display_content = _chat_interview_ui.strip_interactive_markers(raw_content)
@@ -745,7 +783,19 @@ def render_chat_bubble(
                             else:
                                 st.warning(t("agent_factory_error_missing_result", locale=locale))
             else:
-                st.markdown(display_content)
+                if _is_realtime_alert:
+                    render_jig_realtime_alert_card(
+                        jig_id=_alert_jig,
+                        metric=_alert_metric,
+                        chi_tiet=_alert_chi_tiet,
+                        locale=locale,
+                        conversation_id=conversation_id,
+                        alert_id=_alert_id if _alert_id else (f"ALT-{msg.id}" if msg.id else f"ALT-{_alert_jig}-{_alert_metric}"),
+                    )
+                elif _is_can_bien:
+                    st.info(display_content)
+                else:
+                    st.markdown(display_content)
 
             # On-demand Evidence Graph Action (Commit C)
             if msg.trace_id and str(msg.trace_id).strip():
@@ -862,23 +912,24 @@ def render_chat_bubble(
                     message_id=str(msg.id or ""),
                 )
 
-            # Vong lap cai thien lien tuc: feedback cau tra loi ngay tren khung chat.
-            render_answer_feedback_row(
-                conversation_id=conversation_id,
-                message_id=str(msg.id or ""),
-                question=feedback_question,
-                answer=display_content,
-                locale=locale,
-            )
-            # DRAFT-APPROVAL (co duyet TAT mac dinh): 3 nut duyet ngay duoi
-            # cau tra loi ban thao, chi hien khi da mo khoa PIN.
-            render_draft_approval_row(
-                conversation_id=conversation_id,
-                message_id=str(msg.id or ""),
-                question=feedback_question,
-                answer=display_content,
-                locale=locale,
-            )
+            if not _is_realtime_alert and not _is_can_bien:
+                # Vong lap cai thien lien tuc: feedback cau tra loi ngay tren khung chat.
+                render_answer_feedback_row(
+                    conversation_id=conversation_id,
+                    message_id=str(msg.id or ""),
+                    question=feedback_question,
+                    answer=display_content,
+                    locale=locale,
+                )
+                # DRAFT-APPROVAL (co duyet TAT mac dinh): 3 nut duyet ngay duoi
+                # cau tra loi ban thao, chi hien khi da mo khoa PIN.
+                render_draft_approval_row(
+                    conversation_id=conversation_id,
+                    message_id=str(msg.id or ""),
+                    question=feedback_question,
+                    answer=display_content,
+                    locale=locale,
+                )
     else:
         st.info(msg.content)
 
@@ -1622,13 +1673,110 @@ def build_jig_realtime_card_data(jig_id: str, metric: str, chi_tiet: str) -> Dic
     return build_realtime_alert_card(jig_id, metric, chi_tiet)
 
 
-def render_jig_realtime_alert_card(jig_id: str, metric: str, chi_tiet: str, locale: str = "vi") -> None:
-    """Render prominent realtime alert card in Vietnamese (US12 T064)."""
+def render_alert_feedback_row(
+    *,
+    conversation_id: str,
+    alert_id: str,
+    jig_id: str,
+    metric: str,
+    chi_tiet: str = "",
+    locale: str = "vi",
+) -> None:
+    """Inline feedback row on the realtime alert card (DESKTOP-LSU-ALERT-WIRE-HOME).
+
+    Records ratings into local_cases/alert_feedback.jsonl.
+    Mandatory reason when rating is 'sai'.
+    """
+    from aios_habit.alert_feedback import (
+        get_alert_feedback,
+        record_alert_feedback,
+    )
+
+    if not alert_id:
+        return
+
+    key_base = f"wsc_alert_fb_{alert_id}"
+
+    existing = get_alert_feedback(conversation_id, alert_id) if conversation_id else None
+    if existing:
+        r_text = "ĐÚNG" if existing.get("rating") == "dung" else "SAI"
+        reason_note = f" (Lý do: {existing.get('reason')})" if existing.get("reason") else ""
+        st.caption(f"✓ Đã ghi nhận phản hồi: **{r_text}**{reason_note}")
+
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        if st.button("👍 Đúng", key=f"{key_base}_btn_dung", use_container_width=True):
+            res = record_alert_feedback(
+                conversation_id=conversation_id,
+                alert_id=alert_id,
+                jig_id=jig_id,
+                metric=metric,
+                rating="dung",
+                chi_tiet=chi_tiet,
+            )
+            if res.get("ok"):
+                st.session_state[f"{key_base}_status"] = "dung"
+                if hasattr(st, "rerun"):
+                    st.rerun()
+
+    with col2:
+        if st.button("👎 Sai", key=f"{key_base}_btn_sai", use_container_width=True):
+            st.session_state[f"{key_base}_open_reason"] = True
+            if hasattr(st, "rerun"):
+                st.rerun()
+
+    if st.session_state.get(f"{key_base}_open_reason"):
+        reason_val = st.text_input(
+            "Lý do cảnh báo chưa đúng (bắt buộc):",
+            key=f"{key_base}_reason_input",
+        )
+        if st.button("Gửi lý do", key=f"{key_base}_submit_reason", type="primary"):
+            cleaned_reason = str(reason_val or "").strip()
+            if not cleaned_reason:
+                st.warning("Bạn chê cảnh báo thì cho mình xin lý do để cải thiện nhé.")
+            else:
+                res = record_alert_feedback(
+                    conversation_id=conversation_id,
+                    alert_id=alert_id,
+                    jig_id=jig_id,
+                    metric=metric,
+                    rating="sai",
+                    reason=cleaned_reason,
+                    chi_tiet=chi_tiet,
+                )
+                if res.get("ok"):
+                    st.session_state[f"{key_base}_open_reason"] = False
+                    st.session_state[f"{key_base}_status"] = "sai"
+                    if hasattr(st, "rerun"):
+                        st.rerun()
+                else:
+                    st.warning(str(res.get("error_vi") or "Lưu phản hồi thất bại."))
+
+
+def render_jig_realtime_alert_card(
+    jig_id: str,
+    metric: str,
+    chi_tiet: str,
+    locale: str = "vi",
+    conversation_id: str = "",
+    alert_id: str = "",
+) -> None:
+    """Render prominent realtime alert card in Vietnamese (US12 T064, DESKTOP-LSU-ALERT-WIRE-HOME)."""
     card = build_jig_realtime_card_data(jig_id, metric, chi_tiet)
     tieu_de = t("jig_realtime_card_title", locale=locale, jig=card["ma_jig"], metric=card["thong_so"])
     st.error(tieu_de)
     st.write(card["chi_tiet"])
     st.caption(card["huong_dan"])
+
+    effective_alert_id = alert_id or f"ALT-{jig_id}-{metric}"
+    render_alert_feedback_row(
+        conversation_id=conversation_id,
+        alert_id=effective_alert_id,
+        jig_id=jig_id,
+        metric=metric,
+        chi_tiet=chi_tiet,
+        locale=locale,
+    )
 
 
 def build_jig_live_capsule_data(dang_ket_noi: bool, toc_do: float = 0.0, so_jig: int = 0) -> Dict[str, Any]:

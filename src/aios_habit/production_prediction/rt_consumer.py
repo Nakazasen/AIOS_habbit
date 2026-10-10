@@ -254,7 +254,21 @@ def chuyen_lo_thanh_the_da_qua_cong(
 
 def dinh_dang_text_chat_cho_the_realtime(the: Dict[str, Any]) -> str:
     """Render the canh bao realtime thanh text nam trong vung tra loi chat."""
+    alert_id = str(the.get("alert_id") or "").strip()
+    if not alert_id:
+        alert_id = f"ALT-{the.get('ma_jig', '—')}-{the.get('thong_so', '—')}".replace(" ", "_")
+    meta = {
+        "loai_the": "canh_bao_realtime",
+        "alert_id": alert_id,
+        "jig_id": str(the.get("ma_jig", "—")),
+        "metric": str(the.get("thong_so", "—")),
+        "muc_do": str(the.get("muc_do", "Cần kiểm tra")),
+        "chi_tiet": str(the.get("chi_tiet", "")),
+        "huong_dan": str(the.get("huong_dan", "")),
+    }
+    marker = f"<!-- aios_realtime_alert: {json.dumps(meta, ensure_ascii=False)} -->"
     dong = [
+        marker,
         "Cảnh báo realtime — %s — %s (%s)"
         % (the.get("ma_jig", "—"), the.get("thong_so", "—"), the.get("muc_do", "Cần kiểm tra")),
         str(the.get("chi_tiet", "")),

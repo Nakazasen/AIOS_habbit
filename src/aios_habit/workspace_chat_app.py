@@ -32,6 +32,13 @@ _WORKSPACE_AI_REQUEST_EXECUTOR = ThreadPoolExecutor(
     thread_name_prefix="workspace-ai-request",
 )
 
+# Realtime LSU alert pipeline service (DESKTOP-LSU-ALERT-WIRE-HOME)
+try:
+    from aios_habit.production_prediction.rt_app_wire import ensure_rt_alert_pipeline
+    ensure_rt_alert_pipeline()
+except Exception:
+    pass
+
 st.set_page_config(
     page_title="Hỏi tài liệu",
     layout="wide",
@@ -1006,6 +1013,11 @@ def _running_under_streamlit() -> bool:
 if _running_under_streamlit():
     try:
         ensure_workspace_chat_worker_warming()
+    except Exception:
+        pass
+    try:
+        from aios_habit.production_prediction.rt_app_wire import ensure_rt_alert_pipeline
+        ensure_rt_alert_pipeline()
     except Exception:
         pass
 
@@ -2954,6 +2966,11 @@ else:
                         request_delete_conversation_callback(active_nb_id, target_conv.id)
 
     if active_conversation:
+        try:
+            from aios_habit.production_prediction.rt_app_wire import set_active_rt_conversation
+            set_active_rt_conversation(active_conversation.id)
+        except Exception:
+            pass
         # Nén Ngữ Cảnh & Kế Thừa
         messages = load_messages(active_conversation.id)
         if len(messages) > 0:
@@ -4125,6 +4142,28 @@ else:
                     session_state=st.session_state,
                 )
                 st.caption(_idx_status_text)
+
+                try:
+                    from aios_habit.production_prediction.rt_app_wire import set_active_rt_conversation
+                    set_active_rt_conversation(active_conversation.id)
+                except Exception:
+                    pass
+
+                # Realtime alert auto-refresh watcher (DESKTOP-LSU-ALERT-WIRE-HOME)
+                @st.fragment(run_every=1.5)
+                def _rt_alert_live_watcher(conv_id: str, last_count: int) -> None:
+                    try:
+                        from aios_habit.workspace_chat_store import load_messages
+                        current_msgs = load_messages(conv_id)
+                        if len(current_msgs) > last_count:
+                            try:
+                                st.rerun(scope="app")
+                            except TypeError:
+                                st.rerun()
+                    except Exception:
+                        pass
+
+                _rt_alert_live_watcher(active_conversation.id, len(messages))
 
                 chat_container = st.container()
                 with chat_container:
