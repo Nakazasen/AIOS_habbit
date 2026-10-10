@@ -342,9 +342,29 @@ def _quyet_dinh_ve_bieu_do(
     text: str,
     chart_rows_provider: Optional[Callable[[], Any]],
     kho_nguong: Optional[KhoNguong] = None,
+    kho_log_path: str | Path = MAC_DINH_KHO_PATH,
 ) -> JigChatOutcome:
     """Handle a Vietnamese chart request with the shared builder (015)."""
     cac_hang = _cac_hang_ve(chart_rows_provider)
+    if not cac_hang and chart_rows_provider is None:
+        try:
+            from aios_habit.production_prediction.log_archive import doc_kho
+            kho_rows = doc_kho(kho_log_path)
+            if kho_rows:
+                cac_hang = [
+                    {
+                        "jig_id": r.jig_id,
+                        "unit_serial": r.unit_serial,
+                        "metric_name": r.metric_name,
+                        "value": r.value,
+                        "unit": r.unit,
+                        "event_time": str(r.ts or r.ghi_luc or ""),
+                    }
+                    for r in kho_rows
+                    if r.value is not None
+                ]
+        except Exception:
+            pass
     if not cac_hang:
         return JigChatOutcome(
             handled=True,
@@ -385,12 +405,21 @@ def _quyet_dinh_ve_bieu_do(
                 assistant_text="Không vẽ được biểu đồ lúc này. Vui lòng thử lại hoặc chọn chỉ số khác ở Thẻ 1.",
             )
         ten_loai = TEN_LOAI_BIEU_DO.get(ma_loai, ma_loai)
+        img_md = ""
+        if anh_chon:
+            try:
+                import base64
+                ma_hoa = base64.b64encode(anh_chon).decode("ascii")
+                img_md = f"\n\n![biểu đồ](data:image/png;base64,{ma_hoa})"
+            except Exception:
+                pass
         return JigChatOutcome(
             handled=True,
             assistant_text=(
                 "Đã chọn " + ten_loai + " cho " + meta_chon["ma_jig"] + " — "
                 + meta_chon["ten_chi_so"] + " (áp dụng ngay). "
                 "Ảnh đã lưu vào phiên để xem lại ở Thẻ 1 và dùng cho email cảnh báo."
+                + img_md
             ),
             chart_png=anh_chon,
             chart_meta=meta_chon,
@@ -449,6 +478,14 @@ def _quyet_dinh_ve_bieu_do(
             ghi_chu_thieu_nguong = "\n\n⚠️ " + huong_dan_thieu_nguong(lenh.ten_chi_so)
     except Exception:
         ghi_chu_thieu_nguong = ""
+    img_md = ""
+    if anh_bytes:
+        try:
+            import base64
+            ma_hoa = base64.b64encode(anh_bytes).decode("ascii")
+            img_md = f"\n\n![biểu đồ](data:image/png;base64,{ma_hoa})"
+        except Exception:
+            pass
     return JigChatOutcome(
         handled=True,
         assistant_text=(
@@ -456,6 +493,7 @@ def _quyet_dinh_ve_bieu_do(
             "Ảnh đã lưu vào phiên để xem lại ở Thẻ 1 và dùng cho email cảnh báo."
             + bang_so
             + ghi_chu_thieu_nguong
+            + img_md
         ),
         chart_png=anh_bytes,
         chart_meta={"ma_jig": lenh.ma_jig, "ten_chi_so": lenh.ten_chi_so,
@@ -843,7 +881,9 @@ def decide_jig_action(
             chart_meta=meta_canh_bao,
         )
     if is_chart_intent(text):
-        return _quyet_dinh_ve_bieu_do(text, chart_rows_provider, kho_nguong=kho)
+        return _quyet_dinh_ve_bieu_do(
+            text, chart_rows_provider, kho_nguong=kho, kho_log_path=kho_log_path
+        )
     tam_dung = is_stream_pause_intent(text)
     if tam_dung is not None:
         return JigChatOutcome(

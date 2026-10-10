@@ -43,6 +43,16 @@ DU_LIEU_THAT_LINUX = Path(
 
 
 def _duong_dan_that() -> Path | None:
+    repo_local = (
+        Path(__file__).resolve().parents[1]
+        / "Tài liệu của tất cả dòng máy"
+        / "Iris LSU"
+        / "thu nghiem 6pcs do thong so va log"
+        / "2ND-1002_JIG BEAM"
+        / "2026_08_Master.csv"
+    )
+    if repo_local.is_file():
+        return repo_local
     if DU_LIEU_THAT_WIN.is_file():
         return DU_LIEU_THAT_WIN
     if DU_LIEU_THAT_LINUX.is_file():

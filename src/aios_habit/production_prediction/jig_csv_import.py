@@ -26,6 +26,10 @@ from aios_habit.production_prediction.iris_log_adapter import (
     parse_dong_log_iris,
     thong_diep_thieu_cot,
 )
+from aios_habit.production_prediction.jigbeam_log_adapter import (
+    doc_log_jigbeam,
+    la_log_jigbeam,
+)
 from aios_habit.production_prediction.jig_log_ingest import parse_jig_log_line
 from aios_habit.production_prediction.log_archive import (
     MAC_DINH_KHO_PATH,
@@ -33,6 +37,7 @@ from aios_habit.production_prediction.log_archive import (
     ghi_ban_ghi,
     ghi_dong_log_jig,
 )
+from aios_habit.production_prediction.log_stream_ingest import nap_stream
 
 MAC_DINH_BANG_NHAP_TEP = Path("local_cases") / "jig_log_archive" / "bang_nhap_tep.json"
 
@@ -119,7 +124,12 @@ def nhap_tep_csv_log(
         )
     thong_tin = duong.stat()
     van_tay = tinh_van_tay_tep(duong)
-    bang = doc_bang_nhap_tep(bang_nhap_tep)
+    bang_tep_hien_tai = (
+        Path(kho) / "bang_nhap_tep.json"
+        if (bang_nhap_tep == MAC_DINH_BANG_NHAP_TEP and Path(kho) != MAC_DINH_KHO_PATH)
+        else Path(bang_nhap_tep)
+    )
+    bang = doc_bang_nhap_tep(bang_tep_hien_tai)
     khoa = _khoa_tep(duong)
     cu = bang.get(khoa)
     if (
@@ -145,8 +155,13 @@ def nhap_tep_csv_log(
     dong_dau = _dong_dau_tien(van_ban)
     if not dong_dau:
         raise ValueError("Tệp " + duong.name + " đang trống, không có gì để nhập.")
+    import csv as _csv
+    import io as _io
+    cac_cot_dong_dau = [str(c or "").strip() for c in next(_csv.reader(_io.StringIO(dong_dau)), [])]
     if la_dong_tieu_de_iris(dong_dau):
         ket_qua = _nhap_ma_tran_iris(duong, van_ban, kho, ghi_luc)
+    elif la_log_jigbeam(cac_cot_dong_dau):
+        ket_qua = _nhap_log_jigbeam(duong, van_ban, kho, ghi_luc)
     else:
         ket_qua = _nhap_dong_le(duong, van_ban, kho, ghi_luc)
     bang[khoa] = {
@@ -157,7 +172,7 @@ def nhap_tep_csv_log(
         "da_ghi": ket_qua.da_ghi,
         "thoi_gian": ket_qua.thoi_gian,
     }
-    luu_bang_nhap_tep(bang, bang_nhap_tep)
+    luu_bang_nhap_tep(bang, bang_tep_hien_tai)
     return ket_qua
 
 
@@ -186,6 +201,40 @@ def _nhap_ma_tran_iris(
     )
 
 
+def _nhap_log_jigbeam(
+    duong: Path, van_ban: str, kho: str | Path, ghi_luc: Optional[datetime]
+) -> NhapTepKetQua:
+    del van_ban
+    ket_qua_doc = doc_log_jigbeam(duong)
+    if ket_qua_doc.thieu_cot:
+        raise ValueError(
+            "Tệp " + duong.name + " không đúng định dạng log JIG BEAM: "
+            + ", ".join(ket_qua_doc.thieu_cot)
+        )
+    hop_le = ket_qua_doc.ban_ghi_hop_le()
+    if not hop_le:
+        raise ValueError(
+            "Tệp " + duong.name + " không có giá trị đo nào dùng được. "
+            "Các ô mang giá trị canh lỗi 999 (máy không đo được) đã bị bỏ qua."
+        )
+    luc = ghi_luc or datetime.now(VIETNAM_TZ)
+    ket_qua_ghi = nap_stream(
+        hop_le,
+        ghi_chunk=lambda dot: ghi_ban_ghi(
+            dot, nguon="tep", tep=str(duong), kho=kho, ghi_luc=luc
+        ),
+    )
+    return NhapTepKetQua(
+        ten_tep=duong.name,
+        dinh_dang="jigbeam_rong",
+        van_tay=tinh_van_tay_tep(duong),
+        da_ghi=int(ket_qua_ghi.get("da_ghi", 0)),
+        bo_qua_rong=int(ket_qua_ghi.get("bo_qua_rong", 0)),
+        bi_cat=int(ket_qua_ghi.get("bi_cat", 0)),
+        thoi_gian=luc.replace(microsecond=0).isoformat(),
+    )
+
+
 def _nhap_dong_le(
     duong: Path, van_ban: str, kho: str | Path, ghi_luc: Optional[datetime]
 ) -> NhapTepKetQua:
@@ -199,7 +248,8 @@ def _nhap_dong_le(
     if not cac_dong_log:
         raise ValueError(
             "Tệp " + duong.name + " không chứa dòng log JIG nào hệ thống hiểu được. "
-            "Hệ thống hiện nhận hai dạng: ma trận rộng Iris (có dòng tiêu đề) "
+            "Hệ thống hiện nhận ba dạng: ma trận rộng Iris (có dòng tiêu đề), "
+            "log JIG BEAM rộng (có dòng tiêu đề), "
             "hoặc dòng log 7 cột (thời điểm, mã Unit, mã JIG, tên thông số, "
             "giá trị, đơn vị, trạng thái)."
         )
@@ -225,9 +275,12 @@ def thong_diep_nhap_tep(ket_qua: NhapTepKetQua) -> str:
             "Tệp " + ket_qua.ten_tep + " đã nhập trước đó và nội dung không đổi, "
             "nên hệ thống bỏ qua để tránh ghi trùng."
         )
-    ten_dinh_dang = (
-        "ma trận rộng Iris" if ket_qua.dinh_dang == "iris_rong" else "dòng log riêng lẻ"
-    )
+    if ket_qua.dinh_dang == "jigbeam_rong":
+        ten_dinh_dang = "log JIG BEAM rộng"
+    elif ket_qua.dinh_dang == "iris_rong":
+        ten_dinh_dang = "ma trận rộng Iris"
+    else:
+        ten_dinh_dang = "dòng log riêng lẻ"
     dong = [
         "Đã nhập " + format(ket_qua.da_ghi, ",d") + " giá trị đo từ tệp "
         + ket_qua.ten_tep + " (" + ten_dinh_dang + ") vào kho log.",

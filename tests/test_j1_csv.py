@@ -33,9 +33,21 @@ from aios_habit.production_prediction.jig_csv_import import (
 )
 from aios_habit.production_prediction.log_archive import doc_kho
 
-DU_LIEU_THAT = Path(
-    "/home/hatch/workspace/aios_data/lsu/Iris LSU/thu nghiem 6pcs do thong so va log"
-    "/2ND-1035/IRIS_LSU_BOWSKEW_4_2026_08_Sub.csv"
+_LOCAL_IRIS = (
+    Path(__file__).resolve().parents[1]
+    / "Tài liệu của tất cả dòng máy"
+    / "Iris LSU"
+    / "thu nghiem 6pcs do thong so va log"
+    / "2ND-1035"
+    / "IRIS_LSU_BOWSKEW_4_2026_08_Sub.csv"
+)
+DU_LIEU_THAT = (
+    _LOCAL_IRIS
+    if _LOCAL_IRIS.is_file()
+    else Path(
+        "/home/hatch/workspace/aios_data/lsu/Iris LSU/thu nghiem 6pcs do thong so va log"
+        "/2ND-1035/IRIS_LSU_BOWSKEW_4_2026_08_Sub.csv"
+    )
 )
 co_du_lieu_that = pytest.mark.skipif(
     not DU_LIEU_THAT.is_file(), reason="Thieu du lieu log JIG that tren may nay"
@@ -308,3 +320,95 @@ def test_lenh_cau_hinh_bieu_do_gui_mail_khong_bi_ve_nham():
     assert ket_qua.handled
     assert ket_qua.chart_png is None
     assert "đính kèm vào mail" in ket_qua.assistant_text
+
+
+def test_nhap_tep_jigbeam_qua_chat(tmp_path):
+    kho = tmp_path / "kho"
+    tep = tmp_path / "2ND-1002_jigbeam_test.csv"
+    import csv
+    with tep.open("w", encoding="utf-8", newline="") as f:
+        w = csv.writer(f)
+        w.writerow([
+            "DATE", "TIME", "JigNumber", "S/N", "Mode", "TaktTime", "XyPosX_B", "XyPosY_B"
+        ] + [f"Cot_{i}" for i in range(15)])
+        w.writerow([
+            "2026/08/01", "6:03:59", "#1", "SN001", "Master", "145", "5644", "3319"
+        ] + ["1"] * 15)
+        w.writerow([
+            "2026/08/01", "6:05:39", "#1", "SN002", "Master", "89", "5650", "3320"
+        ] + ["2"] * 15)
+    ket_qua = decide_jig_action('nhập tệp log "%s"' % tep, kho_log_path=kho)
+    assert ket_qua.handled
+    assert "log JIG BEAM rộng" in ket_qua.assistant_text
+    cac_dong = doc_kho(kho)
+    assert len(cac_dong) > 0
+    assert any(d.jig_id == "2ND-1002" for d in cac_dong)
+
+    # Nhap lai tep cu -> bo qua
+    ket_qua2 = decide_jig_action('nhập tệp log "%s"' % tep, kho_log_path=kho)
+    assert "bỏ qua" in ket_qua2.assistant_text
+
+
+def test_jigbeam_phan_tich_va_ve_bieu_do_tu_kho(tmp_path):
+    kho = tmp_path / "kho"
+    tep = tmp_path / "2ND-1002_jigbeam_chart.csv"
+    import csv
+    with tep.open("w", encoding="utf-8", newline="") as f:
+        w = csv.writer(f)
+        w.writerow([
+            "DATE", "TIME", "JigNumber", "S/N", "Mode", "TaktTime", "XyPosX_B", "XyPosY_B"
+        ] + [f"Cot_{i}" for i in range(15)])
+        for i in range(10):
+            w.writerow([
+                "2026/08/01", f"6:0{i}:00", "#1", f"SN{i:03d}", "Master", str(100 + i), "5644", "3319"
+            ] + ["1"] * 15)
+    decide_jig_action('nhập tệp log "%s"' % tep, kho_log_path=kho)
+
+    # Phan tich log
+    res_pt = decide_jig_action("phân tích log 2ND-1002", kho_log_path=kho)
+    assert res_pt.handled
+    assert "10 bản ghi đo của 2ND-1002" in res_pt.assistant_text
+
+    # Chon bieu do ve ngay trong cau tra loi
+    res_chart = decide_jig_action(
+        "chọn biểu đồ phân bố cho 2ND-1002 ngay trong câu trả lời",
+        chart_rows_provider=None,  # Fallback to doc_kho
+        kho_log_path=kho,
+    )
+    assert res_chart.handled
+    assert res_chart.chart_png is not None
+    assert "![biểu đồ](data:image/png;base64," in res_chart.assistant_text
+
+
+def test_jigbeam_tep_that_2026_08_master(tmp_path):
+    tep_that = Path(
+        r"D:\Sandbox\AIOS_habbit\Tài liệu của tất cả dòng máy\Iris LSU\thu nghiem 6pcs do thong so va log"
+        r"\2ND-1002_JIG BEAM\2026_08_Master.csv"
+    )
+    if not tep_that.is_file():
+        pytest.skip("Không có tệp log thật trên máy này")
+    kho = tmp_path / "kho"
+
+    # 1. Nhap qua chat
+    ket_qua = decide_jig_action('nhập tệp log "%s"' % tep_that, kho_log_path=kho)
+    assert ket_qua.handled
+    assert "log JIG BEAM rộng" in ket_qua.assistant_text
+    assert "87,516 giá trị đo" in ket_qua.assistant_text
+
+    # 2. Yeu cau phan tich qua chat
+    res_pt = decide_jig_action("phân tích log 2ND-1002", kho_log_path=kho)
+    assert res_pt.handled
+    assert "132 bản ghi đo của 2ND-1002" in res_pt.assistant_text
+    assert "2 mã Unit" in res_pt.assistant_text
+
+    # 3. Yeu cau ve bieu do phan bo cho 2ND-1002 ngay trong cau tra loi
+    res_chart = decide_jig_action(
+        "chọn biểu đồ phân bố cho 2ND-1002 ngay trong câu trả lời",
+        chart_rows_provider=None,
+        kho_log_path=kho,
+    )
+    assert res_chart.handled
+    assert res_chart.chart_png is not None
+    assert "![biểu đồ](data:image/png;base64," in res_chart.assistant_text
+    assert "2ND-1002" in res_chart.assistant_text
+

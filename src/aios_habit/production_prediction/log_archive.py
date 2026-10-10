@@ -257,16 +257,26 @@ def bang_tom_tat_kho_van_ban(kho: str | Path = MAC_DINH_KHO_PATH) -> str:
             "hệ thống sẽ tự lưu lại để phân tích."
         )
     dong = [
-        "Kho log JIG đã lưu",
+        "Kho log JIG đã lưu (Phân tích dữ liệu đo):",
         "------------------------",
-        f"Số dòng: {tom_tat['so_dong']:,}",
+        f"Tổng số giá trị đo: {tom_tat['so_dong']:,}",
         f"Lần ghi mới nhất: {tom_tat['moi_nhat'] or '—'}",
         f"Mã JIG ({len(tom_tat['jig'])}): {', '.join(tom_tat['jig'][:6]) or '—'}",
-        f"Số Unit: {len(tom_tat['don_vi']):,}",
-        f"Chỉ số ({len(tom_tat['chi_so'])}): {', '.join(tom_tat['chi_so'][:6]) or '—'}",
-        "------------------------",
-        "Bạn có thể hỏi tiếp: kho log có gì, hoặc dán thêm dòng log để phân tích.",
     ]
+    cac_dong_kho = doc_kho(kho)
+    for j in tom_tat["jig"]:
+        cac_ban_ghi_jig = {(d.ts, d.unit_serial) for d in cac_dong_kho if d.jig_id == j and (d.ts or d.unit_serial)}
+        cac_unit_jig = {d.unit_serial for d in cac_dong_kho if d.jig_id == j and d.unit_serial}
+        if cac_ban_ghi_jig:
+            dong.append(f"  • {len(cac_ban_ghi_jig)} bản ghi đo của {j} ({len(cac_unit_jig)} mã Unit)")
+        elif cac_unit_jig:
+            dong.append(f"  • {len(cac_unit_jig)} bản ghi đo của {j} ({len(cac_unit_jig)} mã Unit)")
+    dong.extend([
+        f"Số Unit tổng cộng: {len(tom_tat['don_vi']):,}",
+        f"Chỉ số đo ({len(tom_tat['chi_so'])}): {', '.join(tom_tat['chi_so'][:6]) or '—'}",
+        "------------------------",
+        "Bạn có thể nhắn tiếp: chọn biểu đồ phân bố cho JIG vừa nạp, hoặc kiểm tra cảnh báo xu hướng.",
+    ])
     return "\n".join(dong)
 
 
@@ -320,8 +330,16 @@ def ghi_dong_log_jig(
 
 
 def la_lenh_kho_log(text: str) -> bool:
-    """True khi câu chat hỏi về kho log đã lưu."""
+    """True khi câu chat hỏi về kho log hoặc yêu cầu phân tích dữ liệu log đã lưu."""
     cau = (text or "").strip().lower()
     if not cau:
         return False
-    return "kho log" in cau or "log da luu" in cau or "lịch sử log" in cau or "lich su log" in cau
+    from aios_habit.chat_intent_router import _khong_dau
+    norm = _khong_dau(cau)
+    cac_hint = (
+        "kho log", "log da luu", "lich su log",
+        "phan tich log", "phan tich du lieu log", "phan tich jig",
+        "thong ke log", "thong ke du lieu", "kiem tra log",
+        "du lieu log", "du lieu jig",
+    )
+    return any(h in norm for h in cac_hint)

@@ -1639,6 +1639,8 @@ def _hang_ve_tu_lsu_gate() -> list:
     """Doc du lieu ve bieu do tu phien LSU gate (wsc_last_lsu_traces).
 
     Dung chung cho nhanh chart cua router chat-first va luong jig cu.
+    Neu phien LSU gate chua co, doc du lieu tu kho log archive de phuc vu
+    ve bieu do tu cac tep da nap qua chat.
     """
     try:
         traces_ve = st.session_state.get("wsc_last_lsu_traces")
@@ -1647,7 +1649,7 @@ def _hang_ve_tu_lsu_gate() -> list:
         elif isinstance(traces_ve, list):
             danh_sach = traces_ve
         else:
-            return []
+            danh_sach = []
         cac_hang: list = []
         for trace in danh_sach:
             for do_dac in getattr(trace, "jig_measurements", []) or []:
@@ -1659,7 +1661,24 @@ def _hang_ve_tu_lsu_gate() -> list:
                     "unit": getattr(do_dac, "unit", ""),
                     "event_time": str(getattr(do_dac, "event_time", "")),
                 })
-        return cac_hang
+        if cac_hang:
+            return cac_hang
+        from aios_habit.production_prediction.log_archive import doc_kho
+        kho_rows = doc_kho()
+        if kho_rows:
+            return [
+                {
+                    "jig_id": r.jig_id,
+                    "unit_serial": r.unit_serial,
+                    "metric_name": r.metric_name,
+                    "value": r.value,
+                    "unit": r.unit,
+                    "event_time": str(r.ts or r.ghi_luc or ""),
+                }
+                for r in kho_rows
+                if r.value is not None
+            ]
+        return []
     except Exception:
         return []
 

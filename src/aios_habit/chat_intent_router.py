@@ -66,6 +66,7 @@ _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
         VE_BIEU_DO,
         (
             "ve bieu do",
+            "chon bieu do",
         ),
     ),
     (

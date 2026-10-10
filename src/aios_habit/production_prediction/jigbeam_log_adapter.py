@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import csv
 import os
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -148,7 +149,9 @@ def _cot_do_jigbeam(tieu_de: Sequence[str]) -> List[int]:
     return [i for i in range(len(tieu_de)) if i not in bo_qua]
 
 
-def doc_log_jigbeam(duong_dan: str | Path) -> KetQuaDocJigBeam:
+def doc_log_jigbeam(
+    duong_dan: str | Path, jig_id: str = ""
+) -> KetQuaDocJigBeam:
     """Doc tep log JIG BEAM thanh danh sach ban ghi chuan (da bo canh loi)."""
     path = Path(duong_dan)
     ket_qua = KetQuaDocJigBeam()
@@ -178,16 +181,20 @@ def doc_log_jigbeam(duong_dan: str | Path) -> KetQuaDocJigBeam:
         ket_qua.thieu_cot.append("DATE/TIME/SERIAL NUMBER")
         return ket_qua
     cot_do = _cot_do_jigbeam(tieu_de)
-    jig_ma_dinh = path.stem
+    m_jig = re.search(r"(2ND-\d+)", str(path))
+    jig_tu_path = jig_id or (m_jig.group(1) if m_jig else "")
+    jig_ma_dinh = jig_tu_path or path.stem
     for dong in cac_dong[1:]:
         unit_serial = (dong[i_serial] or "").strip() if i_serial < len(dong) else ""
         if not unit_serial:
             continue
         ngay = (dong[i_ngay] or "").strip() if i_ngay < len(dong) else ""
         gio = (dong[i_gio] or "").strip() if i_gio < len(dong) else ""
-        jig_id = (dong[i_jig] or "").strip() if i_jig is not None and i_jig < len(dong) else ""
-        if not jig_id:
-            jig_id = jig_ma_dinh
+        jig_id_hang = (dong[i_jig] or "").strip() if i_jig is not None and i_jig < len(dong) else ""
+        if not jig_id_hang or jig_id_hang.startswith("#"):
+            jig_id_cuoi = jig_tu_path or jig_id_hang or jig_ma_dinh
+        else:
+            jig_id_cuoi = jig_tu_path or jig_id_hang or jig_ma_dinh
         nhan = (dong[i_ket_qua] or "").strip().upper() if i_ket_qua is not None and i_ket_qua < len(dong) else ""
         if nhan not in ("OK", "NG"):
             nhan = "UNKNOWN" if not nhan else nhan
@@ -207,7 +214,7 @@ def doc_log_jigbeam(duong_dan: str | Path) -> KetQuaDocJigBeam:
                 continue
             ket_qua.ban_ghi.append(
                 BanGhiJigBeam(
-                    unit_serial=unit_serial, ngay=ngay, gio=gio, jig_id=jig_id,
+                    unit_serial=unit_serial, ngay=ngay, gio=gio, jig_id=jig_id_cuoi,
                     metric_name=ten_chi_so, value=gia_tri,
                     target_label=nhan,
                 )
