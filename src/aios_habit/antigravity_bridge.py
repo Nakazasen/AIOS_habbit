@@ -1074,35 +1074,35 @@ def route_workspace_chat_submission(
     if was_cancelled():
         return (False, "", None, "Đã dừng yêu cầu AI.")
 
-    if backend not in {"gemini_web", "cagent_api", "nakazasen_router"}:
+    if backend not in {"gemini_web", "cagent_api", "nakazasen_router", "local"}:
         return (False, "", None, "Lựa chọn cầu nối AI không hợp lệ.")
 
+    from aios_habit.ai_lane import backend_label_vi
     from aios_habit.workspace_chat_connector_guard import image_files_blocked_message
 
-    blocked_images = image_files_blocked_message(backend, packed_sources)
-    if blocked_images:
-        return (False, "", None, blocked_images)
-
-    if backend == "cagent_api":
+    def _try_cagent_api() -> tuple[bool, str, dict[str, Any] | None, str | None]:
+        nonlocal evidence_items
+        from aios_habit.cagent_api import DEFAULT_CAGENT_API_URL, call_cagent_prediction
         endpoint = (
             str(cagent_endpoint_url or "").strip()
             or os.environ.get("AIOS_CAGENT_API_URL", "").strip()
-            or "https://kdtvn-ai.cmcts.vn/api/v1/prediction/1881aa32-c996-4e6f-9257-78246177ba9f"
+            or DEFAULT_CAGENT_API_URL
         )
-        from aios_habit.cagent_api import call_cagent_prediction
         from aios_habit.workspace_chat_ai_answer import (
             MEMORY_CONSENT_RECONFIRM_MESSAGE,
             _cap_and_pack_sources,
             _get_ai_disclaimer,
             build_workspace_ai_prompt,
             memory_consent_requires_reconfirmation,
+            recall_memory_for_answer,
+            WorkspaceAIAnswerRequest as _MemReq,
+            memory_badge_fields,
         )
+        from aios_habit.workspace_memory_service import get_workspace_memory_enabled_preference
 
         if retrieval_applied and retrieved_sources:
             candidate_sources = tuple(retrieved_sources)
         else:
-            # Không có nguồn đính kèm: nhóm ứng viên rỗng (trước đây tham chiếu
-            # biến chưa gán -> UnboundLocalError khi packed_sources rỗng).
             raw_pool = packed_sources if packed_sources else ()
             lex_evidence, lex_sources = _extract_top_chunks_lexical(question, raw_pool)
             if lex_sources:
@@ -1119,10 +1119,6 @@ def route_workspace_chat_submission(
         if not prompt_sources and candidate_sources:
             prompt_sources = list(candidate_sources[:5])
 
-        from aios_habit.workspace_chat_ai_answer import recall_memory_for_answer
-        from aios_habit.workspace_chat_ai_answer import WorkspaceAIAnswerRequest as _MemReq
-        from aios_habit.workspace_memory_service import get_workspace_memory_enabled_preference
-
         memory_result = None
         if get_workspace_memory_enabled_preference():
             memory_result = recall_memory_for_answer(
@@ -1136,6 +1132,7 @@ def route_workspace_chat_submission(
             )
         if memory_consent_requires_reconfirmation(memory_result, consent_memory_fingerprint):
             return (False, "", None, MEMORY_CONSENT_RECONFIRM_MESSAGE)
+
         system_prompt, user_prompt = build_workspace_ai_prompt(
             question,
             prompt_sources,
@@ -1149,15 +1146,18 @@ def route_workspace_chat_submission(
         if wire_reference is not None:
             system_prompt = f"{system_prompt}\n\n{wire_reference.system_note}"
             user_prompt = f"{wire_reference.prompt_block}\n\n{user_prompt}"
+
+        cagent_timeout = int(os.environ.get("AIOS_CAGENT_TIMEOUT_SECONDS", "20"))
         cagent_res = call_cagent_prediction(
             endpoint,
             system_prompt=system_prompt,
             user_prompt=user_prompt,
+            timeout_seconds=cagent_timeout,
             cancellation_event=cancellation_event,
         )
         if was_cancelled():
             return (False, "", None, "Đã dừng yêu cầu AI.")
-        if not cagent_res.ok:
+        if not cagent_res.ok or not str(cagent_res.text or "").strip():
             return (False, "", None, cagent_res.error_message or "C-AGENT API không trả về câu trả lời.")
 
         disclaimer = _get_ai_disclaimer(answer_language)
@@ -1225,12 +1225,11 @@ def route_workspace_chat_submission(
             "evidence_items": evidence_items,
             "trace_id": trace.trace_id,
         }
-        from aios_habit.workspace_chat_ai_answer import memory_badge_fields
-
         badge.update(memory_badge_fields(memory_result))
         return (True, f"Đã nhận câu trả lời từ {provider_name}.", badge, None)
 
-    if backend == "nakazasen_router":
+    def _try_nakazasen_router() -> tuple[bool, str, dict[str, Any] | None, str | None]:
+        nonlocal evidence_items
         request = WorkspaceAIAnswerRequest(
             conversation_id=conversation_id,
             question=question,
@@ -1264,164 +1263,133 @@ def route_workspace_chat_submission(
             cleaned_check = clean_assistant_answer(result.answer_text)
             if not cleaned_check or is_system_prompt_leak(result.answer_text):
                 LOGGER.warning("Antigravity Bridge phát hiện rò rỉ prompt hệ thống hoặc đáp án rỗng; vô hiệu hóa kết quả router")
-                from dataclasses import replace
-                result = replace(result, ok=False, answer_text="", error_message="Đáp án AI không hợp lệ do chứa rò rỉ prompt hệ thống.")
+                return (False, "", None, "Đáp án AI không hợp lệ do chứa rò rỉ prompt hệ thống.")
 
-        if not result.ok:
-            has_local_answer = bool(
-                isinstance(local_synthesis, Mapping)
-                and str(local_synthesis.get("answer", "") or "").strip()
+            user_msg = _get_or_create_user_message(conversation_id, user_raw_input, reuse_message_id=user_message_id)
+            assistant_msg_id = f"MSG-{uuid.uuid4().hex[:8].upper()}"
+            from aios_habit.workspace_chat_store import (
+                load_conversation,
+                load_conversation_source_selections,
+                save_evidence_trace,
             )
-            if _local_fallback_available(local_synthesis) or has_local_answer:
-                local_answer = str((local_synthesis or {}).get("answer", "") or "").strip()
-                local_citation_ids = [str(c) for c in ((local_synthesis or {}).get("citation_ids") or ())]
-                cited_set = set(local_citation_ids)
-                cited_items = [
-                    item for item in (evidence_items or [])
-                    if str((item or {}).get("citation_id", "")).strip() in cited_set
-                ] if cited_set else list(evidence_items or [])
-                if not cited_items:
-                    cited_items = list(evidence_items or [])
+            from aios_habit.evidence_trace import build_evidence_trace_from_citations
 
+            selections = load_conversation_source_selections(conversation_id)
+            allowed_source_ids = [item.source_id for item in selections if item.enabled] if selections else None
+            conversation = load_conversation(conversation_id)
+            ui_locale = getattr(conversation, "ui_locale", "vi") if conversation else "vi"
+            effective_prov = getattr(result, "effective_provider", "")
+            effective_mod = getattr(result, "effective_model", "")
+            provider_name = effective_prov or "Nakazasen Router"
+            model_name = effective_mod or "configured_by_provider"
+            final_answer = clean_assistant_answer(result.answer_text) or result.answer_text
+            trace = build_evidence_trace_from_citations(
+                query=question,
+                answer_text=final_answer,
+                evidence_items=evidence_items,
+                allowed_source_ids=allowed_source_ids,
+                notebook_id=notebook_id,
+                conversation_id=conversation_id,
+                user_message_id=user_msg.id,
+                assistant_message_id=assistant_msg_id,
+                ui_locale=ui_locale,
+                answer_language=answer_language,
+                provenance={
+                    "operational_mode": "external_api",
+                    "provider_name": provider_name,
+                    "model_name": model_name,
+                },
+            )
+            save_evidence_trace(trace)
+            save_message(ChatMessage(
+                id=assistant_msg_id,
+                conversation_id=conversation_id,
+                role="assistant",
+                content=final_answer,
+                trace_id=trace.trace_id,
+            ))
+            source_titles = [
+                (item.get("title", "") if isinstance(item, dict) else getattr(item, "title", ""))
+                for item in evidence_items
+            ]
+            badge = {
+                "conversation_id": conversation_id,
+                "type": "ai_answered",
+                "source_count": len(source_titles),
+                "source_titles": source_titles,
+                "ai_source": provider_name,
+                "bridge": provider_name,
+                "provider": provider_name,
+                "model_tool_name": model_name,
+                "verified_model": model_name,
+                "operational_mode": "external_api",
+                "retrieval_summary": retrieval_summary,
+                "evidence_items": evidence_items,
+                "trace_id": trace.trace_id,
+                "memory_titles": result.memory_titles,
+                "memory_consent_fingerprint": result.memory_consent_fingerprint,
+            }
+            return (True, f"Đã nhận câu trả lời từ {provider_name}.", badge, None)
+
+        return (False, "", None, result.error_message or "Nakazasen Router không trả về câu trả lời.")
+
+    def _try_gemini_direct() -> tuple[bool, str, dict[str, Any] | None, str | None]:
+        nonlocal evidence_items
+        health = health_status or get_antigravity_bridge_health()
+        if not health.is_direct_ready:
+            if health.is_handoff_ready or health.is_available:
+                if was_cancelled():
+                    return (False, "", None, "Đã dừng yêu cầu AI.")
                 user_msg = _get_or_create_user_message(conversation_id, user_raw_input, reuse_message_id=user_message_id)
-                assistant_msg_id = f"MSG-{uuid.uuid4().hex[:8].upper()}"
-                from aios_habit.workspace_chat_store import (
-                    load_conversation,
-                    load_conversation_source_selections,
-                    save_evidence_trace,
-                )
-                from aios_habit.evidence_trace import build_evidence_trace_from_citations
-
-                selections = load_conversation_source_selections(conversation_id)
-                allowed_source_ids = [item.source_id for item in selections if item.enabled] if selections else None
-                conversation = load_conversation(conversation_id)
-                ui_locale = getattr(conversation, "ui_locale", "vi") if conversation else "vi"
-
-                trace = build_evidence_trace_from_citations(
-                    query=question,
-                    answer_text=local_answer,
-                    evidence_items=cited_items,
-                    allowed_source_ids=allowed_source_ids,
-                    notebook_id=notebook_id,
-                    conversation_id=conversation_id,
-                    user_message_id=user_msg.id,
-                    assistant_message_id=assistant_msg_id,
-                    ui_locale=ui_locale,
-                    answer_language=answer_language,
-                    provenance={
-                        "operational_mode": LOCAL_GROUNDED_FALLBACK_MODE,
-                        "provider_name": LOCAL_GROUNDED_FALLBACK_PROVIDER,
-                        "model_name": LOCAL_GROUNDED_FALLBACK_MODE,
-                    },
-                )
-                save_evidence_trace(trace)
-                save_message(ChatMessage(
-                    id=assistant_msg_id,
+                assistant_msg = ChatMessage(
+                    id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
                     conversation_id=conversation_id,
                     role="assistant",
-                    content=local_answer,
-                    trace_id=trace.trace_id,
-                ))
-                source_titles = [
-                    (item.get("title", "") if isinstance(item, dict) else getattr(item, "title", ""))
-                    for item in cited_items
-                ]
-                badge = {
-                    "conversation_id": conversation_id,
-                    "type": "ai_answered",
-                    "source_count": len(source_titles),
-                    "source_titles": source_titles,
-                    "ai_source": LOCAL_GROUNDED_FALLBACK_PROVIDER,
-                    "bridge": "Nakazasen Router",
-                    "provider": LOCAL_GROUNDED_FALLBACK_PROVIDER,
-                    "model_tool_name": "",
-                    "verified_model": LOCAL_GROUNDED_FALLBACK_MODE,
-                    "operational_mode": LOCAL_GROUNDED_FALLBACK_MODE,
-                    "retrieval_summary": retrieval_summary,
-                    "evidence_items": evidence_items,
-                    "trace_id": trace.trace_id,
-                    "memory_titles": getattr(result, "memory_titles", ()),
-                    "memory_consent_fingerprint": getattr(result, "memory_consent_fingerprint", ""),
-                    "fallback_used": True,
-                }
-                return (
-                    True,
-                    "Đã trả lời bằng dữ liệu trích xuất cục bộ (dịch vụ AI bên ngoài không phản hồi).",
-                    badge,
-                    None,
+                    content="⏳ Đang chờ Antigravity IDE xử lý...",
                 )
+                save_message(assistant_msg)
+                from aios_habit.case_models import EvidenceItem
+                ev_models = []
+                for idx, ev in enumerate(evidence_items, start=1):
+                    if isinstance(ev, EvidenceItem):
+                        ev_models.append(ev)
+                    else:
+                        ev_models.append(
+                            EvidenceItem(
+                                evidence_id=ev.get("evidence_id", f"EVD-{idx}"),
+                                case_id=conversation_id,
+                                source_type=ev.get("source_type", "plain_text"),
+                                source_path=ev.get("source_path", ""),
+                                title=ev.get("title", f"Nguồn {idx}"),
+                                extracted_text=ev.get("text", ev.get("snippet", "")),
+                                privacy_level=ev.get("privacy_level", "cloud_allowed"),
+                            )
+                        )
+                try:
+                    write_res = write_ide_handoff_bundle(
+                        case_id=conversation_id,
+                        question=question,
+                        bundle_scope="current_question_retrieval_plus_full_scope_manifest",
+                        evidence_items=ev_models,
+                        owner_note=f"Sổ: {notebook_id} | Hội thoại: {conversation_id}",
+                        target_model_tool_name="Antigravity IDE AI",
+                        root=handoff_root,
+                        answer_language=answer_language,
+                    )
+                    if getattr(write_res, "ok", True):
+                        outbox_path = getattr(write_res, "outbox_dir", getattr(write_res, "bundle_dir", None))
+                        badge = {
+                            "conversation_id": conversation_id,
+                            "type": "handoff_pending",
+                            "request_id": write_res.request_id,
+                            "outbox_dir": str(outbox_path) if outbox_path else "",
+                        }
+                        return (True, f"Đã tạo yêu cầu chuyển giao Antigravity IDE (Mã: {write_res.request_id}).", badge, None)
+                    return (False, "", None, getattr(write_res, "error_message", "Handoff error"))
+                except Exception as exc:
+                    return (False, "", None, str(exc))
+            return (False, "", None, "Cầu nối Antigravity IDE không sẵn sàng.")
 
-            return (False, "", None, result.error_message or "Cầu nối AI không trả về câu trả lời.")
-
-        user_msg = _get_or_create_user_message(conversation_id, user_raw_input, reuse_message_id=user_message_id)
-        assistant_msg_id = f"MSG-{uuid.uuid4().hex[:8].upper()}"
-        from aios_habit.workspace_chat_store import (
-            load_conversation,
-            load_conversation_source_selections,
-            save_evidence_trace,
-        )
-        from aios_habit.evidence_trace import build_evidence_trace_from_citations
-
-        selections = load_conversation_source_selections(conversation_id)
-        allowed_source_ids = [item.source_id for item in selections if item.enabled] if selections else None
-        conversation = load_conversation(conversation_id)
-        ui_locale = getattr(conversation, "ui_locale", "vi") if conversation else "vi"
-        effective_prov = getattr(result, "effective_provider", "")
-        effective_mod = getattr(result, "effective_model", "")
-        provider_name = effective_prov or ("C-AGENT API" if backend == "cagent_api" else "Nakazasen Router")
-        model_name = effective_mod or "configured_by_provider"
-        final_answer = clean_assistant_answer(result.answer_text) or result.answer_text
-        trace = build_evidence_trace_from_citations(
-            query=question,
-            answer_text=final_answer,
-            evidence_items=evidence_items,
-            allowed_source_ids=allowed_source_ids,
-            notebook_id=notebook_id,
-            conversation_id=conversation_id,
-            user_message_id=user_msg.id,
-            assistant_message_id=assistant_msg_id,
-            ui_locale=ui_locale,
-            answer_language=answer_language,
-            provenance={
-                "operational_mode": "external_api",
-                "provider_name": provider_name,
-                "model_name": model_name,
-            },
-        )
-        save_evidence_trace(trace)
-        save_message(ChatMessage(
-            id=assistant_msg_id,
-            conversation_id=conversation_id,
-            role="assistant",
-            content=final_answer,
-            trace_id=trace.trace_id,
-        ))
-        source_titles = [
-            (item.get("title", "") if isinstance(item, dict) else getattr(item, "title", ""))
-            for item in evidence_items
-        ]
-        badge = {
-            "conversation_id": conversation_id,
-            "type": "ai_answered",
-            "source_count": len(source_titles),
-            "source_titles": source_titles,
-            "ai_source": provider_name,
-            "bridge": provider_name,
-            "provider": provider_name,
-            "model_tool_name": model_name,
-            "verified_model": model_name,
-            "operational_mode": "external_api",
-            "retrieval_summary": retrieval_summary,
-            "evidence_items": evidence_items,
-            "trace_id": trace.trace_id,
-            "memory_titles": result.memory_titles,
-            "memory_consent_fingerprint": result.memory_consent_fingerprint,
-        }
-        return (True, f"Đã nhận câu trả lời từ {provider_name}.", badge, None)
-
-    health = health_status or get_antigravity_bridge_health()
-
-    if health.is_direct_ready:
         synth_topk = get_synth_context_topk()
         selected_evidence, entity_telemetry = select_entity_conditional_context(
             question=question,
@@ -1498,31 +1466,22 @@ def route_workspace_chat_submission(
 
             if direct_res.ok:
                 user_msg = _get_or_create_user_message(conversation_id, user_raw_input, reuse_message_id=user_message_id)
-
                 assistant_msg_id = f"MSG-{uuid.uuid4().hex[:8].upper()}"
-
                 from aios_habit.workspace_chat_store import (
                     load_conversation,
                     load_conversation_source_selections,
                     save_evidence_trace,
                 )
                 from aios_habit.evidence_trace import build_evidence_trace_from_citations
-
                 all_selections = load_conversation_source_selections(conversation_id)
-                if all_selections:
-                    allowed_source_ids = [s.source_id for s in all_selections if s.enabled]
-                else:
-                    allowed_source_ids = None
-
+                allowed_source_ids = [s.source_id for s in all_selections if s.enabled] if all_selections else None
                 conv = load_conversation(conversation_id)
                 ui_locale = getattr(conv, "ui_locale", "vi") if conv else "vi"
-
                 provenance = {
                     "operational_mode": "direct",
                     "provider_name": "Gemini Web Stream",
                     "model_name": "verified_gemini_stream",
                 }
-
                 trace = build_evidence_trace_from_citations(
                     query=question,
                     answer_text=direct_res.answer_text,
@@ -1537,7 +1496,6 @@ def route_workspace_chat_submission(
                     provenance=provenance,
                 )
                 save_evidence_trace(trace)
-
                 assistant_msg = ChatMessage(
                     id=assistant_msg_id,
                     conversation_id=conversation_id,
@@ -1546,7 +1504,6 @@ def route_workspace_chat_submission(
                     trace_id=trace.trace_id,
                 )
                 save_message(assistant_msg)
-
                 source_titles = [
                     (ev.get("title", "") if isinstance(ev, dict) else getattr(ev, "title", ""))
                     for ev in evidence_items
@@ -1574,109 +1531,157 @@ def route_workspace_chat_submission(
                 }
                 badge.update(memory_badge_fields(memory_result))
                 return (True, "Đã nhận câu trả lời từ Antigravity IDE (Direct) thành công.", badge, None)
-            else:
-                # Strict Fail-Closed: Never fallback to Smart Router
-                return (False, "", None, f"Lỗi cầu nối Antigravity IDE: {direct_res.error_message}")
+            return (False, "", None, f"Lỗi cầu nối Antigravity IDE: {direct_res.error_message}")
         except Exception as exc:
-            # Strict Fail-Closed on direct crash: Never fallback to Smart Router
             return (False, "", None, f"Lỗi cầu nối Antigravity IDE: {sanitize_reason(str(exc))}")
 
-    elif health.is_handoff_ready or health.is_available:
-        if was_cancelled():
-            return (False, "", None, "Đã dừng yêu cầu AI.")
+    def _try_local_fallback() -> tuple[bool, str, dict[str, Any] | None, str | None]:
+        nonlocal evidence_items
+        has_local_answer = bool(
+            isinstance(local_synthesis, Mapping)
+            and str(local_synthesis.get("answer", "") or "").strip()
+        )
+        if has_local_answer:
+            local_answer = str((local_synthesis or {}).get("answer", "") or "").strip()
+            local_citation_ids = [str(c) for c in ((local_synthesis or {}).get("citation_ids") or ())]
+            cited_set = set(local_citation_ids)
+            cited_items = [
+                item for item in (evidence_items or [])
+                if str((item or {}).get("citation_id", "")).strip() in cited_set
+            ] if cited_set else list(evidence_items or [])
+            if not cited_items:
+                cited_items = list(evidence_items or [])
+        else:
+            cited_items = list(evidence_items[:5]) if evidence_items else []
+            lines = []
+            if "[Nội dung chữ đọc được từ ảnh đính kèm" in question:
+                ocr_raw = question.split("[Nội dung chữ đọc được từ ảnh đính kèm", 1)[1]
+                if "]:" in ocr_raw:
+                    ocr_raw = ocr_raw.split("]:", 1)[1]
+                lines.append(f"Dữ liệu đọc được từ ảnh đính kèm:\n\n{ocr_raw.strip()}\n")
+            if cited_items:
+                lines.append("Dựa trên các trích đoạn tài liệu đã tìm kiếm:\n")
+                for idx, itm in enumerate(cited_items, 1):
+                    t_title = (itm.get("title") if isinstance(itm, dict) else getattr(itm, "title", f"Nguồn {idx}")) or f"Nguồn {idx}"
+                    t_text = (itm.get("text") or itm.get("snippet", "") if isinstance(itm, dict) else getattr(itm, "text", "")) or ""
+                    t_snip = t_text.strip()[:400].replace("\n", " ")
+                    lines.append(f"[{idx}] **{t_title}**:\n{t_snip}")
+                lines.append("\n*(Ghi chú: Dịch vụ AI bên ngoài không phản hồi hoặc đã quá thời gian chờ; câu trả lời được trích xuất trực tiếp từ tài liệu nội bộ đã kiểm chứng.)*")
+            elif not lines:
+                lines.append("Không tìm thấy dữ liệu trích xuất phù hợp trong kho tài liệu để trả lời câu hỏi này.")
+            local_answer = "\n\n".join(lines)
+
         user_msg = _get_or_create_user_message(conversation_id, user_raw_input, reuse_message_id=user_message_id)
-        assistant_msg = ChatMessage(
-            id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
+        assistant_msg_id = f"MSG-{uuid.uuid4().hex[:8].upper()}"
+        from aios_habit.workspace_chat_store import (
+            load_conversation,
+            load_conversation_source_selections,
+            save_evidence_trace,
+        )
+        from aios_habit.evidence_trace import build_evidence_trace_from_citations
+
+        selections = load_conversation_source_selections(conversation_id)
+        allowed_source_ids = [item.source_id for item in selections if item.enabled] if selections else None
+        conversation = load_conversation(conversation_id)
+        ui_locale = getattr(conversation, "ui_locale", "vi") if conversation else "vi"
+
+        trace = build_evidence_trace_from_citations(
+            query=question,
+            answer_text=local_answer,
+            evidence_items=cited_items,
+            allowed_source_ids=allowed_source_ids,
+            notebook_id=notebook_id,
+            conversation_id=conversation_id,
+            user_message_id=user_msg.id,
+            assistant_message_id=assistant_msg_id,
+            ui_locale=ui_locale,
+            answer_language=answer_language,
+            provenance={
+                "operational_mode": LOCAL_GROUNDED_FALLBACK_MODE,
+                "provider_name": LOCAL_GROUNDED_FALLBACK_PROVIDER,
+                "model_name": LOCAL_GROUNDED_FALLBACK_MODE,
+            },
+        )
+        save_evidence_trace(trace)
+        save_message(ChatMessage(
+            id=assistant_msg_id,
             conversation_id=conversation_id,
             role="assistant",
-            content="⏳ Đang chờ Antigravity IDE xử lý...",
+            content=local_answer,
+            trace_id=trace.trace_id,
+        ))
+        source_titles = [
+            (item.get("title", "") if isinstance(item, dict) else getattr(item, "title", ""))
+            for item in cited_items
+        ]
+        badge = {
+            "conversation_id": conversation_id,
+            "type": "ai_answered",
+            "source_count": len(source_titles),
+            "source_titles": source_titles,
+            "ai_source": LOCAL_GROUNDED_FALLBACK_PROVIDER,
+            "bridge": "Trích xuất cục bộ",
+            "provider": LOCAL_GROUNDED_FALLBACK_PROVIDER,
+            "model_tool_name": "",
+            "verified_model": LOCAL_GROUNDED_FALLBACK_MODE,
+            "operational_mode": LOCAL_GROUNDED_FALLBACK_MODE,
+            "retrieval_summary": retrieval_summary,
+            "evidence_items": evidence_items,
+            "trace_id": trace.trace_id,
+            "fallback_used": True,
+        }
+        return (
+            True,
+            "Đã trả lời bằng dữ liệu trích xuất cục bộ (dịch vụ AI bên ngoài không phản hồi).",
+            badge,
+            None,
         )
-        save_message(assistant_msg)
 
-        from aios_habit.case_models import EvidenceItem
-        ev_models = []
-        for idx, ev in enumerate(evidence_items, start=1):
-            if isinstance(ev, EvidenceItem):
-                ev_models.append(ev)
-            else:
-                ev_models.append(
-                    EvidenceItem(
-                        evidence_id=ev.get("evidence_id", f"EVD-{idx}"),
-                        case_id=conversation_id,
-                        source_type=ev.get("source_type", "plain_text"),
-                        source_path=ev.get("source_path", ""),
-                        title=ev.get("title", f"Nguồn {idx}"),
-                        extracted_text=ev.get("text", ev.get("snippet", "")),
-                        privacy_level=ev.get("privacy_level", "cloud_allowed"),
-                    )
-                )
-        if not ev_models and packed_sources:
-            for idx, s in enumerate(packed_sources[:5], start=1):
-                title_s = getattr(s, "title", f"Nguồn {idx}")
-                text_s = getattr(s, "text", "")
-                if text_s:
-                    ev_models.append(
-                        EvidenceItem(
-                            evidence_id=f"SRC-FALLBACK-{idx}",
-                            case_id=conversation_id,
-                            source_type=getattr(s, "source_type", "plain_text"),
-                            source_path="",
-                            title=title_s,
-                            extracted_text=text_s[:2500],
-                            privacy_level=getattr(s, "privacy_label", "cloud_allowed"),
-                        )
-                    )
+    # Determine backend execution and transition chain
+    chain: list[str] = []
+    if backend == "local":
+        chain = ["local"]
+    elif backend == "gemini_web":
+        chain = ["gemini_web", "nakazasen_router", "local"]
+    elif backend == "cagent_api":
+        chain = ["cagent_api", "nakazasen_router", "local"]
+    elif backend == "nakazasen_router":
+        chain = ["nakazasen_router", "local"]
+    else:
+        chain = [backend, "nakazasen_router", "local"]
+
+    for candidate in chain:
+        if was_cancelled():
+            return (False, "", None, "Đã dừng yêu cầu AI.")
+
+        blocked = image_files_blocked_message(candidate, packed_sources)
+        if blocked:
+            LOGGER.warning("Backend %s blocks image files; skipping in failover chain", candidate)
+            continue
 
         try:
-            if was_cancelled():
-                return (False, "", None, "Đã dừng yêu cầu AI.")
-            write_res = write_ide_handoff_bundle(
-                case_id=conversation_id,
-                question=question,
-                bundle_scope="current_question_retrieval_plus_full_scope_manifest",
-                evidence_items=ev_models,
-                owner_note=f"Sổ: {notebook_id} | Hội thoại: {conversation_id}",
-                target_model_tool_name="Antigravity IDE AI",
-                root=handoff_root,
-                answer_language=answer_language,
-            )
-            if getattr(write_res, "ok", True):
-                outbox_path = getattr(write_res, "outbox_dir", getattr(write_res, "bundle_dir", None))
-                badge = {
-                    "conversation_id": conversation_id,
-                    "type": "handoff_pending",
-                    "request_id": write_res.request_id,
-                    "outbox_dir": str(outbox_path) if outbox_path else "",
-                }
-                return (True, f"Đã tạo yêu cầu chuyển giao Antigravity IDE (Mã: {write_res.request_id}).", badge, None)
+            if candidate == "gemini_web":
+                res = _try_gemini_direct()
+            elif candidate == "cagent_api":
+                res = _try_cagent_api()
+            elif candidate == "nakazasen_router":
+                res = _try_nakazasen_router()
+            elif candidate == "local":
+                res = _try_local_fallback()
             else:
-                # Strict Fail-Closed
-                err_msg = getattr(write_res, "error_message", "Unknown bundle creation error")
-                return (False, "", None, f"Lỗi tạo gói yêu cầu Antigravity IDE: {sanitize_reason(str(err_msg))}")
-        except Exception as exc:
-            # Strict Fail-Closed on exception: Never fallback to Smart Router
-            return (False, "", None, f"Lỗi tạo gói yêu cầu Antigravity IDE: {sanitize_reason(str(exc))}")
+                continue
 
-    else:
-        # Strict Fail-Closed Policy:
-        # If the Antigravity IDE Bridge is unavailable, do NOT fallback to Smart Router or mock endpoints.
-        # Keep this string Vietnamese-only so the UI safety filter does not replace it
-        # with a generic fallback when the health reason contains English diagnostics.
-        #
-        # The one permitted fallback is LOCAL and provider-free: the extractive
-        # answer this machine already computed from retrieved evidence. It is
-        # offered, never written here - the user must choose it.
-        error_message = "Cầu nối Antigravity IDE hiện không khả dụng. Hãy bấm Kết nối lại Gemini Web, rồi gửi lại câu hỏi."
-        if _local_fallback_available(local_synthesis):
-            return (
-                False,
-                "",
-                _local_fallback_badge(
-                    conversation_id=conversation_id,
-                    question=question,
-                    evidence_items=evidence_items,
-                    local_synthesis=local_synthesis,
-                ),
-                error_message,
-            )
-        return (False, "", None, error_message)
+            if res[0]:
+                ok, succ_msg, badge, _ = res
+                if candidate != backend:
+                    if badge:
+                        badge["fallback_used"] = True
+                        badge["initial_backend"] = backend
+                    succ_msg = f"{succ_msg} (chuyển tuyến dự phòng từ {backend_label_vi(backend)})."
+                return (True, succ_msg, badge, None)
+            else:
+                LOGGER.warning("Candidate backend %s failed: %s; transitioning to next backend...", candidate, res[3])
+        except Exception as exc:
+            LOGGER.exception("Candidate backend %s exception: %s; transitioning...", candidate, exc)
+
+    return _try_local_fallback()

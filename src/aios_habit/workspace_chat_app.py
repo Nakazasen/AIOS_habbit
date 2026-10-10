@@ -3706,9 +3706,10 @@ else:
         from aios_habit.ai_lane import auto_backend_for_conversation, backend_label_vi
         from aios_habit.ai_router import provider_env_presence
 
+        cagent_endpoint_key = f"wsc_cagent_endpoint_{active_conversation_id}"
         _cagent_endpoint_probe = (
-            os.environ.get("AIOS_CAGENT_API_URL", "").strip()
-            or "https://kdtvn-ai.cmcts.vn/api/v1/prediction/1881aa32-c996-4e6f-9257-78246177ba9f"
+            str(st.session_state.get(cagent_endpoint_key, "")).strip()
+            or os.environ.get("AIOS_CAGENT_API_URL", "").strip()
         )
         _lane_decision = auto_backend_for_conversation(
             f"wsc_ai_lane_{active_conversation_id}",
@@ -3727,10 +3728,9 @@ else:
         )
         cagent_endpoint = ""
         if selected_ai_backend == "cagent_api":
-            cagent_endpoint_key = f"wsc_cagent_endpoint_{active_conversation_id}"
             configured_cagent_endpoint = (
-                os.environ.get("AIOS_CAGENT_API_URL", "").strip()
-                or "https://kdtvn-ai.cmcts.vn/api/v1/prediction/1881aa32-c996-4e6f-9257-78246177ba9f"
+                str(st.session_state.get(cagent_endpoint_key, "")).strip()
+                or os.environ.get("AIOS_CAGENT_API_URL", "").strip()
             )
             if not str(st.session_state.get(cagent_endpoint_key, "")).strip() and configured_cagent_endpoint:
                 st.session_state[cagent_endpoint_key] = configured_cagent_endpoint
@@ -4246,6 +4246,8 @@ else:
                         # machine, not from a model. It must not wear the AI header,
                         # the unverified-model caption, or the AI disclaimer.
                         st.success(f"📄 **{t('local_fallback_note', locale=current_ui_locale)}**")
+                        if badge_data.get("retrieval_summary"):
+                            st.info(badge_data["retrieval_summary"])
                         _lf_local_count = int(badge_data.get("source_count", 0) or 0)
                         st.write(f"{t('sources_sent', locale=current_ui_locale)}: {_lf_local_count}")
                         if badge_data.get("source_titles"):
@@ -4511,8 +4513,8 @@ else:
                             getattr(get_antigravity_bridge_health(), "is_available", False)
                         ),
                         cagent_endpoint=(
-                            os.environ.get("AIOS_CAGENT_API_URL", "").strip()
-                            or "https://kdtvn-ai.cmcts.vn/api/v1/prediction/1881aa32-c996-4e6f-9257-78246177ba9f"
+                            str(st.session_state.get(f"wsc_cagent_endpoint_{active_conversation.id}", "")).strip()
+                            or os.environ.get("AIOS_CAGENT_API_URL", "").strip()
                         ),
                         router_keys_present=any(_env_presence(os.environ).values()),
                         manual_override=os.environ.get("AIOS_AI_BACKEND", ""),
@@ -4521,7 +4523,6 @@ else:
                     cagent_endpoint_url = (
                         str(st.session_state.get(f"wsc_cagent_endpoint_{active_conversation.id}", "")).strip()
                         or os.environ.get("AIOS_CAGENT_API_URL", "").strip()
-                        or "https://kdtvn-ai.cmcts.vn/api/v1/prediction/1881aa32-c996-4e6f-9257-78246177ba9f"
                         if selected_ai_backend == "cagent_api" else ""
                     )
                     ai_backend = selected_ai_backend
@@ -4655,8 +4656,8 @@ else:
                             ):
                                 cagent_endpoint_key = f"wsc_cagent_endpoint_{active_conversation.id}"
                                 configured_cagent_endpoint = (
-                                    os.environ.get("AIOS_CAGENT_API_URL", "").strip()
-                                    or "https://kdtvn-ai.cmcts.vn/api/v1/prediction/1881aa32-c996-4e6f-9257-78246177ba9f"
+                                    str(st.session_state.get(cagent_endpoint_key, "")).strip()
+                                    or os.environ.get("AIOS_CAGENT_API_URL", "").strip()
                                 )
                                 cagent_endpoint = st.text_input(
                                     t("cagent_endpoint_label", locale=current_ui_locale),
