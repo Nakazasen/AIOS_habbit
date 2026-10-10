@@ -1,0 +1,53 @@
+{
+  "timestamp": "2026-10-11 02:27:20",
+  "ticket": "MISSING5-PARSER-FIX-HOME",
+  "production_db": "C:\\AIOS_workspace_chat_rag_v2_production\\bge_m3_hybrid\\collections\\tri_thuc\\library.sqlite",
+  "backup_db": "C:\\AIOS_workspace_chat_rag_v2_production\\bge_m3_hybrid\\collections\\tri_thuc\\library.sqlite.bak-20261011-pre-missing5-parser-fix",
+  "staging_db": "D:\\Sandbox\\staging_missing5_parser_fix.sqlite",
+  "integrity_check": "ok",
+  "before": {
+    "documents": 894,
+    "chunks": 181033,
+    "retrievable_chunks": 148860,
+    "dense_embeddings": 122293,
+    "sparse_embeddings": 122293,
+    "fts_records": 148860,
+    "targets": {
+      "AI cảnh báo lỗi LSU.pptx": {
+        "chunks": 8,
+        "dense": 8
+      },
+      "2026_08_UnitTest.csv": {
+        "chunks": 112,
+        "dense": 97
+      }
+    }
+  },
+  "after": {
+    "documents": 894,
+    "chunks": 181511,
+    "retrievable_chunks": 149350,
+    "dense_embeddings": 122783,
+    "sparse_embeddings": 122783,
+    "fts_records": 149350,
+    "targets": {
+      "AI cảnh báo lỗi LSU.pptx": {
+        "chunks": 12,
+        "dense": 10
+      },
+      "2026_08_UnitTest.csv": {
+        "chunks": 586,
+        "dense": 585
+      }
+    }
+  },
+  "delta": {
+    "documents_change": 0,
+    "chunks_change": 478,
+    "retrievable_change": 490,
+    "dense_change": 490,
+    "sparse_change": 490,
+    "fts_change": 490
+  },
+  "status": "PASS"
+}
