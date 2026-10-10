@@ -27,6 +27,8 @@ from aios_habit.production_prediction.jig_chat_wire import day_the_realtime_qua_
 from aios_habit.production_prediction.rt_consumer import (
     RtConsumer,
     chuyen_lo_thanh_the_da_qua_cong,
+    dinh_dang_text_chat_cho_the_realtime,
+    tom_tat_can_bien_cho_chat,
 )
 from aios_habit.production_prediction.stream_api import (
     EVENTS_PATH,
@@ -44,6 +46,42 @@ _STOP_EVENT = threading.Event()
 _ACTIVE_CONV_ID: Optional[str] = None
 _LOCK = threading.Lock()
 _LAST_DISPATCH_TIME: float = 0.0
+_DISPATCHED_ALERT_KEYS: set[Tuple[str, str]] = set()
+
+
+def reset_rt_dispatched_alerts(conv_id: Optional[str] = None) -> None:
+    """Reset tracked dispatched alert keys (useful in tests)."""
+    global _DISPATCHED_ALERT_KEYS
+    with _LOCK:
+        if conv_id:
+            _DISPATCHED_ALERT_KEYS = {k for k in _DISPATCHED_ALERT_KEYS if k[0] != conv_id}
+        else:
+            _DISPATCHED_ALERT_KEYS.clear()
+
+
+def is_alert_already_dispatched(conv_id: str, alert_id: str) -> bool:
+    """Check if an alert_id has already been dispatched to a conversation."""
+    with _LOCK:
+        if (conv_id, alert_id) in _DISPATCHED_ALERT_KEYS:
+            return True
+    try:
+        from aios_habit.workspace_chat_store import load_messages
+        msgs = load_messages(conv_id)
+        for m in msgs:
+            content = str(m.content or "")
+            if alert_id and alert_id in content:
+                with _LOCK:
+                    _DISPATCHED_ALERT_KEYS.add((conv_id, alert_id))
+                return True
+    except Exception:
+        pass
+    return False
+
+
+def record_dispatched_alert(conv_id: str, alert_id: str) -> None:
+    """Record that an alert_id was dispatched to conv_id."""
+    with _LOCK:
+        _DISPATCHED_ALERT_KEYS.add((conv_id, alert_id))
 
 
 def set_active_rt_conversation(conv_id: str) -> None:
@@ -139,6 +177,7 @@ def poll_and_dispatch_rt_alerts(
             "error": str(exc),
             "su_kien": 0,
             "cac_the": 0,
+            "the_moi": 0,
             "cac_can_bien": 0,
             "dispatched": False,
         }
@@ -148,6 +187,7 @@ def poll_and_dispatch_rt_alerts(
             "ok": True,
             "su_kien": 0,
             "cac_the": 0,
+            "the_moi": 0,
             "cac_can_bien": 0,
             "dispatched": False,
         }
@@ -184,14 +224,31 @@ def poll_and_dispatch_rt_alerts(
     consumer.cursor = cursor_moi
     consumer._luu_cursor_xuong_dia()
 
-    chat_text = day_the_realtime_qua_cong_vao_chat(
-        su_kien, lich_su_theo_chi_so=lich_su_theo_chi_so
-    )
+    target_conv = conversation_id or get_active_rt_conversation()
+
+    # Khử trùng ở khâu dispatch: một sự kiện xu hướng đã xác nhận chỉ sinh đúng một thẻ trong hội thoại
+    the_moi = []
+    if target_conv:
+        for the in cac_the:
+            alt_id = str(the.get("alert_id") or f"ALT-{the.get('ma_jig')}-{the.get('thong_so')}").replace(" ", "_")
+            if not is_alert_already_dispatched(target_conv, alt_id):
+                the_moi.append(the)
+    else:
+        the_moi = list(cac_the)
+
+    chat_text = ""
+    if the_moi or cac_can_bien:
+        dong = []
+        for the in the_moi:
+            dong.append(dinh_dang_text_chat_cho_the_realtime(the))
+        for muc in cac_can_bien:
+            dong.append(tom_tat_can_bien_cho_chat(muc))
+        if dong:
+            chat_text = "\n".join(dong)
 
     dispatched_msg_id = ""
-    target_conv = conversation_id or get_active_rt_conversation()
     if (
-        (cac_the or cac_can_bien)
+        (the_moi or (cac_can_bien and not cac_the))
         and target_conv
         and chat_text
         and chat_text != "Chưa có sự kiện realtime mới."
@@ -204,12 +261,16 @@ def poll_and_dispatch_rt_alerts(
             content=chat_text,
         )
         save_message(msg)
+        for the in the_moi:
+            alt_id = str(the.get("alert_id") or f"ALT-{the.get('ma_jig')}-{the.get('thong_so')}").replace(" ", "_")
+            record_dispatched_alert(target_conv, alt_id)
         _LAST_DISPATCH_TIME = time.time()
 
     return {
         "ok": True,
         "su_kien": len(su_kien),
         "cac_the": len(cac_the),
+        "the_moi": len(the_moi),
         "cac_can_bien": len(cac_can_bien),
         "dispatched": bool(dispatched_msg_id),
         "chat_text": chat_text,

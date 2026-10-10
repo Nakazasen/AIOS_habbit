@@ -236,6 +236,20 @@ def danh_gia_xu_huong_sma(
             consecutive += 1
         else:
             break
+    sma_val = round(points[-1]["sma"], 3) if points and points[-1].get("sma") is not None else None
+    res_val = round(points[-1]["residual"], 3) if points and points[-1].get("residual") is not None else None
+    sig_val = round(points[-1]["sigma"], 3) if points and points[-1].get("sigma") is not None else None
+    muc_lech_pct = round((res_val / sma_val) * 100, 2) if (res_val is not None and sma_val and sma_val != 0) else None
+    muc_lech_sig = round(res_val / sig_val, 2) if (res_val is not None and sig_val and sig_val > 0) else None
+    if muc_lech_sig is not None and muc_lech_pct is not None:
+        muc_lech_str = f"{muc_lech_sig:+.2f}σ ({muc_lech_pct:+.1f}%)"
+    elif muc_lech_sig is not None:
+        muc_lech_str = f"{muc_lech_sig:+.2f}σ"
+    elif muc_lech_pct is not None:
+        muc_lech_str = f"{res_val:+.2f} ({muc_lech_pct:+.1f}%)"
+    else:
+        muc_lech_str = f"{res_val:+.2f}" if res_val is not None else "—"
+
     if consecutive >= diem_lien_tiep:
         return {
             "trang_thai": "Vi phạm",
@@ -246,6 +260,14 @@ def danh_gia_xu_huong_sma(
             ),
             "canh_bao": True,
             "gia_tri": gia_tri,
+            "sma": sma_val,
+            "residual": res_val,
+            "sigma": sig_val,
+            "muc_lech": muc_lech_str,
+            "muc_lech_pct": muc_lech_pct,
+            "muc_lech_sigma": muc_lech_sig,
+            "consecutive": consecutive,
+            "so_diem_lien_tiep": consecutive,
             "diem_bat_thuong": [p["index"] for p in abnormal_recent],
         }
     if len(abnormal_recent) >= toi_thieu:
@@ -257,6 +279,14 @@ def danh_gia_xu_huong_sma(
             ),
             "canh_bao": True,
             "gia_tri": gia_tri,
+            "sma": sma_val,
+            "residual": res_val,
+            "sigma": sig_val,
+            "muc_lech": muc_lech_str,
+            "muc_lech_pct": muc_lech_pct,
+            "muc_lech_sigma": muc_lech_sig,
+            "consecutive": consecutive,
+            "so_diem_lien_tiep": max(consecutive, len(abnormal_recent)),
             "diem_bat_thuong": [p["index"] for p in abnormal_recent],
         }
     if abnormal_recent:
@@ -326,4 +356,7 @@ def gate_canh_bao_theo_xu_huong(
     else:
         ket_luan_diem["canh_bao"] = point_alert and trend_alert
     ket_luan_diem["xu_huong_sma"] = str(xu_huong.get("chi_tiet", "") or "")
+    for k in ("sma", "residual", "sigma", "muc_lech", "muc_lech_pct", "muc_lech_sigma", "so_diem_lien_tiep", "consecutive"):
+        if k in xu_huong:
+            ket_luan_diem[k] = xu_huong[k]
     return ket_luan_diem

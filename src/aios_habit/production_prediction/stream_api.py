@@ -207,6 +207,7 @@ class StreamBuffer:
                         "gia_tri": record.value,
                         "don_vi": record.unit,
                         "nguon": record.nguon,
+                        "timestamp": record.timestamp or datetime.now().replace(microsecond=0).isoformat(),
                         "z": round(kiem_drift["z"], 2),
                         "trung_binh_nen": round(kiem_drift["trung_binh_nen"], 4),
                         "trung_binh_moi": round(kiem_drift["trung_binh_moi"], 4),

@@ -98,14 +98,47 @@ def build_realtime_alert_card(
     metric: str,
     chi_tiet: str,
     muc_do: str = "Cần kiểm tra",
+    gia_tri: Optional[float] = None,
+    don_vi: str = "",
+    sma: Optional[float] = None,
+    muc_lech: Optional[str | float] = None,
+    so_diem_lien_tiep: Optional[int] = None,
+    thoi_diem: Optional[str] = None,
+    alert_id: Optional[str] = None,
+    residual: Optional[float] = None,
+    sigma: Optional[float] = None,
+    deviation_pct: Optional[float] = None,
+    deviation_sigma: Optional[float] = None,
+    timestamp: Optional[str] = None,
+    nguon: str = "",
 ) -> Dict[str, Any]:
     """Build the prominent realtime alert card for event-driven alerts."""
+    jid = str(jig_id or "—")
+    met = str(metric or "—")
+    eff_time = str(thoi_diem or timestamp or "")
+    eff_alert_id = alert_id or f"ALT-{jid}-{met}".replace(" ", "_")
     return {
         "loai_the": "canh_bao_realtime",
-        "ma_jig": jig_id,
-        "thong_so": metric,
+        "alert_id": eff_alert_id,
+        "jig_id": jid,
+        "ma_jig": jid,
+        "metric": met,
+        "thong_so": met,
         "muc_do": muc_do,
         "chi_tiet": chi_tiet,
+        "gia_tri": gia_tri,
+        "don_vi": don_vi,
+        "sma": sma,
+        "sma20": sma,
+        "residual": residual,
+        "sigma": sigma,
+        "muc_lech": str(muc_lech) if muc_lech is not None else "",
+        "deviation_pct": deviation_pct,
+        "deviation_sigma": deviation_sigma,
+        "so_diem_lien_tiep": so_diem_lien_tiep,
+        "thoi_diem": eff_time,
+        "timestamp": eff_time,
+        "nguon": nguon,
         "huong_dan": "Mở phiên trực ban công đoạn để xem biểu đồ và duyệt email cảnh báo.",
     }
 

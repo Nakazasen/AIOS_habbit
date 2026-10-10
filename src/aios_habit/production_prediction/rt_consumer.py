@@ -123,22 +123,95 @@ class RtConsumer:
         return len(su_kien)
 
 
-def dinh_dang_canh_bao(su_kien: Dict[str, Any]) -> Dict[str, Any]:
-    """Chuyen mot su kien server thanh the canh bao tieng Viet de hien len chat."""
+def dinh_dang_canh_bao(
+    su_kien: Dict[str, Any],
+    xu_huong: Optional[Dict[str, Any]] = None,
+    jig_id: Optional[str] = None,
+    metric: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Chuyen mot su kien server thanh the canh bao tieng Viet de hien len chat.
+
+    Dam bao day du truong dinh danh va so do:
+    - ten jig (ma_jig / jig_id)
+    - ten thong so (thong_so / metric)
+    - gia tri do moi nhat (gia_tri)
+    - gia tri SMA(20) (sma)
+    - muc lech theo sigma hoac % (muc_lech)
+    - so diem bat thuong lien tiep (so_diem_lien_tiep)
+    - thoi diem cua diem moi nhat (thoi_diem)
+    """
     noi_dung = su_kien.get("noi_dung") or {}
-    chi_tiet = str(noi_dung.get("chi_tiet") or "Có dấu hiệu trôi thông số, cần kiểm tra trước khi phát sinh NG.")
-    gia_tri = noi_dung.get("gia_tri")
-    if gia_tri is not None:
-        don_vi = str(noi_dung.get("don_vi") or "")
-        chi_tiet = ("%s (giá trị: %s %s)" % (chi_tiet, gia_tri, don_vi)).strip()
-    nguon = str(noi_dung.get("nguon") or "")
+    xu_huong = xu_huong or {}
+
+    effective_jig = str(
+        jig_id
+        or su_kien.get("jig_id")
+        or su_kien.get("ma_jig")
+        or noi_dung.get("jig_id")
+        or "unknown"
+    ).strip()
+    effective_metric = str(
+        metric
+        or su_kien.get("metric")
+        or su_kien.get("thong_so")
+        or su_kien.get("metric_name")
+        or noi_dung.get("metric")
+        or "unknown"
+    ).strip()
+
+    gia_tri = xu_huong.get("gia_tri")
+    if gia_tri is None:
+        gia_tri = noi_dung.get("gia_tri")
+    if gia_tri is None:
+        gia_tri = su_kien.get("value")
+
+    don_vi = str(noi_dung.get("don_vi") or su_kien.get("unit") or "")
+
+    sma_val = xu_huong.get("sma")
+    muc_lech = xu_huong.get("muc_lech")
+    so_diem_lien_tiep = xu_huong.get("so_diem_lien_tiep") or xu_huong.get("consecutive") or 3
+
+    thoi_diem = str(
+        su_kien.get("thoi_gian")
+        or su_kien.get("timestamp")
+        or noi_dung.get("timestamp")
+        or noi_dung.get("thoi_gian")
+        or ""
+    ).strip()
+    if not thoi_diem:
+        thoi_diem = time.strftime("%Y-%m-%d %H:%M:%S")
+
+    chi_tiet_lines = []
+    base_chi_tiet = str(noi_dung.get("chi_tiet") or "Có dấu hiệu trôi thông số khỏi nền.").strip()
+    chi_tiet_lines.append(base_chi_tiet)
+
+    do_do_str = f"{gia_tri} {don_vi}".strip() if gia_tri is not None else "—"
+    sma_str = f"{sma_val} {don_vi}".strip() if sma_val is not None else "—"
+    muc_lech_str = str(muc_lech or "—")
+
+    so_do_line = f"Đo mới nhất: {do_do_str} | SMA(20): {sma_str} | Lệch: {muc_lech_str}"
+    chi_tiet_lines.append(so_do_line)
+    chi_tiet_lines.append(f"Căn cứ qua cổng: {so_diem_lien_tiep} điểm bất thường liên tiếp | Thời điểm: {thoi_diem}")
+
+    nguon = str(noi_dung.get("nguon") or su_kien.get("nguon") or "")
     if nguon == "SIMULATED_REALTIME":
-        chi_tiet += " [Dữ liệu phát lại mô phỏng]"
+        chi_tiet_lines.append("[Dữ liệu phát lại mô phỏng]")
+
+    chi_tiet_full = "\n".join(chi_tiet_lines)
+    alert_id = f"ALT-{effective_jig}-{effective_metric}".replace(" ", "_")
+
     return build_realtime_alert_card(
-        jig_id=str(su_kien.get("jig_id") or "—"),
-        metric=str(su_kien.get("metric") or "—"),
-        chi_tiet=chi_tiet,
+        jig_id=effective_jig,
+        metric=effective_metric,
+        chi_tiet=chi_tiet_full,
         muc_do="Cần kiểm tra",
+        gia_tri=gia_tri,
+        don_vi=don_vi,
+        sma=sma_val,
+        muc_lech=muc_lech_str,
+        so_diem_lien_tiep=so_diem_lien_tiep,
+        thoi_diem=thoi_diem,
+        alert_id=alert_id,
     )
 
 
@@ -241,7 +314,14 @@ def chuyen_lo_thanh_the_da_qua_cong(
     cac_muc_can_bien: List[Dict[str, str]] = []
     for muc in danh_gia:
         if muc.get("canh_bao"):
-            cac_the.append(dinh_dang_canh_bao(muc.get("su_kien") or {}))
+            cac_the.append(
+                dinh_dang_canh_bao(
+                    su_kien=muc.get("su_kien") or {},
+                    xu_huong=muc.get("xu_huong") or {},
+                    jig_id=muc.get("jig_id"),
+                    metric=muc.get("metric"),
+                )
+            )
         else:
             cac_muc_can_bien.append({
                 "ma_jig": str(muc.get("jig_id") or "—"),
@@ -254,23 +334,34 @@ def chuyen_lo_thanh_the_da_qua_cong(
 
 def dinh_dang_text_chat_cho_the_realtime(the: Dict[str, Any]) -> str:
     """Render the canh bao realtime thanh text nam trong vung tra loi chat."""
+    jig_name = str(the.get("ma_jig") or the.get("jig_id") or "—").strip()
+    metric_name = str(the.get("thong_so") or the.get("metric") or "—").strip()
     alert_id = str(the.get("alert_id") or "").strip()
     if not alert_id:
-        alert_id = f"ALT-{the.get('ma_jig', '—')}-{the.get('thong_so', '—')}".replace(" ", "_")
+        alert_id = f"ALT-{jig_name}-{metric_name}".replace(" ", "_")
     meta = {
         "loai_the": "canh_bao_realtime",
         "alert_id": alert_id,
-        "jig_id": str(the.get("ma_jig", "—")),
-        "metric": str(the.get("thong_so", "—")),
+        "jig_id": jig_name,
+        "ma_jig": jig_name,
+        "metric": metric_name,
+        "thong_so": metric_name,
         "muc_do": str(the.get("muc_do", "Cần kiểm tra")),
         "chi_tiet": str(the.get("chi_tiet", "")),
+        "gia_tri": the.get("gia_tri"),
+        "don_vi": str(the.get("don_vi", "")),
+        "sma": the.get("sma"),
+        "muc_lech": the.get("muc_lech"),
+        "so_diem_lien_tiep": the.get("so_diem_lien_tiep"),
+        "thoi_diem": the.get("thoi_diem") or the.get("timestamp"),
+        "timestamp": the.get("timestamp") or the.get("thoi_diem"),
         "huong_dan": str(the.get("huong_dan", "")),
     }
     marker = f"<!-- aios_realtime_alert: {json.dumps(meta, ensure_ascii=False)} -->"
     dong = [
         marker,
         "Cảnh báo realtime — %s — %s (%s)"
-        % (the.get("ma_jig", "—"), the.get("thong_so", "—"), the.get("muc_do", "Cần kiểm tra")),
+        % (jig_name, metric_name, the.get("muc_do", "Cần kiểm tra")),
         str(the.get("chi_tiet", "")),
         str(the.get("huong_dan", "")),
     ]

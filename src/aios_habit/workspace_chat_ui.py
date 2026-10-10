@@ -623,19 +623,31 @@ def render_chat_bubble(
                 try:
                     _alert_data = json.loads(_m_alert_marker.group(1))
                     _alert_id = str(_alert_data.get("alert_id", "") or "")
-                    _alert_jig = str(_alert_data.get("jig_id", "—"))
-                    _alert_metric = str(_alert_data.get("metric", "—"))
+                    _alert_jig = str(_alert_data.get("jig_id") or _alert_data.get("ma_jig") or "—")
+                    _alert_metric = str(_alert_data.get("metric") or _alert_data.get("thong_so") or "—")
                     _alert_chi_tiet = str(_alert_data.get("chi_tiet", ""))
+                    _alert_gia_tri = _alert_data.get("gia_tri")
+                    _alert_don_vi = str(_alert_data.get("don_vi", ""))
+                    _alert_sma = _alert_data.get("sma")
+                    _alert_muc_lech = _alert_data.get("muc_lech")
+                    _alert_so_diem = _alert_data.get("so_diem_lien_tiep")
+                    _alert_thoi_diem = _alert_data.get("thoi_diem") or _alert_data.get("timestamp")
                 except Exception:
                     _alert_jig = "—"
                     _alert_metric = "—"
                     _alert_chi_tiet = ""
+                    _alert_gia_tri = None
+                    _alert_don_vi = ""
+                    _alert_sma = None
+                    _alert_muc_lech = None
+                    _alert_so_diem = None
+                    _alert_thoi_diem = None
             elif "Cảnh báo realtime" in raw_content:
                 _is_realtime_alert = True
                 _lines = [l.strip() for l in raw_content.splitlines() if l.strip()]
                 _header_line = next((l for l in _lines if "Cảnh báo realtime" in l), "")
                 _m_match = re.search(
-                    r"Cảnh báo realtime\s*[—–-]\s*(?P<jig>.+?)\s*[—–-]\s*(?P<metric>[^\(\n]+?)(?:\s*\((?P<muc_do>.*?)\))?$",
+                    r"Cảnh báo realtime(?:\s*[:—–-])\s*(?P<jig>.+?)\s*[—–-]\s*(?P<metric>[^\(\n]+?)(?:\s*\((?P<muc_do>.*?)\))?$",
                     _header_line,
                 )
                 if _m_match:
@@ -646,6 +658,12 @@ def render_chat_bubble(
                     _alert_metric = "—"
                 _detail_lines = [l for l in _lines if "Cảnh báo realtime" not in l and not l.startswith("<!--")]
                 _alert_chi_tiet = "\n".join(_detail_lines) if _detail_lines else ""
+                _alert_gia_tri = None
+                _alert_don_vi = ""
+                _alert_sma = None
+                _alert_muc_lech = None
+                _alert_so_diem = None
+                _alert_thoi_diem = None
             elif "Cần biến" in raw_content:
                 _is_can_bien = True
 
@@ -791,6 +809,12 @@ def render_chat_bubble(
                         locale=locale,
                         conversation_id=conversation_id,
                         alert_id=_alert_id if _alert_id else (f"ALT-{msg.id}" if msg.id else f"ALT-{_alert_jig}-{_alert_metric}"),
+                        gia_tri=_alert_gia_tri,
+                        don_vi=_alert_don_vi,
+                        sma=_alert_sma,
+                        muc_lech=_alert_muc_lech,
+                        so_diem_lien_tiep=_alert_so_diem,
+                        thoi_diem=_alert_thoi_diem,
                     )
                 elif _is_can_bien:
                     st.info(display_content)
@@ -1666,11 +1690,35 @@ def render_jig_instant_log_card(dong_log: Dict[str, Any], ket_qua_ewma: Dict[str
     st.caption(goi_y)
 
 
-def build_jig_realtime_card_data(jig_id: str, metric: str, chi_tiet: str) -> Dict[str, Any]:
-    """Build realtime alert card data (US12 T064, no Streamlit needed)."""
+def build_jig_realtime_card_data(
+    jig_id: str,
+    metric: str,
+    chi_tiet: str,
+    muc_do: str = "Cần kiểm tra",
+    gia_tri: Optional[float] = None,
+    don_vi: str = "",
+    sma: Optional[float] = None,
+    muc_lech: Optional[str | float] = None,
+    so_diem_lien_tiep: Optional[int] = None,
+    thoi_diem: Optional[str] = None,
+    alert_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Build realtime alert card data (US12 T064, DESKTOP-LSU-ALERT-CONTENT-HOME)."""
     from aios_habit.production_prediction.jig_alert_cards import build_realtime_alert_card
 
-    return build_realtime_alert_card(jig_id, metric, chi_tiet)
+    return build_realtime_alert_card(
+        jig_id=jig_id,
+        metric=metric,
+        chi_tiet=chi_tiet,
+        muc_do=muc_do,
+        gia_tri=gia_tri,
+        don_vi=don_vi,
+        sma=sma,
+        muc_lech=muc_lech,
+        so_diem_lien_tiep=so_diem_lien_tiep,
+        thoi_diem=thoi_diem,
+        alert_id=alert_id,
+    )
 
 
 def render_alert_feedback_row(
@@ -1760,12 +1808,49 @@ def render_jig_realtime_alert_card(
     locale: str = "vi",
     conversation_id: str = "",
     alert_id: str = "",
+    gia_tri: Optional[float] = None,
+    don_vi: str = "",
+    sma: Optional[float] = None,
+    muc_lech: Optional[str | float] = None,
+    so_diem_lien_tiep: Optional[int] = None,
+    thoi_diem: Optional[str] = None,
 ) -> None:
-    """Render prominent realtime alert card in Vietnamese (US12 T064, DESKTOP-LSU-ALERT-WIRE-HOME)."""
-    card = build_jig_realtime_card_data(jig_id, metric, chi_tiet)
-    tieu_de = t("jig_realtime_card_title", locale=locale, jig=card["ma_jig"], metric=card["thong_so"])
+    """Render prominent realtime alert card in Vietnamese (US12 T064, DESKTOP-LSU-ALERT-WIRE-HOME, DESKTOP-LSU-ALERT-CONTENT-HOME)."""
+    card = build_jig_realtime_card_data(
+        jig_id=jig_id,
+        metric=metric,
+        chi_tiet=chi_tiet,
+        gia_tri=gia_tri,
+        don_vi=don_vi,
+        sma=sma,
+        muc_lech=muc_lech,
+        so_diem_lien_tiep=so_diem_lien_tiep,
+        thoi_diem=thoi_diem,
+        alert_id=alert_id,
+    )
+    eff_jig = card.get("ma_jig") or card.get("jig_id") or jig_id or "—"
+    eff_metric = card.get("thong_so") or card.get("metric") or metric or "—"
+    tieu_de = t("jig_realtime_card_title", locale=locale, jig=eff_jig, metric=eff_metric)
     st.error(tieu_de)
     st.write(card["chi_tiet"])
+
+    if "Đo mới nhất" not in card["chi_tiet"] and (card.get("gia_tri") is not None or card.get("sma") is not None):
+        metric_parts = []
+        if card.get("gia_tri") is not None:
+            unit_str = f" {card['don_vi']}" if card.get("don_vi") else ""
+            metric_parts.append(f"**Đo mới nhất**: `{card['gia_tri']}{unit_str}`")
+        if card.get("sma") is not None:
+            unit_str = f" {card['don_vi']}" if card.get("don_vi") else ""
+            metric_parts.append(f"**SMA(20)**: `{card['sma']}{unit_str}`")
+        if card.get("muc_lech"):
+            metric_parts.append(f"**Lệch**: `{card['muc_lech']}`")
+        if card.get("so_diem_lien_tiep") is not None:
+            metric_parts.append(f"**Căn cứ qua cổng**: `{card['so_diem_lien_tiep']}` điểm liên tiếp")
+        if card.get("thoi_diem"):
+            metric_parts.append(f"**Thời điểm**: `{card['thoi_diem']}`")
+        if metric_parts:
+            st.markdown(" | ".join(metric_parts))
+
     st.caption(card["huong_dan"])
 
     effective_alert_id = alert_id or f"ALT-{jig_id}-{metric}"

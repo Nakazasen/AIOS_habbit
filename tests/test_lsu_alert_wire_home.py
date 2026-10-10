@@ -99,7 +99,8 @@ def test_rt_app_wire_trend_dispatches_alert_card(tmp_path, monkeypatch):
                 {"unit_serial": f"TEST-{i}", "gia_tri": 250.0 + i, "don_vi": "s", "chi_tiet": "Drift test"},
             )
 
-        test_conv = "CONV-WIRE-TEST-01"
+        import uuid
+        test_conv = f"CONV-WIRE-TEST-{uuid.uuid4().hex[:8]}"
         res = poll_and_dispatch_rt_alerts(
             conversation_id=test_conv,
             port=port,
@@ -154,7 +155,8 @@ def test_rt_app_wire_isolated_anomaly_negative_test(tmp_path):
             {"unit_serial": "TEST", "gia_tri": 280.0, "don_vi": "s", "chi_tiet": "Spike single point"},
         )
 
-        test_conv = "CONV-WIRE-TEST-02"
+        import uuid
+        test_conv = f"CONV-WIRE-TEST-{uuid.uuid4().hex[:8]}"
         res = poll_and_dispatch_rt_alerts(
             conversation_id=test_conv,
             port=port,
