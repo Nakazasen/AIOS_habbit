@@ -3,6 +3,7 @@
 ## Vé hiện tại: WATCHER-ESCALATE-FIX-HOME (sửa watcher hộp thư leo thang ghi đè trạng thái)
 
 - Trạng thái: `xong-cho-duyet`
+- `commit`: `913d539`
 - `ghi_chu`: 2026-10-11 00:58 +07 — **HOÀN TẤT VÉ** `WATCHER-ESCALATE-FIX-HOME`: Đã sửa triệt để 3 lỗi leo thang của watcher (chỉ tác động khối hiện hành, đọc đúng tên vé hiện hành từ prompt/file, ghi UTF-8 không BOM, rollback toàn diện khi lỗi phụ); đồng bộ cả 2 watcher opencode và agy (repo agent-mailbox commit 8c54e92); dọn sạch 251 dòng dấu vết giả của sự cố 17:37 ngày 10/10, phục hồi 100% lịch sử thật từ commit 137938b; kiểm chứng leo thang thành công trên bản sao cả 2 file trạng thái; compileall, audit, import và test PASS.
 - `ghi_chu`: 2026-10-11 00:44 +07 — **ĐÃ NHẬN VÉ** `WATCHER-ESCALATE-FIX-HOME`: Bắt đầu xử lý 3 lỗi leo thang của watcher (chỉ chèn khối hiện hành, không ghi đè lịch sử, đọc đúng tên vé hiện hành, UTF-8 không BOM, dọn dấu vết giả).
 - `ghi_chu`: 2026-10-11 00:41 +07 — **PHÁT HÀNH CHÍNH THỨC** vé `WATCHER-ESCALATE-FIX-HOME` (prompt.md đã thay bằng nội dung vé đã xếp hàng). Hàng chờ sau vé này đã xếp sẵn theo thứ tự phụ thuộc: (1) `MISSING5-PARSER-FIX-HOME`, (2) `MISSING5-EMBED-COMPLETE-HOME`, (3) `Q0668-BLOCK-FIX-HOME`, (4) `CSV-STRUCTURED-LANE-HOME` — điều phối phát hành lần lượt khi từng vé khép.
