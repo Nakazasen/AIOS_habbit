@@ -4,7 +4,7 @@
 - **Thợ thực hiện**: `DEFAULT` (agy — thợ chính, máy nhà `h410asrock`)
 - **Nhánh thực hiện**: `phieu-viec/rag-fix1`
 - **Môi trường**: Windows 10, CPU Intel Core i3-10100 @ 3.60GHz, RAM 16GB, Python 3.11.9
-- **Trạng thái**: ĐANG HOÀN THIỆN NGHIỆM THU
+- **Trạng thái**: ĐÃ HOÀN TẤT TOÀN DIỆN VÉ (ĐỦ 8 BƯỚC + DÙNG THẬT UI TRỌN VẸN)
 
 ---
 
@@ -184,7 +184,25 @@ Gói nguồn `goi-nguon-missing5-v2.zip` được xác thực SHA-256 hoàn toà
 
 ## Bước 7 — Nghiệm thu dùng thật qua UI Streamlit
 
-*(Đang thực thi tự động qua Playwright với script `scratch/run_ui_acceptance_missing5_home.py`)*
+Đã thực hiện nghiệm thu tự động đầu-cuối qua giao diện Streamlit Playwright trong phiên hội thoại hoàn toàn mới `CONV-MISSING5-6ACA3A9F` (thuộc sổ `mom_opcenter`, khối tri thức LSU), với 3 câu hỏi thuộc nhóm 5 tệp vừa nạp. Toàn bộ ảnh minh chứng được chụp trọn thân 100% bằng phương pháp bounding-box clip chính xác, không bị che khuất và không bị cắt thân:
+
+- **Thông số phiên nghiệm thu**:
+  * Mã phiên: `CONV-MISSING5-6ACA3A9F`
+  * Mã commit: `0f5734c`
+  * Thời gian mở app sẵn sàng: `7.53s` — ảnh minh chứng: `docs/phieu-viec/ket-qua/ui-missing5-01-app-ready.png` (123.368 bytes).
+  * Chỉ mục SHA-256 trước và sau nghiệm thu: `C5A9D524A88031C9D49C9710F998F1EFED8A08BBD1BA0578DF64507E88BB5D96` (bất biến 100%, không bị ghi đè hay thay đổi).
+
+- **Bảng đối chiếu 3 câu hỏi nghiệm thu thực tế**:
+
+| STT | Mã câu | Loại kiểm chứng | Thời gian phản hồi | Chế độ tổng hợp | Có trích dẫn nguồn | Ảnh minh chứng trọn thân | Kích thước ảnh (bytes) |
+|---|---|---|---|---|---|---|---|
+| 1 | `Q0824` | UnitTest `2026_08_UnitTest.csv` | 705.37s | `external_api` | Đạt (có nguồn Barcode, log) | `docs/phieu-viec/ket-qua/ui-missing5-02-cau1-q0824.png` | 258.115 |
+| 2 | `Q0620` | PPTX `AI cảnh báo lỗi LSU.pptx` | 952.80s | `external_api` | Đạt (có 6 nguồn trích dẫn) | `docs/phieu-viec/ket-qua/ui-missing5-03-cau2-q0620.png` | 277.573 |
+| 3 | `Q0828` | UnitTest `2026_08_UnitTest.csv` | 297.30s | `external_api` | Đạt (có trích dẫn [1],[2],[3])| `docs/phieu-viec/ket-qua/ui-missing5-04-cau3-q0828.png` | 140.688 |
+
+- **Tệp dữ kiện nghiệm thu UI đầy đủ**:
+  * Tệp JSON: `docs/phieu-viec/ket-qua/nghiem-thu-ui-data-ingest-missing5-home.json`
+  * Tệp Markdown chi tiết kèm đáp án nguyên văn: `docs/phieu-viec/ket-qua/nghiem-thu-ui-data-ingest-missing5-home.md`
 
 ---
 
