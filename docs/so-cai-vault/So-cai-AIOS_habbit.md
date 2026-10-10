@@ -6,6 +6,12 @@
 
 ## Nhật ký (mới nhất ở trên cùng)
 
+## Cập nhật 2026-10-10 ~09:10 +07 — CHỈ ĐƯỜNG: bản này là lưu trữ, sổ chính thức đã chuyển sang kho điều phối riêng
+
+- User đã tạo kho git riêng tư `aios-dieu-phoi` làm hòm thư điều phối của dự án. Toàn bộ nội dung sổ (kèm các mục mới nhất) đã được gieo vào thư mục `so-cai` của kho đó và từ thời điểm này bản ở kho mới là sổ chính thức duy nhất.
+- Bản trong thư mục `docs/so-cai-vault` này giữ nguyên làm bản lưu trữ tại thời điểm chuyển nhà — không ghi thêm bất kỳ mục nào vào đây nữa. Mọi verdict, phát vé và quyết định từ nay ghi tại kho `aios-dieu-phoi`.
+
+
 ## Cập nhật 2026-10-10 ~08:20 +07 — Sổ cái chuyển từ Notion sang Obsidian (đây là mục đầu tiên ghi tại nhà mới)
 
 - Theo lệnh của user sáng 10/10, sổ cái chuyển hẳn từ Notion sang Obsidian. Lý do: workspace Notion ở gói Free đã chạm trần số khối, đang trong thời gian ân hạn tới 09:04 ngày 11/10; sau mốc đó việc ghi tiếp phụ thuộc vào nâng cấp trả phí. Obsidian dùng tệp Markdown thuần lưu trên đĩa — không giới hạn số mục, không phụ thuộc hạn mức của bất kỳ dịch vụ nào.
