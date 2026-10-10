@@ -1,0 +1,73 @@
+{
+  "timestamp": "2026-10-11T01:57:07.178676",
+  "ticket": "MISSING5-PARSER-FIX-HOME",
+  "production_before": {
+    "total_docs": 894,
+    "total_chunks": 181033,
+    "total_dense": 122293,
+    "total_sparse": 122293,
+    "target_files": {
+      "AI cảnh báo lỗi LSU.pptx": {
+        "document_id": "wsc-f6782ff77c152a5c9a416ad8",
+        "total_chunks": 8,
+        "retrievable_chunks": 8,
+        "parent_chunks": 0,
+        "dense_vectors": 8,
+        "sparse_vectors": 8
+      },
+      "2026_08_UnitTest.csv": {
+        "document_id": "wsc-4bd2e353e19864fe786358c5",
+        "total_chunks": 112,
+        "retrievable_chunks": 97,
+        "parent_chunks": 15,
+        "dense_vectors": 97,
+        "sparse_vectors": 97
+      }
+    }
+  },
+  "dryrun_files": {
+    "AI cảnh báo lỗi LSU.pptx": {
+      "document_id": "wsc-f6782ff77c152a5c9a416ad8",
+      "source_path": "C:\\tmp\\missing5_staging\\AI cảnh báo lỗi LSU.pptx",
+      "file_size": 5841550,
+      "sha256": "6883f03ea0c9e533a45ff6573de4b28fe657671e5f6ee31af48ad0cc3e5316ff",
+      "element_count": 7,
+      "total_chunks": 12,
+      "retrievable_chunks": 10,
+      "parent_chunks": 2,
+      "conversion_time_sec": 0.026,
+      "chunking_time_sec": 0.004,
+      "facts_verification": {
+        "has_25_42": true,
+        "has_49_49": true,
+        "has_bowskew_4_beam": true,
+        "has_month_3_2026": true
+      },
+      "sample_chunk_preview": "Biểu đồ cho thấy các JIG thuộc Iris LSU có tỷ lệ NG cao hơn rõ rệt so với các JIG còn lại. Vì vậy, cần ưu tiên cải tiến BOWSKEW 4 BEAM, BOWSKEW 2 BEAM và BEAM 4 BEAM , trong đó BOWSKEW 4 BEAM là đối tượng trọng tâm. Iris LSU Iris LSU AI dự đoán và cảnh báo lỗi Nắm bắt hiện trạng lỗi : Tiến hành phân"
+    },
+    "2026_08_UnitTest.csv": {
+      "document_id": "wsc-4bd2e353e19864fe786358c5",
+      "source_path": "C:\\tmp\\missing5_staging\\2026_08_UnitTest.csv",
+      "file_size": 81267,
+      "sha256": "9fbe87e8270586182b3faf9bf87fc517ec31eabfa45dc36a33d6f15830b58ad7",
+      "element_count": 1,
+      "total_chunks": 586,
+      "retrievable_chunks": 585,
+      "parent_chunks": 1,
+      "conversion_time_sec": 0.0,
+      "chunking_time_sec": 0.048,
+      "facts_verification": {
+        "has_serial_61C1068E7022": true,
+        "has_date_0812": true,
+        "has_date_0813": true,
+        "has_judge_black_ok": true,
+        "has_judge_cyan_ng": true,
+        "has_total_judge_ng": true,
+        "serial_chunks_count": 130,
+        "all_serial_chunks_have_cyan_ng": true,
+        "all_serial_chunks_have_total_ng": true
+      },
+      "sample_chunk_preview": "Row 1 | DATE: 2026/08/01 |  TIME: 14:34:24 |  S/N: 61C1068E6208 |  Mode: UnitTest |  Humidity[%]: 0 | Judge:Black: OK | Judge:Magenta: OK | Judge:Cyan: OK | Judge:Yellow: OK | TotalJudge: OK |  totalTakt1[sec]: 37.8 |  totalTakt2[sec]: 33.1 |  takt:UnitSet/Cable[sec]: 4.7 |  takt:AdjMagenta[sec]: 0."
+    }
+  }
+}
