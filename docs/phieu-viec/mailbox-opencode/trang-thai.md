@@ -11,7 +11,8 @@
 - `ghi_chu`: 2026-10-10 08:52 +07 — Cài xong Obsidian 1.14.4 cho người dùng hiện tại (C:\Users\Admin\AppData\Local\Programs\Obsidian\Obsidian.exe, kiểm tra bản mới nhất báo 1.14.4 đã mới nhất). Tiếp theo: mở vault docs/so-cai-vault.
 - `ghi_chu`: 2026-10-10 09:18 +07 — Đã đọc bản đính chính đích vault 09:15 (prompt.md mới): vault thật ở kho aios-dieu-phoi thư mục so-cai, bản docs/so-cai-vault đã thành lưu trữ. Giữ kết quả cài Obsidian 1.14.4, chuyển sang clone kho điều phối về D:\Sandbox\aios-dieu-phoi.
 - `ghi_chu`: 2026-10-10 09:27 +07 — Clone xong kho aios-dieu-phoi về D:\Sandbox\aios-dieu-phoi (nhánh main, commit 5577b4e), thấy vault so-cai đủ README + So-cai-AIOS_habbit.md (mục mới nhất 09:25 ghi đợt chuyển hộp thư). Tiếp theo: mở vault trong Obsidian.
-- `ghi_chu`: 2026-10-10 09:35 +07 — Mở vault so-cai trong Obsidian 1.14.4 thành công, thấy So-cai-AIOS_habbit.md (mục mới nhất 09:25 đợt chuyển hộp thư), ảnh obsidian-setup-home.png đã chụp. Tiếp theo: tạo tệp đồng bộ một chạm.
+- `ghi_chu`: 2026-10-10 09:20 +07 — Mở vault so-cai trong Obsidian 1.14.4 thành công, thấy So-cai-AIOS_habbit.md (mục mới nhất 09:25 đợt chuyển hộp thư), ảnh obsidian-setup-home.png đã chụp. Tiếp theo: tạo tệp đồng bộ một chạm.
+- `ghi_chu`: 2026-10-10 09:28 +07 — Đồng bộ thật xong: dòng kiểm chứng 09:22 đã lên origin/main kho aios-dieu-phoi (commit 1076bcd), tệp lệnh dong-bo-so-cai.ps1 đã nộp (commit a542acf). Tiếp theo: ghi báo cáo + xin duyệt.
 
 # Trạng thái mailbox-opencode (thợ opencode — model free muse-spark-1.3 / space-bunny)
 
