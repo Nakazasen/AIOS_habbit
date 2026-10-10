@@ -2,7 +2,7 @@
 
 - Vé: `MAILBOX-MOVE-HOME-OPENCODE`
 - Trạng thái: `xong-cho-duyet`
-- `commit`: `f9703a7` kho aios-dieu-phoi (xác nhận chuyển nhà; báo cáo `mailbox-move-home-opencode.md` trong lượt đẩy này; vé này không sửa `src/`/`tests/`, không merge, không đụng production)
+- `commit`: `4aa9770` (báo cáo `mailbox-move-home-opencode.md` + commit xác nhận kho aios-dieu-phoi `f9703a7`; vé này không sửa `src/`/`tests/`, không merge, không đụng production)
 - `bao_cao`: `docs/phieu-viec/ket-qua/mailbox-move-home-opencode.md`
 - `ghi_chu`: 2026-10-10 09:43 +07 — Đã nhận vé MAILBOX-MOVE-HOME-OPENCODE, cổng MỞ (trạng thái `moi` + prompt đúng vé; HEAD=origin=6fa41f4, máy h410asrock đúng máy nhà, clone D:\Sandbox\aios-dieu-phoi còn; không rơi nhánh 4-lần/cho-muse). Bắt đầu bước 1: kéo main kho điều phối, chưa sửa gì.
 - `ghi_chu`: 2026-10-10 09:46 +07 — Mốc kéo + đọc xong: main kho aios-dieu-phoi từ a542acf lên 7a137ff (mục sổ verdict ĐẠT Obsidian + phát hành vé này); đã đọc hop-thu/README.md (giao thức 2 dấu) + CHUYEN-NHA.md (bản GIEO chưa hiệu lực). Kế tiếp: ghi xác nhận vào CHUYEN-NHA.md ở kho mới.
