@@ -1598,10 +1598,12 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
         CONG_CU_NANG_CAO,
         DU_LIEU_DAN,
         HO_SO_DIEU_TRA,
+        LAP_CAY_4M_VU,
         MO_SO,
         TAO_SO,
         TAO_VU_DIEU_TRA,
         VE_BIEU_DO,
+        XEM_TIEN_DO_VU,
         _khong_dau,
     )
 
@@ -1611,6 +1613,20 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
         preview_data = st.session_state.pop("wsc_pending_case_preview")
         conv_id = getattr(active_conversation, "id", "") or ""
         return execute_confirm_case(preview_data, conversation_id=conv_id)
+
+    if y_dinh == XEM_TIEN_DO_VU:
+        from aios_habit.chat_action_create_case import execute_view_case_progress
+
+        conv_id = getattr(active_conversation, "id", "") or ""
+        explicit_cid = slots.get("case_id") if isinstance(slots, dict) else ""
+        return execute_view_case_progress(case_id=explicit_cid, conversation_id=conv_id)
+
+    if y_dinh == LAP_CAY_4M_VU:
+        from aios_habit.chat_action_create_case import execute_build_case_tree
+
+        conv_id = getattr(active_conversation, "id", "") or ""
+        explicit_cid = slots.get("case_id") if isinstance(slots, dict) else ""
+        return execute_build_case_tree(case_id=explicit_cid, conversation_id=conv_id)
 
     if y_dinh == TAO_VU_DIEU_TRA:
         from aios_habit.chat_action_create_case import (
@@ -1767,8 +1783,26 @@ def _xu_ly_y_dinh_chat(q_text: str, *, active_conversation, active_nb_id) -> boo
         HOI_DAP_CHUNG,
         HOI_TAI_LIEU,
         classify_all_intents,
+        extract_case_id_from_text,
         nhan_y_dinh,
     )
+
+    explicit_case_id = extract_case_id_from_text(q_text)
+    if explicit_case_id:
+        st.session_state["wsc_active_case_id"] = explicit_case_id
+
+    if not st.session_state.get("wsc_active_case_id") and active_conversation:
+        try:
+            from aios_habit.workspace_chat_store import load_messages
+
+            c_msgs = load_messages(active_conversation.id)
+            for m in reversed(c_msgs):
+                m_cid = extract_case_id_from_text(m.content or "")
+                if m_cid:
+                    st.session_state["wsc_active_case_id"] = m_cid
+                    break
+        except Exception:
+            pass
 
     cac_y_dinh = classify_all_intents(q_text)
     if len(cac_y_dinh) == 1 and cac_y_dinh[0][0] == HOI_TAI_LIEU:

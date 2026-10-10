@@ -187,3 +187,39 @@ def test_khong_pha_hanh_vi_cu():
     # Tao so khong bi cuop
     assert classify_intent("tạo sổ Sổ nghiệm thu") == TAO_SO
 
+
+def test_xem_tien_do_vu_intents():
+    from aios_habit.chat_intent_router import XEM_TIEN_DO_VU, classify_intent, route
+
+    assert classify_intent("Xem tiến độ vụ này") == XEM_TIEN_DO_VU
+    assert classify_intent("xem tien do vu nay") == XEM_TIEN_DO_VU
+    assert classify_intent("tiến độ vụ này") == XEM_TIEN_DO_VU
+    assert classify_intent("tiến độ ca này thế nào") == XEM_TIEN_DO_VU
+    assert classify_intent("Xem tiến độ vụ CASE-1234ABCD") == XEM_TIEN_DO_VU
+
+    intent, slots = route("Xem tiến độ vụ CASE-1234ABCD")
+    assert intent == XEM_TIEN_DO_VU
+    assert slots.get("case_id") == "CASE-1234ABCD"
+
+
+def test_lap_cay_4m_intents():
+    from aios_habit.chat_intent_router import LAP_CAY_4M_VU, classify_intent, route
+
+    assert classify_intent("Lập cây 4M cho vụ này") == LAP_CAY_4M_VU
+    assert classify_intent("lap cay 4m cho vu nay") == LAP_CAY_4M_VU
+    assert classify_intent("cây 4m cho vụ này") == LAP_CAY_4M_VU
+    assert classify_intent("lập cây 4m vụ CASE-ABCD") == LAP_CAY_4M_VU
+    assert classify_intent("phân tích 4m cho vụ này") == LAP_CAY_4M_VU
+
+    intent, slots = route("Lập cây 4M cho vụ CASE-9999")
+    assert intent == LAP_CAY_4M_VU
+    assert slots.get("case_id") == "CASE-9999"
+
+
+def test_extract_case_id_from_text():
+    from aios_habit.chat_intent_router import extract_case_id_from_text
+
+    assert extract_case_id_from_text("Xem tiến độ vụ CASE-A1B2C3D4") == "CASE-A1B2C3D4"
+    assert extract_case_id_from_text("CASE-12345678 là gì?") == "CASE-12345678"
+    assert extract_case_id_from_text("Không có mã vụ nào ở đây") == ""
+

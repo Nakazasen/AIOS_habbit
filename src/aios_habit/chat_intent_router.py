@@ -17,6 +17,8 @@ from typing import Dict, Optional, Tuple
 # Recognized intents. "hoi_tai_lieu" is the default fallback.
 CANH_BAO_NGUONG = "canh_bao_nguong"      # threshold alert request
 VE_BIEU_DO = "ve_bieu_do"                # chart request (runs the JIG chart branch)
+XEM_TIEN_DO_VU = "xem_tien_do_vu"        # view progress of active case
+LAP_CAY_4M_VU = "lap_cay_4m_vu"          # build 4M + Why-Why tree for active case
 TAO_VU_DIEU_TRA = "tao_vu_dieu_tra"      # create an investigation case via chat
 TAO_SO = "tao_so"                        # create a notebook
 MO_SO = "mo_so"                          # open a notebook
@@ -29,6 +31,8 @@ DU_LIEU_DAN = "du_lieu_dan"              # pasted CSV/log block in the message
 TAT_CA_Y_DINH = (
     CANH_BAO_NGUONG,
     VE_BIEU_DO,
+    XEM_TIEN_DO_VU,
+    LAP_CAY_4M_VU,
     TAO_VU_DIEU_TRA,
     TAO_SO,
     MO_SO,
@@ -62,6 +66,33 @@ _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
         VE_BIEU_DO,
         (
             "ve bieu do",
+        ),
+    ),
+    (
+        XEM_TIEN_DO_VU,
+        (
+            "xem tien do vu",
+            "tien do vu",
+            "tien do ca",
+            "xem tien do ca",
+            "trang thai vu",
+            "xem trang thai vu",
+            "xem tien do",
+            "tien do vu dieu tra",
+        ),
+    ),
+    (
+        LAP_CAY_4M_VU,
+        (
+            "lap cay 4m",
+            "cay 4m",
+            "cay dieu tra 4m",
+            "lap cay dieu tra 4m",
+            "phan tich 4m",
+            "5 why",
+            "why why",
+            "lap cay why why",
+            "cay why why",
         ),
     ),
     (
@@ -244,12 +275,22 @@ def extract_case_entities(text: str) -> Dict[str, str]:
     }
 
 
+def extract_case_id_from_text(text: str) -> str:
+    """Extract CASE-XXXX id if explicitly referenced in text."""
+    clean = str(text or "").strip()
+    m = re.search(r"\b(CASE-[A-Za-z0-9_-]+)\b", clean, re.IGNORECASE)
+    return m.group(1).upper() if m else ""
+
+
 def extract_slots(text: str, intent: str) -> Dict[str, str]:
     """Extract simple slots for a few intents (notebook title, case entities...)."""
     slots: Dict[str, str] = {}
     clean = (text or "").strip()
     if intent == TAO_VU_DIEU_TRA:
         return extract_case_entities(clean)
+    elif intent in (XEM_TIEN_DO_VU, LAP_CAY_4M_VU):
+        cid = extract_case_id_from_text(clean)
+        return {"case_id": cid} if cid else {}
     elif intent == TAO_SO:
         mau = re.compile(
             r"(?:tạo|tao)\s+sổ(?:\s+tài\s+liệu)?\s+(.+)$",
@@ -277,6 +318,8 @@ def giai_thich_y_dinh(intent: str) -> str:
     return {
         CANH_BAO_NGUONG: "Tôi hiểu đây là yêu cầu cảnh báo ngưỡng.",
         VE_BIEU_DO: "Tôi hiểu bạn muốn vẽ biểu đồ.",
+        XEM_TIEN_DO_VU: "Tôi hiểu bạn muốn xem tiến độ vụ điều tra.",
+        LAP_CAY_4M_VU: "Tôi hiểu bạn muốn lập cây điều tra 4M và chuỗi Why-Why.",
         TAO_VU_DIEU_TRA: "Tôi hiểu bạn muốn tạo vụ điều tra lỗi mới.",
         TAO_SO: "Tôi hiểu bạn muốn tạo sổ tài liệu mới.",
         MO_SO: "Tôi hiểu bạn muốn mở một sổ tài liệu.",
@@ -293,6 +336,8 @@ def nhan_y_dinh(intent: str) -> str:
     return {
         CANH_BAO_NGUONG: "Cảnh báo ngưỡng",
         VE_BIEU_DO: "Vẽ biểu đồ",
+        XEM_TIEN_DO_VU: "Tiến độ vụ điều tra",
+        LAP_CAY_4M_VU: "Cây điều tra 4M & Why-Why",
         TAO_VU_DIEU_TRA: "Tạo vụ điều tra",
         TAO_SO: "Tạo sổ",
         MO_SO: "Mở sổ",
