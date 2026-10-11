@@ -24,6 +24,8 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any, Tuple, Mapping, Callable
 from aios_habit.workspace_paths import default_agent_workspace_root
 
+LOGGER = logging.getLogger("aios_habit.workspace_chat_app")
+
 
 # Provider calls can take minutes. Keep them off Streamlit's UI run so the
 # composer can present a genuine stop action while a response is in flight.
@@ -1243,6 +1245,7 @@ def _run_chat_turn_async(
 
     t_turn_start = time.time()
     LOGGER.info("[STREAMING_QA_START] conv=%s backend=%s question=%s", conversation_id, ai_backend, q_text[:60])
+    print(f"[STREAMING_QA_START] conv={conversation_id} backend={ai_backend} question={q_text[:60]}", flush=True)
 
     if cancellation_event is not None and cancellation_event.is_set():
         return (False, "", None, "Đã dừng yêu cầu AI.")
@@ -1406,6 +1409,10 @@ def _run_chat_turn_async(
         turn_total_s * 1000,
         eff_backend,
         res[0],
+    )
+    print(
+        f"[STREAMING_QA_COMPLETE] conv={conversation_id} total_s={turn_total_s:.3f} total_ms={turn_total_s * 1000:.1f} backend={eff_backend} ok={res[0]}",
+        flush=True,
     )
     return res
 
@@ -5487,6 +5494,10 @@ else:
                                                 active_conversation.id,
                                                 ttft_s,
                                                 ttft_s * 1000,
+                                            )
+                                            print(
+                                                f"[STREAMING_QA_FIRST_TOKEN] conv={active_conversation.id} ttft_s={ttft_s:.3f} ttft_ms={ttft_s * 1000:.1f}",
+                                                flush=True,
                                             )
                                         stream_state["text"] += delta
 
