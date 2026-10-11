@@ -1,5 +1,15 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
+## Vé hiện tại: STRUCTURED-LANE-TEST-FIXTURE-HOME (chuyển test làn cấu trúc sang dữ kiện tổng hợp)
+
+- Trạng thái: `moi`
+- `ghi_chu` (điều phối Muse — PHÁT HÀNH): 2026-10-11 ~15:2x +07 — Phát hành vé vệ sinh test làm vé hiện hành (`prompt.md` + tệp hàng chờ). Hàng chờ ngay sau nó: `DISK-GROWTH-DIAG-HOME` (chẩn đoán chỉ đọc phần ~17,3 GB ổ C: bị tiêu thụ từ sau vòng dọn 2 — tệp `prompt-queue-disk-growth-diag-home.md`).
+
+## Vé vừa verdict: DISK-CLEANUP-ROUND3-HOME
+
+- Trạng thái: `xong`
+- `ghi_chu` (điều phối Muse — VERDICT): 2026-10-11 ~15:2x +07 — **ĐẠT**. Điều phối kiểm chứng: Việc 0 — hai ảnh chụp lại đã mở xem trực tiếp: ảnh Q0824 trọn thân đáp án (cả hai ngày TotalJudge=NG, Cyan NG, kết luận không đổi — khớp dữ kiện đã kiểm chứng), ảnh Q0668 trọn thân (13.81 / +0.12 / −0.05 / 13.93 / 13.76, banner làn cấu trúc hiện đúng) — hồ sơ ảnh của vé LANE-FIX khép hẳn, bản trên Drive đã thay bằng ảnh mới. Việc chính — kỷ luật cổng giữ đúng: 11 mục xoá đều qua đủ 3 cổng (thu hồi +210.800.640 byte), 3 mục bị giữ đúng lý do (đệm npm 1,14 GB mới 0,18 giờ; thư mục deploy Bước 0 ghi <1 giờ; nhật ký test hôm nay) — không ép xoá; toàn vẹn 3 bộ sưu tập production đều ok; số liệu báo cáo nhất quán nội bộ (7,443 → 7,640 GB). ĐIỂM MỞ NGOÀI PHẠM VI (không trừ vé này): ổ C: đã tụt từ 24,742 GB trống (sau vòng 2, 17:12 ngày 10/10) xuống 7,443 GB trước vòng 3 — ~17,3 GB tiêu thụ chưa có giải thích; đã mở vé chẩn đoán chỉ đọc `DISK-GROWTH-DIAG-HOME` xếp hàng ngay sau vé test-fixture.
+
 ## Vé hiện tại: DISK-CLEANUP-ROUND3-HOME (quét dọn định kỳ vòng 3 + bổ sung ảnh LANE-FIX)
 
 - Trạng thái: `xong-cho-duyet`
