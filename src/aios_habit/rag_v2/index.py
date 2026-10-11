@@ -66,6 +66,12 @@ _SPECIAL_ENTITY_RES = (
     re.compile(r"\b(?:1035|1004)\b"),
     re.compile(r"(?<!\w)[A-Za-z][A-Za-z0-9]*(?:[_-][A-Za-z0-9]+)+(?!\w)"),
 )
+# Structured CSV log documents that operate on the dedicated structured query lane (CSV-STRUCTURED-LANE-HOME)
+# rather than dense semantic embeddings. Dense embedding was explicitly cancelled by user & coordinator decision.
+STRUCTURED_LANE_DOCUMENT_IDS: frozenset[str] = frozenset({
+    "wsc-8eb2a5d21b75fa88307223b1",  # 2026_08_Error_BowOverAdjust.csv
+})
+
 MAX_ENTITY_BOOST = 0.060
 _EXACT_IDENTIFIER_QUOTA = 16
 
@@ -2119,7 +2125,7 @@ class LocalChunkIndex:
         descriptor = backend.descriptor
         dense_rows = self._conn.execute(
             f"""
-            SELECT c.text, e.content_hash
+            SELECT c.document_id, c.text, e.content_hash
             FROM chunks AS c
             JOIN chunk_embeddings AS e ON e.chunk_id = c.chunk_id
             WHERE c.retrievable = 1
@@ -2136,7 +2142,7 @@ class LocalChunkIndex:
         if sparse_required:
             sparse_rows = self._conn.execute(
                 f"""
-                SELECT c.text, s.content_hash
+                SELECT c.document_id, c.text, s.content_hash
                 FROM chunks AS c
                 JOIN chunk_sparse_embeddings AS s ON s.chunk_id = c.chunk_id
                 WHERE c.retrievable = 1
@@ -2161,7 +2167,7 @@ class LocalChunkIndex:
             if multivector_descriptor is not None:
                 multivector_rows = self._conn.execute(
                     f"""
-                    SELECT c.text, m.content_hash, m.representation_fingerprint
+                    SELECT c.document_id, c.text, m.content_hash, m.representation_fingerprint
                     FROM chunks AS c
                     JOIN chunk_multivector_embeddings AS m ON m.chunk_id = c.chunk_id
                     WHERE c.retrievable = 1
@@ -2177,8 +2183,34 @@ class LocalChunkIndex:
                     for row in multivector_rows
                 )
 
-        dense_complete = dense_embedding_count == retrievable_chunk_count
-        sparse_complete = not sparse_required or sparse_embedding_count == retrievable_chunk_count
+        semantic_required_chunk_count = sum(
+            int(row["chunk_count"])
+            for row in rows
+            if str(row["document_id"]) not in STRUCTURED_LANE_DOCUMENT_IDS
+        )
+        semantic_dense_count = sum(
+            str(row["content_hash"]) == _embedding_content_hash(str(row["text"]))
+            for row in dense_rows
+            if str(row["document_id"]) not in STRUCTURED_LANE_DOCUMENT_IDS
+        )
+        dense_complete = (
+            semantic_dense_count == semantic_required_chunk_count
+            if semantic_required_chunk_count > 0
+            else True
+        )
+        if sparse_required:
+            semantic_sparse_count = sum(
+                str(row["content_hash"]) == _embedding_content_hash(str(row["text"]))
+                for row in sparse_rows
+                if str(row["document_id"]) not in STRUCTURED_LANE_DOCUMENT_IDS
+            )
+            sparse_complete = (
+                semantic_sparse_count == semantic_required_chunk_count
+                if semantic_required_chunk_count > 0
+                else True
+            )
+        else:
+            sparse_complete = True
         multivector_complete = (
             not multivector_required
             or multivector_embedding_count == retrievable_chunk_count

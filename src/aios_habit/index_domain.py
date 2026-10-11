@@ -92,7 +92,10 @@ _KEYWORD_RULES: Mapping[str, Sequence[tuple[str, float, str]]] = {
         (r"dmt[\s_\-–—]+pmt", 3.0, "DMT-PMT"),
         (r"\b[gG]\d{1,2}\b", 2.0, "điểm đo G"),
         (r"\b(?:nominal|dung\s*sai|giới\s*hạn)\b", 1.5, "thông số đo lường"),
-        (r"\b(?:mount\s*ld|ld\s*block)\b", 2.5, "khối LD"),
+        (r"(?:\b|(?<=_))(?:mount[\s_]*ld|ld[\s_]*block)(?:\b|(?=_))", 2.5, "khối LD"),
+        (r"(?:\b|(?<=_))iris(?:\b|(?=_))", 2.5, "Iris LSU"),
+        (r"(?:\b|(?<=_))bow[\s_]*over[\s_]*adjust", 3.0, "BowOverAdjust"),
+        (r"(?:\b|(?<=_))unit[\s_]*test", 2.0, "UnitTest"),
     ),
     DOMAIN_DIEU_TRA_LOI: (
         (r"\bkdtps\b", 2.0, "KDTPS"),
@@ -395,6 +398,21 @@ def load_domain_document_map() -> dict[str, str]:
 
     _DOMAIN_DOCUMENT_MAP_CACHE = {}
     return _DOMAIN_DOCUMENT_MAP_CACHE
+
+
+def get_domain_counts() -> dict[str, int]:
+    """Return document counts per domain block from the document map."""
+    doc_map = load_domain_document_map()
+    counts = {
+        "auto": len(doc_map),
+        DOMAIN_LSU: 0,
+        DOMAIN_DIEU_TRA_LOI: 0,
+        DOMAIN_MOM: 0,
+    }
+    for doc_id, dom in doc_map.items():
+        if dom in counts:
+            counts[dom] += 1
+    return counts
 
 
 def get_domain_document_ids(domain: Optional[str]) -> Optional[tuple[str, ...]]:

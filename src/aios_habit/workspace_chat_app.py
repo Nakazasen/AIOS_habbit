@@ -4562,6 +4562,7 @@ else:
                         DOMAIN_LSU as _DOMAIN_LSU,
                         DOMAIN_DIEU_TRA_LOI as _DOMAIN_DIEU_TRA_LOI,
                         DOMAIN_MOM as _DOMAIN_MOM,
+                        get_domain_counts as _get_domain_counts,
                     )
 
                     knowledge_block_key = f"wsc_knowledge_block_{active_conversation.id}"
@@ -4572,14 +4573,9 @@ else:
                     knowledge_block_value = str(
                         st.session_state.get(knowledge_block_key, "auto") or "auto"
                     )
+                    _block_counts = _get_domain_counts()
                     def _format_block_label(key: str, name: str) -> str:
-                        counts = {
-                            "auto": 889,
-                            _DOMAIN_LSU: 92,
-                            _DOMAIN_DIEU_TRA_LOI: 681,
-                            _DOMAIN_MOM: 44,
-                        }
-                        cnt = counts.get(key, 0)
+                        cnt = _block_counts.get(key, 0)
                         unit = "件" if current_ui_locale == "ja" else ("份" if current_ui_locale == "zh-CN" else "tài liệu")
                         return f"{name} ({cnt} {unit})"
 
