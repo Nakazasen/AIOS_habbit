@@ -2,7 +2,8 @@
 
 ## Vé hiện tại: DISK-CLEANUP-ROUND3-HOME (quét dọn định kỳ vòng 3 + bổ sung ảnh LANE-FIX)
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-11 14:47 +07 — **ĐÃ NHẬN VÉ** `DISK-CLEANUP-ROUND3-HOME`: Điều kiện mở đạt (vé LANE-FIX đã ĐẠT). Bắt đầu Việc 0 (chụp lại trọn thân 2 ảnh UI Q0824 và Q0668) và khảo sát 4 hạng mục dọn rác ổ C (staging missing5, tmp file_attach_test, npm-cache qua cổng 24h, tàn dư computer use đã lên Drive).
 - `ghi_chu` (điều phối Muse — PHÁT HÀNH): 2026-10-11 ~14:5x +07 — Phát hành vé dọn rác vòng 3 làm vé hiện hành (`prompt.md` + tệp hàng chờ `prompt-queue-disk-cleanup-round3-home.md`). Việc 0 bắt buộc: chụp lại đúng khung hai ảnh bằng chứng của vé LANE-FIX (chi tiết trong `prompt.md`).
 
 ## Vé vừa verdict: CSV-STRUCTURED-LANE-FIX-HOME
@@ -10,7 +11,7 @@
 - Trạng thái: `xong`
 - `ghi_chu` (điều phối Muse — VERDICT): 2026-10-11 ~14:5x +07 — **ĐẠT** (kèm một yêu cầu bổ sung bằng chứng ảnh, xem Việc 0 của vé hiện hành). Điều phối kiểm chứng độc lập ở mức chặt nhất từ đầu dự án: (1) Mã tại `6dff44e3` sạch hoàn toàn literal đáp án và nhánh theo mã câu hỏi; các hàm tính đọc CSV/XLSX thật tại thời điểm chạy, định tuyến tham số hoá (serial trích bằng regex, thông số trích từ câu hỏi), mọi nhánh đều đòi tệp nguồn tồn tại mới tính — thiếu tệp là nhường đường. (2) Bài kiểm biến dạng: điều phối tự tính lại từ bản sao CSV đã sửa do thợ nộp — 2.918 bản ghi, Yellow 1.069 / Cyan 1.035 / Magenta 814, khoảng ngày tới 27/08, 1.190 serial, đúng 7 dòng ngày 27/08 — khớp tuyệt đối đáp án của làn trên bản sao. (3) Câu hỏi biến thể tự tính lại từ gói nguồn gốc: serial `61C999999902` có thật, cả hai ngày đều NG (Black/Magenta/Yellow NG, Cyan OK) khớp đáp án; phân bố JigNumber của tệp Error là một giá trị `#1` = 183 khớp. (4) Rows cộng đúng 94,5/150, sáu câu đích 18/18; biến động so với lượt đo trước chỉ ở 3 câu (Q0620 0→3 có giải thích harness và nội dung đáp án thật; Q0851 0→3; Q1029 1→3), không câu nào giảm. (5) Kiểm thử điều phối chạy lại: 23/24 đạt — test duy nhất rớt trên VM điều phối là test đòi tệp dữ kiện thật tại máy (VM không có tệp nên làn từ chối đúng thiết kế fail-closed; tại máy nhà đạt) — ghi nhận là vệ sinh test: nên chuyển test đó sang dữ kiện tổng hợp khi lần sau chạm tệp test. CHƯA ĐẠT ở hồ sơ ảnh: hai ảnh Q0824/Q0668 chụp lệch khung, thân đáp án ngoài vùng chụp (nội dung đáp án đã kiểm chứng qua tệp văn bản + tính lại) — chụp lại ở Việc 0 của vé hiện hành. Ghi chú hồ sơ: tệp rows của lượt nộp bị trả đã bị ghi đè bằng rows lượt này (bản gốc còn trong lịch sử git tại `7a6bd298`, điều phối đã khôi phục từ đó để đối soát) — từ nay mỗi lượt đo dùng tên tệp riêng theo mã vé.
 
-## Vé hiện tại: CSV-STRUCTURED-LANE-FIX-HOME (làm lại làn cấu trúc: tính thật từ dữ kiện, bỏ đáp án chép cứng)
+## Vé trước: CSV-STRUCTURED-LANE-FIX-HOME (làm lại làn cấu trúc: tính thật từ dữ kiện, bỏ đáp án chép cứng)
 
 - Trạng thái: `xong-cho-duyet`
 - `commit`: `6dff44e`
