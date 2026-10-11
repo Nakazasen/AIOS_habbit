@@ -1083,11 +1083,28 @@ def _compute_inspection_sheet_limits(
     """Compute nominal, tolerance, limits and measurement ranges dynamically from inspection sheet."""
     if not source_path.is_file():
         return None
-    try:
-        with open(source_path, "r", encoding="utf-8", errors="ignore") as f:
-            lines = f.readlines()
-    except Exception:
-        return None
+    lines: list[str] = []
+    if source_path.suffix.lower() in (".xlsx", ".xlsm"):
+        try:
+            import openpyxl
+            wb = openpyxl.load_workbook(source_path, data_only=True)
+            sheet = wb.active
+            for sname in wb.sheetnames:
+                if any(x in sname for x in ("18.08", "18.8", "LOT", "Block", "Sheet")):
+                    sheet = wb[sname]
+                    break
+            for row in sheet.iter_rows(values_only=True):
+                if any(row):
+                    lines.append(" | ".join("" if v is None else str(v).strip() for v in row))
+            wb.close()
+        except Exception:
+            return None
+    else:
+        try:
+            with open(source_path, "r", encoding="utf-8", errors="ignore") as f:
+                lines = f.readlines()
+        except Exception:
+            return None
 
     param_map: dict[str, dict[str, Any]] = {}
     for line_idx, line in enumerate(lines, start=1):
@@ -1639,6 +1656,8 @@ def try_structured_table_evidence(
             doc_title = "2026_08_Spec.csv"
         elif "unittest" in q_norm:
             doc_title = "2026_08_UnitTest.csv"
+        if not doc_title and custom_source_path:
+            doc_title = custom_source_path.name
 
         if doc_title:
             src_path = custom_source_path or find_structured_source_path(doc_title, sources)

@@ -6,7 +6,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
-from typing import Any, Mapping, Optional, Protocol
+from typing import Any, Callable, Mapping, Optional, Protocol
 
 from aios_habit.rag_evidence import RAGEvidencePack
 from aios_habit.rag_answer_composer import StrongModelAnswer, stable_answer_draft_id
@@ -280,8 +280,11 @@ def _post_chat_once(
     system_prompt: str,
     user_prompt: str,
     max_tokens: int,
+    *,
+    stream: bool = False,
+    on_chunk: Optional[Callable[[str], None]] = None,
 ) -> dict[str, Any]:
-    payload = {
+    payload: dict[str, Any] = {
         "model": config.model_name,
         "messages": [
             {"role": "system", "content": system_prompt},
@@ -290,6 +293,9 @@ def _post_chat_once(
         "temperature": 0.1,
         "max_tokens": max_tokens,
     }
+    if stream or on_chunk is not None:
+        payload["stream"] = True
+
     headers = {
         "Content-Type": "application/json",
         "User-Agent": "AIOS-WorkLens/1.0",
@@ -303,6 +309,53 @@ def _post_chat_once(
         method="POST",
     )
     with urllib.request.urlopen(request, timeout=config.timeout_seconds) as response:
+        if payload.get("stream"):
+            full_chunks: list[str] = []
+            reasoning_chunks: list[str] = []
+            finish_reason: str = ""
+            for line_bytes in response:
+                line_str = line_bytes.decode("utf-8").strip()
+                if not line_str or not line_str.startswith("data:"):
+                    continue
+                data_body = line_str[5:].strip()
+                if data_body == "[DONE]":
+                    break
+                try:
+                    event_json = json.loads(data_body)
+                except Exception:
+                    continue
+                choices = event_json.get("choices") or []
+                if not choices:
+                    continue
+                delta = choices[0].get("delta") or {}
+                if choices[0].get("finish_reason"):
+                    finish_reason = str(choices[0]["finish_reason"]).strip().lower()
+
+                # CẤM tuyệt đối lấy reasoning / reasoning_content làm câu trả lời cho người dùng!
+                if "reasoning_content" in delta and delta["reasoning_content"]:
+                    reasoning_chunks.append(str(delta["reasoning_content"]))
+                elif "reasoning" in delta and delta["reasoning"]:
+                    reasoning_chunks.append(str(delta["reasoning"]))
+
+                content_chunk = delta.get("content")
+                if content_chunk:
+                    full_chunks.append(content_chunk)
+                    if on_chunk:
+                        try:
+                            on_chunk(content_chunk)
+                        except Exception:
+                            pass
+
+            full_text = "".join(full_chunks)
+            msg_dict: dict[str, Any] = {"content": full_text}
+            if reasoning_chunks and not full_text:
+                msg_dict["reasoning_content"] = "".join(reasoning_chunks)
+            return {
+                "choices": [{
+                    "message": msg_dict,
+                    "finish_reason": finish_reason or "stop",
+                }]
+            }
         return json.loads(response.read().decode("utf-8"))
 
 
@@ -315,7 +368,13 @@ def _first_choice(data: dict[str, Any]) -> tuple[dict[str, Any], str]:
     return message, finish_reason
 
 
-def _post_chat(config: ProviderConfig, user_prompt: str, max_tokens: Optional[int] = None) -> str:
+def _post_chat(
+    config: ProviderConfig,
+    user_prompt: str,
+    max_tokens: Optional[int] = None,
+    *,
+    on_chunk: Optional[Callable[[str], None]] = None,
+) -> str:
     system_prompt = (
         "Bạn là trợ lý AI cục bộ của AIOS. Chỉ trả lời từ nguồn được cung cấp, "
         "không bịa dữ kiện, nói rõ khi chưa đủ bằng chứng và giữ dẫn nguồn."
@@ -325,8 +384,16 @@ def _post_chat(config: ProviderConfig, user_prompt: str, max_tokens: Optional[in
         if max_tokens is not None
         else getattr(config, "max_tokens", DEFAULT_MAX_TOKENS) or DEFAULT_MAX_TOKENS
     )
+    use_stream = bool(on_chunk is not None or os.environ.get("AIOS_STREAM_SYNTHESIS", "1") == "1")
     msg, finish_reason = _first_choice(
-        _post_chat_once(config, system_prompt, user_prompt, effective_max_tokens)
+        _post_chat_once(
+            config,
+            system_prompt,
+            user_prompt,
+            effective_max_tokens,
+            stream=use_stream,
+            on_chunk=on_chunk,
+        )
     )
 
     # CẤM tuyệt đối lấy reasoning / reasoning_content làm câu trả lời cho người dùng!
@@ -347,6 +414,8 @@ def _post_chat(config: ProviderConfig, user_prompt: str, max_tokens: Optional[in
                     system_prompt + _EMPTY_ANSWER_RETRY_DIRECTIVE,
                     user_prompt,
                     retry_budget,
+                    stream=use_stream,
+                    on_chunk=on_chunk,
                 )
             )
             raw_content = str(msg.get("content") or "").strip()
@@ -390,6 +459,8 @@ def answer_with_provider(
     source_refs: Optional[list[dict[str, Any]]] = None,
     source_privacy: str = "local_only",
     answer_language: str = "vi",
+    *,
+    on_chunk: Optional[Callable[[str], None]] = None,
 ) -> ProviderResult:
     if config is None or not config.enabled or config.provider_type == "deterministic":
         return _fallback(
@@ -451,7 +522,7 @@ def answer_with_provider(
     )
 
     try:
-        answer_text = _post_chat(config, prompt)
+        answer_text = _post_chat(config, prompt, on_chunk=on_chunk)
         return ProviderResult(
             ok=True,
             answer_text=answer_text,

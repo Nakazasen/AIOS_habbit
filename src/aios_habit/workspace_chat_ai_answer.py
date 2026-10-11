@@ -63,6 +63,7 @@ class WorkspaceAIAnswerRequest:
     workspace_id: str = "default"
     collection_id: str = "tri_thuc"
     consent_memory_fingerprint: str = ""
+    on_chunk: Any = None
 
 
 @dataclass(frozen=True)
@@ -760,7 +761,10 @@ def _generate_real_router_answer(
         effective_provider = ""
         effective_model = ""
     else:
-        detailed = generate_answer_via_router_detailed(decision.sanitized_payload)
+        detailed = generate_answer_via_router_detailed(
+            decision.sanitized_payload,
+            on_chunk=request.on_chunk,
+        )
         ok = detailed.ok
         response_text = detailed.text
         effective_provider = detailed.route.effective_provider if detailed.route else ""

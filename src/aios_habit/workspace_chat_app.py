@@ -17,11 +17,11 @@ import uuid
 import time
 import json
 from concurrent.futures import ThreadPoolExecutor
-from threading import Event
+from threading import Event, Lock
 from io import BytesIO
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, List, Dict, Any, Tuple, Mapping
+from typing import Optional, List, Dict, Any, Tuple, Mapping, Callable
 from aios_habit.workspace_paths import default_agent_workspace_root
 
 
@@ -1233,12 +1233,16 @@ def _run_chat_turn_async(
     cancellation_event: Any = None,
     user_message_id: str = "",
     forced_domain: Optional[str] = None,
+    on_chunk: Optional[Callable[[str], None]] = None,
 ) -> tuple[bool, str, dict[str, Any] | None, str | None]:
     """Execute evidence retrieval and model answer routing inside background thread pool."""
     from aios_habit.antigravity_bridge import route_workspace_chat_submission
     from aios_habit.workspace_chat_rag_v2_adapter import (
         retrieve_workspace_chat_evidence as retrieve_local_evidence,
     )
+
+    t_turn_start = time.time()
+    LOGGER.info("[STREAMING_QA_START] conv=%s backend=%s question=%s", conversation_id, ai_backend, q_text[:60])
 
     if cancellation_event is not None and cancellation_event.is_set():
         return (False, "", None, "Đã dừng yêu cầu AI.")
@@ -1371,7 +1375,7 @@ def _run_chat_turn_async(
     if cancellation_event is not None and cancellation_event.is_set():
         return (False, "", None, "Đã dừng yêu cầu AI.")
 
-    return route_workspace_chat_submission(
+    res = route_workspace_chat_submission(
         question=q_text,
         evidence_items=evidence_items,
         packed_sources=packed_sources,
@@ -1389,7 +1393,21 @@ def _run_chat_turn_async(
         cagent_endpoint_url=cagent_endpoint_url,
         cancellation_event=cancellation_event,
         local_synthesis=ret_res.get("local_synthesis") if retrieval_applied else None,
+        on_chunk=on_chunk,
     )
+    t_turn_end = time.time()
+    turn_total_s = t_turn_end - t_turn_start
+    badge = res[2] if len(res) > 2 and isinstance(res[2], dict) else {}
+    eff_backend = (badge.get("provider") or badge.get("ai_source") or ai_backend) if badge else ai_backend
+    LOGGER.info(
+        "[STREAMING_QA_COMPLETE] conv=%s total_s=%.3f total_ms=%.1f backend=%s ok=%s",
+        conversation_id,
+        turn_total_s,
+        turn_total_s * 1000,
+        eff_backend,
+        res[0],
+    )
+    return res
 
 
 def render_sidebar_bridge_status(*, locale: str, key_prefix: str = "wsc_sidebar") -> None:
@@ -4162,16 +4180,6 @@ else:
                     elif request_future is not None:
                         is_answering = True
 
-                        @st.fragment(run_every=0.8)
-                        def _refresh_completed_ai_request() -> None:
-                            if request_future.done():
-                                try:
-                                    st.rerun(scope="app")
-                                except TypeError:
-                                    st.rerun()
-
-                        _refresh_completed_ai_request()
-
                 active_pending = list_pending_ide_requests(active_conversation.id)
                 for req_info in active_pending:
                     if not req_info.response_exists and req_info.state == "handoff_pending":
@@ -4237,22 +4245,46 @@ else:
                                            conversation_id=active_conversation.id,
                                            feedback_question=_fb_question)
                     if is_answering:
-                        with st.chat_message("assistant"):
-                            treo_nguon = st.session_state.get(_PENDING_SOURCE_SUBMISSION_KEY)
-                            dang_cho_nguon = bool(
-                                isinstance(treo_nguon, dict)
-                                and treo_nguon.get("conversation_id") == active_conversation.id
-                            )
-                            render_answer_wait_steps(
-                                "cho_tai_lieu" if dang_cho_nguon else "dang_xu_ly",
-                                locale=current_ui_locale,
-                            )
-                            try:
-                                _worker_warmed = is_workspace_chat_worker_warmed()
-                            except Exception:
-                                _worker_warmed = True
-                            if not _worker_warmed:
-                                st.caption(t("worker_warming_background", locale=current_ui_locale))
+                        stream_state = (
+                            active_ai_request.get("stream_state")
+                            if isinstance(active_ai_request, dict)
+                            else None
+                        )
+
+                        @st.fragment(run_every=0.25)
+                        def _render_streaming_assistant_box() -> None:
+                            curr_text = ""
+                            if stream_state and "lock" in stream_state:
+                                with stream_state["lock"]:
+                                    curr_text = str(stream_state.get("text", "") or "")
+
+                            with st.chat_message("assistant"):
+                                if curr_text:
+                                    st.markdown(curr_text + " ▌")
+                                else:
+                                    treo_nguon = st.session_state.get(_PENDING_SOURCE_SUBMISSION_KEY)
+                                    dang_cho_nguon = bool(
+                                        isinstance(treo_nguon, dict)
+                                        and treo_nguon.get("conversation_id") == active_conversation.id
+                                    )
+                                    render_answer_wait_steps(
+                                        "cho_tai_lieu" if dang_cho_nguon else "dang_xu_ly",
+                                        locale=current_ui_locale,
+                                    )
+                                    try:
+                                        _worker_warmed = is_workspace_chat_worker_warmed()
+                                    except Exception:
+                                        _worker_warmed = True
+                                    if not _worker_warmed:
+                                        st.caption(t("worker_warming_background", locale=current_ui_locale))
+
+                            if request_future is not None and request_future.done():
+                                try:
+                                    st.rerun(scope="app")
+                                except TypeError:
+                                    st.rerun()
+
+                        _render_streaming_assistant_box()
 
                 # AI Answer Badge
                 if badge_data and badge_data.get("conversation_id") == active_conversation.id:
@@ -5436,6 +5468,28 @@ else:
                                 # save_message(assistant_msg)
                                 st.session_state[f"wsc_clear_input_{active_conversation.id}"] = True
                                 cancellation_event = Event()
+                                stream_state = {
+                                    "text": "",
+                                    "first_token_time": None,
+                                    "started_at": time.time(),
+                                    "lock": Lock(),
+                                }
+
+                                def _on_chunk(delta: str) -> None:
+                                    if not delta:
+                                        return
+                                    with stream_state["lock"]:
+                                        if stream_state["first_token_time"] is None:
+                                            stream_state["first_token_time"] = time.time()
+                                            ttft_s = stream_state["first_token_time"] - stream_state["started_at"]
+                                            LOGGER.info(
+                                                "[STREAMING_QA_FIRST_TOKEN] conv=%s ttft_s=%.3f ttft_ms=%.1f",
+                                                active_conversation.id,
+                                                ttft_s,
+                                                ttft_s * 1000,
+                                            )
+                                        stream_state["text"] += delta
+
                                 request_future = _WORKSPACE_AI_REQUEST_EXECUTOR.submit(
                                     _run_chat_turn_async,
                                     q_text=q_text,
@@ -5459,10 +5513,12 @@ else:
                                         st.session_state.get(f"wsc_knowledge_block_{active_conversation.id}", "auto")
                                         or "auto"
                                     ),
+                                    on_chunk=_on_chunk,
                                 )
                                 st.session_state[ai_request_key] = {
                                     "future": request_future,
                                     "cancellation_event": cancellation_event,
+                                    "stream_state": stream_state,
                                 }
                                 safe_rerun()
 

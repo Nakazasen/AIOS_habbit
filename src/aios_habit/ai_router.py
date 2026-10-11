@@ -45,6 +45,7 @@ class RouterRequest:
     session_id: str = ""
     task_type: str = "workspace_answer"
     privacy_label: str = "cloud_safe"
+    on_chunk: Any = None
 
 
 @dataclass
@@ -165,7 +166,15 @@ def select_candidate_providers(request: RouterRequest, provider_configs: list[Ro
 
 def call_openai_compatible_provider(config: RouterProviderConfig, request: RouterRequest) -> str:
     pcfg = ProviderConfig(provider_type=config.provider_id, endpoint_url=config.endpoint_url, model_name=config.model_name, api_key=config.api_key, locality="local" if config.trusted_internal else "cloud", timeout_seconds=config.timeout_seconds, enabled=config.enabled)
-    res = answer_with_provider(request.question, request.source_context, pcfg, request.deterministic_answer, request.source_refs, "cloud_allowed" if request.safety_mode_label == SAFETY_MODE_NORMAL else "local_only")
+    res = answer_with_provider(
+        request.question,
+        request.source_context,
+        pcfg,
+        request.deterministic_answer,
+        request.source_refs,
+        "cloud_allowed" if request.safety_mode_label == SAFETY_MODE_NORMAL else "local_only",
+        on_chunk=getattr(request, "on_chunk", None),
+    )
     if not res.ok:
         raise RuntimeError(res.error_message or "empty answer")
     return res.answer_text

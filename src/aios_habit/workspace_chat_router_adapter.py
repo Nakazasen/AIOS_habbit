@@ -219,7 +219,11 @@ def _generate_via_legacy_router(payload: SanitizedRouterPayload) -> WorkspaceRou
         return WorkspaceRouterDetailedResult(False, "Dịch vụ AI chưa phản hồi. Vui lòng thử lại sau.", route)
 
 
-def _generate_via_internal_router(payload: SanitizedRouterPayload) -> WorkspaceRouterDetailedResult:
+def _generate_via_internal_router(
+    payload: SanitizedRouterPayload,
+    *,
+    on_chunk: Any = None,
+) -> WorkspaceRouterDetailedResult:
     """Internal route using aios_habit.ai_router connected to local/failover Command Code pool."""
     from aios_habit.ai_router import RouterRequest, provider_configs_from_env, route_answer
     from aios_habit.safety_modes import SAFETY_MODE_NORMAL
@@ -247,6 +251,7 @@ def _generate_via_internal_router(payload: SanitizedRouterPayload) -> WorkspaceR
         safety_mode_label=SAFETY_MODE_NORMAL,
         task_type="workspace_chat",
         query_language=query_language,
+        on_chunk=on_chunk,
     )
 
     try:
@@ -312,7 +317,11 @@ def _generate_via_internal_router(payload: SanitizedRouterPayload) -> WorkspaceR
         return WorkspaceRouterDetailedResult(False, "Dịch vụ AI chưa phản hồi. Vui lòng thử lại sau.", route)
 
 
-def generate_answer_via_router_detailed(payload: SanitizedRouterPayload) -> WorkspaceRouterDetailedResult:
+def generate_answer_via_router_detailed(
+    payload: SanitizedRouterPayload,
+    *,
+    on_chunk: Any = None,
+) -> WorkspaceRouterDetailedResult:
     """Call delegated router with the Gateway-approved sanitized payload.
     
     Defaults to internal aios_habit.ai_router reading Command Code pool from .env.
@@ -326,7 +335,7 @@ def generate_answer_via_router_detailed(payload: SanitizedRouterPayload) -> Work
     if _should_use_legacy_router():
         return _generate_via_legacy_router(payload)
 
-    return _generate_via_internal_router(payload)
+    return _generate_via_internal_router(payload, on_chunk=on_chunk)
 
 
 def generate_answer_via_router(payload: SanitizedRouterPayload) -> Tuple[bool, str]:

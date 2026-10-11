@@ -349,26 +349,113 @@ def test_aggregate_provenance_preserves_comma_in_excel_sheet_name(tmp_path):
     assert tuple(provenance.sheet for provenance in result.provenance) == ("East,West", "North")
 
 
-def test_structured_table_lane_targets():
+def _create_synthetic_structured_fixtures(tmp_path: Path) -> dict[str, Path]:
+    """Create small, fully isolated synthetic data fixtures for all structured lane behaviors."""
+    import csv
+
+    # 1. BowOverAdjust CSV (20 records, dates 2026/08/01 to 2026/08/25, Yellow 10, Cyan 6, Magenta 4, Black 0)
+    p_bow = tmp_path / "synthetic_bowoveradjust.csv"
+    headers_bow = ["DATE", "TIME", "S/N", "Mode", "Abstract", "ErrColor"]
+    rows_bow = []
+    for i in range(10):
+        rows_bow.append(["2026/08/01", f"10:{i:02d}:00", f"61CYEL00{i:02d}", "Adjust", "BowOverAdjustment", "Yellow"])
+    for i in range(6):
+        rows_bow.append(["2026/08/15", f"11:{i:02d}:00", f"61CCYN00{i:02d}", "Adjust", "BowOverAdjustment", "Cyan"])
+    for i in range(4):
+        rows_bow.append(["2026/08/25", f"12:{i:02d}:00", f"61CMAG00{i:02d}", "Adjust", "BowOverAdjustment", "Magenta"])
+    with open(p_bow, "w", encoding="utf-8", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(headers_bow)
+        w.writerows(rows_bow)
+
+    # 2. Error CSV (8 records, dates 2026/08/11 [5 errors peak] and 2026/08/12 [3 errors], JigNumber #1, 4 unique serials)
+    p_err = tmp_path / "synthetic_error.csv"
+    headers_err = ["DATE", "TIME", "JigNumber", "S/N", "Mode"]
+    rows_err = [
+        ["2026/08/11", "08:00:00", "#1", "C9P001", "Error"],
+        ["2026/08/11", "08:10:00", "#1", "C9P002", "Error"],
+        ["2026/08/11", "08:20:00", "#1", "C9P003", "Error"],
+        ["2026/08/11", "08:30:00", "#1", "C9P004", "Error"],
+        ["2026/08/11", "08:40:00", "#1", "C9P001", "Error"],
+        ["2026/08/12", "09:00:00", "#1", "C9P002", "Error"],
+        ["2026/08/12", "09:10:00", "#1", "C9P003", "Error"],
+        ["2026/08/12", "09:20:00", "#1", "C9P004", "Error"],
+    ]
+    with open(p_err, "w", encoding="utf-8", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(headers_err)
+        w.writerows(rows_err)
+
+    # 3. Spec CSV (6 records: 4 records Lower 370 / Upper 520, 2 records Lower 350 / Upper 500)
+    p_spec = tmp_path / "synthetic_spec.csv"
+    headers_spec = ["Item", "Lower", "Upper", "Unit"]
+    rows_spec = [
+        ["Current", "370", "520", "mA"],
+        ["Current", "370", "520", "mA"],
+        ["Current", "370", "520", "mA"],
+        ["Current", "370", "520", "mA"],
+        ["Current", "350", "500", "mA"],
+        ["Current", "350", "500", "mA"],
+    ]
+    with open(p_spec, "w", encoding="utf-8", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(headers_spec)
+        w.writerows(rows_spec)
+
+    # 4. UnitTest CSV (Serial 61C1068E7022 across 2026/08/12 and 2026/08/13, TotalJudge NG, Black OK, Cyan NG)
+    p_unit = tmp_path / "synthetic_unittest.csv"
+    headers_unit = ["DATE", "TIME", "S/N", "Mode", "TotalJudge", "Judge:Black", "Judge:Cyan", "Judge:Magenta", "Judge:Yellow"]
+    rows_unit = [
+        ["2026/08/12", "10:00:00", "61C1068E7022", "UnitTest", "NG", "OK", "NG", "OK", "OK"],
+        ["2026/08/13", "11:00:00", "61C1068E7022", "UnitTest", "NG", "OK", "NG", "OK", "OK"],
+    ]
+    with open(p_unit, "w", encoding="utf-8", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(headers_unit)
+        w.writerows(rows_unit)
+
+    # 5. Inspection sheet (Mount LD block with g1 and g2: nominal 13.81, +0.12 -0.05, 13.93/13.76, judge O)
+    p_insp = tmp_path / "synthetic_inspection.xlsx"
+    insp_rows = [
+        ["●3V2ND19040-MOUNT LD BLOCK"],
+        ["NO", "Vị trí bản vẽ", "Kích thước đo", "Column D", "Dung sai", "Column F", "Column G", "Điểm đo", "Dung sai trên", "Dung sai dưới", "Shot 1", "Shot 2", "Shot 3", "Shot 4", "Shot 5", "Shot 6", "Phán định kết quả"],
+        ["50", "1D", "", 13.81, "+0.12 -0.05", 0.12, 0.05, "g1", "=E60+G60", "=E60-H60", 13.8492, 13.8457, 13.8455, 13.8508, 13.8465, 13.8458, "O"],
+        ["", "1D", "", 13.81, "+0.12 -0.05", 0.12, 0.05, "g2", "=E61+G61", "=E61-H61", 13.8562, 13.8502, 13.8474, 13.8554, 13.8489, 13.8483, "O"],
+    ]
+    _workbook(p_insp, insp_rows, sheet="18.08.2026")
+
+    return {
+        "bowoveradjust": p_bow,
+        "error": p_err,
+        "spec": p_spec,
+        "unittest": p_unit,
+        "inspection": p_insp,
+    }
+
+
+def test_structured_table_lane_targets(tmp_path):
+    """Verify structured table lane intent routing and calculations against synthetic fixtures."""
     from aios_habit.rag_v2.structured_query import (
         query_might_be_structured_table,
         try_structured_table_evidence,
     )
 
+    fixtures = _create_synthetic_structured_fixtures(tmp_path)
+
     q_targets = [
-        ("2026年8月のBowOverAdjustエラー件数と期間を教えてください。", "3.153 record", "2026_08_Error_BowOverAdjust.csv"),
-        ("BowOverAdjustエラーの各色（Yellow, Cyan, Magenta）の件数は？", "1304件", "2026_08_Error_BowOverAdjust.csv"),
-        ("BowOverAdjustエラーにBlackはありますか？", "0件", "2026_08_Error_BowOverAdjust.csv"),
-        ("2026年8月でエラーが最も多い日はいつですか？件数も教えてください。", "34笔", "2026_08_Error.csv"),
-        ("2026_08_Error.csvの統計を教えてください。", "183 Record", "2026_08_Error.csv"),
-        ("Currentの規格値（LowerとUpper）で最も多い組み合わせは何ですか？", "370 mA", "2026_08_Spec.csv"),
-        ("シリアル「61C1068E7022」の8月12日と8月13日の判定結果を比較して、NG項目に変化はありますか？", "変わっていません", "2026_08_UnitTest.csv"),
-        ("g1 và g2 có nominal và giới hạn nào?", "13.81", "3V2ND19040-MOUNT LD BLOCK  LOT 18.8.2026.xlsx"),
+        ("2026年8月のBowOverAdjustエラー件数と期間を教えてください。", fixtures["bowoveradjust"], "20 record", "2026_08_Error_BowOverAdjust.csv"),
+        ("BowOverAdjustエラーの各色（Yellow, Cyan, Magenta）の件数は？", fixtures["bowoveradjust"], "10件", "2026_08_Error_BowOverAdjust.csv"),
+        ("BowOverAdjustエラーにBlackはありますか？", fixtures["bowoveradjust"], "0件", "2026_08_Error_BowOverAdjust.csv"),
+        ("2026年8月でエラーが最も多い日はいつですか？件数も教えてください。", fixtures["error"], "5笔", "2026_08_Error.csv"),
+        ("2026_08_Error.csvの統計を教えてください。", fixtures["error"], "8 Record", "2026_08_Error.csv"),
+        ("Currentの規格値（LowerとUpper）で最も多い組み合わせは何ですか？", fixtures["spec"], "370 mA", "2026_08_Spec.csv"),
+        ("シリアル「61C1068E7022」の8月12日と8月13日の判定結果を比較して、NG項目に変化はありますか？", fixtures["unittest"], "変わっていません", "2026_08_UnitTest.csv"),
+        ("g1 và g2 có nominal và giới hạn nào?", fixtures["inspection"], "13.81", "3V2ND19040-MOUNT LD BLOCK  LOT 18.8.2026.xlsx"),
     ]
 
-    for question, expected_kw, expected_doc in q_targets:
+    for question, custom_path, expected_kw, expected_doc in q_targets:
         assert query_might_be_structured_table(question) is True
-        res = try_structured_table_evidence(question)
+        res = try_structured_table_evidence(question, custom_source_path=custom_path)
         assert res is not None, f"Failed for {question}"
         assert res["status"] == "structured_table_query"
         ans = res["local_synthesis"]["answer"]
@@ -377,11 +464,17 @@ def test_structured_table_lane_targets():
 
 
 def test_dynamic_table_computations_change_with_data(tmp_path):
-    """Verify that dynamic calculations update deterministically when underlying table data changes."""
+    """Verify that dynamic calculations update deterministically across all behaviors when underlying data changes."""
     import csv
     from aios_habit.rag_v2.structured_query import try_structured_table_evidence
 
-    # 1. Test record count and color breakdown changes with data
+    def _write_csv(p, h, r):
+        with open(p, "w", encoding="utf-8", newline="") as f:
+            w = csv.writer(f)
+            w.writerow(h)
+            w.writerows(r)
+
+    # 1. Behavior: Record count, date range, and color breakdown (including single negative count mutation)
     csv_file1 = tmp_path / "test_bowoveradjust.csv"
     headers1 = ["DATE", "TIME", "S/N", "Mode", "Abstract", "ErrColor"]
     rows1 = [
@@ -390,13 +483,6 @@ def test_dynamic_table_computations_change_with_data(tmp_path):
         ["2026/08/02", "11:00:00", "61C1068E0003", "Adjust", "BowOverAdjustment", "Cyan"],
         ["2026/08/02", "11:05:00", "61C1068E0004", "Adjust", "BowOverAdjustment", "Magenta"],
     ]
-
-    def _write_csv(p, h, r):
-        with open(p, "w", encoding="utf-8", newline="") as f:
-            w = csv.writer(f)
-            w.writerow(h)
-            w.writerows(r)
-
     _write_csv(csv_file1, headers1, rows1)
 
     # Initial check
@@ -414,16 +500,21 @@ def test_dynamic_table_computations_change_with_data(tmp_path):
     assert "Cyan**: **1件**" in ans_color
     assert "Magenta**: **1件**" in ans_color
 
-    # Mutate data: add 5 new Magenta rows on 2026/08/10
+    res_black_0 = try_structured_table_evidence("BowOverAdjustエラーにBlackはありますか？", custom_source_path=csv_file1)
+    assert res_black_0 is not None
+    assert "0件" in res_black_0["local_synthesis"]["answer"]
+
+    # Mutate data: add 5 new Magenta rows and 1 Black row on 2026/08/10
     for i in range(5):
         rows1.append(["2026/08/10", f"12:0{i}:00", f"61C1068E001{i}", "Adjust", "BowOverAdjustment", "Magenta"])
+    rows1.append(["2026/08/10", "12:10:00", "61C1068E0099", "Adjust", "BowOverAdjustment", "Black"])
     _write_csv(csv_file1, headers1, rows1)
 
     # Mutated check: counts must change dynamically!
     res_cnt_mut = try_structured_table_evidence("File có bao nhiêu record lỗi và phạm vi ngày nào?", custom_source_path=csv_file1)
     assert res_cnt_mut is not None
     ans_cnt_mut = res_cnt_mut["local_synthesis"]["answer"]
-    assert "9 record" in ans_cnt_mut
+    assert "10 record" in ans_cnt_mut
     assert "2026/08/10" in ans_cnt_mut
 
     res_color_mut = try_structured_table_evidence("BowOverAdjustエラーの各色（Yellow, Cyan, Magenta）の件数は？", custom_source_path=csv_file1)
@@ -432,7 +523,12 @@ def test_dynamic_table_computations_change_with_data(tmp_path):
     assert "Magenta**: **6件**" in ans_color_mut
     assert "Yellow**: **2件**" in ans_color_mut
 
-    # 2. Test peak date changes with data
+    # Mutated single color check: Black is now 1件, not 0件!
+    res_black_mut = try_structured_table_evidence("BowOverAdjustエラーの各色 (Black) の件数は？", custom_source_path=csv_file1)
+    assert res_black_mut is not None
+    assert "Black**: **1件**" in res_black_mut["local_synthesis"]["answer"]
+
+    # 2. Behavior: Peak date and overview count changes with data
     csv_file2 = tmp_path / "test_error.csv"
     headers2 = ["DATE", "TIME", "JigNumber", "S/N", "Mode"]
     rows2 = [
@@ -447,6 +543,10 @@ def test_dynamic_table_computations_change_with_data(tmp_path):
     assert "2026/08/11" in res_peak["local_synthesis"]["answer"]
     assert "2笔" in res_peak["local_synthesis"]["answer"]
 
+    res_stat = try_structured_table_evidence("2026_08_Error.csvの統計を教えてください。", custom_source_path=csv_file2)
+    assert res_stat is not None
+    assert "3 Record" in res_stat["local_synthesis"]["answer"]
+
     # Mutate data: add 5 errors on 2026/08/15
     for i in range(5):
         rows2.append(["2026/08/15", f"14:0{i}:00", "#1", f"C9P00{i+4}", "Error"])
@@ -457,7 +557,11 @@ def test_dynamic_table_computations_change_with_data(tmp_path):
     assert "2026/08/15" in res_peak_mut["local_synthesis"]["answer"]
     assert "5笔" in res_peak_mut["local_synthesis"]["answer"]
 
-    # 3. Test serial lookup and comparison across dates
+    res_stat_mut = try_structured_table_evidence("2026_08_Error.csvの統計を教えてください。", custom_source_path=csv_file2)
+    assert res_stat_mut is not None
+    assert "8 Record" in res_stat_mut["local_synthesis"]["answer"]
+
+    # 3. Behavior: Serial lookup and comparison across dates
     csv_file3 = tmp_path / "test_unittest.csv"
     headers3 = ["DATE", "TIME", "S/N", "Mode", "TotalJudge", "Judge:Black", "Judge:Cyan", "Judge:Magenta", "Judge:Yellow"]
     rows3 = [
@@ -479,5 +583,93 @@ def test_dynamic_table_computations_change_with_data(tmp_path):
     res_sn_mut = try_structured_table_evidence(q_sn, custom_source_path=csv_file3)
     assert res_sn_mut is not None
     assert "có sự thay đổi" in res_sn_mut["local_synthesis"]["answer"]
+
+    # 4. Behavior: Pair combination (Spec Lower & Upper)
+    csv_file4 = tmp_path / "test_spec.csv"
+    headers4 = ["Item", "Lower", "Upper", "Unit"]
+    rows4 = [
+        ["Current", "370", "520", "mA"],
+        ["Current", "370", "520", "mA"],
+        ["Current", "370", "520", "mA"],
+        ["Current", "350", "500", "mA"],
+    ]
+    _write_csv(csv_file4, headers4, rows4)
+
+    q_pair = "Currentの規格値（LowerとUpper）で最も多い組み合わせは何ですか？"
+    res_pair = try_structured_table_evidence(q_pair, custom_source_path=csv_file4)
+    assert res_pair is not None
+    ans_pair = res_pair["local_synthesis"]["answer"]
+    assert "370 mA" in ans_pair
+    assert "520 mA" in ans_pair
+    assert "3 record" in ans_pair
+
+    # Mutate data: add 5 records of 400 mA / 600 mA
+    for _ in range(5):
+        rows4.append(["Current", "400", "600", "mA"])
+    _write_csv(csv_file4, headers4, rows4)
+
+    res_pair_mut = try_structured_table_evidence(q_pair, custom_source_path=csv_file4)
+    assert res_pair_mut is not None
+    ans_pair_mut = res_pair_mut["local_synthesis"]["answer"]
+    assert "400 mA" in ans_pair_mut
+    assert "600 mA" in ans_pair_mut
+    assert "5 record" in ans_pair_mut
+
+    # 5. Behavior: Nominal and limits from inspection sheet
+    xlsx_file5 = tmp_path / "test_inspection.xlsx"
+    rows_insp = [
+        ["●3V2ND19040-MOUNT LD BLOCK"],
+        ["NO", "Vị trí", "Kích thước", "Col D", "Dung sai", "Col F", "Col G", "Điểm đo", "Tol+", "Tol-", "S1", "S2", "S3", "S4", "S5", "S6", "Judge"],
+        ["50", "1D", "", 13.81, "+0.12 -0.05", 0.12, 0.05, "g1", "", "", 13.85, 13.85, 13.85, 13.85, 13.85, 13.85, "O"],
+        ["", "1D", "", 13.81, "+0.12 -0.05", 0.12, 0.05, "g2", "", "", 13.85, 13.85, 13.85, 13.85, 13.85, 13.85, "O"],
+    ]
+    _workbook(xlsx_file5, rows_insp, sheet="18.08.2026")
+
+    q_insp = "g1 và g2 có nominal và giới hạn nào?"
+    res_insp = try_structured_table_evidence(q_insp, custom_source_path=xlsx_file5)
+    assert res_insp is not None
+    ans_insp = res_insp["local_synthesis"]["answer"]
+    assert "13.81" in ans_insp
+    assert "13.93" in ans_insp
+    assert "13.76" in ans_insp
+
+    # Mutate data: change nominal to 15.50 with +0.20 / -0.10 (limits: 15.70 / 15.40)
+    rows_insp_mut = [
+        ["●3V2ND19040-MOUNT LD BLOCK"],
+        ["NO", "Vị trí", "Kích thước", "Col D", "Dung sai", "Col F", "Col G", "Điểm đo", "Tol+", "Tol-", "S1", "S2", "S3", "S4", "S5", "S6", "Judge"],
+        ["50", "1D", "", 15.50, "+0.20 -0.10", 0.20, 0.10, "g1", "", "", 15.55, 15.55, 15.55, 15.55, 15.55, 15.55, "O"],
+        ["", "1D", "", 15.50, "+0.20 -0.10", 0.20, 0.10, "g2", "", "", 15.55, 15.55, 15.55, 15.55, 15.55, 15.55, "O"],
+    ]
+    _workbook(xlsx_file5, rows_insp_mut, sheet="18.08.2026")
+
+    res_insp_mut = try_structured_table_evidence(q_insp, custom_source_path=xlsx_file5)
+    assert res_insp_mut is not None
+    ans_insp_mut = res_insp_mut["local_synthesis"]["answer"]
+    assert "15.5" in ans_insp_mut
+    assert "15.7" in ans_insp_mut
+    assert "15.4" in ans_insp_mut
+
+
+def test_structured_table_lane_clean_machine_simulation(monkeypatch, tmp_path):
+    """Simulate a completely clean CI machine with zero production files."""
+    import aios_habit.rag_v2.structured_query as sq
+
+    # 1. Force find_structured_source_path to return None as on clean CI
+    monkeypatch.setattr(sq, "find_structured_source_path", lambda *args, **kwargs: None)
+
+    # 2. Fail-closed without custom source path
+    assert sq.try_structured_table_evidence("2026年8月のBowOverAdjustエラー件数と期間を教えてください。") is None
+    assert sq.try_structured_table_evidence("g1 và g2 có nominal và giới hạn nào?") is None
+    assert sq.try_structured_table_evidence("Currentの規格値（LowerとUpper）で最も多い組み合わせは何ですか？") is None
+
+    # 3. Succeeds deterministically with synthetic fixtures
+    fixtures = _create_synthetic_structured_fixtures(tmp_path)
+    res = sq.try_structured_table_evidence(
+        "2026年8月のBowOverAdjustエラー件数と期間を教えてください。",
+        custom_source_path=fixtures["bowoveradjust"],
+    )
+    assert res is not None
+    assert "20 record" in res["local_synthesis"]["answer"]
+
 
 

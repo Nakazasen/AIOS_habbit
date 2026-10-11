@@ -375,6 +375,8 @@ def call_antigravity_bridge(
     timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS,
     privacy_mode: str = "local_only",
     answer_language: str = "vi",
+    stream: bool = True,
+    on_chunk: Optional[Callable[[str], None]] = None,
 ) -> AntigravityBridgeResponse:
     """Send a chat completion request to the direct Antigravity Bridge Daemon."""
     start_time = time.time()
@@ -412,7 +414,7 @@ def call_antigravity_bridge(
         "model": model,
         "messages": messages,
         "temperature": 0.2,
-        "stream": False,
+        "stream": bool(stream or on_chunk is not None),
     }
 
     try:
@@ -427,6 +429,43 @@ def call_antigravity_bridge(
             method="POST",
         )
         with urllib.request.urlopen(req, timeout=timeout_seconds) as response:
+            if payload.get("stream"):
+                full_chunks: list[str] = []
+                used_model = model
+                for line_bytes in response:
+                    line_str = line_bytes.decode("utf-8").strip()
+                    if not line_str or not line_str.startswith("data:"):
+                        continue
+                    data_str = line_str[5:].strip()
+                    if data_str == "[DONE]":
+                        break
+                    try:
+                        chunk_obj = json.loads(data_str)
+                    except Exception:
+                        continue
+                    used_model = chunk_obj.get("model", used_model)
+                    choices = chunk_obj.get("choices") or []
+                    if choices:
+                        delta = choices[0].get("delta") or {}
+                        content = delta.get("content")
+                        if content:
+                            full_chunks.append(content)
+                            if on_chunk:
+                                try:
+                                    on_chunk(content)
+                                except Exception:
+                                    pass
+                answer_text = "".join(full_chunks).strip()
+                latency_ms = (time.time() - start_time) * 1000
+                tokens = len(answer_text) // 4
+                return AntigravityBridgeResponse(
+                    ok=True,
+                    answer_text=answer_text,
+                    model=used_model or model,
+                    latency_ms=latency_ms,
+                    tokens_used=tokens,
+                )
+
             raw_body = response.read().decode("utf-8")
             latency_ms = (time.time() - start_time) * 1000
             result_json = json.loads(raw_body)
@@ -1047,6 +1086,7 @@ def route_workspace_chat_submission(
     cancellation_event: Any | None = None,
     consent_memory_fingerprint: str = "",
     local_synthesis: Mapping[str, Any] | None = None,
+    on_chunk: Optional[Callable[[str], None]] = None,
 ) -> tuple[bool, str, dict[str, Any] | None, str | None]:
     """Route a submission through the explicitly selected Workspace Chat backend.
 
@@ -1248,6 +1288,7 @@ def route_workspace_chat_submission(
             answer_language=answer_language,
             workspace_id=notebook_id or "default",
             consent_memory_fingerprint=consent_memory_fingerprint,
+            on_chunk=on_chunk,
         )
         router_timeout = int(os.environ.get("AIOS_ROUTER_TIMEOUT_SECONDS", "30"))
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
@@ -1483,6 +1524,8 @@ def route_workspace_chat_submission(
                 "chat_history": chat_history,
                 "privacy_mode": PRIVACY_MODE_CLOUD_ALLOWED,
                 "answer_language": answer_language,
+                "stream": True,
+                "on_chunk": on_chunk,
             }
             if endpoint_url:
                 call_kwargs["endpoint_url"] = endpoint_url
@@ -1602,6 +1645,12 @@ def route_workspace_chat_submission(
             elif not lines:
                 lines.append("Không tìm thấy dữ liệu trích xuất phù hợp trong kho tài liệu để trả lời câu hỏi này.")
             local_answer = "\n\n".join(lines)
+
+        if on_chunk and local_answer:
+            try:
+                on_chunk(local_answer)
+            except Exception:
+                pass
 
         user_msg = _get_or_create_user_message(conversation_id, user_raw_input, reuse_message_id=user_message_id)
         assistant_msg_id = f"MSG-{uuid.uuid4().hex[:8].upper()}"
