@@ -1,5 +1,14 @@
 import os
+import sys
 import logging
+
+try:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 
 # Chặn nhật ký cảnh báo tiếng Anh từ Streamlit khi module được nhập trong chế độ kiểm thử bare/headless
 if not os.environ.get("STREAMLIT_SERVER_PORT"):
@@ -1254,7 +1263,15 @@ def _run_chat_turn_async(
     )
 
     t_turn_start = time.time()
-    LOGGER.info("[STREAMING_QA_START] conv=%s backend=%s question=%s", conversation_id, ai_backend, q_text[:60])
+    try:
+        LOGGER.info(
+            "[STREAMING_QA_START] conv=%s backend=%s question=%s",
+            conversation_id,
+            ai_backend,
+            q_text[:60].encode("ascii", errors="backslashreplace").decode("ascii"),
+        )
+    except Exception:
+        pass
     _safe_print_streaming_marker(f"[STREAMING_QA_START] conv={conversation_id} backend={ai_backend} question={q_text[:60]}")
 
     if cancellation_event is not None and cancellation_event.is_set():
@@ -1412,14 +1429,17 @@ def _run_chat_turn_async(
     turn_total_s = t_turn_end - t_turn_start
     badge = res[2] if len(res) > 2 and isinstance(res[2], dict) else {}
     eff_backend = (badge.get("provider") or badge.get("ai_source") or ai_backend) if badge else ai_backend
-    LOGGER.info(
-        "[STREAMING_QA_COMPLETE] conv=%s total_s=%.3f total_ms=%.1f backend=%s ok=%s",
-        conversation_id,
-        turn_total_s,
-        turn_total_s * 1000,
-        eff_backend,
-        res[0],
-    )
+    try:
+        LOGGER.info(
+            "[STREAMING_QA_COMPLETE] conv=%s total_s=%.3f total_ms=%.1f backend=%s ok=%s",
+            conversation_id,
+            turn_total_s,
+            turn_total_s * 1000,
+            eff_backend,
+            res[0],
+        )
+    except Exception:
+        pass
     _safe_print_streaming_marker(
         f"[STREAMING_QA_COMPLETE] conv={conversation_id} total_s={turn_total_s:.3f} total_ms={turn_total_s * 1000:.1f} backend={eff_backend} ok={res[0]}"
     )
@@ -5498,12 +5518,15 @@ else:
                                         if stream_state["first_token_time"] is None:
                                             stream_state["first_token_time"] = time.time()
                                             ttft_s = stream_state["first_token_time"] - stream_state["started_at"]
-                                            LOGGER.info(
-                                                "[STREAMING_QA_FIRST_TOKEN] conv=%s ttft_s=%.3f ttft_ms=%.1f",
-                                                active_conversation.id,
-                                                ttft_s,
-                                                ttft_s * 1000,
-                                            )
+                                            try:
+                                                LOGGER.info(
+                                                    "[STREAMING_QA_FIRST_TOKEN] conv=%s ttft_s=%.3f ttft_ms=%.1f",
+                                                    active_conversation.id,
+                                                    ttft_s,
+                                                    ttft_s * 1000,
+                                                )
+                                            except Exception:
+                                                pass
                                             _safe_print_streaming_marker(
                                                 f"[STREAMING_QA_FIRST_TOKEN] conv={active_conversation.id} ttft_s={ttft_s:.3f} ttft_ms={ttft_s * 1000:.1f}"
                                             )
