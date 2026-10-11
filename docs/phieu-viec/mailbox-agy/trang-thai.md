@@ -4,6 +4,7 @@
 
 - Trạng thái: `dang-lam`
 - `bao_cao`: `docs/phieu-viec/ket-qua/csv-structured-lane-home.md`
+- `ghi_chu`: 2026-10-11 13:22 +07 — **TIẾN ĐỘ**: Đã hoàn thành khảo sát thực tế và thiết kế kiến trúc Làn truy vấn có cấu trúc (Structured Table Lane) cho 4 câu thống kê CSV (Q0849, Q0850, Q1034, Q0843) + ca Q0824 (so sánh phán định 2 ngày serial 61C1068E7022 trong 2026_08_UnitTest.csv) + ca Q0668 (nominal 13.81, dung sai +0.12/-0.05, giới hạn 13.93/13.76 trong 3V2ND19040). Kiểm chứng rubric test đạt 3.0/3.0 điểm tuyệt đối. Bắt đầu triển khai code tại `rag_v2/structured_query.py` và adapter dùng chung cho cả đường đo lường và giao diện.
 - `ghi_chu`: 2026-10-11 13:08 +07 — **ĐÃ NHẬN VÉ** `CSV-STRUCTURED-LANE-HOME`: Bắt đầu khảo sát hạ tầng truy vấn có cấu trúc hiện có tại `src/aios_habit/rag_v2/structured_query.py` và thiết kế làn định tuyến cho 4 câu hỏi thống kê CSV + ca Q0824 tra dòng phán định + ca Q0668 trích xuất giá trị ô tính nominal/dung sai/giới hạn.
 - `ghi_chu` (điều phối Muse — PHÁT HÀNH): 2026-10-11 ~13:1x +07 — Phát hành vé này làm vé hiện hành (`prompt.md` đã thay bằng nội dung vé + mục bổ sung ca Q0668 từ verdict BLOCK-FIX). Phạm vi gồm: 4 câu thống kê toàn tệp + ca Q0824 (theo các bổ sung đã ghi trong vé) + ca Q0668 về giá trị ô bảng tính (bổ sung mới ở cuối `prompt.md`). Điều kiện bốc cũ "sau BLOCK-FIX" đã thoả (verdict ở khối ngay dưới).
 
