@@ -1282,13 +1282,18 @@ def _run_chat_turn_async(
         if cancellation_event is not None and cancellation_event.is_set():
             return (False, "", None, "Đã dừng yêu cầu AI.")
 
+        has_attached_facts = (
+            "[Dữ kiện trích từ tệp đính kèm" in q_text
+            or "[Nội dung chữ đọc được từ ảnh đính kèm" in q_text
+        )
+
         if ret_res.get("status") == "quality_search_unavailable":
             unavailable_reason = str(
                 ret_res.get("rag_v2_canary", {}).get("fallback_reason", "")
             ).casefold()
             if unavailable_reason == "domain_block_missing":
                 return (False, "", None, _knowledge_block_missing_message(ret_res, current_ui_locale))
-            if unavailable_reason != "deep_search_unavailable" and (
+            if unavailable_reason != "deep_search_unavailable" and not has_attached_facts and (
                 _is_worker_startup_reason(unavailable_reason) or not unready_sources
             ):
                 # UI-COLDSTART-WORKER-HOME: Luot hoi khong ket thuc bang thong bao "bam Hoi lai".
@@ -1322,25 +1327,37 @@ def _run_chat_turn_async(
 
             # no_evidence_found_error
         if ret_res.get("status") == "quality_search_unavailable":
-            unavailable_reason = str(
-                ret_res.get("rag_v2_canary", {}).get("fallback_reason", "")
-            ).casefold()
-            if unavailable_reason == "deep_search_unavailable":
-                err_msg = t("deep_search_unavailable", locale=current_ui_locale)
-            elif unavailable_reason == "runtimeerror" or (
-                "worker" in unavailable_reason
-                or "eof" in unavailable_reason
-                or "timeout" in unavailable_reason
-                or not unready_sources
-            ):
-                err_msg = t("search_runtime_unavailable", locale=current_ui_locale)
+            if has_attached_facts:
+                retrieval_applied = False
+                retrieved_sources = ()
+                evidence_items = []
+                retrieval_summary = "Đang trả lời trực tiếp từ dữ kiện đính kèm."
             else:
-                err_msg = t("search_sources_preparing", locale=current_ui_locale)
-            return (False, "", None, err_msg)
+                unavailable_reason = str(
+                    ret_res.get("rag_v2_canary", {}).get("fallback_reason", "")
+                ).casefold()
+                if unavailable_reason == "deep_search_unavailable":
+                    err_msg = t("deep_search_unavailable", locale=current_ui_locale)
+                elif unavailable_reason == "runtimeerror" or (
+                    "worker" in unavailable_reason
+                    or "eof" in unavailable_reason
+                    or "timeout" in unavailable_reason
+                    or not unready_sources
+                ):
+                    err_msg = t("search_runtime_unavailable", locale=current_ui_locale)
+                else:
+                    err_msg = t("search_sources_preparing", locale=current_ui_locale)
+                return (False, "", None, err_msg)
         elif ret_res["summary_count"] == 0:
-            # st.session_state.wsc_action_error = "Chưa tìm thấy đoạn phù hợp trong nguồn đang bật."
-            err_msg = t("no_matched_segments_error", locale=current_ui_locale)
-            return (False, "", None, err_msg)
+            if has_attached_facts:
+                retrieval_applied = False
+                retrieved_sources = ()
+                evidence_items = []
+                retrieval_summary = "Đang trả lời trực tiếp từ dữ kiện đính kèm."
+            else:
+                # st.session_state.wsc_action_error = "Chưa tìm thấy đoạn phù hợp trong nguồn đang bật."
+                err_msg = t("no_matched_segments_error", locale=current_ui_locale)
+                return (False, "", None, err_msg)
         else:
             retrieval_applied = True
             retrieved_sources = ret_res.get("retrieved_context_sources", ())
