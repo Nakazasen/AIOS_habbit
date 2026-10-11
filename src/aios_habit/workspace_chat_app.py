@@ -32,6 +32,13 @@ _WORKSPACE_AI_REQUEST_EXECUTOR = ThreadPoolExecutor(
     thread_name_prefix="workspace-ai-request",
 )
 
+# Giới hạn kích thước và định dạng cho tệp đính kèm một lần trong khung soạn thảo (DESKTOP-COMPOSER-FILE-ATTACH-HOME)
+MAX_COMPOSER_TEXT_FILE_BYTES: int = 50 * 1024  # 50 KB tối đa cho tệp chữ/CSV nhỏ
+MAX_COMPOSER_ATTACHED_TEXT_CHARS: int = 3000   # 3000 ký tự tối đa gộp vào câu hỏi (đồng bộ OCR)
+COMPOSER_SUPPORTED_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
+COMPOSER_SUPPORTED_TEXT_EXTS = {".csv", ".txt", ".tsv", ".md", ".log"}
+COMPOSER_SUPPORTED_EXTS = COMPOSER_SUPPORTED_IMAGE_EXTS | COMPOSER_SUPPORTED_TEXT_EXTS
+
 # Realtime LSU alert pipeline service (DESKTOP-LSU-ALERT-WIRE-HOME)
 try:
     from aios_habit.production_prediction.rt_app_wire import ensure_rt_alert_pipeline
@@ -4487,17 +4494,28 @@ else:
                         label_visibility="visible",
                     )
 
-                    # Hiển thị ảnh đính kèm xem trước ngay dưới ô nhập chữ nếu có
+                    _attach_err = st.session_state.get(f"wsc_attach_error_{active_conversation.id}")
+                    if _attach_err:
+                        st.error(_attach_err)
+
+                    # Hiển thị ảnh/tệp đính kèm xem trước ngay dưới ô nhập chữ nếu có
                     user_attached_image = st.session_state.get(pasted_image_key)
                     if user_attached_image is not None:
+                        _att_name = getattr(user_attached_image, "name", "attachment")
+                        _att_ext = Path(_att_name).suffix.lower()
+                        _is_img = _att_ext in COMPOSER_SUPPORTED_IMAGE_EXTS
                         preview_col, preview_text_col, preview_remove_col = st.columns([1, 8, 2], vertical_alignment="center")
                         with preview_col:
-                            st.image(user_attached_image.getvalue(), width=64)
+                            if _is_img:
+                                st.image(user_attached_image.getvalue(), width=64)
+                            else:
+                                st.markdown("📊" if _att_ext in {".csv", ".tsv"} else "📄")
                         with preview_text_col:
-                            st.caption(f"📎 {user_attached_image.name}")
+                            st.caption(f"📎 {_att_name}")
                         with preview_remove_col:
                             if st.button(t("remove_attached_image", locale=current_ui_locale), key=f"wsc_remove_image_{active_conversation.id}", type="tertiary"):
                                 st.session_state.pop(pasted_image_key, None)
+                                st.session_state.pop(f"wsc_attach_error_{active_conversation.id}", None)
                                 st.session_state.wsc_upload_version += 1
                                 safe_rerun()
 
@@ -4586,7 +4604,7 @@ else:
                             with st.popover(t("attach_popover", locale=current_ui_locale), help=t("attach_screenshot_help", locale=current_ui_locale), icon=":material/attach_file:"):
                                 uploaded_image = st.file_uploader(
                                     t("attach_screenshot_label", locale=current_ui_locale),
-                                    type=["png", "jpg", "jpeg", "webp", "bmp"],
+                                    type=["png", "jpg", "jpeg", "webp", "bmp", "csv", "txt", "tsv", "md", "log"],
                                     key=upload_key,
                                     help=t("attach_screenshot_help", locale=current_ui_locale),
                                     label_visibility="collapsed",
@@ -4609,7 +4627,43 @@ else:
                                         )
                                         safe_rerun()
                                 if uploaded_image is not None:
-                                    st.session_state[pasted_image_key] = uploaded_image
+                                    _up_name = getattr(uploaded_image, "name", "")
+                                    _up_ext = Path(_up_name).suffix.lower()
+                                    try:
+                                        _up_bytes = uploaded_image.getvalue()
+                                        _up_size = len(_up_bytes)
+                                    except Exception:
+                                        _up_bytes = b""
+                                        _up_size = 0
+
+                                    if _up_ext in COMPOSER_SUPPORTED_TEXT_EXTS:
+                                        if _up_size > MAX_COMPOSER_TEXT_FILE_BYTES:
+                                            _err_msg = (
+                                                f"Tệp \"{_up_name}\" ({_up_size:,} bytes) vượt quá giới hạn 50KB cho tệp đính kèm chữ/CSV. "
+                                                "Vui lòng chọn tệp nhỏ hơn."
+                                            )
+                                            st.error(_err_msg)
+                                            st.session_state[f"wsc_attach_error_{active_conversation.id}"] = _err_msg
+                                            st.session_state.pop(pasted_image_key, None)
+                                        elif _up_size == 0:
+                                            _err_msg = f"Tệp \"{_up_name}\" rỗng. Vui lòng chọn tệp có nội dung."
+                                            st.error(_err_msg)
+                                            st.session_state[f"wsc_attach_error_{active_conversation.id}"] = _err_msg
+                                            st.session_state.pop(pasted_image_key, None)
+                                        else:
+                                            st.session_state.pop(f"wsc_attach_error_{active_conversation.id}", None)
+                                            st.session_state[pasted_image_key] = uploaded_image
+                                    elif _up_ext in COMPOSER_SUPPORTED_IMAGE_EXTS:
+                                        st.session_state.pop(f"wsc_attach_error_{active_conversation.id}", None)
+                                        st.session_state[pasted_image_key] = uploaded_image
+                                    else:
+                                        _err_msg = (
+                                            f"Định dạng tệp \"{_up_name}\" không được hỗ trợ. "
+                                            "Khung soạn thảo chỉ nhận tệp ảnh (PNG, JPG, JPEG, WEBP, BMP) hoặc tệp chữ/CSV (CSV, TXT, TSV, MD, LOG)."
+                                        )
+                                        st.error(_err_msg)
+                                        st.session_state[f"wsc_attach_error_{active_conversation.id}"] = _err_msg
+                                        st.session_state.pop(pasted_image_key, None)
 
                     with toolbar_block_col:
                         with st.container(key=f"wsc-block-{active_conversation.id}"):
@@ -5042,48 +5096,85 @@ else:
                             safe_rerun()
                         image_ocr_failed = False
                         one_shot_image_text = ""
+                        st.session_state.pop(f"wsc_attach_error_{active_conversation.id}", None)
                         if user_attached_image is not None:
-                            # Ảnh đính kèm một lần: OCR thành chữ rồi gộp thẳng
-                            # vào câu hỏi. KHÔNG tạo nguồn tạm trong sổ → câu sau
-                            # không đính kèm thì không thể dùng lại (one-shot theo
-                            # cấu trúc, không cần cơ chế tắt sau). Mọi lane đều
-                            # đọc được vì chỉ còn chữ, không còn byte ảnh thô
-                            # (guard ở antigravity_bridge vẫn fail-closed).
+                            _att_name = getattr(user_attached_image, "name", "")
+                            _att_ext = Path(_att_name).suffix.lower()
                             try:
-                                _img_bytes = user_attached_image.getvalue()
-                                _img_name = user_attached_image.name
+                                _att_bytes = user_attached_image.getvalue()
                             except Exception:
-                                _img_bytes, _img_name = b"", ""
-                            _ocr_res = (
-                                ingest_and_extract_bytes(_img_bytes, _img_name, "cloud_safe")
-                                if _img_bytes
-                                else {"ok": False}
-                            )
-                            _ocr_text = str(_ocr_res.get("text", "") or "").strip()
-                            if _ocr_res.get("ok") and _ocr_text:
-                                st.session_state.wsc_upload_version += 1
-                                if len(_ocr_text) > 3000:
-                                    _ocr_text = (
-                                        _ocr_text[:3000]
-                                        + "\n[...nội dung ảnh đã được rút gọn...]"
-                                    )
-                                one_shot_image_text = (
-                                    "[Nội dung chữ đọc được từ ảnh đính kèm "
-                                    f"\"{_img_name}\"]:\n{_ocr_text}"
+                                _att_bytes = b""
+
+                            if _att_ext in COMPOSER_SUPPORTED_IMAGE_EXTS:
+                                # Ảnh đính kèm một lần: OCR thành chữ rồi gộp thẳng
+                                # vào câu hỏi. KHÔNG tạo nguồn tạm trong sổ → câu sau
+                                # không đính kèm thì không thể dùng lại (one-shot theo
+                                # cấu trúc, không cần cơ chế tắt sau). Mọi lane đều
+                                # đọc được vì chỉ còn chữ, không còn byte ảnh thô
+                                # (guard ở antigravity_bridge vẫn fail-closed).
+                                _img_bytes = _att_bytes
+                                _img_name = _att_name
+                                _ocr_res = (
+                                    ingest_and_extract_bytes(_img_bytes, _img_name, "cloud_safe")
+                                    if _img_bytes
+                                    else {"ok": False}
                                 )
+                                _ocr_text = str(_ocr_res.get("text", "") or "").strip()
+                                if _ocr_res.get("ok") and _ocr_text:
+                                    st.session_state.wsc_upload_version += 1
+                                    if len(_ocr_text) > MAX_COMPOSER_ATTACHED_TEXT_CHARS:
+                                        _ocr_text = (
+                                            _ocr_text[:MAX_COMPOSER_ATTACHED_TEXT_CHARS]
+                                            + "\n[...nội dung ảnh đã được rút gọn...]"
+                                        )
+                                    one_shot_image_text = (
+                                        "[Nội dung chữ đọc được từ ảnh đính kèm "
+                                        f"\"{_img_name}\"]:\n{_ocr_text}"
+                                    )
+                                else:
+                                    image_ocr_failed = True
+                                    st.session_state.wsc_action_message = t(
+                                        "attached_image_unreadable",
+                                        locale=current_ui_locale,
+                                    )
+                                if not q_text:
+                                    q_text = "Phân tích và giải thích nội dung trong ảnh chụp màn hình đính kèm."
+                                if one_shot_image_text:
+                                    q_text = f"{q_text}\n\n---\n{one_shot_image_text}"
+                            elif _att_ext in COMPOSER_SUPPORTED_TEXT_EXTS:
+                                # Tệp chữ/CSV đính kèm một lần: trích nội dung chữ rồi gộp thẳng vào câu hỏi
+                                try:
+                                    _raw_text = _att_bytes.decode("utf-8-sig")
+                                except UnicodeDecodeError:
+                                    try:
+                                        _raw_text = _att_bytes.decode("utf-8")
+                                    except UnicodeDecodeError:
+                                        _raw_text = _att_bytes.decode("latin-1", errors="replace")
+                                _file_text = _raw_text.strip()
+                                if _file_text:
+                                    st.session_state.wsc_upload_version += 1
+                                    if len(_file_text) > MAX_COMPOSER_ATTACHED_TEXT_CHARS:
+                                        _file_text = (
+                                            _file_text[:MAX_COMPOSER_ATTACHED_TEXT_CHARS]
+                                            + "\n[...nội dung tệp đã được rút gọn...]"
+                                        )
+                                    one_shot_image_text = (
+                                        f'[Dữ kiện trích từ tệp đính kèm "{_att_name}"]:\n{_file_text}'
+                                    )
+                                else:
+                                    image_ocr_failed = True
+                                    st.session_state.wsc_action_message = "Tệp đính kèm rỗng hoặc không có nội dung chữ."
+                                if not q_text:
+                                    q_text = "Phân tích và giải thích nội dung trong tệp đính kèm."
+                                if one_shot_image_text:
+                                    q_text = f"{q_text}\n\n---\n{one_shot_image_text}"
                             else:
                                 image_ocr_failed = True
-                                st.session_state.wsc_action_message = t(
-                                    "attached_image_unreadable",
-                                    locale=current_ui_locale,
-                                )
-                            # Xóa ảnh khỏi composer sau khi đã xử lý (cả 2 đường
+                                st.session_state.wsc_action_message = f"Định dạng tệp {_att_ext} không được hỗ trợ."
+
+                            # Xóa ảnh/tệp khỏi composer sau khi đã xử lý (cả 2 đường
                             # tải file và dán từ clipboard).
                             st.session_state.pop(pasted_image_key, None)
-                            if not q_text:
-                                q_text = "Phân tích và giải thích nội dung trong ảnh chụp màn hình đính kèm."
-                            if one_shot_image_text:
-                                q_text = f"{q_text}\n\n---\n{one_shot_image_text}"
 
                         from aios_habit.workspace_chat_rag_v2_adapter import (
                             is_production_index_available,

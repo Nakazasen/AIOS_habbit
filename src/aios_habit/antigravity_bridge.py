@@ -1586,6 +1586,11 @@ def route_workspace_chat_submission(
                 if "]:" in ocr_raw:
                     ocr_raw = ocr_raw.split("]:", 1)[1]
                 lines.append(f"Dữ liệu đọc được từ ảnh đính kèm:\n\n{ocr_raw.strip()}\n")
+            if "[Dữ kiện trích từ tệp đính kèm" in question:
+                file_raw = question.split("[Dữ kiện trích từ tệp đính kèm", 1)[1]
+                if "]:" in file_raw:
+                    file_raw = file_raw.split("]:", 1)[1]
+                lines.append(f"Dữ liệu trích từ tệp đính kèm:\n\n{file_raw.strip()}\n")
             if cited_items:
                 lines.append("Dựa trên các trích đoạn tài liệu đã tìm kiếm:\n")
                 for idx, itm in enumerate(cited_items, 1):
