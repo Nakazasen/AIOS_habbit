@@ -23,6 +23,10 @@
 - Trạng thái: xep-hang (điều phối phát hành 2026-10-11 ~23:0x, từ verdict BLOCK-SMOKE)
 - Nội dung: sửa crash AttributeError 'NotebookSource' object has no attribute 'text' trong get_workspace_chat_preparation_summary (workspace_chat_rag_v2_adapter.py). Toàn văn: docs/phieu-viec/mailbox-agy/prompt-queue-notebook-source-text-fix-home.md. Báo cáo: docs/phieu-viec/ket-qua/notebook-source-text-fix-home.md.
 
+## Hàng chờ #6 (sau NOTEBOOK-SOURCE-TEXT-FIX-HOME): EXTERNAL-USAGE-LOG-TIMING-FIX-HOME
+- Trạng thái: xep-hang (điều phối phát hành 2026-10-12 ~03:1x, từ verdict EXTERNAL-AI-MODE-R2)
+- Nội dung: sửa điểm gọi ghi nhật ký sử dụng AI ngoài trong `antigravity_bridge.py` (dòng ~1390-1394) để truyền duration_sec/ttft_sec thật của lượt — hiện hai trường luôn 0.0 vì điểm gọi không truyền tham số (hàm ghi ở `workspace_chat_store.py` dòng ~848). Toàn văn: `docs/phieu-viec/mailbox-agy/prompt-queue-external-usage-log-timing-fix-home.md`. Báo cáo: `docs/phieu-viec/ket-qua/external-usage-log-timing-fix-home.md`.
+
 ## Vé hiện tại: STRUCTURED-LANE-TEST-FIXTURE-HOME (chuyển test làn cấu trúc sang dữ kiện tổng hợp)
 
 - Trạng thái: `dang-lam`
