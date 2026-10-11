@@ -5,6 +5,11 @@
 - Trạng thái: `xep-hang`
 - `ghi_chu` (điều phối Muse — XẾP HÀNG ƯU TIÊN): 2026-10-11 ~15:3x +07 — User chỉ đạo dồn toàn lực hôm nay cho vòng tốc độ hỏi đáp. Vé numpy hoá nốt hai khâu quét còn lai Python thuần (`cosine_similarity` + `sparse_dot_similarity` trong `rag_v2/semantic.py`) kèm đo phân bổ chặng trước/sau và đo lại 4 câu trên giao diện thật đã viết sẵn tại `prompt-queue-rag-retrieval-numpy-complete-home.md` — bốc NGAY khi vé test-fixture nộp xong, trước vé `DISK-GROWTH-DIAG-HOME`.
 
+## Hàng chờ (sau numpy + chẩn đoán ổ đĩa): EVIDENCE-DATE-REDACT-FIX-HOME — sửa lỗi che ngày trong bằng chứng
+
+- Trạng thái: `xep-hang`
+- `ghi_chu` (điều phối Muse — XẾP HÀNG): 2026-10-11 ~21:0x +07 — Phát hiện từ verdict A5: bộ che dữ kiện của đường bằng chứng truy hồi ăn nhầm chuỗi ngày `2026/08/20` thành `[REDACTED_LOCAL_PATH]`, làm đáp án mất mốc ngày. Vé sửa + test hồi quy hai chiều + nghiệm thu giao diện đã viết sẵn tại `prompt-queue-evidence-date-redact-fix-home.md` — bốc sau `RAG-RETRIEVAL-NUMPY-COMPLETE-HOME` và `DISK-GROWTH-DIAG-HOME`.
+
 ## Vé hiện tại: STRUCTURED-LANE-TEST-FIXTURE-HOME (chuyển test làn cấu trúc sang dữ kiện tổng hợp)
 
 - Trạng thái: `dang-lam`
