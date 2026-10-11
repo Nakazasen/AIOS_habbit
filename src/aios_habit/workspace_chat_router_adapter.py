@@ -90,6 +90,11 @@ def _build_router_prompts(payload: SanitizedRouterPayload) -> Tuple[str, str]:
             "Nếu câu hỏi yêu cầu giải thích, hãy giải thích rõ ràng và có cấu trúc."
         )
         user_parts = []
+        anchored_context = payload.metadata.get("anchored_context")
+        if anchored_context:
+            user_parts.append("--- ĐÁP ÁN ĐƯỢC NEO NGỮ CẢNH (ƯU TIÊN HÀNG ĐẦU) ---")
+            user_parts.append(str(anchored_context))
+            user_parts.append("---")
         chat_history = payload.metadata.get("chat_history") or ()
         if chat_history:
             user_parts.append("--- LỊCH SỬ HỘI THOẠI GẦN ĐÂY ---")
@@ -121,7 +126,18 @@ def _build_router_prompts(payload: SanitizedRouterPayload) -> Tuple[str, str]:
         "Trả lời bằng tiếng Việt rõ ràng và nhắc owner kiểm tra lại trước khi sử dụng."
     )
 
-    user_parts = ["CÂU HỎI:", payload.sanitized_question, ""]
+    anchored_context = payload.metadata.get("anchored_context")
+    if anchored_context:
+        user_parts = [
+            "--- ĐÁP ÁN ĐƯỢC NEO NGỮ CẢNH (ƯU TIÊN HÀNG ĐẦU) ---",
+            str(anchored_context),
+            "---",
+            "CÂU HỎI:",
+            payload.sanitized_question,
+            "",
+        ]
+    else:
+        user_parts = ["CÂU HỎI:", payload.sanitized_question, ""]
     equipment_types = _named_equipment_types(payload.sanitized_question)
     if len(equipment_types) >= 2:
         user_parts.extend((

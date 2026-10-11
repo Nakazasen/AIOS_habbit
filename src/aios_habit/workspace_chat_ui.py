@@ -365,11 +365,11 @@ def render_answer_feedback_row(
     question: str,
     answer: str,
     locale: str = "vi",
+    on_reply: Optional[Callable[[str, str, str], None]] = None,
 ) -> None:
     """Hang feedback nho duoi moi cau tra loi cua assistant (vong lap cai thien).
-    Thumbs up -> ghi nhan ngay. Thumbs down -> bat buoc chon ly do (che thi
-    phai noi ro che gi) roi moi ghi. Luu o local_cases, khong vao kho tri thuc.
-    Khi co FEEDBACK-LOOP-HOME bat: ly do chon san + ma may + chu de.
+    Chua hanh dong 'Tra loi' de neo ngu canh + nut thumbs up/down danh gia.
+    Luu o local_cases, khong vao kho tri thuc.
     """
     from aios_habit import answer_feedback
     try:
@@ -380,13 +380,38 @@ def render_answer_feedback_row(
         _loop_on = False
     if not conversation_id or not message_id:
         return
-    if answer_feedback.get_feedback(conversation_id, message_id) is not None:
-        st.caption(t("answer_feedback_thanks_rated", locale=locale))
-        return
-    key_base = f"wsc_answer_fb_{message_id}"
-    rating = st.feedback("thumbs", key=key_base)
-    if rating is None:
-        return
+
+    cols = st.columns([1.2, 5], vertical_alignment="center")
+    col_reply = cols[0] if len(cols) > 0 else st
+    col_fb = cols[1] if len(cols) > 1 else st
+
+    with col_reply:
+        reply_btn_key = f"wsc_reply_btn_{message_id}"
+        reply_label = f"↩️ {t('answer_reply_action', locale=locale)}"
+        if st.button(
+            reply_label,
+            key=reply_btn_key,
+            help=t("answer_reply_help", locale=locale),
+        ):
+            if on_reply is not None:
+                on_reply(conversation_id, message_id, answer)
+            elif hasattr(st, "session_state"):
+                st.session_state[f"wsc_anchored_answer_{conversation_id}"] = {
+                    "message_id": message_id,
+                    "question": question,
+                    "content": answer,
+                }
+                if hasattr(st, "rerun"):
+                    st.rerun()
+
+    with col_fb:
+        if answer_feedback.get_feedback(conversation_id, message_id) is not None:
+            st.caption(t("answer_feedback_thanks_rated", locale=locale))
+            return
+        key_base = f"wsc_answer_fb_{message_id}"
+        rating = st.feedback("thumbs", key=key_base)
+        if rating is None:
+            return
     if int(rating) == 1:
         if _loop_on and _feedback_loop is not None:
             result = _feedback_loop.record_device_feedback(
@@ -615,10 +640,27 @@ def render_chat_bubble(
             _is_external_ai = False
             _ext_model_name = ""
             _ext_provider_name = ""
-            if msg.trace_id and str(msg.trace_id).strip():
-                _loader = trace_loader or load_evidence_trace
+            trace_id_str = str(msg.trace_id or "").strip()
+            trace_cache_key = f"wsc_evidence_trace_{trace_id_str}"
+
+            def _load_trace_once() -> Optional[EvidenceTrace]:
+                if not trace_id_str:
+                    return None
+                session_state = getattr(st, "session_state", {})
+                if hasattr(session_state, "__contains__") and trace_cache_key in session_state:
+                    return session_state[trace_cache_key]
+                loader = trace_loader or load_evidence_trace
                 try:
-                    _msg_trace = _loader(str(msg.trace_id).strip())
+                    trace = loader(trace_id_str)
+                except Exception:
+                    trace = None
+                if hasattr(st, "session_state") and hasattr(st.session_state, "__setitem__"):
+                    st.session_state[trace_cache_key] = trace
+                return trace
+
+            if trace_id_str:
+                try:
+                    _msg_trace = _load_trace_once()
                     if _msg_trace is not None and getattr(_msg_trace, "provenance", None):
                         prov = getattr(_msg_trace, "provenance", {}) or {}
                         if prov.get("ai_mode") == "external" or prov.get("operational_mode") == "external_ai":
@@ -854,22 +896,6 @@ def render_chat_bubble(
                 # Keep this expensive canvas out of the page-wide rerun path.
                 # A fragment reruns only the graph controls, so closing does
                 # not rebuild the whole conversation and source library.
-                trace_cache_key = f"wsc_evidence_trace_{trace_id_str}"
-
-                def _load_trace_once() -> Optional[EvidenceTrace]:
-                    session_state = getattr(st, "session_state", {})
-                    cached_trace = session_state.get(trace_cache_key)
-                    if cached_trace is not None:
-                        return cached_trace
-                    loader = trace_loader or load_evidence_trace
-                    try:
-                        trace = loader(trace_id_str)
-                    except Exception:
-                        trace = None
-                    if trace is not None and hasattr(st, "session_state"):
-                        st.session_state[trace_cache_key] = trace
-                    return trace
-
                 def _install_instant_graph_close_hook() -> None:
                     """Remove the rendered iframe at pointer-down, before Streamlit updates."""
                     if not hasattr(st, "html"):

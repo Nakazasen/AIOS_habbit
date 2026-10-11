@@ -1088,6 +1088,7 @@ def route_workspace_chat_submission(
     local_synthesis: Mapping[str, Any] | None = None,
     on_chunk: Optional[Callable[[str], None]] = None,
     ai_mode: str = "grounded",
+    anchored_context: Optional[str] = None,
 ) -> tuple[bool, str, dict[str, Any] | None, str | None]:
     """Route a submission through the explicitly selected Workspace Chat backend.
 
@@ -1295,6 +1296,7 @@ def route_workspace_chat_submission(
             consent_memory_fingerprint=consent_memory_fingerprint,
             on_chunk=on_chunk,
             ai_mode=ai_mode,
+            anchored_context=anchored_context,
         )
         router_timeout = int(os.environ.get("AIOS_ROUTER_TIMEOUT_SECONDS", "30"))
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)

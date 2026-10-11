@@ -595,7 +595,7 @@ def _deserialize_conversation(record: dict) -> WorkspaceConversation:
 
 
 def _deserialize_message(record: dict) -> ChatMessage:
-    return ChatMessage(**record)
+    return ChatMessage.from_dict(record)
 
 
 def _deserialize_temporary_source(record: dict) -> TemporaryConversationSource:

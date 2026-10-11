@@ -65,6 +65,7 @@ class WorkspaceAIAnswerRequest:
     consent_memory_fingerprint: str = ""
     on_chunk: Any = None
     ai_mode: str = "grounded"
+    anchored_context: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -427,6 +428,7 @@ def build_workspace_ai_prompt(
     chat_history: Tuple[Dict[str, str], ...] = (),
     answer_language: str = "vi",
     memory_result: object | None = None,
+    anchored_context: Optional[str] = None,
 ) -> Tuple[str, str]:
     norm_lang = normalize_locale(answer_language)
     lang_instruction = get_ai_language_instruction(norm_lang)
@@ -450,6 +452,20 @@ def build_workspace_ai_prompt(
         )
 
     user_parts = []
+
+    if anchored_context:
+        if norm_lang == "ja":
+            user_parts.append("--- コンテキスト固定された回答（最優先） ---")
+            user_parts.append(str(anchored_context))
+            user_parts.append("---")
+        elif norm_lang == "zh-CN":
+            user_parts.append("--- 锚定上下文的回答（最高优先） ---")
+            user_parts.append(str(anchored_context))
+            user_parts.append("---")
+        else:
+            user_parts.append("--- ĐÁP ÁN ĐƯỢC NEO NGỮ CẢNH (ƯU TIÊN HÀNG ĐẦU) ---")
+            user_parts.append(str(anchored_context))
+            user_parts.append("---")
 
     if chat_history:
         if norm_lang == "ja":
@@ -677,6 +693,7 @@ def _generate_real_router_answer(
             metadata={
                 "ai_mode": "external",
                 "chat_history": request.chat_history,
+                "anchored_context": getattr(request, "anchored_context", None),
                 "answer_language": request.answer_language,
                 "ui_locale": request.ui_locale,
             },
@@ -795,6 +812,11 @@ def _generate_real_router_answer(
         source_candidates=source_candidates,
         outbound_sources=outbound_sources,
     )
+    if decision.sanitized_payload and isinstance(decision.sanitized_payload.metadata, dict):
+        if getattr(request, "anchored_context", None):
+            decision.sanitized_payload.metadata["anchored_context"] = request.anchored_context
+        if getattr(request, "chat_history", None):
+            decision.sanitized_payload.metadata["chat_history"] = request.chat_history
     if _router_adapter.generate_answer_via_router is not _ORIGINAL_GENERATE_ANSWER_VIA_ROUTER:
         ok, response_text = _router_adapter.generate_answer_via_router(decision.sanitized_payload)
         effective_provider = ""
@@ -1099,6 +1121,7 @@ def generate_workspace_ai_answer(
         request.chat_history,
         answer_language=getattr(request, "answer_language", "vi"),
         memory_result=memory_result,
+        anchored_context=getattr(request, "anchored_context", None),
     )
 
     try:

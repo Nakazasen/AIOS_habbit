@@ -31,6 +31,7 @@ from io import BytesIO
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Tuple, Mapping, Callable
+import html
 from aios_habit.workspace_paths import default_agent_workspace_root
 
 LOGGER = logging.getLogger("aios_habit.workspace_chat_app")
@@ -1261,6 +1262,7 @@ def _run_chat_turn_async(
     forced_domain: Optional[str] = None,
     on_chunk: Optional[Callable[[str], None]] = None,
     ai_mode: str = "grounded",
+    anchored_context: Optional[str] = None,
 ) -> tuple[bool, str, dict[str, Any] | None, str | None]:
     """Execute evidence retrieval and model answer routing inside background thread pool."""
     from aios_habit.antigravity_bridge import route_workspace_chat_submission
@@ -1293,8 +1295,12 @@ def _run_chat_turn_async(
         )
 
     def _attempt_retrieval() -> dict[str, Any]:
+        search_q = q_text
+        if anchored_context:
+            anc_snippet = str(anchored_context).strip()[:120].replace("\n", " ")
+            search_q = f"{q_text} ({anc_snippet})"
         return retrieve_local_evidence(
-            q_text,
+            search_q,
             tuple(query_relevant_sources),
             expansion=expansion,
             search_preference=active_pref,
@@ -1435,6 +1441,7 @@ def _run_chat_turn_async(
         local_synthesis=ret_res.get("local_synthesis") if (retrieval_applied and "ret_res" in locals()) else None,
         on_chunk=on_chunk,
         ai_mode=ai_mode,
+        anchored_context=anchored_context,
     )
     t_turn_end = time.time()
     turn_total_s = t_turn_end - t_turn_start
@@ -4637,6 +4644,33 @@ else:
                     if st.session_state.pop(clear_input_key, False):
                         st.session_state[f"wsc_question_input_{active_conversation.id}"] = ""
                     uploaded_image = None
+
+                    # Hiển thị neo ngữ cảnh khi người dùng bấm "Trả lời" một đáp án (DESKTOP-ANSWER-REPLY-HOME)
+                    _anchor_key = f"wsc_anchored_answer_{active_conversation.id}"
+                    _anchored_data = st.session_state.get(_anchor_key)
+                    if _anchored_data and isinstance(_anchored_data, dict):
+                        _anc_text = str(_anchored_data.get("content", "")).strip()
+                        _anc_snippet = _anc_text.replace("\n", " ")
+                        if len(_anc_snippet) > 120:
+                            _anc_snippet = _anc_snippet[:117] + "..."
+                        _anc_col1, _anc_col2 = st.columns([0.92, 0.08], vertical_alignment="center")
+                        with _anc_col1:
+                            st.markdown(
+                                f"<div class='wsc-anchored-quote' style='font-size:0.85rem; color:#374151; background:#F3F4F6; padding:5px 10px; border-radius:6px; border-left:3px solid #3B82F6; margin-bottom:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;' title='{html.escape(_anc_text[:300])}'>"
+                                f"↩️ <strong>{t('anchored_answer_prefix', locale=current_ui_locale)}</strong> {html.escape(_anc_snippet)}"
+                                f"</div>",
+                                unsafe_allow_html=True,
+                            )
+                        with _anc_col2:
+                            if st.button(
+                                "✕",
+                                key=f"wsc_remove_anchor_{active_conversation.id}",
+                                help=t("remove_anchor_tooltip", locale=current_ui_locale),
+                                type="tertiary",
+                            ):
+                                st.session_state.pop(_anchor_key, None)
+                                safe_rerun()
+
                     user_input = st.text_area(
                         t("composer_question_label", locale=current_ui_locale),
                         placeholder=t("question_placeholder", locale=current_ui_locale),
@@ -5571,6 +5605,29 @@ else:
                                 if getattr(active_conversation, "compressed_memory", ""):
                                     chat_history = ({"role": "system", "content": active_conversation.compressed_memory},) + chat_history
 
+                                # Xử lý neo ngữ cảnh đáp án (DESKTOP-ANSWER-REPLY-HOME)
+                                _anchor_key = f"wsc_anchored_answer_{active_conversation.id}"
+                                anchored_answer_data = st.session_state.pop(_anchor_key, None)
+                                anchored_context = None
+                                reply_to_message_id = None
+                                if anchored_answer_data and isinstance(anchored_answer_data, dict):
+                                    reply_to_message_id = anchored_answer_data.get("message_id")
+                                    anchored_content = str(anchored_answer_data.get("content", "")).strip()
+                                    anchored_question = str(anchored_answer_data.get("question", "")).strip()
+                                    if anchored_content:
+                                        if anchored_question:
+                                            anchored_context = f"Câu hỏi gốc: {anchored_question}\nĐáp án được neo:\n{anchored_content}"
+                                        else:
+                                            anchored_context = f"Đáp án được neo:\n{anchored_content}"
+                                        anchor_directive = (
+                                            "[CHỈ THỊ NEO NGỮ CẢNH TRẢ LỜI / ANCHOR CONTEXT DIRECTIVE]:\n"
+                                            "Người dùng đang bấm 'Trả lời' trực tiếp vào đáp án dưới đây. Ngữ cảnh này được ƯU TIÊN TUYỆT ĐỐI "
+                                            "hơn bất kỳ câu hỏi nào khác trong lịch sử trò chuyện. Mọi câu hỏi xoáy sâu hoặc đại từ thay thế (như 'mục 2', "
+                                            "'bước này', 'nó', 'vấn đề trên') phải được đối chiếu và xử lý dựa trên đáp án được neo này:\n"
+                                            f"--- NỘI DUNG ĐÁP ÁN ĐƯỢC NEO ---\n{anchored_context}"
+                                        )
+                                        chat_history = chat_history + ({"role": "system", "content": anchor_directive},)
+
                                 is_cloud_allowed = bool(st.session_state.get("cloud_consent_confirmed", False)) and all(
                                     getattr(s, "privacy_label", "local_only") in {"cloud_safe", "public"}
                                     for s in packed_sources
@@ -5603,6 +5660,7 @@ else:
                                     conversation_id=active_conversation.id,
                                     role="user",
                                     content=q_text,
+                                    reply_to_message_id=reply_to_message_id,
                                 )
                                 # Static AST assertion compatibility:
                                 # generate_workspace_ai_answer(req, RealWorkspaceAIProviderClient())
@@ -5664,6 +5722,7 @@ else:
                                     ),
                                     on_chunk=_on_chunk,
                                     ai_mode=getattr(active_conversation, "ai_mode", "grounded"),
+                                    anchored_context=anchored_context,
                                 )
                                 st.session_state[ai_request_key] = {
                                     "future": request_future,
