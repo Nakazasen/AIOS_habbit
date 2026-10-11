@@ -1,0 +1,73 @@
+=== KẾT QUẢ NGHIỆM THU GIAO DIỆN THẬT CSV-STRUCTURED-LANE-HOME ===
+Phiên: CONV-CSV-LANE-6ACB2E8D
+Thời gian: 2026-10-11T13:41:34.919419
+
+----------------------------------------
+CÂU 1: [Q0849]
+Hỏi: 2026年8月のBowOverAdjustエラー件数と期間を教えてください。
+
+Đáp án AI:
+Dựa trên dữ liệu thống kê có cấu trúc từ tệp `2026_08_Error_BowOverAdjust.csv`:
+
+- **Tổng số bản ghi lỗi**: **3.153 record** (tất cả đều có nội dung lỗi `BowOverAdjustment`).
+- **Khoảng thời gian phát sinh**: từ **2026/08/01** đến **2026/08/25**.
+- **Số lượng Serial bị ảnh hưởng**: **1.252 Serial** khác nhau.
+
+[Nguồn: 2026_08_Error_BowOverAdjust.csv]
+
+Ảnh minh chứng: ui-csv-structured-lane-02-q0849.png (90235 bytes)
+
+----------------------------------------
+CÂU 2: [Q0850]
+Hỏi: BowOverAdjustエラーの各色（Yellow, Cyan, Magenta）の件数は？
+
+Đáp án AI:
+Theo kết quả thống kê có cấu trúc từ tệp `2026_08_Error_BowOverAdjust.csv`, số lượng lỗi BowOverAdjust theo từng màu trong tháng 08/2026 như sau:
+
+- **Yellow**: **1304件** (chiếm tỷ lệ cao nhất).
+- **Cyan**: **1035件**.
+- **Magenta**: **814件**.
+
+Màu Black không ghi nhận lỗi nào (0件). Màu có số lỗi nhiều nhất là **Yellow**.
+
+[Nguồn: 2026_08_Error_BowOverAdjust.csv]
+
+Ảnh minh chứng: ui-csv-structured-lane-03-q0850.png (90348 bytes)
+
+----------------------------------------
+CÂU 3: [Q0824]
+Hỏi: シリアル「61C1068E7022」の8月12日と8月13日の判定結果を比較して、NG項目に変化はありますか？
+
+Đáp án AI:
+Theo kết quả tra cứu có cấu trúc từ tệp `2026_08_UnitTest.csv`:
+
+So sánh kết quả phán định của Serial **61C1068E7022** giữa ngày 12/8/2026 và ngày 13/8/2026:
+- **Ngày 2026/08/12**: TotalJudge = **NG** (Black: **OK**, Magenta: **OK**, Cyan: **NG**, Yellow: **OK**).
+- **Ngày 2026/08/13**: TotalJudge = **NG** (Black: **OK**, Magenta: **OK**, Cyan: **NG**, Yellow: **OK**).
+
+**Kết luận**: Hạng mục NG giữa hai ngày **変わっていません** (hoàn toàn không thay đổi). Cả hai ngày đều chỉ bị lỗi NG ở kênh Cyan, còn các màu Black, Magenta, Yellow đều đạt OK.
+
+[Nguồn: 2026_08_UnitTest.csv]
+
+Ảnh minh chứng: ui-csv-structured-lane-04-q0824.png (93090 bytes)
+
+----------------------------------------
+CÂU 4: [Q0668]
+Hỏi: g1 và g2 có nominal và giới hạn nào?
+
+Đáp án AI:
+Dựa trên bảng kiểm tra kích thước trong tệp `3V2ND19040-MOUNT LD BLOCK  LOT 18.8.2026.xlsx` (Sheet `18.08.2026`):
+
+Cả hai thông số **g1** (dòng 60) và **g2** (dòng 61) đều có cùng giá trị danh định và giới hạn tiêu chuẩn như sau:
+
+- **Giá trị danh định (Nominal)**: **13.81**
+- **Dung sai quy định**: **+0.12 / -0.05**
+- **Giới hạn trên (Upper Limit)**: **13.93** (tính theo công thức `Nominal + 0.12 = 13.81 + 0.12 = 13.93`).
+- **Giới hạn dưới (Lower Limit)**: **13.76** (tính theo công thức `Nominal - 0.05 = 13.81 - 0.05 = 13.76`).
+
+Các giá trị đo kiểm thực tế trên JIG COD-1004 dao động từ 13.845 đến 13.856, đều nằm an toàn trong dải cho phép [13.76, 13.93] và được đánh giá đạt (**O**).
+
+[Nguồn: 3V2ND19040-MOUNT LD BLOCK  LOT 18.8.2026.xlsx]
+
+Ảnh minh chứng: ui-csv-structured-lane-05-q0668.png (91218 bytes)
+

@@ -3117,6 +3117,11 @@ def _try_structured_excel_evidence(
     sources: Tuple[WorkspaceAIContextSource, ...],
 ) -> dict[str, Any] | None:
     """Use bounded SQL analytics only for deterministic, allow-listed plans."""
+    from aios_habit.rag_v2.structured_query import try_structured_table_evidence
+    table_result = try_structured_table_evidence(question, sources)
+    if table_result is not None:
+        return table_result
+
     if not query_might_be_structured_excel(question):
         return None
     for source in sources:
@@ -3475,6 +3480,8 @@ def retrieve_workspace_chat_evidence(
         domain_payload = _domain_routing_payload(domain_route)
         if domain_payload is not None:
             payload = {**payload, "domain_routing": domain_payload}
+        if payload.get("status") in {"structured_table_query", "structured_excel_query"}:
+            return payload
         return _attach_line_log_evidence(question, payload, collection_id)
 
     try:

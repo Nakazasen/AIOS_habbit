@@ -347,3 +347,31 @@ def test_aggregate_provenance_preserves_comma_in_excel_sheet_name(tmp_path):
     assert result.applied is True
     assert result.rows == ((300.0,),)
     assert tuple(provenance.sheet for provenance in result.provenance) == ("East,West", "North")
+
+
+def test_structured_table_lane_targets():
+    from aios_habit.rag_v2.structured_query import (
+        query_might_be_structured_table,
+        try_structured_table_evidence,
+    )
+
+    q_targets = [
+        ("2026年8月のBowOverAdjustエラー件数と期間を教えてください。", "3.153 record", "2026_08_Error_BowOverAdjust.csv"),
+        ("BowOverAdjustエラーの各色（Yellow, Cyan, Magenta）の件数は？", "1304件", "2026_08_Error_BowOverAdjust.csv"),
+        ("BowOverAdjustエラーにBlackはありますか？", "0件", "2026_08_Error_BowOverAdjust.csv"),
+        ("2026年8月でエラーが最も多い日はいつですか？件数も教えてください。", "34笔", "2026_08_Error.csv"),
+        ("2026_08_Error.csvの統計を教えてください。", "183 Record", "2026_08_Error.csv"),
+        ("Currentの規格値（LowerとUpper）で最も多い組み合わせは何ですか？", "370 mA", "2026_08_Spec.csv"),
+        ("シリアル「61C1068E7022」の8月12日と8月13日の判定結果を比較して、NG項目に変化はありますか？", "変わっていません", "2026_08_UnitTest.csv"),
+        ("g1 và g2 có nominal và giới hạn nào?", "13.81", "3V2ND19040-MOUNT LD BLOCK  LOT 18.8.2026.xlsx"),
+    ]
+
+    for question, expected_kw, expected_doc in q_targets:
+        assert query_might_be_structured_table(question) is True
+        res = try_structured_table_evidence(question)
+        assert res is not None, f"Failed for {question}"
+        assert res["status"] == "structured_table_query"
+        ans = res["local_synthesis"]["answer"]
+        assert expected_kw in ans, f"Expected '{expected_kw}' in answer for {question}"
+        assert expected_doc in ans, f"Expected citation '{expected_doc}' in answer for {question}"
+
