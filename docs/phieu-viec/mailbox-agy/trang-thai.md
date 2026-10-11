@@ -2,7 +2,9 @@
 
 ## Vé hiện tại: CSV-STRUCTURED-LANE-HOME (làn truy vấn có cấu trúc cho dữ liệu CSV/bảng)
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `bao_cao`: `docs/phieu-viec/ket-qua/csv-structured-lane-home.md`
+- `ghi_chu`: 2026-10-11 13:08 +07 — **ĐÃ NHẬN VÉ** `CSV-STRUCTURED-LANE-HOME`: Bắt đầu khảo sát hạ tầng truy vấn có cấu trúc hiện có tại `src/aios_habit/rag_v2/structured_query.py` và thiết kế làn định tuyến cho 4 câu hỏi thống kê CSV + ca Q0824 tra dòng phán định + ca Q0668 trích xuất giá trị ô tính nominal/dung sai/giới hạn.
 - `ghi_chu` (điều phối Muse — PHÁT HÀNH): 2026-10-11 ~13:1x +07 — Phát hành vé này làm vé hiện hành (`prompt.md` đã thay bằng nội dung vé + mục bổ sung ca Q0668 từ verdict BLOCK-FIX). Phạm vi gồm: 4 câu thống kê toàn tệp + ca Q0824 (theo các bổ sung đã ghi trong vé) + ca Q0668 về giá trị ô bảng tính (bổ sung mới ở cuối `prompt.md`). Điều kiện bốc cũ "sau BLOCK-FIX" đã thoả (verdict ở khối ngay dưới).
 
 ## Vé vừa verdict: Q0668-BLOCK-FIX-HOME
