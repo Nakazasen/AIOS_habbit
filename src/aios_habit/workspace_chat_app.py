@@ -4607,7 +4607,7 @@ else:
 
                     # Hàng công cụ nằm TRONG thẻ, dưới ô nhập (Requirement 2)
                     toolbar_attach_col, toolbar_block_col, toolbar_pref_col, toolbar_cagent_col, toolbar_hint_col, toolbar_action_col = st.columns(
-                        [0.55, 3.2, 2.0, 1.8, 3.3, 0.65], vertical_alignment="center"
+                        [0.55, 3.0, 1.8, 2.3, 3.0, 0.65], vertical_alignment="center"
                     )
 
                     with toolbar_attach_col:
@@ -4715,24 +4715,54 @@ else:
 
                     with toolbar_cagent_col:
                         with st.container(key=f"wsc-cagent-{active_conversation.id}"):
+                            if selected_ai_backend == "cagent_api":
+                                _dest_chip_label = "⚙️ C-Agent"
+                                _dest_help = t("cagent_config_popover", locale=current_ui_locale)
+                            elif selected_ai_backend == "nakazasen_router":
+                                _dest_chip_label = "🌐 Command Code"
+                                _dest_help = "Tuyến tổng hợp Command Code (Router)"
+                            elif selected_ai_backend == "gemini_web":
+                                _dest_chip_label = "🌉 Gemini"
+                                _dest_help = "Cầu nối Gemini Web"
+                            else:
+                                _dest_chip_label = "💻 Cục bộ"
+                                _dest_help = "Tổng hợp dữ kiện cục bộ"
                             with st.popover(
-                                "⚙️ C-Agent",
-                                help=t("cagent_config_popover", locale=current_ui_locale),
+                                _dest_chip_label,
+                                help=_dest_help,
                             ):
-                                cagent_endpoint_key = f"wsc_cagent_endpoint_{active_conversation.id}"
-                                configured_cagent_endpoint = (
-                                    str(st.session_state.get(cagent_endpoint_key, "")).strip()
-                                    or os.environ.get("AIOS_CAGENT_API_URL", "").strip()
-                                )
-                                cagent_endpoint = st.text_input(
-                                    t("cagent_endpoint_label", locale=current_ui_locale),
-                                    value=configured_cagent_endpoint,
-                                    placeholder="https://.../api/v1/prediction/<AgentFlow-ID>",
-                                    key=cagent_endpoint_key,
-                                    help=t("cagent_endpoint_help", locale=current_ui_locale),
-                                ).strip()
-                                if cagent_endpoint:
-                                    os.environ["AIOS_CAGENT_API_URL"] = cagent_endpoint
+                                if selected_ai_backend == "nakazasen_router":
+                                    st.markdown("**Đích tổng hợp: Command Code (Router)**")
+                                    st.caption("Máy nhà chạy tuyến tổng hợp các mô hình miễn phí của provider Command Code.")
+                                    _cc_model = os.environ.get("AIOS_LOCAL_AI_MODEL", "inclusionai/ling-3.1-flash:free")
+                                    _cc_failover = os.environ.get("AIOS_LOCAL_AI_FAILOVER_MODELS", "poolside/laguna-s-2.1-free,deepseek/deepseek-v4.1-flash")
+                                    _cc_timeout = os.environ.get("AIOS_LOCAL_AI_TIMEOUT_SECONDS", "90")
+                                    st.text(
+                                        f"• Model chính: {_cc_model}\n"
+                                        f"• Dự phòng: {_cc_failover}\n"
+                                        f"• Hết giờ: {_cc_timeout}s"
+                                    )
+                                    st.info("ℹ️ Ranh giới hai máy: Máy nhà không dùng C-Agent (thuộc phía công ty). Tuyến hiệu lực là Command Code miễn phí.")
+                                elif selected_ai_backend == "cagent_api":
+                                    cagent_endpoint_key = f"wsc_cagent_endpoint_{active_conversation.id}"
+                                    configured_cagent_endpoint = (
+                                        str(st.session_state.get(cagent_endpoint_key, "")).strip()
+                                        or os.environ.get("AIOS_CAGENT_API_URL", "").strip()
+                                    )
+                                    cagent_endpoint = st.text_input(
+                                        t("cagent_endpoint_label", locale=current_ui_locale),
+                                        value=configured_cagent_endpoint,
+                                        placeholder="https://.../api/v1/prediction/<AgentFlow-ID>",
+                                        key=cagent_endpoint_key,
+                                        help=t("cagent_endpoint_help", locale=current_ui_locale),
+                                    ).strip()
+                                    if cagent_endpoint:
+                                        os.environ["AIOS_CAGENT_API_URL"] = cagent_endpoint
+                                elif selected_ai_backend == "local":
+                                    st.markdown("**Đích tổng hợp: Trích xuất cục bộ**")
+                                    st.caption("Hệ thống trả lời bằng trích dẫn dữ kiện cục bộ từ tài liệu, không gửi ra ngoài.")
+                                else:
+                                    st.markdown(f"**Đích tổng hợp: {_lane_label(selected_ai_backend)}**")
 
                     with toolbar_hint_col:
                         with st.container(key=f"wsc-shortcut-hint-{active_conversation.id}"):
