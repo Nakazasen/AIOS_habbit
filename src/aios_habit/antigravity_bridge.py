@@ -1087,6 +1087,7 @@ def route_workspace_chat_submission(
     consent_memory_fingerprint: str = "",
     local_synthesis: Mapping[str, Any] | None = None,
     on_chunk: Optional[Callable[[str], None]] = None,
+    ai_mode: str = "grounded",
 ) -> tuple[bool, str, dict[str, Any] | None, str | None]:
     """Route a submission through the explicitly selected Workspace Chat backend.
 
@@ -1114,6 +1115,9 @@ def route_workspace_chat_submission(
 
     if was_cancelled():
         return (False, "", None, "Đã dừng yêu cầu AI.")
+
+    if ai_mode == "external":
+        backend = "nakazasen_router"
 
     if backend == "cagent":
         backend = "cagent_api"
@@ -1273,15 +1277,16 @@ def route_workspace_chat_submission(
 
     def _try_nakazasen_router() -> tuple[bool, str, dict[str, Any] | None, str | None]:
         nonlocal evidence_items
+        is_ext = (ai_mode == "external")
         request = WorkspaceAIAnswerRequest(
             conversation_id=conversation_id,
             question=question,
-            context_sources=packed_sources,
+            context_sources=() if is_ext else packed_sources,
             privacy_mode=PRIVACY_MODE_CLOUD_ALLOWED,
             cloud_consent_confirmed=False,
-            consent_source_keys=tuple(current_keys),
-            retrieval_applied=retrieval_applied,
-            retrieved_context_sources=retrieved_sources,
+            consent_source_keys=() if is_ext else tuple(current_keys),
+            retrieval_applied=False if is_ext else retrieval_applied,
+            retrieved_context_sources=() if is_ext else retrieved_sources,
             real_router_enabled=True,
             router_enabled=False,
             chat_history=chat_history,
@@ -1289,6 +1294,7 @@ def route_workspace_chat_submission(
             workspace_id=notebook_id or "default",
             consent_memory_fingerprint=consent_memory_fingerprint,
             on_chunk=on_chunk,
+            ai_mode=ai_mode,
         )
         router_timeout = int(os.environ.get("AIOS_ROUTER_TIMEOUT_SECONDS", "30"))
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
@@ -1339,11 +1345,12 @@ def route_workspace_chat_submission(
                 load_conversation,
                 load_conversation_source_selections,
                 save_evidence_trace,
+                log_external_ai_usage,
             )
             from aios_habit.evidence_trace import build_evidence_trace_from_citations
 
             selections = load_conversation_source_selections(conversation_id)
-            allowed_source_ids = [item.source_id for item in selections if item.enabled] if selections else None
+            allowed_source_ids = [] if is_ext else ([item.source_id for item in selections if item.enabled] if selections else None)
             conversation = load_conversation(conversation_id)
             ui_locale = getattr(conversation, "ui_locale", "vi") if conversation else "vi"
             effective_prov = getattr(result, "effective_provider", "")
@@ -1354,7 +1361,7 @@ def route_workspace_chat_submission(
             trace = build_evidence_trace_from_citations(
                 query=question,
                 answer_text=final_answer,
-                evidence_items=evidence_items,
+                evidence_items=[] if is_ext else evidence_items,
                 allowed_source_ids=allowed_source_ids,
                 notebook_id=notebook_id,
                 conversation_id=conversation_id,
@@ -1363,9 +1370,10 @@ def route_workspace_chat_submission(
                 ui_locale=ui_locale,
                 answer_language=answer_language,
                 provenance={
-                    "operational_mode": "external_api",
+                    "operational_mode": "external_ai" if is_ext else "external_api",
                     "provider_name": provider_name,
                     "model_name": model_name,
+                    "ai_mode": ai_mode,
                 },
             )
             save_evidence_trace(trace)
@@ -1376,23 +1384,30 @@ def route_workspace_chat_submission(
                 content=final_answer,
                 trace_id=trace.trace_id,
             ))
-            source_titles = [
+            if is_ext:
+                log_external_ai_usage(
+                    conversation_id=conversation_id,
+                    message_id=assistant_msg_id,
+                    model_name=model_name,
+                )
+            source_titles = [] if is_ext else [
                 (item.get("title", "") if isinstance(item, dict) else getattr(item, "title", ""))
                 for item in evidence_items
             ]
             badge = {
                 "conversation_id": conversation_id,
-                "type": "ai_answered",
-                "source_count": len(source_titles),
+                "type": "external_ai_answered" if is_ext else "ai_answered",
+                "ai_mode": ai_mode,
+                "source_count": 0 if is_ext else len(source_titles),
                 "source_titles": source_titles,
                 "ai_source": provider_name,
                 "bridge": provider_name,
                 "provider": provider_name,
                 "model_tool_name": model_name,
                 "verified_model": model_name,
-                "operational_mode": "external_api",
-                "retrieval_summary": retrieval_summary,
-                "evidence_items": evidence_items,
+                "operational_mode": "external_ai" if is_ext else "external_api",
+                "retrieval_summary": "" if is_ext else retrieval_summary,
+                "evidence_items": [] if is_ext else evidence_items,
                 "trace_id": trace.trace_id,
                 "memory_titles": result.memory_titles,
                 "memory_consent_fingerprint": result.memory_consent_fingerprint,

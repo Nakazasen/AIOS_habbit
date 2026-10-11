@@ -56,3 +56,13 @@ def test_temporary_source_instantiation():
     assert src.status == "conversation_only"
     assert src.privacy_label == "machine_only"
     assert not src.long_term_saved
+
+
+def test_workspace_conversation_ai_mode():
+    conv_default = WorkspaceConversation(id="conv_def", notebook_id="nb1", title="Def")
+    assert conv_default.ai_mode == "grounded"
+
+    conv_ext = WorkspaceConversation(id="conv_ext", notebook_id="nb1", title="Ext", ai_mode="external")
+    assert conv_ext.ai_mode == "external"
+
+

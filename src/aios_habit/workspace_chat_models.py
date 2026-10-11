@@ -78,6 +78,7 @@ class WorkspaceConversation:
     search_preference: str = "auto"
     ui_locale: str = "vi"
     answer_language: str = "vi"
+    ai_mode: str = "grounded"
 
     def __post_init__(self) -> None:
         val = str(self.search_preference or "auto").strip().casefold()
@@ -89,6 +90,11 @@ class WorkspaceConversation:
         object.__setattr__(self, "ui_locale", normalize_locale(getattr(self, "ui_locale", "vi")))
         object.__setattr__(self, "answer_language", normalize_locale(getattr(self, "answer_language", "vi")))
 
+        mode = str(getattr(self, "ai_mode", "grounded") or "grounded").strip().casefold()
+        if mode not in {"grounded", "external"}:
+            mode = "grounded"
+        object.__setattr__(self, "ai_mode", mode)
+
     def to_dict(self) -> dict:
         return asdict(self)
 
@@ -97,7 +103,8 @@ class WorkspaceConversation:
         valid_keys = {
             "id", "notebook_id", "title", "created_at", "updated_at",
             "selected_source_ids", "temporary_source_ids", "saved_case_id",
-            "compressed_memory", "search_preference", "ui_locale", "answer_language"
+            "compressed_memory", "search_preference", "ui_locale", "answer_language",
+            "ai_mode"
         }
         filtered = {k: v for k, v in data.items() if k in valid_keys}
         return cls(**filtered)

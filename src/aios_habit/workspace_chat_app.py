@@ -325,10 +325,11 @@ st.html('''
             width: 1.15rem !important;
             height: 1.15rem !important;
         }
-        /* Status chips: Knowledge Block, Search Preference, C-Agent */
+        /* Status chips: Knowledge Block, Search Preference, C-Agent, AI Mode */
         [class*="st-key-wsc-block-"] [data-testid="stPopover"] button,
         [class*="st-key-wsc-pref-"] [data-testid="stPopover"] button,
-        [class*="st-key-wsc-cagent-"] [data-testid="stPopover"] button {
+        [class*="st-key-wsc-cagent-"] [data-testid="stPopover"] button,
+        [class*="st-key-wsc-mode-"] [data-testid="stPopover"] button {
             height: 32px !important;
             min-height: 32px !important;
             padding: 0 10px !important;
@@ -346,21 +347,24 @@ st.html('''
         }
         [class*="st-key-wsc-block-"] [data-testid="stPopover"] button:hover,
         [class*="st-key-wsc-pref-"] [data-testid="stPopover"] button:hover,
-        [class*="st-key-wsc-cagent-"] [data-testid="stPopover"] button:hover {
+        [class*="st-key-wsc-cagent-"] [data-testid="stPopover"] button:hover,
+        [class*="st-key-wsc-mode-"] [data-testid="stPopover"] button:hover {
             background: #F1F5F9 !important;
             border-color: #CBD5E1 !important;
             color: #0F172A !important;
         }
         [class*="st-key-wsc-block-"] [data-testid="stPopover"] button p,
         [class*="st-key-wsc-pref-"] [data-testid="stPopover"] button p,
-        [class*="st-key-wsc-cagent-"] [data-testid="stPopover"] button p {
+        [class*="st-key-wsc-cagent-"] [data-testid="stPopover"] button p,
+        [class*="st-key-wsc-mode-"] [data-testid="stPopover"] button p {
             font-size: 0.8rem !important;
             white-space: nowrap !important;
             margin: 0 !important;
         }
         [class*="st-key-wsc-block-"] [data-testid="stPopover"] button svg:last-child,
         [class*="st-key-wsc-pref-"] [data-testid="stPopover"] button svg:last-child,
-        [class*="st-key-wsc-cagent-"] [data-testid="stPopover"] button svg:last-child {
+        [class*="st-key-wsc-cagent-"] [data-testid="stPopover"] button svg:last-child,
+        [class*="st-key-wsc-mode-"] [data-testid="stPopover"] button svg:last-child {
             width: 0.85rem !important;
             height: 0.85rem !important;
             opacity: 0.6 !important;
@@ -529,6 +533,7 @@ from aios_habit.workspace_chat_store import (
     rename_conversation,
     update_conversation_search_preference,
     update_conversation_language_settings,
+    update_conversation_ai_mode,
     load_messages,
     save_message,
     save_evidence_trace,
@@ -1255,6 +1260,7 @@ def _run_chat_turn_async(
     user_message_id: str = "",
     forced_domain: Optional[str] = None,
     on_chunk: Optional[Callable[[str], None]] = None,
+    ai_mode: str = "grounded",
 ) -> tuple[bool, str, dict[str, Any] | None, str | None]:
     """Execute evidence retrieval and model answer routing inside background thread pool."""
     from aios_habit.antigravity_bridge import route_workspace_chat_submission
@@ -1300,10 +1306,14 @@ def _run_chat_turn_async(
     evidence_items = []
     retrieval_summary = ""
 
-    from aios_habit.workspace_chat_rag_v2_adapter import is_production_index_available
-    should_retrieve = bool(
-        query_relevant_sources or (forced_domain is not None and is_production_index_available())
-    )
+    if ai_mode == "external":
+        should_retrieve = False
+        ai_backend = "nakazasen_router"
+    else:
+        from aios_habit.workspace_chat_rag_v2_adapter import is_production_index_available
+        should_retrieve = bool(
+            query_relevant_sources or (forced_domain is not None and is_production_index_available())
+        )
 
     if should_retrieve:
         ret_res = _attempt_retrieval()
@@ -1422,8 +1432,9 @@ def _run_chat_turn_async(
         backend=ai_backend,
         cagent_endpoint_url=cagent_endpoint_url,
         cancellation_event=cancellation_event,
-        local_synthesis=ret_res.get("local_synthesis") if retrieval_applied else None,
+        local_synthesis=ret_res.get("local_synthesis") if (retrieval_applied and "ret_res" in locals()) else None,
         on_chunk=on_chunk,
+        ai_mode=ai_mode,
     )
     t_turn_end = time.time()
     turn_total_s = t_turn_end - t_turn_start
@@ -4295,6 +4306,12 @@ else:
                                     curr_text = str(stream_state.get("text", "") or "")
 
                             with st.chat_message("assistant"):
+                                _is_stream_ext = bool(
+                                    (isinstance(active_ai_request, dict) and active_ai_request.get("ai_mode") == "external")
+                                    or getattr(active_conversation, "ai_mode", "grounded") == "external"
+                                )
+                                if _is_stream_ext:
+                                    st.info(f"🌐 **{t('external_ai_provenance_banner', locale=current_ui_locale)}**")
                                 if curr_text:
                                     st.markdown(curr_text + " ▌")
                                 else:
@@ -4344,6 +4361,21 @@ else:
                             render_grouped_evidence_items(
                                 badge_data["evidence_items"], active_conversation.id, locale=current_ui_locale
                             )
+                    elif (
+                        badge_data.get("type") in {"ai_answered", "external_ai_answered"}
+                        and (badge_data.get("ai_mode") == "external" or badge_data.get("type") == "external_ai_answered")
+                    ):
+                        st.info(f"🌐 **{t('external_ai_provenance_banner', locale=current_ui_locale)}**")
+                        render_ai_answer_header(
+                            0,
+                            [],
+                            ai_source=badge_data.get("ai_source", "Command Code"),
+                            model_tool_name=badge_data.get("model_tool_name", "") or badge_data.get("verified_model", ""),
+                            operational_mode="external_ai",
+                            provider_name=badge_data.get("provider", "Command Code") or badge_data.get("provider_name", "Command Code"),
+                            locale=current_ui_locale,
+                        )
+                        st.caption(t("ai_disclaimer", locale=current_ui_locale))
                     elif badge_data.get("type") == "ai_answered":
                         render_ai_answer_header(
                             badge_data.get("source_count", 0),
@@ -4436,6 +4468,46 @@ else:
                         render_insufficient_context(badge_data.get("reason", "no_sources"), locale=current_ui_locale)
                     elif badge_data.get("type") == "source_changed":
                         render_source_changed_message(locale=current_ui_locale)
+
+                # Bridge to External AI when grounded mode yields insufficient evidence (Requirement 4)
+                _last_user_q = next(
+                    (
+                        str(getattr(_m, "content", "") or "").strip()
+                        for _m in reversed(messages or [])
+                        if getattr(_m, "role", "") == "user"
+                    ),
+                    "",
+                )
+                _last_asst_a = next(
+                    (
+                        str(getattr(_m, "content", "") or "").strip()
+                        for _m in reversed(messages or [])
+                        if getattr(_m, "role", "") == "assistant"
+                    ),
+                    "",
+                )
+                _curr_conv_mode = getattr(active_conversation, "ai_mode", "grounded") or "grounded"
+                _is_insufficient = bool(
+                    _curr_conv_mode != "external"
+                    and _last_asst_a
+                    and (
+                        "chưa đủ bằng chứng" in _last_asst_a.lower()
+                        or "chưa tìm thấy đoạn phù hợp" in _last_asst_a.lower()
+                        or "không đủ bằng chứng" in _last_asst_a.lower()
+                        or "insufficient evidence" in _last_asst_a.lower()
+                    )
+                )
+                if _is_insufficient and _last_user_q and not is_answering:
+                    st.caption(t("bridge_ask_external_caption", locale=current_ui_locale))
+                    if st.button(
+                        f"🌐 {t('bridge_ask_external_button', locale=current_ui_locale)}",
+                        key=f"wsc_bridge_ext_{active_conversation.id}",
+                        type="primary",
+                    ):
+                        update_conversation_ai_mode(active_conversation.id, "external")
+                        active_conversation.ai_mode = "external"
+                        st.session_state[f"wsc_suggest_send_{active_conversation.id}"] = _last_user_q
+                        safe_rerun()
 
                 st.write("---")
                 # APP-SOURCE-MODEL: Gỡ bỏ banner đếm nguồn và trạng thái chuẩn bị mâu thuẫn.
@@ -4670,8 +4742,8 @@ else:
                     }
 
                     # Hàng công cụ nằm TRONG thẻ, dưới ô nhập (Requirement 2)
-                    toolbar_attach_col, toolbar_block_col, toolbar_pref_col, toolbar_cagent_col, toolbar_hint_col, toolbar_action_col = st.columns(
-                        [0.55, 3.0, 1.8, 2.3, 3.0, 0.65], vertical_alignment="center"
+                    toolbar_attach_col, toolbar_block_col, toolbar_pref_col, toolbar_cagent_col, toolbar_mode_col, toolbar_hint_col, toolbar_action_col = st.columns(
+                        [0.55, 2.5, 1.5, 2.0, 2.1, 1.5, 0.65], vertical_alignment="center"
                     )
 
                     with toolbar_attach_col:
@@ -4754,7 +4826,7 @@ else:
                                         type=(
                                             "primary"
                                             if _block_value == knowledge_block_value
-                                            else "secondary"
+                                             else "secondary"
                                         ),
                                     ):
                                         st.session_state[knowledge_block_key] = _block_value
@@ -4796,8 +4868,8 @@ else:
                                 help=_dest_help,
                             ):
                                 if selected_ai_backend == "nakazasen_router":
-                                    st.markdown("**Đích tổng hợp: Command Code (Router)**")
-                                    st.caption("Máy nhà chạy tuyến tổng hợp các mô hình miễn phí của provider Command Code.")
+                                    st.markdown(f"**{t('dest_command_code_title', locale=current_ui_locale)}**")
+                                    st.caption(t("dest_command_code_caption", locale=current_ui_locale))
                                     _cc_model = os.environ.get("AIOS_LOCAL_AI_MODEL", "inclusionai/ling-3.1-flash:free")
                                     _cc_failover = os.environ.get("AIOS_LOCAL_AI_FAILOVER_MODELS", "poolside/laguna-s-2.1-free,deepseek/deepseek-v4.1-flash")
                                     _cc_timeout = os.environ.get("AIOS_LOCAL_AI_TIMEOUT_SECONDS", "90")
@@ -4806,7 +4878,7 @@ else:
                                         f"• Dự phòng: {_cc_failover}\n"
                                         f"• Hết giờ: {_cc_timeout}s"
                                     )
-                                    st.info("ℹ️ Ranh giới hai máy: Máy nhà không dùng C-Agent (thuộc phía công ty). Tuyến hiệu lực là Command Code miễn phí.")
+                                    st.info(t("dest_command_code_info", locale=current_ui_locale))
                                 elif selected_ai_backend == "cagent_api":
                                     cagent_endpoint_key = f"wsc_cagent_endpoint_{active_conversation.id}"
                                     configured_cagent_endpoint = (
@@ -4823,10 +4895,45 @@ else:
                                     if cagent_endpoint:
                                         os.environ["AIOS_CAGENT_API_URL"] = cagent_endpoint
                                 elif selected_ai_backend == "local":
-                                    st.markdown("**Đích tổng hợp: Trích xuất cục bộ**")
-                                    st.caption("Hệ thống trả lời bằng trích dẫn dữ kiện cục bộ từ tài liệu, không gửi ra ngoài.")
+                                    st.markdown(f"**{t('dest_local_title', locale=current_ui_locale)}**")
+                                    st.caption(t("dest_local_caption", locale=current_ui_locale))
                                 else:
-                                    st.markdown(f"**Đích tổng hợp: {_lane_label(selected_ai_backend)}**")
+                                    st.markdown(f"**{t('dest_lane_title', locale=current_ui_locale, lane=_lane_label(selected_ai_backend))}**")
+
+                    with toolbar_mode_col:
+                        with st.container(key=f"wsc-mode-{active_conversation.id}"):
+                            current_ai_mode = getattr(active_conversation, "ai_mode", "grounded") or "grounded"
+                            _mode_chip_label = (
+                                f"🌐 {t('mode_external_ai', locale=current_ui_locale)}"
+                                if current_ai_mode == "external"
+                                else f"📖 {t('mode_grounded', locale=current_ui_locale)}"
+                            )
+                            _mode_help = (
+                                t("mode_external_ai_help", locale=current_ui_locale)
+                                if current_ai_mode == "external"
+                                else t("mode_grounded_help", locale=current_ui_locale)
+                            )
+                            with st.popover(_mode_chip_label, help=_mode_help):
+                                st.markdown(f"**{t('mode_popover_title', locale=current_ui_locale)}**")
+                                st.caption(t("mode_popover_desc", locale=current_ui_locale))
+                                if st.button(
+                                    t("mode_pick_grounded", locale=current_ui_locale),
+                                    key=f"wsc_mode_pick_grounded_{active_conversation.id}",
+                                    use_container_width=True,
+                                    type="primary" if current_ai_mode == "grounded" else "secondary",
+                                ):
+                                    update_conversation_ai_mode(active_conversation.id, "grounded")
+                                    active_conversation.ai_mode = "grounded"
+                                    safe_rerun()
+                                if st.button(
+                                    t("mode_pick_external", locale=current_ui_locale),
+                                    key=f"wsc_mode_pick_external_{active_conversation.id}",
+                                    use_container_width=True,
+                                    type="primary" if current_ai_mode == "external" else "secondary",
+                                ):
+                                    update_conversation_ai_mode(active_conversation.id, "external")
+                                    active_conversation.ai_mode = "external"
+                                    safe_rerun()
 
                     with toolbar_hint_col:
                         with st.container(key=f"wsc-shortcut-hint-{active_conversation.id}"):
@@ -5556,11 +5663,13 @@ else:
                                         or "auto"
                                     ),
                                     on_chunk=_on_chunk,
+                                    ai_mode=getattr(active_conversation, "ai_mode", "grounded"),
                                 )
                                 st.session_state[ai_request_key] = {
                                     "future": request_future,
                                     "cancellation_event": cancellation_event,
                                     "stream_state": stream_state,
+                                    "ai_mode": getattr(active_conversation, "ai_mode", "grounded"),
                                 }
                                 safe_rerun()
 

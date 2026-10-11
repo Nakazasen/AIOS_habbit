@@ -64,6 +64,7 @@ class WorkspaceAIAnswerRequest:
     collection_id: str = "tri_thuc"
     consent_memory_fingerprint: str = ""
     on_chunk: Any = None
+    ai_mode: str = "grounded"
 
 
 @dataclass(frozen=True)
@@ -667,6 +668,44 @@ def _build_outbound_manifest(
 def _generate_real_router_answer(
     request: WorkspaceAIAnswerRequest,
 ) -> WorkspaceAIAnswerResult:
+    if getattr(request, "ai_mode", "grounded") == "external":
+        from aios_habit.brain_gateway import SanitizedRouterPayload
+        from aios_habit.workspace_chat_router_adapter import generate_answer_via_router_detailed
+        payload = SanitizedRouterPayload(
+            sanitized_question=request.question,
+            sanitized_sources=(),
+            metadata={
+                "ai_mode": "external",
+                "chat_history": request.chat_history,
+                "answer_language": request.answer_language,
+                "ui_locale": request.ui_locale,
+            },
+        )
+        detailed_result = generate_answer_via_router_detailed(payload, on_chunk=request.on_chunk)
+        if detailed_result.ok:
+            return WorkspaceAIAnswerResult(
+                ok=True,
+                answer_text=detailed_result.text,
+                included_source_titles=(),
+                warnings=(),
+                externally_sent=True,
+                effective_provider=detailed_result.route.effective_provider or "Command Code",
+                effective_model=detailed_result.route.effective_model or "deepseek/deepseek-v4.1-flash",
+                grounding_status="external_ai",
+                outcome_status="success",
+            )
+        else:
+            return WorkspaceAIAnswerResult(
+                ok=False,
+                answer_text="",
+                included_source_titles=(),
+                warnings=(),
+                externally_sent=True,
+                error_message=detailed_result.text or "Dịch vụ AI ngoài chưa phản hồi.",
+                provider_completion_status=detailed_result.route.error_type or "failed",
+                outcome_status="failed",
+            )
+
     if request.privacy_mode == PRIVACY_MODE_LOCAL_PREVIEW_ONLY:
         return WorkspaceAIAnswerResult(
             ok=False,

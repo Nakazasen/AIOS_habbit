@@ -1198,3 +1198,69 @@ def test_select_library_mode_personal_and_shared_switch_without_restart(tmp_path
     info_personal = store.get_active_library_mode()
     assert info_personal["mode"] == "personal"
     assert info_personal["storage_root"] == ""
+
+
+def test_update_conversation_ai_mode(tmp_path):
+    """Verify persisting conversation ai_mode to store."""
+    from aios_habit.workspace_chat_models import WorkspaceConversation
+    from aios_habit.workspace_chat_store import (
+        save_conversation,
+        load_conversation,
+        update_conversation_ai_mode,
+    )
+
+    conv = WorkspaceConversation(
+        id="conv_test_ai_mode",
+        notebook_id="nb_test",
+        title="Test Conversation",
+        ai_mode="grounded",
+    )
+    save_conversation(conv)
+
+    loaded = load_conversation("conv_test_ai_mode")
+    assert loaded is not None
+    assert loaded.ai_mode == "grounded"
+
+    # Update to external
+    ok = update_conversation_ai_mode("conv_test_ai_mode", "external")
+    assert ok is True
+
+    loaded2 = load_conversation("conv_test_ai_mode")
+    assert loaded2 is not None
+    assert loaded2.ai_mode == "external"
+
+    # Update back to grounded
+    ok2 = update_conversation_ai_mode("conv_test_ai_mode", "grounded")
+    assert ok2 is True
+
+    loaded3 = load_conversation("conv_test_ai_mode")
+    assert loaded3 is not None
+    assert loaded3.ai_mode == "grounded"
+
+
+def test_log_external_ai_usage(tmp_path, monkeypatch):
+    """Verify logging external AI usage to jsonl."""
+    import json
+    from aios_habit.workspace_chat_store import log_external_ai_usage
+    import aios_habit.workspace_chat_store as store_mod
+
+    log_file = tmp_path / "test_usage.jsonl"
+    monkeypatch.setattr(store_mod, "EXTERNAL_AI_USAGE_FILE", log_file)
+
+    log_external_ai_usage(
+        conversation_id="conv_123",
+        message_id="msg_456",
+        model_name="deepseek/deepseek-v4.1-flash",
+        duration_sec=3.5,
+        ttft_sec=0.8,
+        metadata={"test": True},
+    )
+
+    assert log_file.exists()
+    lines = [json.loads(line) for line in log_file.read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert len(lines) == 1
+    assert lines[0]["conversation_id"] == "conv_123"
+    assert lines[0]["ai_mode"] == "external"
+    assert lines[0]["model_name"] == "deepseek/deepseek-v4.1-flash"
+    assert lines[0]["metadata"] == {"test": True}
+

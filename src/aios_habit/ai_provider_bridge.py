@@ -373,9 +373,10 @@ def _post_chat(
     user_prompt: str,
     max_tokens: Optional[int] = None,
     *,
+    system_prompt: Optional[str] = None,
     on_chunk: Optional[Callable[[str], None]] = None,
 ) -> str:
-    system_prompt = (
+    effective_system_prompt = system_prompt or (
         "Bạn là trợ lý AI cục bộ của AIOS. Chỉ trả lời từ nguồn được cung cấp, "
         "không bịa dữ kiện, nói rõ khi chưa đủ bằng chứng và giữ dẫn nguồn."
     )
@@ -388,7 +389,7 @@ def _post_chat(
     msg, finish_reason = _first_choice(
         _post_chat_once(
             config,
-            system_prompt,
+            effective_system_prompt,
             user_prompt,
             effective_max_tokens,
             stream=use_stream,
@@ -411,7 +412,7 @@ def _post_chat(
             msg, finish_reason = _first_choice(
                 _post_chat_once(
                     config,
-                    system_prompt + _EMPTY_ANSWER_RETRY_DIRECTIVE,
+                    effective_system_prompt + _EMPTY_ANSWER_RETRY_DIRECTIVE,
                     user_prompt,
                     retry_budget,
                     stream=use_stream,
@@ -460,6 +461,8 @@ def answer_with_provider(
     source_privacy: str = "local_only",
     answer_language: str = "vi",
     *,
+    ai_mode: str = "grounded",
+    custom_system_prompt: Optional[str] = None,
     on_chunk: Optional[Callable[[str], None]] = None,
 ) -> ProviderResult:
     if config is None or not config.enabled or config.provider_type == "deterministic":
@@ -512,17 +515,22 @@ def answer_with_provider(
             "Endpoint không thuộc địa chỉ cục bộ/private được phép.",
             "blocked_non_local_endpoint",
         )
-    prompt = build_grounded_prompt(
-        question=question,
-        source_refs=source_refs or [],
-        deterministic_answer=deterministic_answer,
-        source_context=source_context,
-        max_context_chars=config.max_context_chars,
-        answer_language=answer_language,
-    )
+    if ai_mode == "external":
+        prompt = question
+        system_prompt = custom_system_prompt
+    else:
+        prompt = build_grounded_prompt(
+            question=question,
+            source_refs=source_refs or [],
+            deterministic_answer=deterministic_answer,
+            source_context=source_context,
+            max_context_chars=config.max_context_chars,
+            answer_language=answer_language,
+        )
+        system_prompt = None
 
     try:
-        answer_text = _post_chat(config, prompt, on_chunk=on_chunk)
+        answer_text = _post_chat(config, prompt, system_prompt=system_prompt, on_chunk=on_chunk)
         return ProviderResult(
             ok=True,
             answer_text=answer_text,

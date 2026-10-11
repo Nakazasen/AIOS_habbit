@@ -45,6 +45,7 @@ class RouterRequest:
     session_id: str = ""
     task_type: str = "workspace_answer"
     privacy_label: str = "cloud_safe"
+    ai_mode: str = "grounded"
     on_chunk: Any = None
 
 
@@ -173,6 +174,8 @@ def call_openai_compatible_provider(config: RouterProviderConfig, request: Route
         request.deterministic_answer,
         request.source_refs,
         "cloud_allowed" if request.safety_mode_label == SAFETY_MODE_NORMAL else "local_only",
+        ai_mode=getattr(request, "ai_mode", "grounded"),
+        custom_system_prompt=request.source_context if getattr(request, "ai_mode", "grounded") == "external" else None,
         on_chunk=getattr(request, "on_chunk", None),
     )
     if not res.ok:

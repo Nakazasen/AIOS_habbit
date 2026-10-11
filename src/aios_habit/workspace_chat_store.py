@@ -32,6 +32,7 @@ TEMPORARY_SOURCES_FILE = LOCAL_CHAT_DIR / "temporary_sources.jsonl"
 NOTEBOOK_SOURCES_FILE = LOCAL_CHAT_DIR / "notebook_sources.jsonl"
 SOURCE_SELECTIONS_FILE = LOCAL_CHAT_DIR / "conversation_source_selections.jsonl"
 TRACES_FILE = LOCAL_CHAT_DIR / "traces.jsonl"
+EXTERNAL_AI_USAGE_FILE = LOCAL_CHAT_DIR / "external_ai_usage.jsonl"
 LOGGER = logging.getLogger(__name__)
 _STORE_LOCK = threading.RLock()
 
@@ -42,7 +43,8 @@ def init_chat_store():
     # Touch files
     for filepath in [
         NOTEBOOKS_FILE, COLLECTIONS_FILE, CONVERSATIONS_FILE, MESSAGES_FILE,
-        TEMPORARY_SOURCES_FILE, NOTEBOOK_SOURCES_FILE, SOURCE_SELECTIONS_FILE, TRACES_FILE
+        TEMPORARY_SOURCES_FILE, NOTEBOOK_SOURCES_FILE, SOURCE_SELECTIONS_FILE, TRACES_FILE,
+        EXTERNAL_AI_USAGE_FILE
     ]:
         if not filepath.exists():
             filepath.touch()
@@ -829,6 +831,48 @@ def update_conversation_language_settings(
     return conv
 
 
+def update_conversation_ai_mode(conv_id: str, ai_mode: str) -> bool:
+    """Persist conversation AI mode ('grounded' or 'external') per conversation."""
+    conv = load_conversation(conv_id)
+    if conv:
+        norm = str(ai_mode or "grounded").strip().casefold()
+        if norm not in {"grounded", "external"}:
+            norm = "grounded"
+        conv.ai_mode = norm
+        conv.updated_at = datetime.now().isoformat()
+        save_conversation(conv)
+        return True
+    return False
+
+
+def log_external_ai_usage(
+    conversation_id: str,
+    message_id: str,
+    model_name: str,
+    duration_sec: float = 0.0,
+    ttft_sec: float = 0.0,
+    metadata: Optional[dict] = None,
+) -> dict:
+    """Record a mode mark into local cases log (not into knowledge index) to count external AI usage."""
+    record = {
+        "timestamp": datetime.now().isoformat(),
+        "conversation_id": conversation_id,
+        "message_id": message_id,
+        "ai_mode": "external",
+        "model_name": model_name,
+        "duration_sec": duration_sec,
+        "ttft_sec": ttft_sec,
+        "metadata": metadata or {},
+    }
+    with _STORE_LOCK:
+        try:
+            EXTERNAL_AI_USAGE_FILE.parent.mkdir(parents=True, exist_ok=True)
+            with open(EXTERNAL_AI_USAGE_FILE, "a", encoding="utf-8") as f:
+                f.write(json.dumps(record, ensure_ascii=False) + "\n")
+        except Exception:
+            LOGGER.exception("Failed to write external AI usage record")
+    return record
+
 
 def delete_conversation(conv_id: str) -> bool:
     conversations = load_all_conversations()
@@ -1242,6 +1286,27 @@ class WorkspaceChatStore:
             conversation_id=conversation_id,
             ui_locale=ui_locale,
             answer_language=answer_language,
+        )
+
+    def update_conversation_ai_mode(self, conv_id: str, ai_mode: str) -> bool:
+        return update_conversation_ai_mode(conv_id, ai_mode)
+
+    def log_external_ai_usage(
+        self,
+        conversation_id: str,
+        message_id: str,
+        model_name: str,
+        duration_sec: float = 0.0,
+        ttft_sec: float = 0.0,
+        metadata: Optional[dict] = None,
+    ) -> dict:
+        return log_external_ai_usage(
+            conversation_id=conversation_id,
+            message_id=message_id,
+            model_name=model_name,
+            duration_sec=duration_sec,
+            ttft_sec=ttft_sec,
+            metadata=metadata,
         )
 
     def delete_conversation(self, conv_id: str) -> bool:

@@ -612,6 +612,21 @@ def render_chat_bubble(
             from aios_habit import chat_interview_ui as _chat_interview_ui
             from aios_habit import chat_action_create_case as _chat_create_case
             raw_content = str(msg.content or "")
+            _is_external_ai = False
+            _ext_model_name = ""
+            _ext_provider_name = ""
+            if msg.trace_id and str(msg.trace_id).strip():
+                _loader = trace_loader or load_evidence_trace
+                try:
+                    _msg_trace = _loader(str(msg.trace_id).strip())
+                    if _msg_trace is not None and getattr(_msg_trace, "provenance", None):
+                        prov = getattr(_msg_trace, "provenance", {}) or {}
+                        if prov.get("ai_mode") == "external" or prov.get("operational_mode") == "external_ai":
+                            _is_external_ai = True
+                            _ext_model_name = str(prov.get("model_name") or "")
+                            _ext_provider_name = str(prov.get("provider_name") or "Command Code")
+                except Exception:
+                    pass
             # Realtime LSU Alert detection (DESKTOP-LSU-ALERT-WIRE-HOME)
             _is_realtime_alert = False
             _is_can_bien = False
@@ -820,10 +835,18 @@ def render_chat_bubble(
                 elif _is_can_bien:
                     st.info(display_content)
                 else:
+                    if _is_external_ai:
+                        st.info(f"🌐 **{t('external_ai_provenance_banner', locale=locale)}**")
                     st.markdown(display_content)
+                    if _is_external_ai:
+                        if _ext_model_name:
+                            st.caption(t("ext_ai_dest_model", locale=locale, provider=_ext_provider_name, model=_ext_model_name))
+                        else:
+                            st.caption(t("ext_ai_dest_only", locale=locale, provider=_ext_provider_name))
+                        st.caption(t("ai_disclaimer", locale=locale))
 
             # On-demand Evidence Graph Action (Commit C)
-            if msg.trace_id and str(msg.trace_id).strip():
+            if not _is_external_ai and msg.trace_id and str(msg.trace_id).strip():
                 trace_id_str = str(msg.trace_id).strip()
                 msg_key_id = msg.id or trace_id_str
                 state_key = f"wsc_show_graph_{msg_key_id}"
@@ -1748,13 +1771,13 @@ def render_alert_feedback_row(
 
     existing = get_alert_feedback(conversation_id, alert_id) if conversation_id else None
     if existing:
-        r_text = "ĐÚNG" if existing.get("rating") == "dung" else "SAI"
-        reason_note = f" (Lý do: {existing.get('reason')})" if existing.get("reason") else ""
-        st.caption(f"✓ Đã ghi nhận phản hồi: **{r_text}**{reason_note}")
+        r_text = t("alert_fb_dung_tag", locale=locale) if existing.get("rating") == "dung" else t("alert_fb_sai_tag", locale=locale)
+        reason_note = t("alert_fb_reason_note", locale=locale, reason=existing.get("reason")) if existing.get("reason") else ""
+        st.caption(t("alert_fb_recorded", locale=locale, rating=r_text, reason=reason_note))
 
     col1, col2 = st.columns([1, 1])
     with col1:
-        if st.button("👍 Đúng", key=f"{key_base}_btn_dung", use_container_width=True):
+        if st.button(t("alert_fb_dung", locale=locale), key=f"{key_base}_btn_dung", use_container_width=True):
             res = record_alert_feedback(
                 conversation_id=conversation_id,
                 alert_id=alert_id,
@@ -1769,20 +1792,20 @@ def render_alert_feedback_row(
                     st.rerun()
 
     with col2:
-        if st.button("👎 Sai", key=f"{key_base}_btn_sai", use_container_width=True):
+        if st.button(t("alert_fb_sai", locale=locale), key=f"{key_base}_btn_sai", use_container_width=True):
             st.session_state[f"{key_base}_open_reason"] = True
             if hasattr(st, "rerun"):
                 st.rerun()
 
     if st.session_state.get(f"{key_base}_open_reason"):
         reason_val = st.text_input(
-            "Lý do cảnh báo chưa đúng (bắt buộc):",
+            t("alert_fb_reason_label", locale=locale),
             key=f"{key_base}_reason_input",
         )
-        if st.button("Gửi lý do", key=f"{key_base}_submit_reason", type="primary"):
+        if st.button(t("alert_fb_send_reason", locale=locale), key=f"{key_base}_submit_reason", type="primary"):
             cleaned_reason = str(reason_val or "").strip()
             if not cleaned_reason:
-                st.warning("Bạn chê cảnh báo thì cho mình xin lý do để cải thiện nhé.")
+                st.warning(t("alert_fb_reason_empty_warn", locale=locale))
             else:
                 res = record_alert_feedback(
                     conversation_id=conversation_id,

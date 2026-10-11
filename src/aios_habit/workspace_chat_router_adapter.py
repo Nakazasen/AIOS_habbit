@@ -82,6 +82,28 @@ def _named_equipment_types(question: str) -> tuple[str, ...]:
 
 def _build_router_prompts(payload: SanitizedRouterPayload) -> Tuple[str, str]:
     """Build provider messages from a Gateway-approved payload only."""
+    if payload.metadata.get("ai_mode") == "external":
+        system_prompt = (
+            "Bạn là trợ lý AI thông minh trong Workspace Chat.\n"
+            "Bạn đang trả lời người dùng ở chế độ 'Hỏi AI ngoài' (không bị giới hạn trong kho tài liệu nội bộ).\n"
+            "Hãy trả lời câu hỏi một cách chính xác, đầy đủ, mạch lạc và hữu ích bằng tiếng Việt.\n"
+            "Nếu câu hỏi yêu cầu giải thích, hãy giải thích rõ ràng và có cấu trúc."
+        )
+        user_parts = []
+        chat_history = payload.metadata.get("chat_history") or ()
+        if chat_history:
+            user_parts.append("--- LỊCH SỬ HỘI THOẠI GẦN ĐÂY ---")
+            for msg in chat_history[-6:]:
+                role_val = msg.get("role")
+                role_name = "Người dùng" if role_val == "user" else "Hệ thống/AI"
+                user_parts.append(f"[{role_name}]: {msg.get('content')}")
+            user_parts.append("")
+            user_parts.append("--- CÂU HỎI MỚI NHẤT ---")
+        else:
+            user_parts.append("CÂU HỎI:")
+        user_parts.append(payload.sanitized_question)
+        return system_prompt, "\n".join(user_parts)
+
     system_prompt = (
         "For an operational or procedure question that names multiple equipment types, "
         "check the provided evidence for every named type. If the evidence has "
@@ -251,6 +273,7 @@ def _generate_via_internal_router(
         safety_mode_label=SAFETY_MODE_NORMAL,
         task_type="workspace_chat",
         query_language=query_language,
+        ai_mode=payload.metadata.get("ai_mode", "grounded"),
         on_chunk=on_chunk,
     )
 
