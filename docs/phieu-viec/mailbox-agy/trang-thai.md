@@ -3,6 +3,7 @@
 ## Vé hiện tại: CSV-STRUCTURED-LANE-FIX-HOME (làm lại làn cấu trúc: tính thật từ dữ kiện, bỏ đáp án chép cứng)
 
 - Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-11 14:02 +07 — **TIẾN ĐỘ**: Hoàn tất khảo sát cấu trúc dữ liệu 4 tệp CSV và bảng tính cơ khí. Thiết kế kiến trúc Làn tính toán động (Dynamic Runtime Computation) gồm 6 Intent tổng quát (Record Count & Date Range, Distribution Breakdown, Peak Item Analysis, Value Combination, Serial Multi-day Comparison, Mechanical Tolerances & Limits Calculation), xoá bỏ hoàn toàn 8 nhánh cứng và literal đáp án, bảo đảm đáp án thay đổi tất định theo dữ liệu tệp và câu hỏi biến thể. Bắt đầu triển khai mã nguồn.
 - `ghi_chu`: 2026-10-11 13:56 +07 — **ĐÃ NHẬN VÉ** `CSV-STRUCTURED-LANE-FIX-HOME`: Bắt đầu gỡ toàn bộ 8 nhánh chép cứng trong `try_structured_table_evidence` tại `src/aios_habit/rag_v2/structured_query.py`, chuyển sang cơ chế tính toán động tại thời điểm chạy trực tiếp từ tệp nguồn (CSV/XLSX), chuẩn bị bài kiểm biến dạng dữ kiện và câu hỏi biến thể.
 - `ghi_chu` (điều phối Muse — PHÁT HÀNH): 2026-10-11 ~14:0x +07 — Phát hành vé sửa làm vé hiện hành ngay (`prompt.md` + tệp hàng chờ `prompt-queue-csv-structured-lane-fix-home.md`). Trọng tâm: gỡ 8 nhánh chép cứng trong `try_structured_table_evidence`, tính mọi con số tại thời điểm chạy từ tệp nguồn; nghiệm thu gồm bài kiểm biến dạng dữ kiện + câu hỏi biến thể. Đọc kỹ mục "Vì sao có vé này" trong `prompt.md` trước khi làm.
 
