@@ -1,5 +1,15 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
+## Vé hiện tại: Q0668-BLOCK-FIX-HOME (khép Mục 0.2: sửa lệch khối tri thức của Q0668)
+
+- Trạng thái: `moi`
+- `ghi_chu` (điều phối Muse — PHÁT HÀNH): 2026-10-11 ~11:05 +07 — Phát hành vé này làm vé hiện hành (`prompt.md` đã thay bằng nội dung vé). Điều kiện bốc cũ "sau khi EMBED khép" đã thoả theo cách khác: vé EMBED bị HUỶ (khối huỷ ngay dưới). Thợ đang chạy nhúng: DỪNG nhúng trước theo khối huỷ, chốt báo cáo đóng vé huỷ, rồi bốc vé này. Sau vé này: `CSV-STRUCTURED-LANE-HOME` (tệp hàng chờ đã có, phạm vi đã bổ sung ca Q0824 + bằng chứng giao diện Q0620/Q0824).
+
+## Vé bị huỷ: MISSING5-EMBED-COMPLETE-HOME (nhúng bổ sung 26.907 mảnh còn thiếu vector)
+
+- Trạng thái: `huy-bo`
+- `ghi_chu` (điều phối Muse — QUYẾT ĐỊNH HUỶ, theo chốt của user 2026-10-11 ~11:00 +07): **DỪNG đợt nhúng ở điểm kiểm 64 mảnh gần nhất và HUỶ phần còn lại của vé này.** Lý do (điều phối chịu trách nhiệm): hai tệp đích là dữ liệu log/bảng dạng cấu trúc — các mục đích sản xuất của chúng (cảnh báo xu hướng SMA(20), thẻ cảnh báo realtime, phát hiện lỗi phòng ngừa) đều chạy trên đường số liệu có cấu trúc, không dùng vector; hỏi đáp trên dữ liệu này cần làn truy vấn có cấu trúc + kênh từ khóa, nhúng vector cho hàng chục nghìn mảnh dòng log không phục vụ mục đích nào đã nêu — vé này là việc lãng phí do điều phối xếp sai thứ tự ưu tiên. Việc phải làm khi đóng vé huỷ: (1) dừng tiến trình nhúng an toàn tại biên điểm kiểm; (2) KHÔNG gỡ bỏ các vector đã nhúng (phần đã nhúng là dữ kiện hợp lệ, giữ nguyên); (3) kiểm tra toàn vẹn production = ok và ghi báo cáo đóng vé tại `docs/phieu-viec/ket-qua/missing5-embed-complete-home.md` với trạng thái HUỶ: số mảnh đã nhúng/tổng 26.907, tổng vector dày hiện tại, kích thước + SHA-256 production sau khi dừng, toàn vẹn; (4) nộp `xong-cho-duyet` cho phần đóng vé huỷ này rồi bốc vé hiện hành ở trên.
+
 ## Vé hiện tại: MISSING5-EMBED-COMPLETE-HOME (nhúng bổ sung toàn bộ mảnh còn thiếu vector)
 
 - Trạng thái: `dang-lam`

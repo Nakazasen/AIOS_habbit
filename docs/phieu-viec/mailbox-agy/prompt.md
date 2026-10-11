@@ -1,22 +1,30 @@
-# VÉ: MISSING5-EMBED-COMPLETE-HOME (nhúng bổ sung 26.907 mảnh còn thiếu vector của 2 tệp lớn)
+# VÉ: Q0668-BLOCK-FIX-HOME (khép Mục 0.2: sửa lệch khối tri thức khiến giao diện không thấy tệp đích của Q0668)
 
-- Mã vé: `MISSING5-EMBED-COMPLETE-HOME`
-- Role gợi ý: DEFAULT (agy — máy nhà `h410asrock`, việc bulk dài)
-- Báo cáo: `docs/phieu-viec/ket-qua/missing5-embed-complete-home.md`
-- Điều kiện bốc: sau khi `MISSING5-PARSER-FIX-HOME` khép (để mọi mảnh mới của 2 tệp nạp lại cũng được tính trong cùng một lần kiểm kê cuối).
+- Mã vé: `Q0668-BLOCK-FIX-HOME`
+- Role gợi ý: DEFAULT (agy — máy nhà `h410asrock`)
+- Báo cáo: `docs/phieu-viec/ket-qua/q0668-block-fix-home.md`
+- Điều kiện bốc: vé `MISSING5-EMBED-COMPLETE-HOME` đã bị HUỶ theo quyết định của điều phối (chốt của user 2026-10-11) — điều kiện bốc của vé này coi như đã thoả. Xem khối huỷ ở đầu `trang-thai.md`.
 
-## Căn cứ (vé chẩn đoán MISSING5-RETRIEVAL-DIAG-HOME, điều phối đã kiểm chứng từ dữ kiện thô)
+## Căn cứ (vé chẩn đoán MISSING5-RETRIEVAL-DIAG-HOME, điều phối đã kiểm chứng)
 
-Production hiện có 26.907 mảnh có thể truy hồi của `2026_08_Error_BowOverAdjust.csv` (22.054) và `2026_08_Spec.csv` (4.853) hoàn toàn không có vector dày/thưa (0/26.907), trong khi quy chuẩn của 889 tài liệu cũ là 100% mảnh có thể truy hồi có đủ vector. Hai tệp này vì thế bị loại khỏi kênh tìm kiếm ngữ nghĩa.
+Đường đo đạt 1,5 cho `Q0668` vì đo trên chỉ mục hợp nhất `tri_thuc` (tệp `3V2ND19040...xlsx` có 151 mảnh, hạng 1). Đường giao diện thất bại vì tệp đích được phân loại chỉ thuộc khối `dieu_tra_loi` (0 mảnh trong khối `lsu`), trong khi kịch bản giao diện ép chọn khối `lsu` → bộ lọc khối chặn đứng tệp đích. Đây là gốc rễ còn lại của Mục 0.2.
 
 ## Việc phải làm
 
-1. Kiểm kê lại trước khi chạy (số mảnh thiếu vector theo từng tài liệu) và nộp kèm báo cáo; nếu con số khác 26.907 do vé nạp lại trước đó, dùng con số kiểm kê mới và giải thích.
-2. Nhúng bổ sung toàn bộ số mảnh còn thiếu bằng đúng mô hình và cấu hình của production (BGE-M3, cùng fingerprint như chỉ mục hiện hành). Được dùng GPU của máy nhà cho khâu nhúng (đúng luật: GPU chỉ dùng cho embedding/index). Bắt buộc có điểm kiểm theo đợt để chạy tiếp được khi bị ngắt; không nhúng lại các mảnh đã có vector.
-3. Sau khi xong: kiểm kê lại đạt 100% mảnh có thể truy hồi có đủ vector dày + thưa; toàn vẹn `ok`; ghi kích thước và SHA-256 của production trước/sau.
-4. Đo lại 8 câu đích bằng đường đo hiện hành, nộp tệp rows đầy đủ để điều phối đối chiếu (không tự kết luận đạt/không đạt).
+1. Chọn và triển khai cách sửa ở tầng phân loại/định tuyến (ví dụ cho phép tệp thuộc đồng thời khối `lsu` và `dieu_tra_loi`, hoặc đồng bộ tệp đích vào khối `lsu`), theo đúng mô hình tài liệu user đã chốt: tài liệu đã index là hỏi đáp được ngay bằng chọn khối tri thức, không hiển thị số liệu mâu thuẫn. Ghi rõ cách đã chọn và lý do; không phá phân loại của các tệp khác (có kiểm thử hồi quy cho `index_domain`).
+2. Nếu cách sửa cần ghi chỉ mục: sao lưu trước + toàn vẹn, chỉ ghi đúng phần liên quan, ghi số đo trước/sau.
+3. Nghiệm thu giao diện thật: phiên MỚI, chọn khối theo đúng cách người dùng cuối vẫn dùng, hỏi lại `Q0668`; đáp án phải trích đúng tệp đích và có bộ số nominal/giới hạn; ảnh chứa trọn thân đáp án. Đo lại `Q0668` bằng đường đo để xác nhận không thụt lùi.
 
 ## Ràng buộc
 
-- Không đổi ngưỡng, không đổi bộ đề/thang chấm, không sửa mã ứng dụng trong vé này.
-- Đây là việc nặng: không chạy đồng thời với phiên ứng dụng của user hay các lượt đo thời gian trên cùng máy; ghi mốc tiến độ tối thiểu 15 phút/lần kèm số mảnh đã nhúng.
+- Không đổi ngưỡng cổng. Không dùng cách "sửa kịch bản test cho qua" thay cho sửa phân loại/định tuyến thật.
+- Mốc tiến độ tối thiểu 15 phút/lần kèm điểm kiểm.
+
+## Bổ sung phạm vi của điều phối (2026-10-11, từ verdict đợt quét B1)
+
+Đợt quét `DESKTOP-KNOWLEDGE-BLOCK-QA-HOME` phát hiện thêm một lệch đồng bộ cùng họ với lệch khối của Q0668, xử lý luôn trong vé này:
+
+- Nhãn chip khối trên giao diện ghi "Tự động (889 tài liệu)" trong khi chỉ mục hợp nhất đang dùng có 894 tài liệu sau đợt nạp missing5.
+- Năm tệp nguồn mới nạp (nhóm LSU) chỉ tồn tại trong chỉ mục hợp nhất `tri_thuc`, chưa có trong các bộ sưu tập theo khối — vé chẩn đoán đã đo khối `lsu` có 0 mảnh của các tệp này. Người dùng chọn khối LSU trên giao diện vì thế không bao giờ chạm được dữ liệu mới nạp.
+
+Yêu cầu bổ sung: đồng bộ 5 tệp mới vào đúng bộ sưu tập theo khối của chúng (kèm đủ vector theo quy chuẩn như vé nhúng bổ sung), bảo đảm số đếm tài liệu hiển thị trên chip khối khớp với dữ liệu thật của từng khối sau đồng bộ, và nghiệm thu bằng một câu hỏi giao diện chọn khối LSU có trích đúng một tệp mới. Nếu cách sửa phân loại ở phần chính của vé đã bao phủ việc này thì ghi rõ trong báo cáo, không làm hai lần.
