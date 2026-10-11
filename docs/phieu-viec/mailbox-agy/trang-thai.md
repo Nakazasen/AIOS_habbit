@@ -1,3 +1,8 @@
+## Hàng chờ #1 MỚI — ƯU TIÊN (chen trước RAG-RETRIEVAL-NUMPY-COMPLETE-HOME): BLOCK-SELECTOR-TONGHOP-FIX-HOME
+- Trạng thái: xep-hang (điều phối phát hành 2026-10-11 ~23:1x, từ verdict bổ sung BLOCK-SMOKE)
+- Lý do chen hàng: khối tong_hop (72 tài liệu) không có trong bộ chọn khối của giao diện — người dùng không ghim câu hỏi vào khối này được; vé này nhỏ và là điều kiện tiên quyết của vé desktop BLOCK-SMOKE-R3 đang chờ. Làm NGAY sau vé hiện tại, TRƯỚC vé numpy.
+- Toàn văn: docs/phieu-viec/mailbox-agy/prompt-queue-block-selector-tonghop-fix-home.md. Báo cáo: docs/phieu-viec/ket-qua/block-selector-tonghop-fix-home.md.
+
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
 ## Hàng chờ số 1 (bốc ngay khi vé hiện tại nộp): RAG-RETRIEVAL-NUMPY-COMPLETE-HOME — ƯU TIÊN CAO NHẤT HÔM NAY
