@@ -1250,16 +1250,29 @@ def route_workspace_chat_submission(
             consent_memory_fingerprint=consent_memory_fingerprint,
         )
         router_timeout = int(os.environ.get("AIOS_ROUTER_TIMEOUT_SECONDS", "30"))
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         try:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                router_future = executor.submit(generate_workspace_ai_answer, request, object())
-                result = router_future.result(timeout=router_timeout)
+            router_future = executor.submit(generate_workspace_ai_answer, request, object())
+            result = router_future.result(timeout=router_timeout)
         except concurrent.futures.TimeoutError:
+            try:
+                executor.shutdown(wait=False, cancel_futures=True)
+            except Exception:
+                pass
             LOGGER.warning("Nakazasen Router timed out after %ds; transferring to next backend in failover chain", router_timeout)
             return (False, "", None, f"Nakazasen Router hết thời gian chờ ({router_timeout}s).")
         except Exception as exc:
+            try:
+                executor.shutdown(wait=False, cancel_futures=True)
+            except Exception:
+                pass
             LOGGER.warning("Nakazasen Router execution error: %s", exc)
             return (False, "", None, f"Lỗi Nakazasen Router: {exc}")
+        finally:
+            try:
+                executor.shutdown(wait=False)
+            except Exception:
+                pass
 
         LOGGER.info(
             "BRIDGE NAKAZASEN ROUTER RESULT: ok=%s provider=%s model=%s reason=%s error=%s",
