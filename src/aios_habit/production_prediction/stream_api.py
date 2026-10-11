@@ -196,25 +196,24 @@ class StreamBuffer:
         kiem_drift = phat_hien_drift(self.recent_values(record.jig_id, record.metric, 50))
         if kiem_drift["canh_bao"]:
             ket_qua["canh_bao"] = True
-            if key not in self._dang_canh_bao:
-                self._dang_canh_bao.add(key)
-                cursor = self.ghi_su_kien(
-                    "canh_bao_drift",
-                    record.jig_id,
-                    record.metric,
-                    {
-                        "unit_serial": record.unit_serial,
-                        "gia_tri": record.value,
-                        "don_vi": record.unit,
-                        "nguon": record.nguon,
-                        "timestamp": record.timestamp or datetime.now().replace(microsecond=0).isoformat(),
-                        "z": round(kiem_drift["z"], 2),
-                        "trung_binh_nen": round(kiem_drift["trung_binh_nen"], 4),
-                        "trung_binh_moi": round(kiem_drift["trung_binh_moi"], 4),
-                        "chi_tiet": "Thông số trôi khỏi nền (z=%.2f) — có thể dẫn đến phát sinh NG." % kiem_drift["z"],
-                    },
-                )
-                ket_qua["cursor_su_kien"] = cursor
+            self._dang_canh_bao.add(key)
+            cursor = self.ghi_su_kien(
+                "canh_bao_drift",
+                record.jig_id,
+                record.metric,
+                {
+                    "unit_serial": record.unit_serial,
+                    "gia_tri": record.value,
+                    "don_vi": record.unit,
+                    "nguon": record.nguon,
+                    "timestamp": record.timestamp or datetime.now().replace(microsecond=0).isoformat(),
+                    "z": round(kiem_drift["z"], 2),
+                    "trung_binh_nen": round(kiem_drift["trung_binh_nen"], 4),
+                    "trung_binh_moi": round(kiem_drift["trung_binh_moi"], 4),
+                    "chi_tiet": "Thông số trôi khỏi nền (z=%.2f) — có thể dẫn đến phát sinh NG." % kiem_drift["z"],
+                },
+            )
+            ket_qua["cursor_su_kien"] = cursor
         else:
             self._dang_canh_bao.discard(key)
         return ket_qua
