@@ -8,3 +8,9 @@
 3. **Test hồi quy bắt buộc:** một test khẳng định tập lựa chọn của bộ chọn == tập khối trong bản đồ miền, để một khối tương lai không thể lặng lẽ biến mất khỏi giao diện lần nữa.
 4. Đủ 4 cổng chất lượng của repo (compileall, pytest liên quan, cli audit, import app). Nghiệm thu trên giao diện thật sẽ do làn desktop chạy ở vé BLOCK-SMOKE-R3 ngay sau vé này.
 Báo cáo tại `docs/phieu-viec/ket-qua/block-selector-tonghop-fix-home.md`: điểm dựng danh sách, nguyên nhân thiếu, điểm sửa, test hồi quy. KHÔNG đụng chỉ mục production.
+
+## BỔ SUNG PHẠM VI (điều phối, 2026-10-11 ~23:3x — từ bản nộp BLOCK-SMOKE-R3)
+Thợ desktop đã chỉ rõ gốc rễ ở HAI lớp, vé này phải xử lý cả hai:
+1. **Lớp giao diện:** danh sách `block_choices` trong `workspace_chat_app.py` không định nghĩa lựa chọn cho `tong_hop` (theo ghi nhận của thợ: một quyết định thiết kế cũ — Round 5 — từng chặn khối này; hướng hiện hành của dự án là phủ đủ 4/4 khối, quyết định cũ hết hiệu lực).
+2. **Lớp adapter:** adapter RAG V2 có danh sách trắng chỉ gồm 3 khối (lsu, dieu_tra_loi, mom) — dù giao diện có nút mà adapter không nhận khối thì truy hồi vẫn không vào được tong_hop.
+Test hồi quy phải phủ cả hai lớp: tập lựa chọn của bộ chọn == tập khối trong bản đồ miền, VÀ adapter chấp nhận truy vấn cho từng khối trong tập đó.
