@@ -15,9 +15,13 @@ from __future__ import annotations
 
 import json
 import os
+import threading
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
+
+_FEEDBACK_LOCK = threading.Lock()
 
 RATING_DUNG = "dung"
 RATING_SAI = "sai"
@@ -62,10 +66,20 @@ def record_alert_feedback(
         "reason": reason[:MAX_LY_DO_CHARS],
         "created_at": datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"),
     }
-    path = alert_feedback_file()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps(record, ensure_ascii=False) + "\n")
+    with _FEEDBACK_LOCK:
+        path = alert_feedback_file()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        line = json.dumps(record, ensure_ascii=False) + "\n"
+        for attempt in range(5):
+            try:
+                with path.open("a", encoding="utf-8") as handle:
+                    handle.write(line)
+                    handle.flush()
+                break
+            except (PermissionError, OSError) as exc:
+                if attempt == 4:
+                    return {"ok": False, "error_vi": f"Không thể ghi phản hồi vào tệp ({exc})."}
+                time.sleep(0.05 * (2 ** attempt))
     return {"ok": True}
 
 

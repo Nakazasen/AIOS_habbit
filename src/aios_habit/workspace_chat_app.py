@@ -39,12 +39,6 @@ COMPOSER_SUPPORTED_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
 COMPOSER_SUPPORTED_TEXT_EXTS = {".csv", ".txt", ".tsv", ".md", ".log"}
 COMPOSER_SUPPORTED_EXTS = COMPOSER_SUPPORTED_IMAGE_EXTS | COMPOSER_SUPPORTED_TEXT_EXTS
 
-# Realtime LSU alert pipeline service (DESKTOP-LSU-ALERT-WIRE-HOME)
-try:
-    from aios_habit.production_prediction.rt_app_wire import ensure_rt_alert_pipeline
-    ensure_rt_alert_pipeline()
-except Exception:
-    pass
 
 st.set_page_config(
     page_title="Hỏi tài liệu",

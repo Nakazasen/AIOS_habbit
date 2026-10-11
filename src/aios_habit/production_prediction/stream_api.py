@@ -562,18 +562,22 @@ def phat_hien_drift(
     phuong_sai = sum((v - trung_binh_nen) ** 2 for v in nen) / len(nen)
     do_lech_nen = phuong_sai ** 0.5
     trung_binh_moi = sum(moi) / len(moi)
-    if do_lech_nen == 0:
-        z = abs(trung_binh_moi - trung_binh_nen)
-        canh_bao = z > 0
+    if do_lech_nen < 1e-6:
+        do_lech_nen = 0.0
+    if do_lech_nen == 0.0:
+        # Nền phẳng (sigma ~ 0): tính chênh lệch tuyệt đối, tránh chia cho số vô cùng nhỏ
+        z = round(abs(trung_binh_moi - trung_binh_nen), 2)
+        canh_bao = z > 0.0
     else:
-        z = abs(trung_binh_moi - trung_binh_nen) / do_lech_nen
+        z = round(min(abs(trung_binh_moi - trung_binh_nen) / do_lech_nen, 999.99), 2)
         canh_bao = z >= nguong_sigma
     return {
         "trang_thai": "Vi phạm" if canh_bao else "Đạt",
         "canh_bao": canh_bao,
         "z": z,
-        "trung_binh_nen": trung_binh_nen,
-        "trung_binh_moi": trung_binh_moi,
+        "trung_binh_nen": round(trung_binh_nen, 4),
+        "trung_binh_moi": round(trung_binh_moi, 4),
+        "do_lech_nen": round(do_lech_nen, 6),
     }
 
 

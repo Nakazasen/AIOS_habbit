@@ -14,6 +14,7 @@ Guarantees:
 
 from __future__ import annotations
 
+import logging
 import os
 import threading
 import time
@@ -22,6 +23,8 @@ import urllib.request
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 from aios_habit.production_prediction.jig_chat_wire import day_the_realtime_qua_cong_vao_chat
 from aios_habit.production_prediction.rt_consumer import (
@@ -161,7 +164,8 @@ def ensure_listener_running(
             listener.start()
             _LISTENER = listener
             return listener
-        except OSError:
+        except OSError as exc:
+            logger.warning("Could not bind StreamListener to port %d: %s", port, exc)
             return _LISTENER
 
 
@@ -310,8 +314,8 @@ def start_rt_worker_thread(port: int = DEFAULT_STREAM_PORT) -> threading.Thread:
             while not _STOP_EVENT.is_set():
                 try:
                     poll_and_dispatch_rt_alerts(port=port)
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.warning("Error in RT consumer worker loop: %s", exc, exc_info=True)
                 _STOP_EVENT.wait(1.0)
 
         thread = threading.Thread(
@@ -328,12 +332,12 @@ def ensure_rt_alert_pipeline(port: int = DEFAULT_STREAM_PORT) -> None:
     """Start both background StreamListener and consumer worker thread."""
     try:
         ensure_listener_running(port=port)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.error("Failed to start RT stream listener on port %d: %s", port, exc, exc_info=True)
     try:
         start_rt_worker_thread(port=port)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.error("Failed to start RT alert worker thread: %s", exc, exc_info=True)
 
 
 def stop_rt_alert_pipeline() -> None:

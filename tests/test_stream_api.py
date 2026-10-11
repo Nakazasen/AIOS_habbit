@@ -77,3 +77,26 @@ def test_http_listener_nhan_json_va_ndjson(tmp_path):
         assert len(buffer.recent_values("JIG-HTTP", "bowskew")) == 1
     finally:
         listener.stop()
+
+
+def test_phat_hien_drift_nen_phang_sigma_khong():
+    """Kiểm thử phát hiện drift khi nền phẳng (40 điểm giống hệt nhau, sigma ~ 0).
+
+    Đảm bảo không xảy ra lỗi chia cho 0 hoặc in số z khổng lồ (DESKTOP-RT-CARD-TRACE-HOME).
+    """
+    from aios_habit.production_prediction.stream_api import phat_hien_drift
+
+    # 40 điểm nền phẳng 24.3 + 10 điểm mới lệch 21.7 (tương tự log nhiệt độ)
+    series = [24.3] * 40 + [21.7] * 10
+    kq = phat_hien_drift(series, diem_nen=40, diem_moi=10, nguong_sigma=3.0)
+    assert kq["canh_bao"] is True
+    assert kq["trang_thai"] == "Vi phạm"
+    # z phải là số thực hữu hạn (chênh lệch tuyệt đối 2.60), không phải số mũ khổng lồ
+    assert 2.5 <= kq["z"] <= 2.7
+    assert kq["z"] < 100.0
+
+    # Trường hợp nền phẳng và giá trị mới không đổi -> Đạt, z = 0.0
+    series_bang = [24.3] * 50
+    kq_bang = phat_hien_drift(series_bang, diem_nen=40, diem_moi=10)
+    assert kq_bang["canh_bao"] is False
+    assert kq_bang["z"] == 0.0

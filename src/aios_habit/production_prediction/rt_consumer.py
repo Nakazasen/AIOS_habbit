@@ -172,10 +172,10 @@ def dinh_dang_canh_bao(
     so_diem_lien_tiep = xu_huong.get("so_diem_lien_tiep") or xu_huong.get("consecutive") or 3
 
     thoi_diem = str(
-        su_kien.get("thoi_gian")
+        noi_dung.get("timestamp")
         or su_kien.get("timestamp")
-        or noi_dung.get("timestamp")
         or noi_dung.get("thoi_gian")
+        or su_kien.get("thoi_gian")
         or ""
     ).strip()
     if not thoi_diem:
