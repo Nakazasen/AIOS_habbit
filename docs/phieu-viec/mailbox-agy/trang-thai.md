@@ -2,7 +2,9 @@
 
 ## Vé hiện tại: STRUCTURED-LANE-TEST-FIXTURE-HOME (chuyển test làn cấu trúc sang dữ kiện tổng hợp)
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `bao_cao`: `docs/phieu-viec/ket-qua/structured-lane-test-fixture-home.md`
+- `ghi_chu`: 2026-10-11 15:15 +07 — **ĐÃ NHẬN VÉ** `STRUCTURED-LANE-TEST-FIXTURE-HOME`: Bắt đầu rà soát `tests/test_rag_v2_structured_query.py` và chuyển các test đang gọi tệp dữ kiện thật sang fixture tổng hợp tạm thời để test chạy độc lập hoàn toàn với dữ kiện máy thật.
 - `ghi_chu` (điều phối Muse — PHÁT HÀNH): 2026-10-11 ~15:2x +07 — Phát hành vé vệ sinh test làm vé hiện hành (`prompt.md` + tệp hàng chờ). Hàng chờ ngay sau nó: `DISK-GROWTH-DIAG-HOME` (chẩn đoán chỉ đọc phần ~17,3 GB ổ C: bị tiêu thụ từ sau vòng dọn 2 — tệp `prompt-queue-disk-growth-diag-home.md`).
 
 ## Vé vừa verdict: DISK-CLEANUP-ROUND3-HOME
