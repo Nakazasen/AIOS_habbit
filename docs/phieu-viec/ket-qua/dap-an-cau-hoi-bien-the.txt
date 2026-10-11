@@ -1,0 +1,23 @@
+=== CÂU HỎI BIẾN THỂ (VARIANT QUESTIONS EVALUATION) ===
+
+1. BIẾN THỂ SERIAL KHÁC TRONG 2026_08_UnitTest.csv:
+Câu hỏi: シリアル「61C999999902」の8月20日と8月21日の判定結果を比較して、NG項目に変化はありますか？
+Đáp án tính động:
+Theo kết quả tra cứu có cấu trúc từ tệp `2026_08_UnitTest.csv`:
+
+So sánh kết quả phán định của Serial **61C999999902** giữa các ngày (2026/08/20, 2026/08/21):
+- **Ngày 2026/08/20**: TotalJudge = **NG** (Black: **NG**, Magenta: **NG**, Cyan: **OK**, Yellow: **NG**).
+- **Ngày 2026/08/21**: TotalJudge = **NG** (Black: **NG**, Magenta: **NG**, Cyan: **OK**, Yellow: **NG**).
+
+**Kết luận**: Hạng mục NG giữa hai ngày **変わっていません** (hoàn toàn không thay đổi). Cả hai ngày đều chỉ bị lỗi NG ở kênh Black, Magenta, Yellow, còn các màu Cyan đều đạt OK.
+
+[Nguồn: 2026_08_UnitTest.csv]
+
+2. BIẾN THỂ PHÉP CỘNG DỒN THEO JIGNUMBER TRONG 2026_08_Error.csv:
+Câu hỏi: Thống kê số lượng lỗi theo từng JigNumber trong 2026_08_Error.csv?
+Đáp án tính động:
+Theo kết quả thống kê có cấu trúc từ tệp `2026_08_Error.csv`, số lượng lỗi theo JigNumber như sau:
+
+- **#1**: **183件** (chiếm tỷ lệ cao nhất).
+
+[Nguồn: 2026_08_Error.csv]

@@ -1,0 +1,24 @@
+=== BÀI KIỂM BIẾN DẠNG DỮ KIỆN (DATA DEFORMATION CHECK) ===
+
+Tệp bản sao biến dạng: 2026_08_Error_BowOverAdjust_mutated.csv
+Số dòng thực tế: 2918
+
+1. CÂU HỎI TỔNG QUAN: File có bao nhiêu record lỗi và phạm vi ngày nào?
+ĐÁP ÁN TÍNH ĐỘNG TỪ BẢN SAO:
+Dựa trên dữ liệu thống kê có cấu trúc từ tệp `2026_08_Error_BowOverAdjust.csv`:
+
+- **Tổng số bản ghi lỗi**: **2.918 record** (2918 Record) (100% bản ghi đều có nội dung lỗi `Adjust`).
+- **Khoảng thời gian phát sinh**: từ **2026/08/01** đến **2026/08/27** (2026/08/01～2026/08/27).
+- **Số lượng Serial bị ảnh hưởng**: **1.190 Serial** khác nhau (1190個の異なるSerial).
+
+[Nguồn: 2026_08_Error_BowOverAdjust.csv]
+
+2. CÂU HỎI PHÂN BỐ MÀU: Yellow、Cyan、Magenta分别有多少件？
+ĐÁP ÁN TÍNH ĐỘNG TỪ BẢN SAO:
+Theo kết quả thống kê có cấu trúc từ tệp `2026_08_Error_BowOverAdjust.csv`, số lượng lỗi theo ErrColor như sau:
+
+- **Yellow**: **1069件** (chiếm tỷ lệ cao nhất).
+- **Cyan**: **1035件**.
+- **Magenta**: **814件**.
+
+[Nguồn: 2026_08_Error_BowOverAdjust.csv]

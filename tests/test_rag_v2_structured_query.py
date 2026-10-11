@@ -375,3 +375,109 @@ def test_structured_table_lane_targets():
         assert expected_kw in ans, f"Expected '{expected_kw}' in answer for {question}"
         assert expected_doc in ans, f"Expected citation '{expected_doc}' in answer for {question}"
 
+
+def test_dynamic_table_computations_change_with_data(tmp_path):
+    """Verify that dynamic calculations update deterministically when underlying table data changes."""
+    import csv
+    from aios_habit.rag_v2.structured_query import try_structured_table_evidence
+
+    # 1. Test record count and color breakdown changes with data
+    csv_file1 = tmp_path / "test_bowoveradjust.csv"
+    headers1 = ["DATE", "TIME", "S/N", "Mode", "Abstract", "ErrColor"]
+    rows1 = [
+        ["2026/08/01", "10:00:00", "61C1068E0001", "Adjust", "BowOverAdjustment", "Yellow"],
+        ["2026/08/01", "10:05:00", "61C1068E0002", "Adjust", "BowOverAdjustment", "Yellow"],
+        ["2026/08/02", "11:00:00", "61C1068E0003", "Adjust", "BowOverAdjustment", "Cyan"],
+        ["2026/08/02", "11:05:00", "61C1068E0004", "Adjust", "BowOverAdjustment", "Magenta"],
+    ]
+
+    def _write_csv(p, h, r):
+        with open(p, "w", encoding="utf-8", newline="") as f:
+            w = csv.writer(f)
+            w.writerow(h)
+            w.writerows(r)
+
+    _write_csv(csv_file1, headers1, rows1)
+
+    # Initial check
+    res_cnt = try_structured_table_evidence("File có bao nhiêu record lỗi và phạm vi ngày nào?", custom_source_path=csv_file1)
+    assert res_cnt is not None
+    ans_cnt = res_cnt["local_synthesis"]["answer"]
+    assert "4 record" in ans_cnt
+    assert "2026/08/01" in ans_cnt
+    assert "2026/08/02" in ans_cnt
+
+    res_color = try_structured_table_evidence("BowOverAdjustエラーの各色（Yellow, Cyan, Magenta）の件数は？", custom_source_path=csv_file1)
+    assert res_color is not None
+    ans_color = res_color["local_synthesis"]["answer"]
+    assert "Yellow**: **2件**" in ans_color
+    assert "Cyan**: **1件**" in ans_color
+    assert "Magenta**: **1件**" in ans_color
+
+    # Mutate data: add 5 new Magenta rows on 2026/08/10
+    for i in range(5):
+        rows1.append(["2026/08/10", f"12:0{i}:00", f"61C1068E001{i}", "Adjust", "BowOverAdjustment", "Magenta"])
+    _write_csv(csv_file1, headers1, rows1)
+
+    # Mutated check: counts must change dynamically!
+    res_cnt_mut = try_structured_table_evidence("File có bao nhiêu record lỗi và phạm vi ngày nào?", custom_source_path=csv_file1)
+    assert res_cnt_mut is not None
+    ans_cnt_mut = res_cnt_mut["local_synthesis"]["answer"]
+    assert "9 record" in ans_cnt_mut
+    assert "2026/08/10" in ans_cnt_mut
+
+    res_color_mut = try_structured_table_evidence("BowOverAdjustエラーの各色（Yellow, Cyan, Magenta）の件数は？", custom_source_path=csv_file1)
+    assert res_color_mut is not None
+    ans_color_mut = res_color_mut["local_synthesis"]["answer"]
+    assert "Magenta**: **6件**" in ans_color_mut
+    assert "Yellow**: **2件**" in ans_color_mut
+
+    # 2. Test peak date changes with data
+    csv_file2 = tmp_path / "test_error.csv"
+    headers2 = ["DATE", "TIME", "JigNumber", "S/N", "Mode"]
+    rows2 = [
+        ["2026/08/11", "08:00:00", "#1", "C9P001", "Error"],
+        ["2026/08/11", "08:10:00", "#1", "C9P002", "Error"],
+        ["2026/08/12", "09:00:00", "#1", "C9P003", "Error"],
+    ]
+    _write_csv(csv_file2, headers2, rows2)
+
+    res_peak = try_structured_table_evidence("哪一天Error Record最多？", custom_source_path=csv_file2)
+    assert res_peak is not None
+    assert "2026/08/11" in res_peak["local_synthesis"]["answer"]
+    assert "2笔" in res_peak["local_synthesis"]["answer"]
+
+    # Mutate data: add 5 errors on 2026/08/15
+    for i in range(5):
+        rows2.append(["2026/08/15", f"14:0{i}:00", "#1", f"C9P00{i+4}", "Error"])
+    _write_csv(csv_file2, headers2, rows2)
+
+    res_peak_mut = try_structured_table_evidence("哪一天Error Record最多？", custom_source_path=csv_file2)
+    assert res_peak_mut is not None
+    assert "2026/08/15" in res_peak_mut["local_synthesis"]["answer"]
+    assert "5笔" in res_peak_mut["local_synthesis"]["answer"]
+
+    # 3. Test serial lookup and comparison across dates
+    csv_file3 = tmp_path / "test_unittest.csv"
+    headers3 = ["DATE", "TIME", "S/N", "Mode", "TotalJudge", "Judge:Black", "Judge:Cyan", "Judge:Magenta", "Judge:Yellow"]
+    rows3 = [
+        ["2026/08/12", "10:00:00", "61CTEST00001", "UnitTest", "NG", "OK", "NG", "OK", "OK"],
+        ["2026/08/13", "11:00:00", "61CTEST00001", "UnitTest", "NG", "OK", "NG", "OK", "OK"],
+    ]
+    _write_csv(csv_file3, headers3, rows3)
+
+    q_sn = "シリアル「61CTEST00001」の8月12日と8月13日の判定結果を比較して、NG項目に変化はありますか？"
+    res_sn = try_structured_table_evidence(q_sn, custom_source_path=csv_file3)
+    assert res_sn is not None
+    assert "変わっていません" in res_sn["local_synthesis"]["answer"]
+
+    # Mutate data: day 2 passes OK
+    rows3[1][4] = "OK"
+    rows3[1][6] = "OK"
+    _write_csv(csv_file3, headers3, rows3)
+
+    res_sn_mut = try_structured_table_evidence(q_sn, custom_source_path=csv_file3)
+    assert res_sn_mut is not None
+    assert "có sự thay đổi" in res_sn_mut["local_synthesis"]["answer"]
+
+

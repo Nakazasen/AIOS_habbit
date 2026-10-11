@@ -3120,6 +3120,25 @@ def _try_structured_excel_evidence(
     from aios_habit.rag_v2.structured_query import try_structured_table_evidence
     table_result = try_structured_table_evidence(question, sources)
     if table_result is not None:
+        if not table_result.get("retrieved_context_sources") and sources and table_result.get("evidence_items"):
+            ev = table_result["evidence_items"][0]
+            for s in sources:
+                name = getattr(s, "title", None) or Path(getattr(s, "path", "")).name
+                if name.casefold() == ev.get("title", "").casefold():
+                    ret_src = WorkspaceAIContextSource(
+                        source_id=ev.get("source_id", s.source_id),
+                        source_scope=ev.get("source_scope", s.source_scope),
+                        source_type=ev.get("source_type", s.source_type),
+                        title=f"{ev.get('title')} ({ev.get('location_info')})",
+                        privacy_label=s.privacy_label,
+                        text=ev.get("text", ""),
+                        original_chars=len(ev.get("text", "")),
+                        included_chars=len(ev.get("text", "")),
+                        truncated=False,
+                        managed_path=str(_managed_workbook_path(s) or getattr(s, "managed_path", "")),
+                    )
+                    table_result["retrieved_context_sources"] = (ret_src,)
+                    break
         return table_result
 
     if not query_might_be_structured_excel(question):

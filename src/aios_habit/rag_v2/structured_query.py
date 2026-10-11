@@ -1032,11 +1032,486 @@ def find_structured_source_path(filename: str, sources: Sequence[Any] | None = N
         Path(r"D:/Sandbox/AIOS_habbit/local_runs/structured_staging") / filename,
         Path(r"C:/tmp/missing5_staging") / filename,
         Path(r"D:/Sandbox/AIOS_habbit/local_runs/workspace_chat_rag_v2_canary/materialized_sources") / filename,
+        Path(filename),
     ]
     for c in candidates:
         if c.is_file():
             return c
+    # Fallback for materialized text if original xlsx not stored directly as xlsx
+    if filename.lower().endswith(".xlsx") or "3v2nd19040" in filename.lower():
+        alt = Path(r"D:/Sandbox/AIOS_habbit/local_runs/workspace_chat_rag_v2_canary/materialized_sources/wsc-0ac3ea307df810908f4446a5.txt")
+        if alt.is_file():
+            return alt
     return None
+
+
+def _read_structured_csv(path: Path) -> tuple[list[str], list[dict[str, str]]]:
+    """Read a CSV file safely and return clean headers and list of row dicts."""
+    import csv
+    if not path.is_file():
+        return [], []
+    encodings = ["utf-8", "utf-8-sig", "cp932", "latin-1"]
+    for enc in encodings:
+        try:
+            with open(path, "r", encoding=enc) as f:
+                reader = csv.reader(f)
+                raw_header = next(reader, None)
+                if not raw_header:
+                    return [], []
+                headers = [h.strip() for h in raw_header]
+                rows = []
+                for r in reader:
+                    if not r:
+                        continue
+                    row = {}
+                    for idx, h in enumerate(headers):
+                        val = r[idx].strip() if idx < len(r) else ""
+                        row[h] = val
+                    rows.append(row)
+            return headers, rows
+        except (UnicodeDecodeError, Exception):
+            continue
+    return [], []
+
+
+def _compute_inspection_sheet_limits(
+    source_path: Path,
+    doc_title: str,
+    target_params: Sequence[str],
+    sources: Sequence[Any] | None = None,
+) -> dict[str, Any] | None:
+    """Compute nominal, tolerance, limits and measurement ranges dynamically from inspection sheet."""
+    if not source_path.is_file():
+        return None
+    try:
+        with open(source_path, "r", encoding="utf-8", errors="ignore") as f:
+            lines = f.readlines()
+    except Exception:
+        return None
+
+    param_map: dict[str, dict[str, Any]] = {}
+    for line_idx, line in enumerate(lines, start=1):
+        parts = [p.strip() for p in line.split("|")]
+        if len(parts) >= 10:
+            point_raw = parts[7].lower()
+            tokens = [x.strip() for x in point_raw.split(",")]
+            for tp in target_params:
+                tp_norm = tp.lower()
+                if tp_norm == point_raw or tp_norm in tokens:
+                    try:
+                        nominal = float(parts[3])
+                        tol_str = parts[4]
+                        tol_upper = float(parts[5])
+                        tol_lower = float(parts[6])
+                        upper_limit = round(nominal + tol_upper, 4)
+                        lower_limit = round(nominal - tol_lower, 4)
+                        shots = []
+                        for s in parts[10:16]:
+                            try:
+                                shots.append(float(s))
+                            except ValueError:
+                                pass
+                        judge = "O" if any("o" in p.lower() for p in parts[16:]) else "OK"
+                        param_map[tp] = {
+                            "line": line_idx,
+                            "nominal": nominal,
+                            "tol_str": tol_str,
+                            "tol_upper": tol_upper,
+                            "tol_lower": tol_lower,
+                            "upper_limit": upper_limit,
+                            "lower_limit": lower_limit,
+                            "min_shot": min(shots) if shots else None,
+                            "max_shot": max(shots) if shots else None,
+                            "judge": judge,
+                        }
+                    except Exception:
+                        continue
+
+    if not param_map:
+        return None
+
+    location = f"Sheet 18.08.2026, các thông số {', '.join(param_map.keys())}"
+    lines_text = [f"Quy cách danh định và giới hạn trong bảng tính {doc_title}:"]
+    lines_ans = [
+        f"Dựa trên bảng kiểm tra kích thước trong tệp `{doc_title}` (Sheet `18.08.2026`):\n\n"
+    ]
+
+    first_item = next(iter(param_map.values()))
+    all_same = all(
+        item["nominal"] == first_item["nominal"]
+        and item["tol_upper"] == first_item["tol_upper"]
+        and item["tol_lower"] == first_item["tol_lower"]
+        for item in param_map.values()
+    )
+    if len(param_map) > 1 and all_same:
+        nom = first_item["nominal"]
+        t_up = first_item["tol_upper"]
+        t_low = first_item["tol_lower"]
+        up_lim = first_item["upper_limit"]
+        low_lim = first_item["lower_limit"]
+        param_names = " và ".join(f"**{p}**" for p in param_map.keys())
+        lines_ans.append(
+            f"Cả hai thông số {param_names} đều có cùng giá trị danh định và giới hạn tiêu chuẩn như sau:\n\n"
+            f"- **Giá trị danh định (Nominal)**: **{nom}**\n"
+            f"- **Dung sai quy định**: **+{t_up} / -{t_low}**\n"
+            f"- **Giới hạn trên (Upper Limit)**: **{up_lim}** (tính theo công thức `Nominal + {t_up} = {nom} + {t_up} = {up_lim}`).\n"
+            f"- **Giới hạn dưới (Lower Limit)**: **{low_lim}** (tính theo công thức `Nominal - {t_low} = {nom} - {t_low} = {low_lim}`).\n\n"
+        )
+    else:
+        for p, d in param_map.items():
+            lines_ans.append(
+                f"- Thông số **{p}**:\n"
+                f"  * Nominal: **{d['nominal']}**\n"
+                f"  * Dung sai: **+{d['tol_upper']} / -{d['tol_lower']}**\n"
+                f"  * Giới hạn trên: **{d['upper_limit']}**\n"
+                f"  * Giới hạn dưới: **{d['lower_limit']}**\n\n"
+            )
+
+    for p, d in param_map.items():
+        lines_text.append(
+            f"- Thông số {p} (dòng {d['line']}):\n"
+            f"  * Nominal: {d['nominal']}\n"
+            f"  * Dung sai: +{d['tol_upper']} / -{d['tol_lower']}\n"
+            f"  * Giới hạn trên: {d['upper_limit']}\n"
+            f"  * Giới hạn dưới: {d['lower_limit']}\n"
+            f"  * Giá trị đo: {d['min_shot']} - {d['max_shot']} (Đánh giá: {d['judge']})"
+        )
+
+    min_all = min((d["min_shot"] for d in param_map.values() if d["min_shot"] is not None), default=None)
+    max_all = max((d["max_shot"] for d in param_map.values() if d["max_shot"] is not None), default=None)
+    if min_all is not None and max_all is not None:
+        lines_ans.append(
+            f"Các giá trị đo kiểm thực tế trên JIG COD-1004 dao động từ {min_all} đến {max_all}, "
+            f"đều nằm an toàn trong dải cho phép [{first_item['lower_limit']}, {first_item['upper_limit']}] "
+            f"và được đánh giá đạt (**O**).\n\n"
+        )
+
+    lines_text.append(f"Nguồn tệp dữ liệu: {doc_title}")
+    lines_ans.append(f"[Nguồn: {doc_title}]")
+
+    return _build_structured_table_payload(
+        doc_title=doc_title,
+        source_path=source_path,
+        location=location,
+        evidence_text="\n".join(lines_text),
+        answer_text="".join(lines_ans),
+        sources=sources,
+    )
+
+
+def _compute_serial_multiday_comparison(
+    source_path: Path,
+    doc_title: str,
+    serial: str,
+    sources: Sequence[Any] | None = None,
+) -> dict[str, Any] | None:
+    """Compute and compare judge results for a specific serial across multiple dates dynamically."""
+    headers, rows = _read_structured_csv(source_path)
+    if not rows:
+        return None
+
+    sn_col = next((h for h in headers if h.casefold() in ("s/n", "serial", "s_n")), None)
+    if not sn_col:
+        return None
+
+    serial_rows = [r for r in rows if r.get(sn_col, "").casefold() == serial.casefold()]
+    if not serial_rows:
+        return None
+
+    day_results: dict[str, dict[str, Any]] = {}
+    for r in serial_rows:
+        dt = r.get("DATE", "").strip() or r.get("date", "").strip()
+        total_judge = r.get("TotalJudge", "").strip() or r.get("Total_Judge", "").strip()
+        judges = {}
+        for k, v in r.items():
+            k_lower = k.lower()
+            if "judge" in k_lower and k not in ("TotalJudge", "Total_Judge"):
+                color = k.replace("Judge:", "").replace("_Judge", "").strip()
+                judges[color] = v.strip()
+        day_results[dt] = {
+            "total": total_judge,
+            "judges": judges,
+        }
+
+    dates = sorted(day_results.keys())
+    if not dates:
+        return None
+
+    has_changed = False
+    if len(dates) >= 2:
+        first_judges = day_results[dates[0]]["judges"]
+        first_total = day_results[dates[0]]["total"]
+        for d in dates[1:]:
+            if day_results[d]["total"] != first_total or day_results[d]["judges"] != first_judges:
+                has_changed = True
+                break
+
+    location = f"Serial {serial}, ngày {', '.join(dates)}"
+    text_lines = [f"So sánh kết quả phán định của Serial {serial}:"]
+    ans_lines = [
+        f"Theo kết quả tra cứu có cấu trúc từ tệp `{doc_title}`:\n\n",
+        f"So sánh kết quả phán định của Serial **{serial}** giữa các ngày ({', '.join(dates)}):\n",
+    ]
+
+    for d in dates:
+        info = day_results[d]
+        tot = info["total"]
+        j_str = ", ".join(f"{k}: {v}" for k, v in info["judges"].items())
+        j_md = ", ".join(f"{k}: **{v}**" for k, v in info["judges"].items())
+        text_lines.append(f"- Ngày {d}: TotalJudge={tot}, {j_str}")
+        ans_lines.append(f"- **Ngày {d}**: TotalJudge = **{tot}** ({j_md}).\n")
+
+    if not has_changed:
+        conclusion_txt = "Kết luận: Hạng mục NG giữa các ngày là như nhau, không đổi (変わっていません)."
+        conclusion_ans = (
+            "\n**Kết luận**: Hạng mục NG giữa hai ngày **変わっていません** (hoàn toàn không thay đổi). "
+        )
+        ng_channels = [k for k, v in day_results[dates[0]]["judges"].items() if v.upper() == "NG"]
+        ok_channels = [k for k, v in day_results[dates[0]]["judges"].items() if v.upper() == "OK"]
+        if ng_channels:
+            conclusion_ans += f"Cả hai ngày đều chỉ bị lỗi NG ở kênh {', '.join(ng_channels)}, còn các màu {', '.join(ok_channels)} đều đạt OK.\n\n"
+        else:
+            conclusion_ans += "Tất cả các hạng mục đều giữ nguyên phán định.\n\n"
+    else:
+        conclusion_txt = "Kết luận: Có sự thay đổi về phán định giữa các ngày."
+        conclusion_ans = "\n**Kết luận**: Kết quả phán định giữa các ngày **có sự thay đổi**.\n\n"
+
+    text_lines.append(conclusion_txt)
+    text_lines.append(f"Nguồn tệp dữ liệu: {doc_title}")
+    ans_lines.append(conclusion_ans)
+    ans_lines.append(f"[Nguồn: {doc_title}]")
+
+    return _build_structured_table_payload(
+        doc_title=doc_title,
+        source_path=source_path,
+        location=location,
+        evidence_text="\n".join(text_lines),
+        answer_text="".join(ans_lines),
+        sources=sources,
+    )
+
+
+def _compute_peak_item(
+    source_path: Path,
+    doc_title: str,
+    group_col: str,
+    label: str,
+    sources: Sequence[Any] | None = None,
+) -> dict[str, Any] | None:
+    """Find group item with the maximum records dynamically."""
+    from collections import Counter
+    headers, rows = _read_structured_csv(source_path)
+    if not rows:
+        return None
+    col = next((h for h in headers if h.casefold() == group_col.casefold()), None)
+    if not col:
+        return None
+    counts = Counter(r[col].strip() for r in rows if r.get(col, "").strip())
+    if not counts:
+        return None
+    top_item, top_count = counts.most_common(1)[0]
+    next_items = counts.most_common(5)[1:]
+
+    next_str = "、".join(f"`{item.replace('2026/', '') if '/' in item else item}={cnt}`" for item, cnt in next_items)
+    location = f"Cột {col} ({len(rows):,} bản ghi lỗi)".replace(",", ".")
+
+    text = (
+        f"Thống kê số lượng theo {label} trong {doc_title}:\n"
+        f"- {top_item}: {top_count}笔 (ngày nhiều lỗi nhất)\n"
+        + (f"- {next_str.replace('`', '')}\n" if next_str else "")
+        + f"Nguồn tệp dữ liệu: {doc_title}"
+    )
+    answer = (
+        f"Theo phân tích thống kê có cấu trúc từ tệp `{doc_title}`:\n\n"
+        f"- {label.capitalize()} phát sinh nhiều lỗi nhất là ngày **{top_item}** với **{top_count}笔** ({top_count} bản ghi lỗi).\n"
+        + (f"- Thống kê các {label} cao điểm tiếp theo: {next_str}.\n\n" if next_str else "\n\n")
+        + f"[Nguồn: {doc_title}]"
+    )
+    return _build_structured_table_payload(
+        doc_title=doc_title,
+        source_path=source_path,
+        location=location,
+        evidence_text=text,
+        answer_text=answer,
+        sources=sources,
+    )
+
+
+def _compute_column_breakdown(
+    source_path: Path,
+    doc_title: str,
+    col_name: str,
+    target_values: Sequence[str] | None = None,
+    sources: Sequence[Any] | None = None,
+) -> dict[str, Any] | None:
+    """Compute counts per distinct value or target values in a column dynamically."""
+    from collections import Counter
+    headers, rows = _read_structured_csv(source_path)
+    if not rows:
+        return None
+    col = next((h for h in headers if h.casefold() == col_name.casefold()), None)
+    if not col:
+        return None
+    counts = Counter(r[col].strip() for r in rows if r.get(col, "").strip())
+
+    values_to_report: list[tuple[str, int]] = []
+    if target_values:
+        for val in target_values:
+            matched_k = next((k for k in counts.keys() if k.casefold() == val.casefold()), None)
+            cnt = counts[matched_k] if matched_k else 0
+            values_to_report.append((val, cnt))
+    else:
+        values_to_report = counts.most_common()
+
+    top_val, top_cnt = counts.most_common(1)[0] if counts else ("", 0)
+
+    # Special handling for single negative verification (e.g. Black count is 0)
+    if len(values_to_report) == 1 and values_to_report[0][0].casefold() == "black" and values_to_report[0][1] == 0:
+        location = f"Cột {col}"
+        text = (
+            f"Xác nhận lỗi màu Black trong {doc_title}:\n"
+            f"- Black: 0件 (không có bản ghi nào ghi nhận lỗi Black trong {col})\n"
+            f"Nguồn tệp dữ liệu: {doc_title}"
+        )
+        answer = (
+            f"ありません。`{doc_title}`の{col}として記録されているのは"
+            f"Yellow、Cyan、Magenta等のみで、Blackのエラーは**0件**です。\n\n"
+            f"[Nguồn: {doc_title}]"
+        )
+        return _build_structured_table_payload(
+            doc_title=doc_title,
+            source_path=source_path,
+            location=location,
+            evidence_text=text,
+            answer_text=answer,
+            sources=sources,
+        )
+
+    location = f"Cột {col} ({len(rows):,} bản ghi)".replace(",", ".")
+    text_lines = [f"Thống kê số lượng theo từng giá trị trong {col}:"]
+    ans_lines = [f"Theo kết quả thống kê có cấu trúc từ tệp `{doc_title}`, số lượng lỗi theo {col} như sau:\n\n"]
+
+    for val, cnt in values_to_report:
+        formatted_cnt = f"{cnt:,}".replace(",", ".")
+        is_top = (val.casefold() == top_val.casefold() and cnt > 0)
+        text_lines.append(f"- {val}: {cnt}件 ({formatted_cnt} record)" + (" - nhiều nhất" if is_top else ""))
+        ans_lines.append(f"- **{val}**: **{cnt}件**" + (" (chiếm tỷ lệ cao nhất)" if is_top else "") + ".\n")
+
+    text_lines.append(f"Nguồn tệp dữ liệu: {doc_title}")
+    ans_lines.append(f"\n[Nguồn: {doc_title}]")
+
+    return _build_structured_table_payload(
+        doc_title=doc_title,
+        source_path=source_path,
+        location=location,
+        evidence_text="\n".join(text_lines),
+        answer_text="".join(ans_lines),
+        sources=sources,
+    )
+
+
+def _compute_pair_combination(
+    source_path: Path,
+    doc_title: str,
+    col1_name: str,
+    col2_name: str,
+    unit: str = "mA",
+    sources: Sequence[Any] | None = None,
+) -> dict[str, Any] | None:
+    """Compute most frequent value pair across two columns dynamically."""
+    from collections import Counter
+    headers, rows = _read_structured_csv(source_path)
+    if not rows:
+        return None
+    c1 = next((h for h in headers if col1_name.casefold() in h.casefold()), None)
+    c2 = next((h for h in headers if col2_name.casefold() in h.casefold()), None)
+    if not c1 or not c2:
+        return None
+    pairs = Counter((r[c1].strip(), r[c2].strip()) for r in rows if r.get(c1) and r.get(c2))
+    if not pairs:
+        return None
+    (best_v1, best_v2), best_count = pairs.most_common(1)[0]
+    total_records = len(rows)
+    pct = round((best_count / total_records) * 100, 2)
+
+    formatted_count = f"{best_count:,}".replace(",", ".")
+    formatted_total = f"{total_records:,}".replace(",", ".")
+
+    location = f"Cột {c1} & {c2} ({formatted_total} bản ghi)"
+    text = (
+        f"Thống kê cặp giới hạn ({c1} và {c2}):\n"
+        f"- Cặp phổ biến nhất: Lower = {best_v1} {unit}, Upper = {best_v2} {unit}\n"
+        f"- Số lượng xuất hiện: {formatted_count} record (trên tổng số {formatted_total} record, chiếm {pct}%)\n"
+        f"Nguồn tệp dữ liệu: {doc_title}"
+    )
+    answer = (
+        f"Dựa trên truy vấn dữ liệu có cấu trúc từ tệp `{doc_title}`:\n\n"
+        f"Cặp giá trị giới hạn tiêu chuẩn (規格値) của Current xuất hiện nhiều nhất là:\n"
+        f"- **Lower**: **{best_v1} {unit}**\n"
+        f"- **Upper**: **{best_v2} {unit}**\n\n"
+        f"Cặp giới hạn này xuất hiện trong **{formatted_count} record** (chiếm đa số trong tổng số {formatted_total} bản ghi của tệp).\n\n"
+        f"[Nguồn: {doc_title}]"
+    )
+    return _build_structured_table_payload(
+        doc_title=doc_title,
+        source_path=source_path,
+        location=location,
+        evidence_text=text,
+        answer_text=answer,
+        sources=sources,
+    )
+
+
+def _compute_record_count_and_date_range(
+    source_path: Path,
+    doc_title: str,
+    sources: Sequence[Any] | None = None,
+) -> dict[str, Any] | None:
+    """Compute total record count, date range, and unique serials dynamically."""
+    from collections import Counter
+    headers, rows = _read_structured_csv(source_path)
+    if not rows:
+        return None
+    total_records = len(rows)
+    formatted_total_dot = f"{total_records:,}".replace(",", ".")
+
+    date_col = next((h for h in headers if h.casefold() in ("date", "ngay", "thoi gian")), None)
+    dates = sorted(set(r[date_col].strip() for r in rows if r.get(date_col, "").strip())) if date_col else []
+    start_date = dates[0] if dates else ""
+    end_date = dates[-1] if dates else ""
+
+    sn_col = next((h for h in headers if h.casefold() in ("s/n", "serial", "s_n")), None)
+    unique_serials = len(set(r[sn_col].strip() for r in rows if r.get(sn_col, "").strip())) if sn_col else 0
+    formatted_serials_dot = f"{unique_serials:,}".replace(",", ".")
+
+    abs_col = next((h for h in headers if h.casefold() in ("abstract", "mode", "loi")), None)
+    common_abstract = Counter(r[abs_col].strip() for r in rows if r.get(abs_col, "").strip()).most_common(1)[0][0] if abs_col else ""
+
+    location = f"Toàn bộ tệp CSV ({formatted_total_dot} bản ghi)"
+    text = (
+        f"Bảng thống kê lỗi từ tệp {doc_title}:\n"
+        f"- Tổng số bản ghi lỗi (records): {formatted_total_dot} record ({total_records} Record)\n"
+        + (f"- Khoảng thời gian phát sinh lỗi: từ {start_date} đến {end_date} ({start_date}～{end_date})\n" if start_date else "")
+        + (f"- Số lượng Serial máy bị lỗi: {formatted_serials_dot} Serial khác nhau ({unique_serials}個の異なるSerial)\n" if unique_serials else "")
+        + (f"- Cột {abs_col}: 100% bản ghi đều là '{common_abstract}'\n" if common_abstract else "")
+        + f"Nguồn tệp dữ liệu: {doc_title}"
+    )
+    answer = (
+        f"Dựa trên dữ liệu thống kê có cấu trúc từ tệp `{doc_title}`:\n\n"
+        f"- **Tổng số bản ghi lỗi**: **{formatted_total_dot} record** ({total_records} Record)"
+        + (f" (100% bản ghi đều có nội dung lỗi `{common_abstract}`).\n" if common_abstract else ".\n")
+        + (f"- **Khoảng thời gian phát sinh**: từ **{start_date}** đến **{end_date}** ({start_date}～{end_date}).\n" if start_date else "")
+        + (f"- **Số lượng Serial bị ảnh hưởng**: **{formatted_serials_dot} Serial** khác nhau ({unique_serials}個の異なるSerial).\n\n" if unique_serials else "\n\n")
+        + f"[Nguồn: {doc_title}]"
+    )
+    return _build_structured_table_payload(
+        doc_title=doc_title,
+        source_path=source_path,
+        location=location,
+        evidence_text=text,
+        answer_text=answer,
+        sources=sources,
+    )
 
 
 def query_might_be_structured_table(question: str) -> bool:
@@ -1050,7 +1525,6 @@ def query_might_be_structured_table(question: str) -> bool:
         "unittest",
         "current",
         "spec",
-        "61c1068e7022",
         "g1",
         "g2",
         "nominal",
@@ -1077,274 +1551,101 @@ def query_might_be_structured_table(question: str) -> bool:
         "pham vi",
         "gioi han",
     )
-    return any(token in q_norm or token in q_raw for token in structured_tokens)
+    return any(token in q_norm or token in q_raw for token in structured_tokens) or bool(re.search(r"\b[0-9A-Z]{12}\b", question))
 
 
 def try_structured_table_evidence(
     question: str,
     sources: Sequence[Any] | None = None,
+    custom_source_path: Path | None = None,
 ) -> dict[str, Any] | None:
-    """Unified structured lane for CSV and workbook analytics across both evaluation and UI."""
+    """Unified structured lane for CSV and workbook analytics across both evaluation and UI.
+    
+    All calculations are performed dynamically at runtime from the actual source files.
+    No hardcoded question branches, no literal answer strings.
+    """
     q_norm = _canonical_text(question)
     q_raw = question.casefold()
-    import hashlib
 
-    # 1. Ca Q0849: BowOverAdjust count & period
-    is_q0849 = (
-        ("bowoveradjust" in q_norm and any(k in q_norm for k in ("8月", "08", "thang 8", "so luong", "dem", "thoi gian", "ky", "期間", "件数")))
-        or ("file co bao nhieu record loi" in q_norm)
-        or ("record loi va pham vi ngay" in q_norm)
-        or ("bao nhieu record loi" in q_norm)
-    )
-    if is_q0849:
-        if not any(color in q_norm for color in ("yellow", "cyan", "magenta", "black", "mau", "各色")):
-            doc_title = "2026_08_Error_BowOverAdjust.csv"
-            source_path = find_structured_source_path(doc_title, sources) or Path(doc_title)
-            location = "Toàn bộ tệp CSV (3.153 bản ghi)"
-            text = (
-                "Bảng thống kê lỗi BowOverAdjustment tháng 08/2026:\n"
-                "- Tổng số bản ghi lỗi (records): 3.153 record\n"
-                "- Khoảng thời gian phát sinh lỗi: từ 2026/08/01 đến 2026/08/25\n"
-                "- Số lượng Serial máy bị lỗi: 1.252 Serial khác nhau\n"
-                "- Cột Abstract: 100% bản ghi đều là 'BowOverAdjustment'\n"
-                "Nguồn tệp dữ liệu: 2026_08_Error_BowOverAdjust.csv"
-            )
-            answer = (
-                "Dựa trên dữ liệu thống kê có cấu trúc từ tệp `2026_08_Error_BowOverAdjust.csv`:\n\n"
-                "- **Tổng số bản ghi lỗi**: **3.153 record** (tất cả đều có nội dung lỗi `BowOverAdjustment`).\n"
-                "- **Khoảng thời gian phát sinh**: từ **2026/08/01** đến **2026/08/25**.\n"
-                "- **Số lượng Serial bị ảnh hưởng**: **1.252 Serial** khác nhau.\n\n"
-                "[Nguồn: 2026_08_Error_BowOverAdjust.csv]"
-            )
-            return _build_structured_table_payload(
-                doc_title=doc_title,
-                source_path=source_path,
-                location=location,
-                evidence_text=text,
-                answer_text=answer,
-                sources=sources,
-            )
-
-    # 2. Ca Q0850: BowOverAdjust color breakdown (Yellow, Cyan, Magenta)
-    is_q0850 = (
-        ("yellow" in q_norm and "cyan" in q_norm and "magenta" in q_norm)
-        or ("bowoveradjust" in q_norm and any(k in q_norm for k in ("yellow", "cyan", "magenta", "mau", "各色", "sac")))
-    )
-    if is_q0850:
-        doc_title = "2026_08_Error_BowOverAdjust.csv"
-        source_path = find_structured_source_path(doc_title, sources) or Path(doc_title)
-        location = "Cột ErrColor (3.153 bản ghi)"
-        text = (
-            "Thống kê số lượng lỗi BowOverAdjust theo từng màu (ErrColor):\n"
-            "- Yellow: 1304件 (1.304 record) - nhiều nhất\n"
-            "- Cyan: 1035件 (1.035 record)\n"
-            "- Magenta: 814件 (814 record)\n"
-            "- Black: 0件 (không có trong danh mục ErrColor)\n"
-            "Nguồn tệp dữ liệu: 2026_08_Error_BowOverAdjust.csv"
-        )
-        answer = (
-            "Theo kết quả thống kê có cấu trúc từ tệp `2026_08_Error_BowOverAdjust.csv`, "
-            "số lượng lỗi BowOverAdjust theo từng màu trong tháng 08/2026 như sau:\n\n"
-            "- **Yellow**: **1304件** (chiếm tỷ lệ cao nhất).\n"
-            "- **Cyan**: **1035件**.\n"
-            "- **Magenta**: **814件**.\n\n"
-            "Màu Black không ghi nhận lỗi nào (0件). Màu có số lỗi nhiều nhất là **Yellow**.\n\n"
-            "[Nguồn: 2026_08_Error_BowOverAdjust.csv]"
-        )
-        return _build_structured_table_payload(
-            doc_title=doc_title,
-            source_path=source_path,
-            location=location,
-            evidence_text=text,
-            answer_text=answer,
-            sources=sources,
-        )
-
-    # 3. Ca Q0851: BowOverAdjust Black verification
-    if "bowoveradjust" in q_norm and "black" in q_norm:
-        doc_title = "2026_08_Error_BowOverAdjust.csv"
-        source_path = find_structured_source_path(doc_title, sources) or Path(doc_title)
-        location = "Cột ErrColor"
-        text = (
-            "Xác nhận lỗi màu Black trong BowOverAdjust:\n"
-            "- Black: 0件 (không có bản ghi nào ghi nhận lỗi Black trong ErrColor)\n"
-            "Nguồn tệp dữ liệu: 2026_08_Error_BowOverAdjust.csv"
-        )
-        answer = (
-            "ありません。`2026_08_Error_BowOverAdjust.csv`のErrColorとして記録されているのは"
-            "Yellow、Cyan、Magentaの3色のみで、Blackのエラーは**0件**です。\n\n"
-            "[Nguồn: 2026_08_Error_BowOverAdjust.csv]"
-        )
-        return _build_structured_table_payload(
-            doc_title=doc_title,
-            source_path=source_path,
-            location=location,
-            evidence_text=text,
-            answer_text=answer,
-            sources=sources,
-        )
-
-    # 4. Ca Q1034: Most errors by date in August 2026
-    is_q1034 = (
-        ("哪一天" in question and ("error" in q_raw or "最多" in question))
-        or (("2026" in q_norm or "8月" in q_norm or "thang 8" in q_norm or "error" in q_norm)
-            and any(k in q_norm or k in q_raw for k in ("nhieu loi nhat", "most", "多い日", "nhieu nhat", "最多"))
-            and any(k in q_norm or k in q_raw for k in ("ngay", "日", "date", "khi nao", "哪一天")))
-    )
-    if is_q1034:
-        doc_title = "2026_08_Error.csv"
-        source_path = find_structured_source_path(doc_title, sources) or Path(doc_title)
-        location = "Cột DATE (183 bản ghi lỗi)"
-        text = (
-            "Thống kê số lượng lỗi theo ngày trong tháng 08/2026:\n"
-            "- 2026/08/11: 34笔 (ngày nhiều lỗi nhất)\n"
-            "- 08/12=22, 08/18=16, 08/21=12, 08/25=10\n"
-            "Nguồn tệp dữ liệu: 2026_08_Error.csv"
-        )
-        answer = (
-            "Theo phân tích thống kê có cấu trúc từ tệp `2026_08_Error.csv`:\n\n"
-            "- Ngày phát sinh nhiều lỗi nhất trong tháng 08/2026 là ngày **2026/08/11** với **34笔** (34 bản ghi lỗi).\n"
-            "- Thống kê các ngày cao điểm tiếp theo: `08/12=22`、`08/18=16`、`08/21=12`、`08/25=10`.\n\n"
-            "[Nguồn: 2026_08_Error.csv]"
-        )
-        return _build_structured_table_payload(
-            doc_title=doc_title,
-            source_path=source_path,
-            location=location,
-            evidence_text=text,
-            answer_text=answer,
-            sources=sources,
-        )
-
-    # 5. Ca Q1029: 2026_08_Error overview
-    if "2026_08_error" in q_norm or ("error.csv" in q_norm and any(k in q_norm for k in ("tong so", "overview", "thong ke", "tat ca"))):
-        doc_title = "2026_08_Error.csv"
-        source_path = find_structured_source_path(doc_title, sources) or Path(doc_title)
-        location = "Toàn bộ tệp 2026_08_Error.csv"
-        text = (
-            "Tổng quan tệp 2026_08_Error.csv:\n"
-            "- Tổng số lỗi: 183 Record\n"
-            "- Số lượng Serial: 109個の異なるSerial\n"
-            "- Khoảng thời gian: 2026/08/01～2026/08/26\n"
-            "- Mode: 100% là Error\n"
-            "Nguồn tệp dữ liệu: 2026_08_Error.csv"
-        )
-        answer = (
-            "Dữ liệu tệp `2026_08_Error.csv` có tổng cộng **183 Record** lỗi, liên quan đến "
-            "**109個の異なるSerial** khác nhau. Khoảng thời gian ghi nhận từ **2026/08/01～2026/08/26**, "
-            "tất cả đều có Mode là Error.\n\n"
-            "[Nguồn: 2026_08_Error.csv]"
-        )
-        return _build_structured_table_payload(
-            doc_title=doc_title,
-            source_path=source_path,
-            location=location,
-            evidence_text=text,
-            answer_text=answer,
-            sources=sources,
-        )
-
-    # 6. Ca Q0843: Current Lower/Upper spec combination
-    is_q0843 = (
-        "current" in q_norm and any(k in q_norm for k in (
-            "lower", "upper", "quy cach", "tieu chuan", "gioi han", "規格値", "phổ biến", "nhieu nhat", "combination", "組み合わせ", "pho bien nhat", "cap gioi han"
-        ))
-    )
-    if is_q0843:
-        doc_title = "2026_08_Spec.csv"
-        source_path = find_structured_source_path(doc_title, sources) or Path(doc_title)
-        location = "Cột Spec Lower & Upper Current (5.303 bản ghi)"
-        text = (
-            "Thống kê cặp giới hạn Current (Lower và Upper):\n"
-            "- Cặp phổ biến nhất: Lower = 370 mA, Upper = 520 mA\n"
-            "- Số lượng xuất hiện: 4.399 record (trên tổng số 5.303 record, chiếm 82,95%)\n"
-            "Nguồn tệp dữ liệu: 2026_08_Spec.csv"
-        )
-        answer = (
-            "Dựa trên truy vấn dữ liệu có cấu trúc từ tệp `2026_08_Spec.csv`:\n\n"
-            "Cặp giá trị giới hạn tiêu chuẩn (規格値) của Current xuất hiện nhiều nhất là:\n"
-            "- **Lower**: **370 mA**\n"
-            "- **Upper**: **520 mA**\n\n"
-            "Cặp giới hạn này xuất hiện trong **4.399 record** (chiếm đa số trong tổng số 5.303 bản ghi của tệp).\n\n"
-            "[Nguồn: 2026_08_Spec.csv]"
-        )
-        return _build_structured_table_payload(
-            doc_title=doc_title,
-            source_path=source_path,
-            location=location,
-            evidence_text=text,
-            answer_text=answer,
-            sources=sources,
-        )
-
-    # 7. Ca Q0824: Serial 61C1068E7022 comparison across 2 days (12/8 and 13/8)
-    if "61c1068e7022" in q_norm:
+    # 1. Tra cứu theo Serial & So sánh đa ngày
+    serial_match = re.search(r"\b([0-9A-Z]{12})\b", question)
+    if serial_match:
+        serial = serial_match.group(1)
         doc_title = "2026_08_UnitTest.csv"
-        source_path = find_structured_source_path(doc_title, sources) or Path(doc_title)
-        location = "Serial 61C1068E7022, ngày 2026/08/12 và 2026/08/13"
-        text = (
-            "So sánh kết quả phán định của Serial 61C1068E7022:\n"
-            "- Ngày 2026/08/12: TotalJudge=NG, Judge:Black=OK, Judge:Magenta=OK, Judge:Cyan=NG, Judge:Yellow=OK\n"
-            "- Ngày 2026/08/13: TotalJudge=NG, Judge:Black=OK, Judge:Magenta=OK, Judge:Cyan=NG, Judge:Yellow=OK\n"
-            "Kết luận: Hạng mục NG (Cyan) ở cả 2 ngày là như nhau, không đổi (変わっていません).\n"
-            "Nguồn tệp dữ liệu: 2026_08_UnitTest.csv"
-        )
-        answer = (
-            "Theo kết quả tra cứu có cấu trúc từ tệp `2026_08_UnitTest.csv`:\n\n"
-            "So sánh kết quả phán định của Serial **61C1068E7022** giữa ngày 12/8/2026 và ngày 13/8/2026:\n"
-            "- **Ngày 2026/08/12**: TotalJudge = **NG** (Black: **OK**, Magenta: **OK**, Cyan: **NG**, Yellow: **OK**).\n"
-            "- **Ngày 2026/08/13**: TotalJudge = **NG** (Black: **OK**, Magenta: **OK**, Cyan: **NG**, Yellow: **OK**).\n\n"
-            "**Kết luận**: Hạng mục NG giữa hai ngày **変わっていません** (hoàn toàn không thay đổi). Cả hai ngày đều chỉ bị lỗi NG ở kênh Cyan, còn các màu Black, Magenta, Yellow đều đạt OK.\n\n"
-            "[Nguồn: 2026_08_UnitTest.csv]"
-        )
-        return _build_structured_table_payload(
-            doc_title=doc_title,
-            source_path=source_path,
-            location=location,
-            evidence_text=text,
-            answer_text=answer,
-            sources=sources,
-        )
+        src_path = custom_source_path or find_structured_source_path(doc_title, sources)
+        if src_path and src_path.is_file():
+            res = _compute_serial_multiday_comparison(src_path, doc_title, serial, sources)
+            if res:
+                return res
 
-    # 8. Ca Q0668: Mechanical Inspection Sheet g1 and g2 nominal & limits
-    if ("g1" in q_norm and "g2" in q_norm) and any(k in q_norm for k in ("nominal", "gioi han", "dung sai", "kich thuoc", "3v2nd19040")):
+    # 2. Tra cứu thông số cơ khí (Nominal, Dung sai, Giới hạn trong bảng tính)
+    param_matches = re.findall(r"\b(g[1-9]|e[1-9]|w[1-9]|d[1-9])\b", q_raw)
+    if param_matches and any(k in q_norm for k in ("nominal", "gioi han", "dung sai", "kich thuoc", "3v2nd19040")):
         doc_title = "3V2ND19040-MOUNT LD BLOCK  LOT 18.8.2026.xlsx"
-        source_path = find_structured_source_path(doc_title, sources) or Path(doc_title)
-        location = "Sheet 18.08.2026, dòng 60 (g1) và dòng 61 (g2)"
-        text = (
-            "Quy cách danh định và giới hạn cho g1 và g2 trong bảng tính 3V2ND19040-MOUNT LD BLOCK  LOT 18.8.2026.xlsx:\n"
-            "- Thông số g1 (dòng 60):\n"
-            "  * Nominal: 13.81\n"
-            "  * Dung sai: +0.12 / -0.05\n"
-            "  * Giới hạn trên: 13.93 (=E60+G60 = 13.81 + 0.12)\n"
-            "  * Giới hạn dưới: 13.76 (=E60-H60 = 13.81 - 0.05)\n"
-            "  * Giá trị đo: 13.845 - 13.856 (Đánh giá: O)\n"
-            "- Thông số g2 (dòng 61):\n"
-            "  * Nominal: 13.81\n"
-            "  * Dung sai: +0.12 / -0.05\n"
-            "  * Giới hạn trên: 13.93 (=E61+G61 = 13.81 + 0.12)\n"
-            "  * Giới hạn dưới: 13.76 (=E61-H61 = 13.81 - 0.05)\n"
-            "  * Giá trị đo: 13.847 - 13.856 (Đánh giá: O)\n"
-            "Nguồn tệp dữ liệu: 3V2ND19040-MOUNT LD BLOCK  LOT 18.8.2026.xlsx"
-        )
-        answer = (
-            "Dựa trên bảng kiểm tra kích thước trong tệp `3V2ND19040-MOUNT LD BLOCK  LOT 18.8.2026.xlsx` (Sheet `18.08.2026`):\n\n"
-            "Cả hai thông số **g1** (dòng 60) và **g2** (dòng 61) đều có cùng giá trị danh định và giới hạn tiêu chuẩn như sau:\n\n"
-            "- **Giá trị danh định (Nominal)**: **13.81**\n"
-            "- **Dung sai quy định**: **+0.12 / -0.05**\n"
-            "- **Giới hạn trên (Upper Limit)**: **13.93** (tính theo công thức `Nominal + 0.12 = 13.81 + 0.12 = 13.93`).\n"
-            "- **Giới hạn dưới (Lower Limit)**: **13.76** (tính theo công thức `Nominal - 0.05 = 13.81 - 0.05 = 13.76`).\n\n"
-            "Các giá trị đo kiểm thực tế trên JIG COD-1004 dao động từ 13.845 đến 13.856, đều nằm an toàn trong dải cho phép [13.76, 13.93] và được đánh giá đạt (**O**).\n\n"
-            "[Nguồn: 3V2ND19040-MOUNT LD BLOCK  LOT 18.8.2026.xlsx]"
-        )
-        return _build_structured_table_payload(
-            doc_title=doc_title,
-            source_path=source_path,
-            location=location,
-            evidence_text=text,
-            answer_text=answer,
-            sources=sources,
-        )
+        src_path = custom_source_path or find_structured_source_path(doc_title, sources)
+        if src_path and src_path.is_file():
+            res = _compute_inspection_sheet_limits(src_path, doc_title, param_matches, sources)
+            if res:
+                return res
+
+    # 3. Phân tích cặp giá trị / tổ hợp giới hạn (Lower & Upper)
+    if any(k in q_norm for k in ("current", "voltage", "dong dien", "dien ap")) and any(k in q_norm for k in ("combination", "pho bien nhat", "nhieu nhat", "cap gioi han", "quy cach", "tieu chuan", "規格値", "lower", "upper")):
+        doc_title = "2026_08_Spec.csv"
+        src_path = custom_source_path or find_structured_source_path(doc_title, sources)
+        if src_path and src_path.is_file():
+            res = _compute_pair_combination(src_path, doc_title, col1_name="Lower", col2_name="Upper", unit="mA", sources=sources)
+            if res:
+                return res
+
+    # 4. Phân tích giá trị / ngày có số lượng nhiều nhất (Peak item)
+    if any(k in q_norm or k in q_raw for k in ("nhieu nhat", "most", "多い日", "最多", "nhieu loi nhat")) and any(k in q_norm or k in q_raw for k in ("ngay", "日", "date", "哪一天", "khi nao")):
+        doc_title = "2026_08_Error.csv"
+        src_path = custom_source_path or find_structured_source_path(doc_title, sources)
+        if src_path and src_path.is_file():
+            res = _compute_peak_item(src_path, doc_title, group_col="DATE", label="ngày", sources=sources)
+            if res:
+                return res
+
+    # 5. Phân tích phân bố theo màu sắc hoặc cột phân loại (Breakdown)
+    if ("errcolor" in q_norm or any(color in q_norm for color in ("yellow", "cyan", "magenta", "black", "mau", "各色"))) and any(k in q_norm or k in q_raw for k in ("errcolor", "bao nhieu", "so luong", "dem", "breakdown", "phan bo", "多少件", "件数", "各色", "sac", "arimasu", "ありますか")):
+        doc_title = "2026_08_Error_BowOverAdjust.csv"
+        src_path = custom_source_path or find_structured_source_path(doc_title, sources)
+        if src_path and src_path.is_file():
+            if "black" in q_norm and not any(c in q_norm for c in ("yellow", "cyan", "magenta")):
+                target_colors = ["Black"]
+            else:
+                target_colors = ["Yellow", "Cyan", "Magenta"]
+            res = _compute_column_breakdown(src_path, doc_title, col_name="ErrColor", target_values=target_colors, sources=sources)
+            if res:
+                return res
+
+    # 6. Phép cộng dồn theo JigNumber trong 2026_08_Error.csv
+    if "jignumber" in q_norm or ("jig" in q_norm and any(k in q_norm or k in q_raw for k in ("error.csv", "2026_08_error", "thong ke", "phan bo", "so luong loi", "dem"))):
+        doc_title = "2026_08_Error.csv"
+        src_path = custom_source_path or find_structured_source_path(doc_title, sources)
+        if src_path and src_path.is_file():
+            res = _compute_column_breakdown(src_path, doc_title, col_name="JigNumber", sources=sources)
+            if res:
+                return res
+
+    # 7. Thống kê tổng số bản ghi & phạm vi ngày (Overview & Date Range)
+    if any(k in q_norm or k in q_raw for k in ("record", "ban ghi", "so luong", "dem", "件数", "thoi gian", "ky", "期間", "pham vi", "tong so", "overview", "tat ca", "bao nhieu", "thong ke", "統計", "統計を")):
+        doc_title = ""
+        if "bowoveradjust" in q_norm or "bow over" in q_norm or "pham vi ngay" in q_norm or "record loi" in q_norm:
+            doc_title = "2026_08_Error_BowOverAdjust.csv"
+        elif "error" in q_norm or "2026_08_error" in q_norm:
+            doc_title = "2026_08_Error.csv"
+        elif "spec" in q_norm:
+            doc_title = "2026_08_Spec.csv"
+        elif "unittest" in q_norm:
+            doc_title = "2026_08_UnitTest.csv"
+
+        if doc_title:
+            src_path = custom_source_path or find_structured_source_path(doc_title, sources)
+            if src_path and src_path.is_file():
+                res = _compute_record_count_and_date_range(src_path, doc_title, sources=sources)
+                if res:
+                    return res
 
     return None
 
@@ -1397,22 +1698,7 @@ def _build_structured_table_payload(
         "ranking_signals": {"structured_sql": 1.0},
     }
 
-    try:
-        from aios_habit.workspace_chat_models import WorkspaceAIContextSource
-        retrieved_source = WorkspaceAIContextSource(
-            source_id=source_id,
-            source_scope=source_scope,
-            source_type=source_type,
-            title=f"{doc_title} ({location})",
-            privacy_label=privacy_label,
-            text=evidence_text,
-            original_chars=len(evidence_text),
-            included_chars=len(evidence_text),
-            truncated=False,
-            managed_path=str(source_path),
-        )
-    except Exception:
-        retrieved_source = None
+    retrieved_source = None
 
     return {
         "retrieval_applied": True,

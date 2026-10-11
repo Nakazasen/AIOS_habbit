@@ -1,12 +1,16 @@
 {
-  "timestamp": "2026-10-11 13:27:16",
-  "ticket": "CSV-STRUCTURED-LANE-HOME",
+  "timestamp": "2026-10-11 14:29:09",
+  "ticket": "CSV-STRUCTURED-LANE-FIX-HOME",
+  "baseline_pre_lane_score": 74.0,
   "total_questions": 50,
-  "total_score": 86.5,
+  "total_score": 94.5,
+  "score_gain": 20.5,
   "max_score": 150.0,
-  "average_score": 1.73,
+  "average_score": 1.89,
   "target_questions_count": 6,
   "target_questions_total_score": 18.0,
   "target_questions_max_score": 18.0,
-  "targets_accuracy_rate": 100.0
+  "targets_accuracy_rate": 100.0,
+  "regression_count": 0,
+  "regressions": []
 }
