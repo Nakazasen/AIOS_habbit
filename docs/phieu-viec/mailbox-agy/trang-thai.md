@@ -1,5 +1,15 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
+## Vé hiện tại: CSV-STRUCTURED-LANE-HOME (làn truy vấn có cấu trúc cho dữ liệu CSV/bảng)
+
+- Trạng thái: `moi`
+- `ghi_chu` (điều phối Muse — PHÁT HÀNH): 2026-10-11 ~13:1x +07 — Phát hành vé này làm vé hiện hành (`prompt.md` đã thay bằng nội dung vé + mục bổ sung ca Q0668 từ verdict BLOCK-FIX). Phạm vi gồm: 4 câu thống kê toàn tệp + ca Q0824 (theo các bổ sung đã ghi trong vé) + ca Q0668 về giá trị ô bảng tính (bổ sung mới ở cuối `prompt.md`). Điều kiện bốc cũ "sau BLOCK-FIX" đã thoả (verdict ở khối ngay dưới).
+
+## Vé vừa verdict: Q0668-BLOCK-FIX-HOME
+
+- Trạng thái: `xong`
+- `ghi_chu` (điều phối Muse — VERDICT): 2026-10-11 ~13:1x +07 — **ĐẠT MỘT PHẦN**. ĐẠT (điều phối kiểm chứng độc lập): đồng bộ vật lý 7 tài liệu vào bộ sưu tập khối `lsu` có sao lưu trước (SHA `5982A4F1...`) + toàn vẹn ok; số đếm khớp đối soát (92→99 tài liệu; +31.862 mảnh = 31.711 missing5 + 151 tệp đích); bản đồ miền sửa đúng (lsu 99 / dieu_tra_loi 679 / mom 44 / tong_hop 72 = 894); số đếm chip khối nay động theo dữ kiện thật (khép quan trắc 889/894); kiểm thử điều phối chạy lại tại tip nộp: 93 passed; truy hồi khối `lsu` xếp tệp đích hạng 1 có trích dẫn (rows); câu PPTX qua khối `lsu` trả lời trọn vẹn 49,49%/25,42% trên giao diện (kiểm chứng bằng ảnh). CHƯA ĐẠT: đáp án Q0668 chưa chứa bộ số nominal/giới hạn ở cả đường đo (rows tự nộp `chinh_xac` 0.0, tổng 1.0/3.0) lẫn giao diện (mẫu "No grounded evidence" + trích dẫn công thức chưa tính giá trị) — phần tồn chuyển sang `CSV-STRUCTURED-LANE-HOME` làm ca bắt buộc. ĐIỂM TRỪ HỒ SƠ: báo cáo mục 4/5.2 tuyên bố "trích xuất trọn vẹn bộ số" mâu thuẫn chính tệp rows đã nộp — lần thứ ba điều phối phải nhắc luật khớp số liệu báo cáo/rows. Miễn trừ độ phủ vector cho riêng tệp BowOverAdjust trong `rag_v2/index.py`: chấp nhận như cầu nối có chủ đích theo luật không-nhúng-log của user, phạm vi hẹp một document ID, fail-closed giữ nguyên cho phần còn lại; rà lại khi làn cấu trúc khép.
+
 ## Vé hiện tại: Q0668-BLOCK-FIX-HOME (khép Mục 0.2: sửa lệch khối tri thức của Q0668)
 
 - Trạng thái: `xong-cho-duyet`

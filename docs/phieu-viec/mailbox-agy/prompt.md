@@ -1,30 +1,37 @@
-# VÉ: Q0668-BLOCK-FIX-HOME (khép Mục 0.2: sửa lệch khối tri thức khiến giao diện không thấy tệp đích của Q0668)
+# VÉ: CSV-STRUCTURED-LANE-HOME (xây làn truy vấn có cấu trúc cho câu hỏi thống kê toàn tệp CSV)
 
-- Mã vé: `Q0668-BLOCK-FIX-HOME`
-- Role gợi ý: DEFAULT (agy — máy nhà `h410asrock`)
-- Báo cáo: `docs/phieu-viec/ket-qua/q0668-block-fix-home.md`
-- Điều kiện bốc: vé `MISSING5-EMBED-COMPLETE-HOME` đã bị HUỶ theo quyết định của điều phối (chốt của user 2026-10-11) — điều kiện bốc của vé này coi như đã thoả. Xem khối huỷ ở đầu `trang-thai.md`.
+- Mã vé: `CSV-STRUCTURED-LANE-HOME`
+- Role gợi ý: PLAN/DEFAULT (agy — máy nhà `h410asrock`)
+- Báo cáo: `docs/phieu-viec/ket-qua/csv-structured-lane-home.md`
+- Điều kiện bốc: sau khi `Q0668-BLOCK-FIX-HOME` khép. Đây là vé xây tính năng, không phải vé vá dữ liệu.
 
 ## Căn cứ (vé chẩn đoán MISSING5-RETRIEVAL-DIAG-HOME, điều phối đã kiểm chứng)
 
-Đường đo đạt 1,5 cho `Q0668` vì đo trên chỉ mục hợp nhất `tri_thuc` (tệp `3V2ND19040...xlsx` có 151 mảnh, hạng 1). Đường giao diện thất bại vì tệp đích được phân loại chỉ thuộc khối `dieu_tra_loi` (0 mảnh trong khối `lsu`), trong khi kịch bản giao diện ép chọn khối `lsu` → bộ lọc khối chặn đứng tệp đích. Đây là gốc rễ còn lại của Mục 0.2.
+4 trên 7 câu đích (`Q0849`, `Q0850`, `Q1034`, `Q0843`) là câu hỏi thống kê toàn tệp: đếm bản ghi, phân bố theo màu, ngày nhiều lỗi nhất, cặp giới hạn phổ biến nhất. Truy hồi top-k mảnh văn bản rời rạc về mặt toán học không thể tính đúng các phép tổng hợp này trên 3.153–25.213 bản ghi, dù dữ liệu đã có đủ trong chỉ mục. Trong kho đã có hạ tầng truy vấn có cấu trúc (`src/aios_habit/rag_v2/structured_query.py`) để tận dụng.
 
 ## Việc phải làm
 
-1. Chọn và triển khai cách sửa ở tầng phân loại/định tuyến (ví dụ cho phép tệp thuộc đồng thời khối `lsu` và `dieu_tra_loi`, hoặc đồng bộ tệp đích vào khối `lsu`), theo đúng mô hình tài liệu user đã chốt: tài liệu đã index là hỏi đáp được ngay bằng chọn khối tri thức, không hiển thị số liệu mâu thuẫn. Ghi rõ cách đã chọn và lý do; không phá phân loại của các tệp khác (có kiểm thử hồi quy cho `index_domain`).
-2. Nếu cách sửa cần ghi chỉ mục: sao lưu trước + toàn vẹn, chỉ ghi đúng phần liên quan, ghi số đo trước/sau.
-3. Nghiệm thu giao diện thật: phiên MỚI, chọn khối theo đúng cách người dùng cuối vẫn dùng, hỏi lại `Q0668`; đáp án phải trích đúng tệp đích và có bộ số nominal/giới hạn; ảnh chứa trọn thân đáp án. Đo lại `Q0668` bằng đường đo để xác nhận không thụt lùi.
+1. Khảo sát hạ tầng truy vấn có cấu trúc hiện có và thiết kế làn định tuyến: khi phân loại ý định nhận ra câu hỏi thống kê trên tệp CSV đã index (đếm/phân bố/giá trị cực trị), định tuyến sang thực thi truy vấn có cấu trúc trên dữ liệu nguồn/bảng đã nạp, trả đáp án kèm trích dẫn tệp và phạm vi dữ liệu. Chỉ cho phép truy vấn đọc (SELECT) trên bảng tạm/nội bộ, chống tiêm SQL.
+2. Triển khai trong phạm vi đường hỏi đáp hiện hành (cả đường đo và giao diện dùng chung một làn), không đổi ngưỡng cổng bằng chứng cho các câu không thuộc nhóm thống kê.
+3. Kiểm chứng: đo lại 4 câu thống kê — số liệu phải khớp 100% với đáp án chuẩn; đo lại toàn bộ 50 câu để xác nhận không thụt lùi ở nhóm câu khác; nghiệm thu giao diện ít nhất 2 câu thống kê trong phiên mới, ảnh chứa trọn thân đáp án.
 
 ## Ràng buộc
 
-- Không đổi ngưỡng cổng. Không dùng cách "sửa kịch bản test cho qua" thay cho sửa phân loại/định tuyến thật.
-- Mốc tiến độ tối thiểu 15 phút/lần kèm điểm kiểm.
+- Tuân thủ chuẩn sản phẩm: tính năng phải có điểm hứng phản hồi tại chỗ, metric đo được và vòng xem lại như mọi tính năng mới khác.
+- Không đổi bộ đề/thang chấm. Mốc tiến độ tối thiểu 15 phút/lần kèm điểm kiểm; commit checkpoint theo mốc.
 
-## Bổ sung phạm vi của điều phối (2026-10-11, từ verdict đợt quét B1)
+## Bổ sung phạm vi của điều phối (2026-10-11, từ verdict MISSING5-PARSER-FIX-HOME)
 
-Đợt quét `DESKTOP-KNOWLEDGE-BLOCK-QA-HOME` phát hiện thêm một lệch đồng bộ cùng họ với lệch khối của Q0668, xử lý luôn trong vé này:
+Hai việc chuyển tiếp bắt buộc, ngoài 4 câu thống kê gốc của vé:
 
-- Nhãn chip khối trên giao diện ghi "Tự động (889 tài liệu)" trong khi chỉ mục hợp nhất đang dùng có 894 tài liệu sau đợt nạp missing5.
-- Năm tệp nguồn mới nạp (nhóm LSU) chỉ tồn tại trong chỉ mục hợp nhất `tri_thuc`, chưa có trong các bộ sưu tập theo khối — vé chẩn đoán đã đo khối `lsu` có 0 mảnh của các tệp này. Người dùng chọn khối LSU trên giao diện vì thế không bao giờ chạm được dữ liệu mới nạp.
+1. **Ca Q0824 (so sánh phán định của một serial giữa hai ngày)**: bộ chia mảnh đã chữa xong (hai dòng đích vào hạng 2 và 3 của gói bằng chứng, đủ cột phán định) nhưng đáp án bị cổng độ phủ từ vựng đa ngữ chặn (câu hỏi tiếng Nhật, bằng chứng tiếng Anh, lý do `final_evidence_query_coverage_below_threshold`). Làn có cấu trúc phải trả lời được ca này từ chính bảng dữ liệu (tra dòng theo serial + so sánh hai ngày) mà không phụ thuộc độ phủ từ vựng của câu hỏi, và đáp án phải khớp sự thật của hai dòng (cả hai ngày đều OK ở mọi cột phán định → Pattern không đổi).
+2. **Bằng chứng giao diện cho Q0620 và Q0824**: trong nghiệm thu của vé này, chạy cả hai câu trên giao diện thật và nộp ảnh chứa TRỌN thân đáp án đã hoàn tất (không chấp nhận ảnh chụp lúc còn đang xử lý) — đây là phần bằng chứng giao diện còn thiếu của vé PARSER-FIX.
 
-Yêu cầu bổ sung: đồng bộ 5 tệp mới vào đúng bộ sưu tập theo khối của chúng (kèm đủ vector theo quy chuẩn như vé nhúng bổ sung), bảo đảm số đếm tài liệu hiển thị trên chip khối khớp với dữ liệu thật của từng khối sau đồng bộ, và nghiệm thu bằng một câu hỏi giao diện chọn khối LSU có trích đúng một tệp mới. Nếu cách sửa phân loại ở phần chính của vé đã bao phủ việc này thì ghi rõ trong báo cáo, không làm hai lần.
+
+## Bổ sung phạm vi của điều phối (2026-10-11, từ verdict Q0668-BLOCK-FIX-HOME — ĐẠT MỘT PHẦN)
+
+Vé `Q0668-BLOCK-FIX-HOME` đã khép phần ống nước khối (tệp đích + 5 tệp missing5 đã vào bộ sưu tập khối `lsu`, truy hồi trên khối `lsu` xếp tệp đích hạng 1 có trích dẫn) nhưng đáp án Q0668 qua giao diện vẫn **chưa chứa bộ số nominal/giới hạn** (rows tự nộp: `chinh_xac` 0.0, tổng 1.0/3.0; đáp án giao diện là mẫu "No grounded evidence" kèm trích dẫn công thức `=G3-G2`/`=G2-G4` chưa tính giá trị, bị gắn `incomplete_query_term_coverage`). Phần tồn này thuộc đúng bản chất làn cấu trúc — trả lời từ **giá trị ô đã tính trong bảng** thay vì từ mảnh văn bản chứa công thức — nên chuyển vào vé này làm ca bắt buộc thêm:
+
+- **Ca Q0668 (bảng tính XLSX)**: hỏi lại `g1 và g2 có nominal và giới hạn nào?` qua khối `lsu` trên giao diện thật; đáp án hoàn tất phải nêu đúng bộ số: nominal **13.81**, dung sai **+0.12 / -0.05**, giới hạn **13.93 / 13.76**, trích đúng tệp `3V2ND19040-MOUNT LD BLOCK  LOT 18.8.2026.xlsx`. Ảnh chứa trọn thân đáp án.
+- Ghi chú bằng chứng đã có: bằng chứng giao diện của Q0620 (câu PPTX qua khối `lsu`, đủ 49,49%/25,42%) đã được vé BLOCK-FIX nộp và điều phối kiểm chứng — phần nợ bằng chứng giao diện của vé này chỉ còn **Q0824** (theo bổ sung trước) **+ ca Q0668 ở trên**.
+- Nhắc luật báo cáo (lần thứ ba điều phối phải nhắc): số liệu trong báo cáo phải khớp tệp rows tự nộp; "bằng chứng truy hồi được" không đồng nghĩa "đáp án đúng" — báo cáo của BLOCK-FIX đã bị ghi điểm trừ vì lỗi này.
