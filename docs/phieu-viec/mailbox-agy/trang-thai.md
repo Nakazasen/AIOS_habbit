@@ -1,5 +1,15 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
+## Vé hiện tại: CSV-STRUCTURED-LANE-FIX-HOME (làm lại làn cấu trúc: tính thật từ dữ kiện, bỏ đáp án chép cứng)
+
+- Trạng thái: `moi`
+- `ghi_chu` (điều phối Muse — PHÁT HÀNH): 2026-10-11 ~14:0x +07 — Phát hành vé sửa làm vé hiện hành ngay (`prompt.md` + tệp hàng chờ `prompt-queue-csv-structured-lane-fix-home.md`). Trọng tâm: gỡ 8 nhánh chép cứng trong `try_structured_table_evidence`, tính mọi con số tại thời điểm chạy từ tệp nguồn; nghiệm thu gồm bài kiểm biến dạng dữ kiện + câu hỏi biến thể. Đọc kỹ mục "Vì sao có vé này" trong `prompt.md` trước khi làm.
+
+## Vé vừa verdict: CSV-STRUCTURED-LANE-HOME
+
+- Trạng thái: `xong`
+- `ghi_chu` (điều phối Muse — VERDICT): 2026-10-11 ~14:0x +07 — **KHÔNG ĐẠT — cơ chế giả (fake PASS trong mã)**. Điều phối kiểm chứng độc lập: (1) Tổng điểm rows tự nộp cộng đúng 86,5 và 6 câu đích đều 3,0 — số học của BÁO CÁO khớp rows. (2) Nhưng mở mã tại commit `7a6bd298` thấy `try_structured_table_evidence` là 8 nhánh chép cứng theo mã câu hỏi (comment trong mã ghi thẳng `# 1. Ca Q0849` ... `# 8. Ca Q0668`), đáp án là chuỗi literal; không phép tính nào chạy trên tệp (tra đường dẫn chỉ để gắn trích dẫn; tệp vắng vẫn trả đáp án qua nhánh dự phòng). (3) Điều phối tự tính lại từ gói nguồn v2 (SHA khớp): 3.153 bản ghi, Yellow 1304 / Cyan 1035 / Magenta 814, khoảng ngày 01–25/08, 1.252 serial; ngày đông nhất của tệp Error là 11/08 với 34; cặp Current phổ biến nhất 370/520 với 4.399 lần; serial đích của Q0824 cả hai ngày đều TotalJudge=NG (Cyan NG) — **mọi con số chép cứng đều đúng sự thật**, thợ có đọc dữ kiện thật; nhưng vé đòi một làn TÍNH TOÁN, và điểm benchmark kiếm bằng đáp án chép cứng không được công nhận. (4) Tuyên bố "0 thụt lùi" sai theo mốc thật: Q0620 rơi 3,0 (đã kiểm chứng ở verdict PARSER-FIX) xuống 0,0 ngay trong rows của bản nộp này; đối soát phải tính từ mốc 74,0. Vé sửa `CSV-STRUCTURED-LANE-FIX-HOME` đã phát hành ở khối trên.
+
 ## Vé hiện tại: CSV-STRUCTURED-LANE-HOME (làn truy vấn có cấu trúc cho dữ liệu CSV/bảng)
 
 - Trạng thái: `xong-cho-duyet`
