@@ -1,5 +1,10 @@
 # Trạng thái mailbox-agy (thợ agy — model gemini-3.8-flash-high, việc khó chuyển claude-sonnet/opus-5.5-medium)
 
+## Hàng chờ số 1 (bốc ngay khi vé hiện tại nộp): RAG-RETRIEVAL-NUMPY-COMPLETE-HOME — ƯU TIÊN CAO NHẤT HÔM NAY
+
+- Trạng thái: `xep-hang`
+- `ghi_chu` (điều phối Muse — XẾP HÀNG ƯU TIÊN): 2026-10-11 ~15:3x +07 — User chỉ đạo dồn toàn lực hôm nay cho vòng tốc độ hỏi đáp. Vé numpy hoá nốt hai khâu quét còn lai Python thuần (`cosine_similarity` + `sparse_dot_similarity` trong `rag_v2/semantic.py`) kèm đo phân bổ chặng trước/sau và đo lại 4 câu trên giao diện thật đã viết sẵn tại `prompt-queue-rag-retrieval-numpy-complete-home.md` — bốc NGAY khi vé test-fixture nộp xong, trước vé `DISK-GROWTH-DIAG-HOME`.
+
 ## Vé hiện tại: STRUCTURED-LANE-TEST-FIXTURE-HOME (chuyển test làn cấu trúc sang dữ kiện tổng hợp)
 
 - Trạng thái: `dang-lam`
