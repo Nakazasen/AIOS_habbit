@@ -3,6 +3,7 @@
 ## Vé hiện tại: DISK-CLEANUP-ROUND3-HOME (quét dọn định kỳ vòng 3 + bổ sung ảnh LANE-FIX)
 
 - Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-11 14:52 +07 — **TIẾN ĐỘ VIỆC 0**: Hoàn thành chụp lại trọn thân 2 ảnh bằng chứng `ui-csv-structured-lane-04-q0824.png` (228.580 B) và `ui-csv-structured-lane-05-q0668.png` (124.872 B) trên phiên UI thật Playwright (khối LSU, sổ mom_opcenter), trọn thân cả câu hỏi và toàn văn câu trả lời trong khung hình. Bắt đầu Việc chính quét dọn ổ C.
 - `ghi_chu`: 2026-10-11 14:47 +07 — **ĐÃ NHẬN VÉ** `DISK-CLEANUP-ROUND3-HOME`: Điều kiện mở đạt (vé LANE-FIX đã ĐẠT). Bắt đầu Việc 0 (chụp lại trọn thân 2 ảnh UI Q0824 và Q0668) và khảo sát 4 hạng mục dọn rác ổ C (staging missing5, tmp file_attach_test, npm-cache qua cổng 24h, tàn dư computer use đã lên Drive).
 - `ghi_chu` (điều phối Muse — PHÁT HÀNH): 2026-10-11 ~14:5x +07 — Phát hành vé dọn rác vòng 3 làm vé hiện hành (`prompt.md` + tệp hàng chờ `prompt-queue-disk-cleanup-round3-home.md`). Việc 0 bắt buộc: chụp lại đúng khung hai ảnh bằng chứng của vé LANE-FIX (chi tiết trong `prompt.md`).
 
