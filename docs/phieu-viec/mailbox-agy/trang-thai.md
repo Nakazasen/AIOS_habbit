@@ -3,6 +3,7 @@
 ## Vé hiện tại: Q0668-BLOCK-FIX-HOME (khép Mục 0.2: sửa lệch khối tri thức của Q0668)
 
 - Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-11 11:34 +07 — **TIẾN ĐỘ**: Hoàn thành Bước 1 đo đạc và sao lưu an toàn lsu/library.sqlite (1.155.637.248 B, SHA-256 5982a4f1...eabb, integrity ok; file backup: library.sqlite.bak-20261011-pre-q0668-block-fix, khớp 100%). Bắt đầu Bước 2 đồng bộ 3V2ND19040 và 5 tệp missing5 từ tri_thuc vào lsu/library.sqlite.
 - `ghi_chu`: 2026-10-11 11:15 +07 — **ĐÃ NHẬN VÉ** `Q0668-BLOCK-FIX-HOME`: Đã đóng an toàn vé huỷ `MISSING5-EMBED-COMPLETE-HOME` (báo cáo `missing5-embed-complete-home.md`, DB 133.791 dense vector, integrity ok). Bắt đầu Bước 1 khảo sát taxonomy khối tri thức và cơ chế phân loại tại `index_domain.py` cùng các bộ sưu tập theo khối trong `collections/`.
 - `ghi_chu` (điều phối Muse — PHÁT HÀNH): 2026-10-11 ~11:05 +07 — Phát hành vé này làm vé hiện hành (`prompt.md` đã thay bằng nội dung vé). Điều kiện bốc cũ "sau khi EMBED khép" đã thoả theo cách khác: vé EMBED bị HUỶ (khối huỷ ngay dưới). Thợ đang chạy nhúng: DỪNG nhúng trước theo khối huỷ, chốt báo cáo đóng vé huỷ, rồi bốc vé này. Sau vé này: `CSV-STRUCTURED-LANE-HOME` (tệp hàng chờ đã có, phạm vi đã bổ sung ca Q0824 + bằng chứng giao diện Q0620/Q0824).
 - `bao_cao`: `docs/phieu-viec/ket-qua/q0668-block-fix-home.md`
