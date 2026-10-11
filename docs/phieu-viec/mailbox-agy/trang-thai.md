@@ -10,6 +10,14 @@
 - Trạng thái: `xep-hang`
 - `ghi_chu` (điều phối Muse — XẾP HÀNG): 2026-10-11 ~21:0x +07 — Phát hiện từ verdict A5: bộ che dữ kiện của đường bằng chứng truy hồi ăn nhầm chuỗi ngày `2026/08/20` thành `[REDACTED_LOCAL_PATH]`, làm đáp án mất mốc ngày. Vé sửa + test hồi quy hai chiều + nghiệm thu giao diện đã viết sẵn tại `prompt-queue-evidence-date-redact-fix-home.md` — bốc sau `RAG-RETRIEVAL-NUMPY-COMPLETE-HOME` và `DISK-GROWTH-DIAG-HOME`.
 
+## Hàng chờ #4 (sau EVIDENCE-DATE-REDACT-FIX-HOME): AUTO-ROUTE-NAMED-DOC-FIX-HOME
+- Trạng thái: xep-hang (điều phối phát hành 2026-10-11 ~23:0x, từ verdict BLOCK-SMOKE)
+- Nội dung: chẩn đoán + sửa lỗi định tuyến chế độ Tự động — câu hỏi nêu đích danh tài liệu bị đoán sai miền và làn cấu trúc trả lời bằng tệp CSV của khối khác. Toàn văn: docs/phieu-viec/mailbox-agy/prompt-queue-auto-route-named-doc-fix-home.md. Báo cáo: docs/phieu-viec/ket-qua/auto-route-named-doc-fix-home.md.
+
+## Hàng chờ #5 (sau AUTO-ROUTE-NAMED-DOC-FIX-HOME): NOTEBOOK-SOURCE-TEXT-FIX-HOME
+- Trạng thái: xep-hang (điều phối phát hành 2026-10-11 ~23:0x, từ verdict BLOCK-SMOKE)
+- Nội dung: sửa crash AttributeError 'NotebookSource' object has no attribute 'text' trong get_workspace_chat_preparation_summary (workspace_chat_rag_v2_adapter.py). Toàn văn: docs/phieu-viec/mailbox-agy/prompt-queue-notebook-source-text-fix-home.md. Báo cáo: docs/phieu-viec/ket-qua/notebook-source-text-fix-home.md.
+
 ## Vé hiện tại: STRUCTURED-LANE-TEST-FIXTURE-HOME (chuyển test làn cấu trúc sang dữ kiện tổng hợp)
 
 - Trạng thái: `dang-lam`

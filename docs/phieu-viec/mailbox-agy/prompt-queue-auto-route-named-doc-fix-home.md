@@ -1,0 +1,9 @@
+# Vé AUTO-ROUTE-NAMED-DOC-FIX-HOME (agy, máy nhà) — câu hỏi nêu đích danh tài liệu bị định tuyến sai miền ở chế độ Tự động
+
+**Nguồn gốc:** phát hiện từ verdict `DESKTOP-BLOCK-SMOKE-HOME` (2026-10-11): ở chế độ khối "Tự động", câu hỏi "Theo tài liệu Tab led cam ung.pdf (Touch Panel Specification), điều kiện nhiệt độ và độ ẩm tiêu chuẩn để bảo quản (Storage) touch panel là bao nhiêu?" bị bộ định tuyến đoán sang khối Điều tra lỗi và **làn cấu trúc trả lời bằng thống kê của tệp `2026_08_Spec.csv`** thuộc kho LSU — đáp án hoàn toàn không liên quan tài liệu được nêu. Chính dòng trạng thái của app tự khai: "Câu hỏi chưa rõ lĩnh vực — đã chọn khối khả dĩ nhất". Câu hỏi nêu đích danh một tài liệu có thật trong kho là KHÔNG mơ hồ.
+
+## Việc phải làm
+1. **Chẩn đoán đường định tuyến ở chế độ Tự động** (bộ định tuyến miền + thứ tự ưu tiên các làn trong adapter): vì sao một câu nêu tên tài liệu vẫn bị đoán miền, và vì sao làn cấu trúc được phép trả lời một câu không liên quan tệp bảng của nó.
+2. **Sửa theo nguyên tắc:** khi câu hỏi nêu tên một tài liệu tồn tại trong kho, việc truy hồi phải neo vào đúng tài liệu/khối chứa tài liệu đó trước khi đoán miền; làn cấu trúc chỉ được trả lời khi câu hỏi thực sự truy vấn dữ kiện của tệp bảng thuộc phạm vi nó quản. Giữ nguyên hành vi đúng hiện nay cho các câu mơ hồ thật và cho bộ câu đích LSU.
+3. **Kiểm chứng:** (a) chạy lại nguyên văn câu Tab led cam ung qua đúng đường ống của app (không chỉ test đơn vị): đáp án phải đến từ chính tài liệu đó, hoặc từ chối trung thực "chưa đủ bằng chứng" — tuyệt đối không được là thống kê của tệp CSV khác; (b) chạy lại 6 câu đích của làn cấu trúc (`docs/phieu-viec/ket-qua/rows-csv-structured-lane-fix-targets.jsonl`): vẫn 18/18; (c) đủ 4 cổng chất lượng của repo (compileall, pytest liên quan, cli audit, import app).
+Báo cáo tại `docs/phieu-viec/ket-qua/auto-route-named-doc-fix-home.md`: nguyên nhân gốc, điểm sửa, bằng chứng kiểm chứng hai chiều. KHÔNG đụng chỉ mục production.
