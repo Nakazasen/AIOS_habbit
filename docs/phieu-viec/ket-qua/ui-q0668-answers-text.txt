@@ -1,0 +1,50 @@
+=== KẾT QUẢ NGHIỆM THU GIAO DIỆN THẬT Q0668-BLOCK-FIX-HOME ===
+Phiên: CONV-Q0668-LSU-6ACB21F1
+Thời gian: 2026-10-11T12:52:06.101376
+
+----------------------------------------
+CÂU 1: [Q0668]
+Hỏi: g1 và g2 có nominal và giới hạn nào?
+
+Đáp án AI:
+SYMPTOMS:
+- No grounded evidence retrieved for this section.
+CHECKS:
+- No grounded evidence retrieved for this section.
+ACTIONS:
+- No grounded evidence retrieved for this section.
+CITED_EVIDENCE_WITHOUT_SECTION_ASSIGNMENT:
+- Sheet: 18.08.2026 Columns: NO [1]
+- Row 5: =G3-G2 Row 6: =G2-G4 [3]
+- Vị trí bản vẽ [4]
+- Row 2: 2026-07-29 00:00:00 [5]
+- WA Power [uw] 85 82 8 388 17943 1329.2 0.0 Ee es 19427 1430.4 1429 at a7 1760.6 1604.1 2476 a2 a7 1665.8 1696.1 3919 a2 ae 1512.6 1843.9 511.5 a2 82 547.2 8 ale. _ Form1 COD-1004 Bow/Skew/Power Adjust JIG : REAR Soft Ver:COD_1004.001 .003 Camera Pos : —45 Fpga Ver : 2R?_1001.B01.007 G2 Gia 52.1794 50.9015 ee NG 9.35 MODE [6]
+LIMITATIONS: incomplete_query_term_coverage, provider_synthesis_unavailable
+
+Ảnh minh chứng: ui-q0668-block-fix-lsu.png (94623 bytes)
+
+----------------------------------------
+CÂU 2: [NEWFILE-LSU-PPTX]
+Hỏi: 2026年3月のBOWSKEW 4 BEAM NG率はいくつですか。
+
+Đáp án AI:
+**Tóm tắt:** Theo nguồn được cung cấp, tỷ lệ NG của Iris Jig BOWSKEW 4 BEAM vào tháng 03/2026 là **49,49%**, tăng từ mức 25,42% trước đó.
+
+**Điều đã xác nhận:**
+- NGUỒN 1 và NGUỒN 2 (cùng là "AI cảnh báo lỗi LSU.pptx", Slide 1) đều nêu rõ: "Iris Jig BOWSKEW 4 BEAM luôn đứng cao nhất và tăng từ 25,42% lên 49,49% vào tháng 03/2026."
+- BOWSKEW 4 BEAM là JIG có tỷ lệ NG cao nhất trong nhóm Iris LSU và được xác định là trọng tâm số một cần cải tiến; hai JIG tiếp theo là BOWSKEW 2 BEAM (25,04%) và BEAM 4 BEAM (20,56%) trong cùng kỳ [NGUỒN 1].
+
+**Điểm chưa đủ bằng chứng:**
+- Nguồn không nêu rõ mức 25,42% thuộc tháng nào (chỉ nói "tăng từ 25,42% lên 49,49% vào tháng 03/2026"), nên không thể xác định tháng bắt đầu của mức 25,42%.
+- Không có dữ liệu chi tiết từng tháng trong giai đoạn 11/2025–03/2026 để kiểm chứng xu hướng tăng.
+
+**Việc cần kiểm tra tiếp:**
+- Kiểm tra lại file/biểu đồ gốc "AI cảnh báo lỗi LSU.pptx" để xác nhận tháng tương ứng với mức 25,42% và dữ liệu chi tiết theo tháng.
+- Owner vui lòng kiểm tra lại số liệu trước khi sử dụng.
+
+**Nguồn đã dùng:** NGUỒN 1, NGUỒN 2.
+
+Đây là câu trả lời do AI tạo, cần kiểm tra lại trước khi dùng.
+
+Ảnh minh chứng: ui-q0668-newfile-lsu.png (117895 bytes)
+
