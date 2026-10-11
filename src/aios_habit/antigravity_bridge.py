@@ -1341,6 +1341,19 @@ def route_workspace_chat_submission(
                 LOGGER.warning("Antigravity Bridge phát hiện rò rỉ prompt hệ thống hoặc đáp án rỗng; vô hiệu hóa kết quả router")
                 return (False, "", None, "Đáp án AI không hợp lệ do chứa rò rỉ prompt hệ thống.")
 
+            from aios_habit.answer_draft_fallback import (
+                resolve_answer,
+                get_default_draft_entries,
+                log_draft_fallback_activation,
+            )
+            draft_decision = resolve_answer(
+                question,
+                rag_ok=True,
+                rag_answer=result.answer_text,
+                draft_entries=get_default_draft_entries(),
+            )
+            is_draft = (draft_decision.lane == "draft_fallback")
+
             user_msg = _get_or_create_user_message(conversation_id, user_raw_input, reuse_message_id=user_message_id)
             assistant_msg_id = f"MSG-{uuid.uuid4().hex[:8].upper()}"
             from aios_habit.workspace_chat_store import (
@@ -1352,18 +1365,24 @@ def route_workspace_chat_submission(
             from aios_habit.evidence_trace import build_evidence_trace_from_citations
 
             selections = load_conversation_source_selections(conversation_id)
-            allowed_source_ids = [] if is_ext else ([item.source_id for item in selections if item.enabled] if selections else None)
+            allowed_source_ids = [] if (is_ext or is_draft) else ([item.source_id for item in selections if item.enabled] if selections else None)
             conversation = load_conversation(conversation_id)
             ui_locale = getattr(conversation, "ui_locale", "vi") if conversation else "vi"
             effective_prov = getattr(result, "effective_provider", "")
             effective_mod = getattr(result, "effective_model", "")
-            provider_name = effective_prov or "Nakazasen Router"
-            model_name = effective_mod or "configured_by_provider"
-            final_answer = clean_assistant_answer(result.answer_text) or result.answer_text
+            if is_draft:
+                provider_name = "Bản thảo ChatGPT"
+                model_name = "chatgpt_enrichment_draft"
+                final_answer = draft_decision.answer_text
+            else:
+                provider_name = effective_prov or "Nakazasen Router"
+                model_name = effective_mod or "configured_by_provider"
+                final_answer = clean_assistant_answer(result.answer_text) or result.answer_text
+
             trace = build_evidence_trace_from_citations(
                 query=question,
                 answer_text=final_answer,
-                evidence_items=[] if is_ext else evidence_items,
+                evidence_items=[] if (is_ext or is_draft) else evidence_items,
                 allowed_source_ids=allowed_source_ids,
                 notebook_id=notebook_id,
                 conversation_id=conversation_id,
@@ -1372,10 +1391,12 @@ def route_workspace_chat_submission(
                 ui_locale=ui_locale,
                 answer_language=answer_language,
                 provenance={
-                    "operational_mode": "external_ai" if is_ext else "external_api",
+                    "operational_mode": "draft_fallback" if is_draft else ("external_ai" if is_ext else "external_api"),
                     "provider_name": provider_name,
                     "model_name": model_name,
-                    "ai_mode": ai_mode,
+                    "ai_mode": "draft_fallback" if is_draft else ai_mode,
+                    "draft_source": draft_decision.draft_source if is_draft else "",
+                    "has_draft_label": is_draft,
                 },
             )
             save_evidence_trace(trace)
@@ -1386,35 +1407,45 @@ def route_workspace_chat_submission(
                 content=final_answer,
                 trace_id=trace.trace_id,
             ))
-            if is_ext:
+            if is_draft:
+                log_draft_fallback_activation(
+                    question=question,
+                    draft_source=draft_decision.draft_source,
+                    draft_question=draft_decision.draft_question,
+                    conversation_id=conversation_id,
+                    message_id=assistant_msg_id,
+                )
+            elif is_ext:
                 log_external_ai_usage(
                     conversation_id=conversation_id,
                     message_id=assistant_msg_id,
                     model_name=model_name,
                 )
-            source_titles = [] if is_ext else [
+            source_titles = [draft_decision.draft_source] if is_draft else ([] if is_ext else [
                 (item.get("title", "") if isinstance(item, dict) else getattr(item, "title", ""))
                 for item in evidence_items
-            ]
+            ])
             badge = {
                 "conversation_id": conversation_id,
-                "type": "external_ai_answered" if is_ext else "ai_answered",
-                "ai_mode": ai_mode,
-                "source_count": 0 if is_ext else len(source_titles),
+                "type": "ai_answered" if is_draft else ("external_ai_answered" if is_ext else "ai_answered"),
+                "ai_mode": "draft_fallback" if is_draft else ai_mode,
+                "source_count": 1 if is_draft else (0 if is_ext else len(source_titles)),
                 "source_titles": source_titles,
                 "ai_source": provider_name,
-                "bridge": provider_name,
+                "bridge": "Dự bị bản thảo" if is_draft else provider_name,
                 "provider": provider_name,
                 "model_tool_name": model_name,
                 "verified_model": model_name,
-                "operational_mode": "external_ai" if is_ext else "external_api",
-                "retrieval_summary": "" if is_ext else retrieval_summary,
-                "evidence_items": [] if is_ext else evidence_items,
+                "operational_mode": "draft_fallback" if is_draft else ("external_ai" if is_ext else "external_api"),
+                "retrieval_summary": f"Sử dụng bản thảo dự bị từ {draft_decision.draft_source}" if is_draft else ("" if is_ext else retrieval_summary),
+                "evidence_items": [] if (is_ext or is_draft) else evidence_items,
                 "trace_id": trace.trace_id,
-                "memory_titles": result.memory_titles,
-                "memory_consent_fingerprint": result.memory_consent_fingerprint,
+                "memory_titles": () if is_draft else result.memory_titles,
+                "memory_consent_fingerprint": None if is_draft else result.memory_consent_fingerprint,
+                "is_draft_fallback": is_draft,
             }
-            return (True, f"Đã nhận câu trả lời từ {provider_name}.", badge, None)
+            succ_msg = "Đã trả lời bằng bản thảo dự bị (chưa qua chuyên gia duyệt)." if is_draft else f"Đã nhận câu trả lời từ {provider_name}."
+            return (True, succ_msg, badge, None)
 
         return (False, "", None, result.error_message or "Nakazasen Router không trả về câu trả lời.")
 
@@ -1624,6 +1655,9 @@ def route_workspace_chat_submission(
 
     def _try_local_fallback() -> tuple[bool, str, dict[str, Any] | None, str | None]:
         nonlocal evidence_items
+        is_draft = False
+        draft_source = ""
+        draft_question = ""
         has_local_answer = bool(
             isinstance(local_synthesis, Mapping)
             and str(local_synthesis.get("answer", "") or "").strip()
@@ -1660,8 +1694,24 @@ def route_workspace_chat_submission(
                     lines.append(f"[{idx}] **{t_title}**:\n{t_snip}")
                 lines.append("\n*(Ghi chú: Dịch vụ AI bên ngoài không phản hồi hoặc đã quá thời gian chờ; câu trả lời được trích xuất trực tiếp từ tài liệu nội bộ đã kiểm chứng.)*")
             elif not lines:
-                lines.append("Không tìm thấy dữ liệu trích xuất phù hợp trong kho tài liệu để trả lời câu hỏi này.")
-            local_answer = "\n\n".join(lines)
+                from aios_habit.answer_draft_fallback import (
+                    resolve_answer,
+                    get_default_draft_entries,
+                )
+                draft_decision = resolve_answer(
+                    question,
+                    rag_ok=False,
+                    draft_entries=get_default_draft_entries(),
+                )
+                if draft_decision.lane == "draft_fallback":
+                    local_answer = draft_decision.answer_text
+                    is_draft = True
+                    draft_source = draft_decision.draft_source
+                    draft_question = draft_decision.draft_question
+                else:
+                    lines.append("Không tìm thấy dữ liệu trích xuất phù hợp trong kho tài liệu để trả lời câu hỏi này.")
+            if not is_draft:
+                local_answer = "\n\n".join(lines)
 
         if on_chunk and local_answer:
             try:
@@ -1686,8 +1736,8 @@ def route_workspace_chat_submission(
         trace = build_evidence_trace_from_citations(
             query=question,
             answer_text=local_answer,
-            evidence_items=cited_items,
-            allowed_source_ids=allowed_source_ids,
+            evidence_items=[] if is_draft else cited_items,
+            allowed_source_ids=[] if is_draft else allowed_source_ids,
             notebook_id=notebook_id,
             conversation_id=conversation_id,
             user_message_id=user_msg.id,
@@ -1695,9 +1745,11 @@ def route_workspace_chat_submission(
             ui_locale=ui_locale,
             answer_language=answer_language,
             provenance={
-                "operational_mode": LOCAL_GROUNDED_FALLBACK_MODE,
-                "provider_name": LOCAL_GROUNDED_FALLBACK_PROVIDER,
-                "model_name": LOCAL_GROUNDED_FALLBACK_MODE,
+                "operational_mode": "draft_fallback" if is_draft else LOCAL_GROUNDED_FALLBACK_MODE,
+                "provider_name": "Bản thảo ChatGPT" if is_draft else LOCAL_GROUNDED_FALLBACK_PROVIDER,
+                "model_name": "chatgpt_enrichment_draft" if is_draft else LOCAL_GROUNDED_FALLBACK_MODE,
+                "draft_source": draft_source,
+                "has_draft_label": is_draft,
             },
         )
         save_evidence_trace(trace)
@@ -1708,7 +1760,16 @@ def route_workspace_chat_submission(
             content=local_answer,
             trace_id=trace.trace_id,
         ))
-        source_titles = [
+        if is_draft:
+            from aios_habit.answer_draft_fallback import log_draft_fallback_activation
+            log_draft_fallback_activation(
+                question=question,
+                draft_source=draft_source,
+                draft_question=draft_question,
+                conversation_id=conversation_id,
+                message_id=assistant_msg_id,
+            )
+        source_titles = [draft_source] if (is_draft and draft_source) else [
             (item.get("title", "") if isinstance(item, dict) else getattr(item, "title", ""))
             for item in cited_items
         ]
@@ -1717,20 +1778,23 @@ def route_workspace_chat_submission(
             "type": "ai_answered",
             "source_count": len(source_titles),
             "source_titles": source_titles,
-            "ai_source": LOCAL_GROUNDED_FALLBACK_PROVIDER,
-            "bridge": "Trích xuất cục bộ",
-            "provider": LOCAL_GROUNDED_FALLBACK_PROVIDER,
+            "ai_source": "Bản thảo ChatGPT" if is_draft else LOCAL_GROUNDED_FALLBACK_PROVIDER,
+            "bridge": "Dự bị bản thảo" if is_draft else "Trích xuất cục bộ",
+            "provider": "Bản thảo ChatGPT" if is_draft else LOCAL_GROUNDED_FALLBACK_PROVIDER,
             "model_tool_name": "",
-            "verified_model": LOCAL_GROUNDED_FALLBACK_MODE,
-            "operational_mode": LOCAL_GROUNDED_FALLBACK_MODE,
-            "retrieval_summary": retrieval_summary,
+            "verified_model": "draft_fallback" if is_draft else LOCAL_GROUNDED_FALLBACK_MODE,
+            "operational_mode": "draft_fallback" if is_draft else LOCAL_GROUNDED_FALLBACK_MODE,
+            "retrieval_summary": f"Sử dụng bản thảo dự bị từ {draft_source}" if is_draft else retrieval_summary,
             "evidence_items": evidence_items,
             "trace_id": trace.trace_id,
             "fallback_used": True,
+            "is_draft_fallback": is_draft,
         }
         return (
             True,
-            "Đã trả lời bằng dữ liệu trích xuất cục bộ (dịch vụ AI bên ngoài không phản hồi).",
+            "Đã trả lời bằng bản thảo dự bị (chưa qua chuyên gia duyệt)."
+            if is_draft
+            else "Đã trả lời bằng dữ liệu trích xuất cục bộ (dịch vụ AI bên ngoài không phản hồi).",
             badge,
             None,
         )

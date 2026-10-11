@@ -1391,6 +1391,20 @@ def _run_chat_turn_async(
                     err_msg = t("search_runtime_unavailable", locale=current_ui_locale)
                 else:
                     err_msg = t("search_sources_preparing", locale=current_ui_locale)
+                if unavailable_reason != "search_sources_preparing":
+                    from aios_habit.answer_draft_fallback import deliver_draft_answer
+                    draft_res = deliver_draft_answer(
+                        q_text,
+                        conversation_id=conversation_id,
+                        notebook_id=notebook_id,
+                        user_raw_input=user_raw_input,
+                        user_message_id=user_message_id,
+                        current_ui_locale=current_ui_locale,
+                        answer_language=answer_language,
+                        on_chunk=on_chunk,
+                    )
+                    if draft_res is not None:
+                        return draft_res
                 return (False, "", None, err_msg)
         elif ret_res["summary_count"] == 0:
             if has_attached_facts:
@@ -1399,6 +1413,19 @@ def _run_chat_turn_async(
                 evidence_items = []
                 retrieval_summary = "Đang trả lời trực tiếp từ dữ kiện đính kèm."
             else:
+                from aios_habit.answer_draft_fallback import deliver_draft_answer
+                draft_res = deliver_draft_answer(
+                    q_text,
+                    conversation_id=conversation_id,
+                    notebook_id=notebook_id,
+                    user_raw_input=user_raw_input,
+                    user_message_id=user_message_id,
+                    current_ui_locale=current_ui_locale,
+                    answer_language=answer_language,
+                    on_chunk=on_chunk,
+                )
+                if draft_res is not None:
+                    return draft_res
                 # st.session_state.wsc_action_error = "Chưa tìm thấy đoạn phù hợp trong nguồn đang bật."
                 err_msg = t("no_matched_segments_error", locale=current_ui_locale)
                 return (False, "", None, err_msg)
