@@ -1,0 +1,90 @@
+{
+  "WMS là gì?": {
+    "domain": "mom",
+    "status": null,
+    "evidence_count": 19,
+    "evidence_items": [
+      {
+        "score": 2.0,
+        "title": "wsc-015a1b6d9a94dc147ca10588.txt",
+        "snippet": null
+      },
+      {
+        "score": 2.0,
+        "title": "wsc-50e045acef39dbcd38aff8fb.txt",
+        "snippet": null
+      },
+      {
+        "score": 2.0,
+        "title": "wsc-573a0a68739534ed9860dcec.txt",
+        "snippet": null
+      },
+      {
+        "score": 2.0,
+        "title": "wsc-6f049a1fdfc090dc7d439224.txt",
+        "snippet": null
+      },
+      {
+        "score": 2.0,
+        "title": "wsc-73aa999fa4cdbafd7e6fdce8.txt",
+        "snippet": null
+      }
+    ],
+    "local_synthesis": {
+      "answer": "- Trong ví dụ trên, sẽ là đăng ※ Kiểm soát đăng ký giá chứa để có thể đơn giản hóa logic đề xuất giá chứa. [9]\n- ang kiém tra shelf WMS va hién vat truéc NG Khong Mét hé thong hoan thanh trudc hé thong khac chua hoan thanh WMS / MOM / Opcenter trang thai nhap kho khdp nhau? [10]\n- ©2025 KYOCERA Document Solutions Inc.7 OPCENTER Connect MOM(CNMOM) CN4T OPCENTER EX CR Manufacturing WIP トラッキング 系譜管理 仕様 ワークフロー管理 リーンフロー 工程データ収集 リワーク・返品管理 装置・資産トラッキング ディスパッチ管理 手順電子管理 電子承認 作業者管理 保守管理 ラベルプリンティング SPCSQC AQL サンプリング Customer Equipment ERP PLM OPCENTER Connect MOM(CNMOM) ERPとの連携 本体・ユニットの 工程計画作成 工程／品目定義 （入庫、出庫、生産） 実績登録／出力／参照 PLCとのデータ連携 Process Automation Control (PAC) OPCENTER APS (Scheduling) 詳細スケジューリング 製造・受入指示／在庫移動・製造実績 BOP 生産ライン（PLC、中間DB） MOMシステムの概要 連携 ツール 連携 ツール 連携 ツール 連携 ツール 中間DBとの連携 WMS 倉庫棚番／入庫順序指定 [15]\n- File Excel: MOMおよびWMSデータ完全クリア方法.xlsx [17]\n- Vì chức năng phát hiện dấu hiệu đã bị vô hiệu hóa tại địa chỉ 10, nên không cần định nghĩa gì thêm. [18]",
+      "citation_ids": [
+        "[9]",
+        "[10]",
+        "[15]",
+        "[17]",
+        "[18]"
+      ],
+      "grounded": true,
+      "abstained": false,
+      "answer_mode": "answer",
+      "limitation_reasons": []
+    }
+  },
+  "Tài liệu KTD-2026-06-0647 Iris2024 C33 A JAM4212 có nội dung gì?": {
+    "domain": "dieu_tra_loi",
+    "status": null,
+    "evidence_count": 0,
+    "evidence_items": [],
+    "local_synthesis": {
+      "answer": "KHÔNG ĐỦ BẰNG CHỨNG:\n- Corpus được truy xuất không thiết lập được sự kiện hoặc quan hệ mà câu hỏi yêu cầu.\n- Cần nguồn trực tiếp (ví dụ: tài liệu quy trình, bản ghi hệ thống hoặc hàng dữ liệu có mục tiêu) trước khi có thể trả lời an toàn.\nLIMITATIONS: evidence_pack_insufficient, no_evidence_items, no_citable_evidence",
+      "citation_ids": [],
+      "grounded": false,
+      "abstained": true,
+      "answer_mode": "abstain",
+      "limitation_reasons": []
+    }
+  },
+  "Tài liệu KTD-2026-06-0527 Iris2024 C33 A1.2 C3100 có nội dung gì?": {
+    "domain": "dieu_tra_loi",
+    "status": null,
+    "evidence_count": 0,
+    "evidence_items": [],
+    "local_synthesis": {
+      "answer": "KHÔNG ĐỦ BẰNG CHỨNG:\n- Corpus được truy xuất không thiết lập được sự kiện hoặc quan hệ mà câu hỏi yêu cầu.\n- Cần nguồn trực tiếp (ví dụ: tài liệu quy trình, bản ghi hệ thống hoặc hàng dữ liệu có mục tiêu) trước khi có thể trả lời an toàn.\nLIMITATIONS: evidence_pack_insufficient, no_evidence_items, no_citable_evidence",
+      "citation_ids": [],
+      "grounded": false,
+      "abstained": true,
+      "answer_mode": "abstain",
+      "limitation_reasons": []
+    }
+  },
+  "Mã lỗi C7620 trên Sirius 2 nguyên nhân là gì?": {
+    "domain": "lsu",
+    "status": null,
+    "evidence_count": 0,
+    "evidence_items": [],
+    "local_synthesis": {
+      "answer": "KHÔNG ĐỦ BẰNG CHỨNG:\n- Corpus được truy xuất không thiết lập được sự kiện hoặc quan hệ mà câu hỏi yêu cầu.\n- Cần nguồn trực tiếp (ví dụ: tài liệu quy trình, bản ghi hệ thống hoặc hàng dữ liệu có mục tiêu) trước khi có thể trả lời an toàn.\nLIMITATIONS: evidence_pack_insufficient, no_evidence_items, no_citable_evidence",
+      "citation_ids": [],
+      "grounded": false,
+      "abstained": true,
+      "answer_mode": "abstain",
+      "limitation_reasons": []
+    }
+  }
+}
