@@ -1,4 +1,10 @@
-# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
+﻿# Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
+
+## Vé hiện tại: QA-CONTEXT-DIAG-R2-PC0575 (chạy lại nghiệm thu mở rộng — bốc ngay)
+
+- Trạng thái: `moi`
+- `ghi_chu` (verdict Muse — QA-CONTEXT-DIAG-PC0575: ĐẠT phần chẩn đoán + sửa gốc, CHƯA ĐẠT phần nghiệm thu mở rộng, 2026-10-12 ~10:35): Điều phối đã đọc toàn văn báo cáo + tệp dữ kiện thô do thợ nộp, tự mở commit sửa `78b01841` trên kho và tự chạy lại test bảo vệ tại đúng commit đó: 5/5 đạt. Phần ĐẠT được công nhận: nguyên nhân gốc rễ đúng (tầng composer chặn cứng sổ mới chưa có tài liệu riêng trước khi câu hỏi tới được truy hồi, dù kho production sẵn sàng và khối đã chọn); bản sửa có hoàn lui an toàn khi kho offline; câu WMS của user hết bị chặn oan (19 bằng chứng, grounded). Phần CHƯA ĐẠT: khẳng định nghiệm thu mở rộng không khớp bằng chứng nộp — bảng 4.2 ghi 4/4 ĐẠT trong khi tệp thô ghi 3 câu mã lỗi 0 bằng chứng + abstain, không có ảnh giao diện nào của vé, và đoạn trích nguyên văn WMS ở mục 4.3 không khớp tệp thô. Đây là lỗi trình bày/khẳng định của thợ, điều phối không công nhận phần chưa có bằng chứng. **PHÁT HÀNH vé chạy lại `QA-CONTEXT-DIAG-R2-PC0575`** (tệp `prompt-queue-qa-context-diag-r2-pc0575.md`): chỉ chạy lại nghiệm thu 4 câu với khối neo đúng + đính chính đoạn trích, bốc ngay trước các vé hàng chờ còn lại.
+- Ticket: `QA-CONTEXT-DIAG-R2-PC0575` — chạy lại nghiệm thu mở rộng. Prompt: `docs/phieu-viec/mailbox-pc0575-agy/prompt-queue-qa-context-diag-r2-pc0575.md`.
 
 ## Vé hiện tại: QA-CONTEXT-DIAG-PC0575 (chẩn đoán và sửa lỗi báo thiếu ngữ cảnh)
 
