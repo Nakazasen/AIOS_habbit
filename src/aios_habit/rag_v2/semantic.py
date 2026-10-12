@@ -12,6 +12,7 @@ import importlib
 import importlib.metadata
 import json
 import math
+import os
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Protocol, Sequence, runtime_checkable
 
@@ -297,11 +298,83 @@ def normalize_vector(values: Iterable[float], *, dimension: int | None = None) -
     return tuple(value / magnitude for value in vector)
 
 
+NUMPY_SCORING_FLAG = "AIOS_RAG_V2_NUMPY_SCORING"
+
+
+def _is_numpy_available() -> bool:
+    """Kiểm tra thư viện numpy có cài đặt và import được không."""
+    try:
+        import numpy  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
+
+
+def numpy_scoring_enabled() -> bool:
+    """Return whether numpy acceleration for semantic scoring functions is enabled.
+
+    Đường numpy là mặc định khi numpy khả dụng trong môi trường.
+    Biến môi trường AIOS_RAG_V2_NUMPY_SCORING cho phép tắt về đường Python cũ
+    khi đặt giá trị 0, false, no, off (hỗ trợ rollback 1 dòng).
+    Khi numpy không khả dụng: tự rơi về đường Python cũ, không sập.
+    """
+    raw = os.environ.get(NUMPY_SCORING_FLAG, "").strip().lower()
+    if raw in {"0", "false", "no", "off"}:
+        return False
+    if not _is_numpy_available():
+        return False
+    return True
+
+
+def _cosine_similarity_python(left: Sequence[float], right: Sequence[float]) -> float:
+    """Đường tính cosine similarity thuần Python dự phòng."""
+    return float(sum(float(a) * float(b) for a, b in zip(left, right)))
+
+
+def _cosine_similarity_numpy(left: Sequence[float], right: Sequence[float]) -> float:
+    """Đường tính cosine similarity tăng tốc bằng numpy float32 dot product."""
+    try:
+        import numpy as np
+
+        if isinstance(left, np.ndarray) and isinstance(right, np.ndarray):
+            return float(np.dot(left, right))
+        a = left if isinstance(left, np.ndarray) else np.asarray(left, dtype=np.float32)
+        b = right if isinstance(right, np.ndarray) else np.asarray(right, dtype=np.float32)
+        return float(np.dot(a, b))
+    except Exception:
+        return _cosine_similarity_python(left, right)
+
+
 def cosine_similarity(left: Sequence[float], right: Sequence[float]) -> float:
     """Return cosine similarity for normalized vectors with strict dimensions."""
     if len(left) != len(right) or not left:
         raise SemanticBackendError("cosine vectors must have equal positive dimensions")
-    return float(sum(float(a) * float(b) for a, b in zip(left, right)))
+    if numpy_scoring_enabled():
+        return _cosine_similarity_numpy(left, right)
+    return _cosine_similarity_python(left, right)
+
+
+def batch_cosine_similarity(
+    query_vector: Sequence[float],
+    candidate_vectors: Sequence[Sequence[float]],
+) -> list[float]:
+    """Return cosine similarity scores for one query vector against multiple candidates."""
+    if not candidate_vectors:
+        return []
+    if numpy_scoring_enabled():
+        try:
+            import numpy as np
+
+            q = np.asarray(query_vector, dtype=np.float32)
+            mat = np.asarray(candidate_vectors, dtype=np.float32)
+            if mat.ndim == 1:
+                mat = mat.reshape(1, -1)
+            scores = mat @ q
+            return [float(s) for s in scores]
+        except Exception:
+            pass
+    return [cosine_similarity(query_vector, cand) for cand in candidate_vectors]
 
 
 def normalize_sparse_vector(values: Any) -> SparseVector:
@@ -321,11 +394,45 @@ def normalize_sparse_vector(values: Any) -> SparseVector:
     return normalized
 
 
-def sparse_dot_similarity(left: Mapping[str, float], right: Mapping[str, float]) -> float:
-    """Return the exact sparse dot product used by BGE-M3 lexical matching."""
+def _sparse_dot_similarity_python(left: Mapping[str, float], right: Mapping[str, float]) -> float:
+    """Đường tính sparse dot product thuần Python dự phòng."""
     if len(left) > len(right):
         left, right = right, left
     return float(sum(float(weight) * float(right.get(token, 0.0)) for token, weight in left.items()))
+
+
+def _sparse_dot_similarity_numpy(left: Mapping[str, float], right: Mapping[str, float]) -> float:
+    """Đường tính sparse dot product tăng tốc bằng numpy vector dot trên các token giao nhau."""
+    try:
+        import numpy as np
+
+        if len(left) > len(right):
+            left, right = right, left
+        common_tokens = [token for token in left if token in right]
+        if not common_tokens:
+            return 0.0
+        w_left = np.fromiter((left[t] for t in common_tokens), dtype=np.float32, count=len(common_tokens))
+        w_right = np.fromiter((right[t] for t in common_tokens), dtype=np.float32, count=len(common_tokens))
+        return float(np.dot(w_left, w_right))
+    except Exception:
+        return _sparse_dot_similarity_python(left, right)
+
+
+def sparse_dot_similarity(left: Mapping[str, float], right: Mapping[str, float]) -> float:
+    """Return the exact sparse dot product used by BGE-M3 lexical matching."""
+    if numpy_scoring_enabled():
+        return _sparse_dot_similarity_numpy(left, right)
+    return _sparse_dot_similarity_python(left, right)
+
+
+def batch_sparse_dot_similarity(
+    query_vector: Mapping[str, float],
+    candidate_vectors: Sequence[Mapping[str, float]],
+) -> list[float]:
+    """Return sparse dot product scores for one query vector against multiple candidates."""
+    if not candidate_vectors:
+        return []
+    return [sparse_dot_similarity(query_vector, cand) for cand in candidate_vectors]
 
 
 class UnavailableEmbeddingBackend:

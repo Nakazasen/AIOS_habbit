@@ -1,0 +1,184 @@
+{
+  "tag": "before",
+  "collection": "lsu",
+  "index_path": "C:\\AIOS_workspace_chat_rag_v2_production\\bge_m3_hybrid\\collections\\lsu\\library.sqlite",
+  "timestamp": "2026-10-12 10:24:49",
+  "records": [
+    {
+      "id": "KB-QA-1",
+      "group": "Khoi tri thuc (LSU)",
+      "question": "Ý nghĩa thông số DMT và PMT trong đo kiểm quang học Iris LSU là gì?",
+      "round_1_cold": {
+        "nhung_ms": 109.22,
+        "dense_ms": 1236.66,
+        "sparse_ms": 4927.38,
+        "fuse_ms": 421.24,
+        "tong_ms": 6694.49
+      },
+      "round_2_warm": {
+        "nhung_ms": 0.01,
+        "dense_ms": 206.7,
+        "sparse_ms": 127.58,
+        "fuse_ms": 416.51,
+        "tong_ms": 750.79
+      },
+      "results_count": 10,
+      "top1_chunk_id": "6afe8d053184d2cb890ead2587d137f763662c8dfa000a73cb9d2f6af1d4bee2",
+      "top1_score": 15.0
+    },
+    {
+      "id": "KB-QA-2",
+      "group": "Khoi tri thuc (Dieu tra loi)",
+      "question": "Mã lỗi C7620 trên dòng máy in Kyocera là lỗi gì, nguyên nhân và đối sách xử lý ra sao?",
+      "round_1_cold": {
+        "nhung_ms": 314.75,
+        "dense_ms": 277.76,
+        "sparse_ms": 143.37,
+        "fuse_ms": 1960.36,
+        "tong_ms": 2696.23
+      },
+      "round_2_warm": {
+        "nhung_ms": 0.01,
+        "dense_ms": 210.01,
+        "sparse_ms": 126.85,
+        "fuse_ms": 337.95,
+        "tong_ms": 674.81
+      },
+      "results_count": 10,
+      "top1_chunk_id": "43e901b53d95d57a2f683a00a9bfa06d7e58b8aea8afe4b0b1b39089169d2ea1",
+      "top1_score": 8.0
+    },
+    {
+      "id": "KB-QA-3",
+      "group": "Khoi tri thuc (MOM)",
+      "question": "Quy trình xuất kho qua AGV và liên kết với bảng staging oricon trong hệ thống MOM Opcenter như thế nào?",
+      "round_1_cold": {
+        "nhung_ms": 386.72,
+        "dense_ms": 250.36,
+        "sparse_ms": 47.34,
+        "fuse_ms": 24814.56,
+        "tong_ms": 25498.97
+      },
+      "round_2_warm": {
+        "nhung_ms": 0.01,
+        "dense_ms": 226.08,
+        "sparse_ms": 49.93,
+        "fuse_ms": 562.48,
+        "tong_ms": 838.5
+      },
+      "results_count": 10,
+      "top1_chunk_id": "4f1e4392c6d07c3a01d5a5384a16b04ba352293bd9eeba7aca7b7ce3b5d1e353",
+      "top1_score": 5.0
+    },
+    {
+      "id": "KB-QA-4",
+      "group": "Khoi tri thuc (Tu dong/Mo ho)",
+      "question": "Làm thế nào để kiểm tra và tối ưu hiệu suất làm việc hàng ngày của thiết bị?",
+      "round_1_cold": {
+        "nhung_ms": 239.8,
+        "dense_ms": 231.12,
+        "sparse_ms": 41.7,
+        "fuse_ms": 651.81,
+        "tong_ms": 1164.44
+      },
+      "round_2_warm": {
+        "nhung_ms": 0.01,
+        "dense_ms": 217.04,
+        "sparse_ms": 41.0,
+        "fuse_ms": 275.87,
+        "tong_ms": 533.92
+      },
+      "results_count": 10,
+      "top1_chunk_id": "5264d1dcf3f18b035d41a611cabe270795e3c843c6977d11ec698ae98b1ba177",
+      "top1_score": 17.0
+    },
+    {
+      "id": "LSU-50-Q0699",
+      "group": "50 cau LSU (Q0699)",
+      "question": "C7620中Magenta相对Black的副扫描色差达到多少会成为NG？",
+      "round_1_cold": {
+        "nhung_ms": 251.89,
+        "dense_ms": 244.65,
+        "sparse_ms": 127.86,
+        "fuse_ms": 505.32,
+        "tong_ms": 1129.72
+      },
+      "round_2_warm": {
+        "nhung_ms": 0.01,
+        "dense_ms": 282.09,
+        "sparse_ms": 158.1,
+        "fuse_ms": 477.05,
+        "tong_ms": 917.24
+      },
+      "results_count": 10,
+      "top1_chunk_id": "wsc-3862a76468aee5575cd502c5-summary",
+      "top1_score": 17.75
+    },
+    {
+      "id": "LSU-50-Q0700",
+      "group": "50 cau LSU (Q0700)",
+      "question": "C23とC24ではどのような発生Trendでしたか。",
+      "round_1_cold": {
+        "nhung_ms": 269.12,
+        "dense_ms": 253.02,
+        "sparse_ms": 139.14,
+        "fuse_ms": 1048.36,
+        "tong_ms": 1709.64
+      },
+      "round_2_warm": {
+        "nhung_ms": 0.01,
+        "dense_ms": 210.97,
+        "sparse_ms": 121.58,
+        "fuse_ms": 1020.69,
+        "tong_ms": 1353.24
+      },
+      "results_count": 10,
+      "top1_chunk_id": "f67f76d9a4971c8876b634f3246db0b1fc5bf3f592b7906a17d3f2752b8f6ca3",
+      "top1_score": 0.4521
+    },
+    {
+      "id": "LSU-50-Q0703",
+      "group": "50 cau LSU (Q0703)",
+      "question": "B距離が長くなる想定状態は何ですか。",
+      "round_1_cold": {
+        "nhung_ms": 225.92,
+        "dense_ms": 245.33,
+        "sparse_ms": 104.7,
+        "fuse_ms": 858.0,
+        "tong_ms": 1433.95
+      },
+      "round_2_warm": {
+        "nhung_ms": 0.01,
+        "dense_ms": 214.92,
+        "sparse_ms": 103.32,
+        "fuse_ms": 850.37,
+        "tong_ms": 1168.62
+      },
+      "results_count": 10,
+      "top1_chunk_id": "3fa252b0532f3afe125186d891db35040c3740d9fbb78ac119e74c0c06821f2e",
+      "top1_score": 11.0
+    },
+    {
+      "id": "LSU-50-Q0708",
+      "group": "50 cau LSU (Q0708)",
+      "question": "光路高さ1.15 mmを超えると必ずCamera読取不能になりますか。",
+      "round_1_cold": {
+        "nhung_ms": 253.11,
+        "dense_ms": 245.29,
+        "sparse_ms": 121.18,
+        "fuse_ms": 1199.71,
+        "tong_ms": 1819.29
+      },
+      "round_2_warm": {
+        "nhung_ms": 0.01,
+        "dense_ms": 220.69,
+        "sparse_ms": 121.72,
+        "fuse_ms": 1217.24,
+        "tong_ms": 1559.66
+      },
+      "results_count": 10,
+      "top1_chunk_id": "14bdf5563c9d00679cd6c9f3c3ff28a7075e4eb54342f9b708b10d038ca70af1",
+      "top1_score": 44.75
+    }
+  ]
+}
