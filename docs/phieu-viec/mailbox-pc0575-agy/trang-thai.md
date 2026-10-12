@@ -1,3 +1,23 @@
+## ĐIỀU PHỐI — VERDICT AUDIT-SHAKEDOWN-PC0575 (vòng 1): ĐẠT phần cơ chế / CHƯA ĐẠT phần model — 2026-10-12 ~16:20 +07
+
+Điều phối đã đọc toàn văn báo cáo `docs/phieu-viec/ket-qua/audit-shakedown-pc0575.md` (commit nộp `8db52fa9`) và tự đối chiếu: dòng trích "abstained" tại dòng 1664 khớp NGUYÊN VĂN 100% với dòng điều phối tự đọc từ diff commit `3e9c5602`; ngữ cảnh 1661–1665 khớp; commit nộp chỉ gồm báo cáo + cập nhật hộp thư.
+- ĐẠT: cơ chế bốc vé qua hộp thư chạy được; thợ khai TRUNG THỰC model thật (Gemini 3.8 Flash (High)) và DỪNG đúng điều 1 của vé khi sai model; đọc/ghi tại clone PC0575 thông suốt; agy CLI 1.3.3.
+- CHƯA ĐẠT: ca bốc vé là ca gemini mồ côi (mở bởi watcher cũ) — chưa có ca nào chạy `claude-opus-5-5-medium`, nên thiết lập audit bằng opus CHƯA được kiểm chứng. Ca gemini đã tự dừng theo luật.
+- Xử lý: phát hành vòng 2 ở khối dưới để watcher hiện hành (đang mang -AgyModel "claude-opus-5-5-medium") mở ca opus chạy lại đúng bài kiểm này.
+
+---
+
+## Vé hiện tại: AUDIT-SHAKEDOWN-PC0575-R2 (kiểm tra thiết lập vai audit vòng 2 — chỉ ca opus mới được chạy)
+
+- Trạng thái: `moi`
+- `ghi_chu`: 2026-10-12 ~16:20 +07 — Điều phối phát hành vòng 2 sau verdict vòng 1. Thợ agy thực hiện đúng 4 việc sau rồi nộp:
+  1. Khai định danh model của chính phiên này. Vòng này CHỈ đạt khi model là `claude-opus-5-5-medium`. Nếu phiên chạy model khác: ghi đúng model thật và DỪNG, không làm tiếp (như vòng 1).
+  2. Ghi phiên bản agy CLI (`agy --version`).
+  3. Đọc tệp `src/aios_habit/antigravity_bridge.py` tại clone `D:\Sandbox\AIOS_habbit`, tìm hàm `_try_local_fallback`, trích NGUYÊN VĂN dòng điều kiện có chứa chữ "abstained" vào báo cáo.
+  4. Nộp báo cáo tại `docs/phieu-viec/ket-qua/audit-shakedown-pc0575-r2.md` (gồm: model định danh, phiên bản CLI, dòng trích nguyên văn, xác nhận đọc/ghi được tại máy) + ghi_chu trạng thái `xong-cho-duyet` tại hộp thư này.
+
+---
+
 ## DIEU PHOI — 2026-10-12 15:17 +07: MO LAI HOP THU AGY PC0575 CHO RIENG VAI AUDIT (lenh user)
 
 User da bat Agy tai may cong ty voi model **claude-opus-5-5-medium** va ra lenh phan vai moi (chi ap dung PC0575, may nha khong thay doi):
