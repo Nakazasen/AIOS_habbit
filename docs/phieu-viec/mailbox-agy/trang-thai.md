@@ -1,3 +1,7 @@
+# ĐÓNG BĂNG TẠM THỜI LÀN AGY MÁY NHÀ (điều phối, theo lệnh user 2026-10-12 ~07:06)
+
+Máy nhà từ nay chỉ dùng làn Antigravity 2.0 (desktop); làn agy tạm dừng. Toàn bộ việc của làn này đã chuyển sang làn desktop (kho điều phối, thư mục hop-thu/lan-desktop/): vé đang làm STRUCTURED-LANE-TEST-FIXTURE-HOME → DESKTOP-STRUCTURED-LANE-TEST-FIXTURE-HOME (#4); hàng chờ BLOCK-SELECTOR-TONGHOP-FIX → #5, RAG-RETRIEVAL-NUMPY-COMPLETE → #1, DISK-GROWTH-DIAG → #9, EVIDENCE-DATE-REDACT-FIX → #6, AUTO-ROUTE-NAMED-DOC-FIX → #7, NOTEBOOK-SOURCE-TEXT-FIX → #8, EXTERNAL-USAGE-LOG-TIMING-FIX → #3. Thợ agy không bốc việc mới; trạng thái các vé dưới đây giữ nguyên làm hồ sơ. Bản nộp muộn (nếu có) chỉ còn giá trị tham khảo, điều phối không verdict nữa.
+
 ## Hàng chờ #1 MỚI — ƯU TIÊN (chen trước RAG-RETRIEVAL-NUMPY-COMPLETE-HOME): BLOCK-SELECTOR-TONGHOP-FIX-HOME
 - Trạng thái: xep-hang (điều phối phát hành 2026-10-11 ~23:1x, từ verdict bổ sung BLOCK-SMOKE)
 - Lý do chen hàng: khối tong_hop (72 tài liệu) không có trong bộ chọn khối của giao diện — người dùng không ghim câu hỏi vào khối này được; vé này nhỏ và là điều kiện tiên quyết của vé desktop BLOCK-SMOKE-R3 đang chờ. Làm NGAY sau vé hiện tại, TRƯỚC vé numpy.
