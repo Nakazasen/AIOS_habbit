@@ -408,11 +408,13 @@ def _sparse_dot_similarity_numpy(left: Mapping[str, float], right: Mapping[str, 
 
         if len(left) > len(right):
             left, right = right, left
+        if not left:
+            return 0.0
         common_tokens = [token for token in left if token in right]
         if not common_tokens:
             return 0.0
-        w_left = np.fromiter((left[t] for t in common_tokens), dtype=np.float32, count=len(common_tokens))
-        w_right = np.fromiter((right[t] for t in common_tokens), dtype=np.float32, count=len(common_tokens))
+        w_left = np.array([left[t] for t in common_tokens], dtype=np.float32)
+        w_right = np.array([right[t] for t in common_tokens], dtype=np.float32)
         return float(np.dot(w_left, w_right))
     except Exception:
         return _sparse_dot_similarity_python(left, right)
