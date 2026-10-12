@@ -1,3 +1,14 @@
+## Vé hiện tại: AUDIT-SHAKEDOWN-HOME-R2 (vé kiểm tra thiết lập vai audit máy nhà — VÒNG 2, bốc ngay)
+
+- Trạng thái: `moi`
+- `ghi_chu` (điều phối Muse — PHÁT HÀNH): 2026-10-13 ~06:28 +07 — Phát hành vòng 2 trên cơ sở user xác nhận đã khởi động lại tiến trình canh thư làn agy tại máy nhà (06:27 +07) để tiến trình mở phiên bằng `claude-opus-5-5-medium`. Vòng 1 (tối 12/10) verdict: ĐẠT phần cơ chế / CHƯA ĐẠT phần model — phiên bốc vé chạy Gemini 3.8 Flash (High) vì tiến trình canh thư cũ giữ model trong bộ nhớ. Thợ Agy thực hiện đúng 4 việc sau rồi nộp:
+  1. Khai định danh model của chính phiên này (kỳ vọng: `claude-opus-5-5-medium`). Nếu phiên không chạy model đó, ghi đúng model thật và DỪNG, không làm tiếp.
+  2. Ghi phiên bản agy CLI (`agy --version`).
+  3. Đọc tệp `src/aios_habit/antigravity_bridge.py` tại clone `D:\Sandbox\AIOS_habbit`, tìm hàm `_try_local_fallback`, trích NGUYÊN VĂN dòng điều kiện có chứa chữ "abstained" vào báo cáo.
+  4. Nộp báo cáo tại `docs/phieu-viec/ket-qua/audit-shakedown-home-r2.md` (gồm: model định danh, phiên bản CLI, dòng trích nguyên văn, xác nhận đọc/ghi được tại máy) + ghi_chu trạng thái `xong-cho-duyet` tại hộp thư này.
+
+---
+
 ## ĐIỀU PHỐI — VERDICT AUDIT-SHAKEDOWN-HOME: ĐẠT phần cơ chế / CHƯA ĐẠT phần model — 2026-10-12 ~21:47 +07
 
 Điều phối đã đọc toàn văn báo cáo `docs/phieu-viec/ket-qua/audit-shakedown-home.md` (commit nộp `00389bcd`) và tự đối chiếu: dòng trích "abstained" khớp nguyên văn với dòng điều phối đã kiểm chứng độc lập (`and not bool(local_synthesis.get("abstained", False))`); agy CLI 1.3.3; đọc/ghi tại clone máy nhà thông suốt; phiên bốc vé sau ~17 phút từ lúc phát hành.
