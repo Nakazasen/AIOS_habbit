@@ -1,3 +1,12 @@
+## ĐIỀU PHỐI — VERDICT AUDIT-SHAKEDOWN-PC0575-R2: CHƯA ĐẠT model lần 2 — CHỜ USER ĐÓNG HẲN PHIÊN AGY GEMINI TẠI MÁY — 2026-10-12 ~16:26 +07
+
+Điều phối đã đọc toàn văn báo cáo `docs/phieu-viec/ket-qua/audit-shakedown-pc0575-r2.md` (commit nộp `732c6ee7`): ca bốc vé vòng 2 vẫn khai model Gemini 3.8 Flash (High), trích dòng "abstained" khớp nguyên văn như vòng 1, và dừng đúng điều 1. Kết luận: cơ chế hộp thư + kỷ luật khai/dừng ĐẠT tiếp; phần model CHƯA ĐẠT lần 2 — phiên gemini cũ vẫn còn sống và nhặt vé gần như ngay khi phát hành (ghi_chu tiếp nhận 16:20, sát mốc phát hành), nên ca opus của watcher hiện hành chưa có cơ hội chạy.
+- Điều phối KHÔNG phát vòng 3 ngay: phát tiếp chỉ bị chính phiên gemini này nhặt và dừng tiếp.
+- Điều kiện mở lại: user đóng HẲN phiên agy Gemini tại máy KDTVN-PC0575 (tiến trình agy.exe PID 24912 theo điều tra 16:03 — kết thúc cả tiến trình, không chỉ dừng làm vé). User xác nhận đã đóng thì điều phối phát `AUDIT-SHAKEDOWN-PC0575-R3` ngay trong lượt.
+- Nếu sau khi đóng hẳn mà vẫn xuất hiện phiên gemini mới nhặt vé: nghĩa là còn một watcher đang mở thợ bằng gemini — báo điều phối ngay, vé sửa watcher đã xếp hàng (`DESKTOP-PC0575-WATCHER-MODEL-REREAD-FIX`) sẽ được nâng ưu tiên.
+
+---
+
 ## ĐIỀU PHỐI — VERDICT AUDIT-SHAKEDOWN-PC0575 (vòng 1): ĐẠT phần cơ chế / CHƯA ĐẠT phần model — 2026-10-12 ~16:20 +07
 
 Điều phối đã đọc toàn văn báo cáo `docs/phieu-viec/ket-qua/audit-shakedown-pc0575.md` (commit nộp `8db52fa9`) và tự đối chiếu: dòng trích "abstained" tại dòng 1664 khớp NGUYÊN VĂN 100% với dòng điều phối tự đọc từ diff commit `3e9c5602`; ngữ cảnh 1661–1665 khớp; commit nộp chỉ gồm báo cáo + cập nhật hộp thư.
