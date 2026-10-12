@@ -1,3 +1,24 @@
+## DIEU PHOI — 2026-10-12 15:17 +07: MO LAI HOP THU AGY PC0575 CHO RIENG VAI AUDIT (lenh user)
+
+User da bat Agy tai may cong ty voi model **claude-opus-5-5-medium** va ra lenh phan vai moi (chi ap dung PC0575, may nha khong thay doi):
+- Lan desktop Antigravity 2.0 van la tho CHINH (implement + nop bai).
+- Agy (claude-opus-5-5-medium) chi nhan **ve AUDIT** do dieu phoi phat tai hop thu nay: doc ban nop + diff + bang chung cua Antigravity; loi nho thi sua truc tiep va liet ke ro; loi nhieu/lon thi ket luan "tra lam lai" kem ly do cu the.
+- Agy KHONG nhan ve implement tinh nang moi, khong tu phat ve.
+- Moi phien audit phai chay dung model claude-opus-5-5-medium; phien chay model khac thi ghi ro model that va dung.
+
+---
+
+## Ve hien tai: AUDIT-SHAKEDOWN-PC0575 (ve kiem tra thiet lap vai audit — boc ngay)
+
+- Trang thai: `moi`
+- `ghi_chu`: 2026-10-12 15:17 +07 — Dieu phoi phat ve kiem tra thiet lap theo lenh user. Tho Agy thuc hien dung 4 viec sau roi nop:
+  1. Khai dinh danh model cua chinh phien nay (ky vong: claude-opus-5-5-medium). Neu phien khong chay model do, ghi dung model that va DUNG, khong lam tiep.
+  2. Ghi phien ban agy CLI (`agy --version`).
+  3. Doc tep `src/aios_habit/antigravity_bridge.py` tai clone `D:\Sandbox\AIOS_habbit`, tim ham `_try_local_fallback`, trich NGUYEN VAN dong dieu kien co chua chu "abstained" (dong duoc them boi commit 3e9c5602) vao bao cao.
+  4. Nop bao cao tai `docs/phieu-viec/ket-qua/audit-shakedown-pc0575.md` (gom: model dinh danh, phien ban CLI, dong trich nguyen van, xac nhan doc/ghi duoc tai may) + ghi_chu trang thai `xong-cho-duyet` tai hop thu nay.
+
+---
+
 ## DIEU PHOI — 2026-10-12 14:18 +07: LAN AGY PC0575 DONG BANG HAN — VE CUOI BI DUNG DO TREO
 
 Ve: QA-CONTEXT-DIAG-R2-PC0575
