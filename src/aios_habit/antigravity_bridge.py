@@ -1661,6 +1661,7 @@ def route_workspace_chat_submission(
         has_local_answer = bool(
             isinstance(local_synthesis, Mapping)
             and str(local_synthesis.get("answer", "") or "").strip()
+            and not bool(local_synthesis.get("abstained", False))
         )
         if has_local_answer:
             local_answer = str((local_synthesis or {}).get("answer", "") or "").strip()
