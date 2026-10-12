@@ -1089,6 +1089,8 @@ def route_workspace_chat_submission(
     on_chunk: Optional[Callable[[str], None]] = None,
     ai_mode: str = "grounded",
     anchored_context: Optional[str] = None,
+    duration_sec: float | None = None,
+    ttft_sec: float | None = None,
 ) -> tuple[bool, str, dict[str, Any] | None, str | None]:
     """Route a submission through the explicitly selected Workspace Chat backend.
 
@@ -1279,6 +1281,21 @@ def route_workspace_chat_submission(
     def _try_nakazasen_router() -> tuple[bool, str, dict[str, Any] | None, str | None]:
         nonlocal evidence_items
         is_ext = (ai_mode == "external")
+
+        t_router_start = time.monotonic()
+        ttft_recorded: list[float] = []
+        ttft_lock = threading.Lock()
+
+        def _timed_on_chunk(chunk: str) -> None:
+            if chunk:
+                with ttft_lock:
+                    if not ttft_recorded:
+                        ttft_recorded.append(time.monotonic() - t_router_start)
+            if on_chunk is not None:
+                on_chunk(chunk)
+
+        effective_on_chunk = _timed_on_chunk if (on_chunk is not None or is_ext) else on_chunk
+
         request = WorkspaceAIAnswerRequest(
             conversation_id=conversation_id,
             question=question,
@@ -1294,7 +1311,7 @@ def route_workspace_chat_submission(
             answer_language=answer_language,
             workspace_id=notebook_id or "default",
             consent_memory_fingerprint=consent_memory_fingerprint,
-            on_chunk=on_chunk,
+            on_chunk=effective_on_chunk,
             ai_mode=ai_mode,
             anchored_context=anchored_context,
         )
@@ -1322,6 +1339,22 @@ def route_workspace_chat_submission(
                 executor.shutdown(wait=False)
             except Exception:
                 pass
+
+        t_router_end = time.monotonic()
+        measured_duration = max(0.0, t_router_end - t_router_start)
+        measured_ttft = ttft_recorded[0] if ttft_recorded else 0.0
+
+        if duration_sec is not None:
+            effective_duration_sec = float(duration_sec)
+        else:
+            calc_dur = round(measured_duration, 4)
+            effective_duration_sec = calc_dur if calc_dur > 0.0 else (0.0001 if measured_duration > 0.0 else 0.0)
+
+        if ttft_sec is not None:
+            effective_ttft_sec = float(ttft_sec)
+        else:
+            calc_ttft = round(measured_ttft, 4)
+            effective_ttft_sec = calc_ttft if calc_ttft > 0.0 else (0.0001 if ttft_recorded else 0.0)
 
         LOGGER.info(
             "BRIDGE NAKAZASEN ROUTER RESULT: ok=%s provider=%s model=%s reason=%s error=%s",
@@ -1420,6 +1453,8 @@ def route_workspace_chat_submission(
                     conversation_id=conversation_id,
                     message_id=assistant_msg_id,
                     model_name=model_name,
+                    duration_sec=effective_duration_sec,
+                    ttft_sec=effective_ttft_sec,
                 )
             source_titles = [draft_decision.draft_source] if is_draft else ([] if is_ext else [
                 (item.get("title", "") if isinstance(item, dict) else getattr(item, "title", ""))
@@ -1443,6 +1478,8 @@ def route_workspace_chat_submission(
                 "memory_titles": () if is_draft else result.memory_titles,
                 "memory_consent_fingerprint": None if is_draft else result.memory_consent_fingerprint,
                 "is_draft_fallback": is_draft,
+                "duration_sec": effective_duration_sec if is_ext else 0.0,
+                "ttft_sec": effective_ttft_sec if is_ext else 0.0,
             }
             succ_msg = "Đã trả lời bằng bản thảo dự bị (chưa qua chuyên gia duyệt)." if is_draft else f"Đã nhận câu trả lời từ {provider_name}."
             return (True, succ_msg, badge, None)

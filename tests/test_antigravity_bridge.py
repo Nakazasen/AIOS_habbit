@@ -2728,3 +2728,143 @@ def test_nakazasen_router_branch_cancellation_does_not_trigger_fallback(monkeypa
     assert ok is False
     assert err == "Đã dừng yêu cầu AI."
 
+
+def test_route_external_ai_mode_records_real_timing_measurements(tmp_path, monkeypatch):
+    """Verify route_workspace_chat_submission measures and logs real duration and TTFT."""
+    import json
+    import time
+    from aios_habit.antigravity_bridge import route_workspace_chat_submission
+    from aios_habit.workspace_chat_ai_answer import WorkspaceAIAnswerResult
+    import aios_habit.workspace_chat_store as store_mod
+
+    log_file = tmp_path / "test_external_real_timings.jsonl"
+    monkeypatch.setattr(store_mod, "EXTERNAL_AI_USAGE_FILE", log_file)
+
+    def mock_ai_answer(req, client):
+        if req.on_chunk:
+            time.sleep(0.03)
+            req.on_chunk("Ký tự đầu tiên ")
+            time.sleep(0.02)
+            req.on_chunk("và toàn văn câu trả lời.")
+        return WorkspaceAIAnswerResult(
+            ok=True,
+            answer_text="Ký tự đầu tiên và toàn văn câu trả lời.",
+            included_source_titles=(),
+            warnings=(),
+            effective_provider="OpenAI Compatible",
+            effective_model="deepseek/deepseek-v4.1-flash",
+        )
+
+    monkeypatch.setattr("aios_habit.workspace_chat_ai_answer.generate_workspace_ai_answer", mock_ai_answer)
+
+    ok, msg, badge, err = route_workspace_chat_submission(
+        question="Python ra đời năm nào?",
+        evidence_items=[],
+        packed_sources=(),
+        conversation_id="CONV-EXT-TIMING-1",
+        notebook_id="NB-EXT-1",
+        retrieval_applied=False,
+        retrieved_sources=(),
+        retrieval_summary="",
+        current_keys=(),
+        chat_history=(),
+        user_raw_input="Python ra đời năm nào?",
+        ai_mode="external",
+    )
+
+    assert ok is True
+    assert err is None
+    assert badge is not None
+    assert badge["operational_mode"] == "external_ai"
+    assert badge["duration_sec"] > 0.0
+    assert badge["ttft_sec"] > 0.0
+
+    assert log_file.exists()
+    lines = [json.loads(line) for line in log_file.read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert len(lines) == 1
+    assert lines[0]["conversation_id"] == "CONV-EXT-TIMING-1"
+    assert lines[0]["ai_mode"] == "external"
+    assert lines[0]["model_name"] == "deepseek/deepseek-v4.1-flash"
+    assert lines[0]["duration_sec"] > 0.0
+    assert lines[0]["ttft_sec"] > 0.0
+    assert lines[0]["duration_sec"] == badge["duration_sec"]
+    assert lines[0]["ttft_sec"] == badge["ttft_sec"]
+
+
+def test_route_external_ai_mode_records_explicit_and_zero_timings(tmp_path, monkeypatch):
+    """Verify route_workspace_chat_submission logs explicit simulated measurements and 0.0."""
+    import json
+    from aios_habit.antigravity_bridge import route_workspace_chat_submission
+    from aios_habit.workspace_chat_ai_answer import WorkspaceAIAnswerResult
+    import aios_habit.workspace_chat_store as store_mod
+
+    log_file = tmp_path / "test_external_explicit_timings.jsonl"
+    monkeypatch.setattr(store_mod, "EXTERNAL_AI_USAGE_FILE", log_file)
+
+    def mock_ai_answer(req, client):
+        return WorkspaceAIAnswerResult(
+            ok=True,
+            answer_text="Câu trả lời giả lập.",
+            included_source_titles=(),
+            warnings=(),
+            effective_provider="Command Code",
+            effective_model="ling-3.1-flash",
+        )
+
+    monkeypatch.setattr("aios_habit.workspace_chat_ai_answer.generate_workspace_ai_answer", mock_ai_answer)
+
+    # Ca 1: Số đo giả lập khác 0
+    ok1, _, badge1, _ = route_workspace_chat_submission(
+        question="Câu hỏi có số đo giả lập?",
+        evidence_items=[],
+        packed_sources=(),
+        conversation_id="CONV-SIM-1",
+        notebook_id="NB-SIM",
+        retrieval_applied=False,
+        retrieved_sources=(),
+        retrieval_summary="",
+        current_keys=(),
+        chat_history=(),
+        user_raw_input="Câu hỏi có số đo giả lập?",
+        ai_mode="external",
+        duration_sec=14.25,
+        ttft_sec=3.80,
+    )
+    assert ok1 is True
+    assert badge1["duration_sec"] == 14.25
+    assert badge1["ttft_sec"] == 3.80
+
+    # Ca 2: Không có số đo (ghi 0.0)
+    ok2, _, badge2, _ = route_workspace_chat_submission(
+        question="Câu hỏi không có số đo?",
+        evidence_items=[],
+        packed_sources=(),
+        conversation_id="CONV-ZERO-2",
+        notebook_id="NB-SIM",
+        retrieval_applied=False,
+        retrieved_sources=(),
+        retrieval_summary="",
+        current_keys=(),
+        chat_history=(),
+        user_raw_input="Câu hỏi không có số đo?",
+        ai_mode="external",
+        duration_sec=0.0,
+        ttft_sec=0.0,
+    )
+    assert ok2 is True
+    assert badge2["duration_sec"] == 0.0
+    assert badge2["ttft_sec"] == 0.0
+
+    assert log_file.exists()
+    lines = [json.loads(line) for line in log_file.read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert len(lines) == 2
+    # Ca 1: có số đo khác 0
+    assert lines[0]["conversation_id"] == "CONV-SIM-1"
+    assert lines[0]["duration_sec"] == 14.25
+    assert lines[0]["ttft_sec"] == 3.80
+    # Ca 2: không có số đo vẫn ghi 0.0
+    assert lines[1]["conversation_id"] == "CONV-ZERO-2"
+    assert lines[1]["duration_sec"] == 0.0
+    assert lines[1]["ttft_sec"] == 0.0
+
+

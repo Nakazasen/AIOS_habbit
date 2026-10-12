@@ -1262,5 +1262,40 @@ def test_log_external_ai_usage(tmp_path, monkeypatch):
     assert lines[0]["conversation_id"] == "conv_123"
     assert lines[0]["ai_mode"] == "external"
     assert lines[0]["model_name"] == "deepseek/deepseek-v4.1-flash"
+    assert lines[0]["duration_sec"] == 3.5
+    assert lines[0]["ttft_sec"] == 0.8
     assert lines[0]["metadata"] == {"test": True}
+
+
+def test_log_external_ai_usage_defaults_to_zero_when_no_timings(tmp_path, monkeypatch):
+    """Verify default 0.0 duration and ttft when omitted or passed as None."""
+    import json
+    from aios_habit.workspace_chat_store import log_external_ai_usage
+    import aios_habit.workspace_chat_store as store_mod
+
+    log_file = tmp_path / "test_usage_zero.jsonl"
+    monkeypatch.setattr(store_mod, "EXTERNAL_AI_USAGE_FILE", log_file)
+
+    log_external_ai_usage(
+        conversation_id="conv_zero",
+        message_id="msg_zero",
+        model_name="deepseek/deepseek-v4.1-flash",
+    )
+
+    log_external_ai_usage(
+        conversation_id="conv_none",
+        message_id="msg_none",
+        model_name="deepseek/deepseek-v4.1-flash",
+        duration_sec=None,
+        ttft_sec=None,
+    )
+
+    assert log_file.exists()
+    lines = [json.loads(line) for line in log_file.read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert len(lines) == 2
+    assert lines[0]["duration_sec"] == 0.0
+    assert lines[0]["ttft_sec"] == 0.0
+    assert lines[1]["duration_sec"] == 0.0
+    assert lines[1]["ttft_sec"] == 0.0
+
 

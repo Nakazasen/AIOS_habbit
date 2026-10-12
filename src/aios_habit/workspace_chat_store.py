@@ -860,8 +860,8 @@ def log_external_ai_usage(
         "message_id": message_id,
         "ai_mode": "external",
         "model_name": model_name,
-        "duration_sec": duration_sec,
-        "ttft_sec": ttft_sec,
+        "duration_sec": float(duration_sec if duration_sec is not None else 0.0),
+        "ttft_sec": float(ttft_sec if ttft_sec is not None else 0.0),
         "metadata": metadata or {},
     }
     with _STORE_LOCK:
