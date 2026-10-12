@@ -3339,12 +3339,12 @@ def _domain_index_ready(config: WorkspaceChatRagV2CanaryConfig, collection_id: s
 
 
 def workspace_chat_domain_block_status() -> tuple[dict[str, Any], ...]:
-    """Read-only readiness of the three shared knowledge blocks (sidebar).
+    """Read-only readiness of the shared knowledge blocks (sidebar).
 
     Never raises: a missing deployment config or index only reports
     ``ready=False`` so the sidebar can state the block status honestly.
     """
-    from aios_habit.index_domain import DOMAINS, DOMAIN_DISPLAY
+    from aios_habit.index_domain import KNOWLEDGE_BLOCKS, DOMAIN_DISPLAY
     from aios_habit.workspace_chat_store import collection_runtime_layout
 
     profile_root: Optional[Path] = None
@@ -3355,7 +3355,7 @@ def workspace_chat_domain_block_status() -> tuple[dict[str, Any], ...]:
         profile_root = None
 
     blocks: list[dict[str, Any]] = []
-    for domain in DOMAINS:
+    for domain in KNOWLEDGE_BLOCKS:
         ready = False
         size_bytes = 0
         if profile_root is not None:
@@ -3388,8 +3388,8 @@ def _select_domain_route(
 
     ``forced_domain`` is the knowledge block the user explicitly picked in the
     composer. It wins over question detection and the routing flag (the user
-    asked for that block) and is whitelisted to the three blocks, so it can
-    never select ``tong_hop``.
+    asked for that block) and is whitelisted to all knowledge blocks (including
+    ``tong_hop``).
 
     Returns an ``index_domain.DomainRoute`` or ``None`` when routing is
     disabled. Never raises: a classification failure must not break
@@ -3401,7 +3401,7 @@ def _select_domain_route(
         base_collection_id = _collection_id_for_sources(sources)
         forced = str(forced_domain or "").strip().lower()
         if forced and forced != "auto":
-            if forced not in index_domain.DOMAINS:
+            if forced not in index_domain.KNOWLEDGE_BLOCKS:
                 return None
             detected = index_domain.Classification(
                 forced,

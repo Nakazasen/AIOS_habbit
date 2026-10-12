@@ -1232,6 +1232,40 @@ def _prefix_domain_block_badge(retrieval_summary: str, domain_info: Any) -> str:
     return block_line + (" " + retrieval_summary if retrieval_summary else "")
 
 
+def get_workspace_chat_block_choices(locale: str = "vi") -> dict[str, str]:
+    """Return ordered mapping of block_id -> formatted display label for the composer block selector."""
+    from aios_habit.index_domain import (
+        DOMAIN_LSU,
+        DOMAIN_DIEU_TRA_LOI,
+        DOMAIN_MOM,
+        DOMAIN_TONG_HOP,
+        get_domain_counts,
+        load_domain_document_map,
+    )
+    block_counts = get_domain_counts()
+    unit = "件" if locale == "ja" else ("份" if locale == "zh-CN" else "tài liệu")
+
+    def _format_label(key: str, name: str) -> str:
+        cnt = block_counts.get(key, 0)
+        return f"{name} ({cnt} {unit})"
+
+    choices: dict[str, str] = {
+        "auto": _format_label("auto", t("knowledge_block_auto", locale=locale)),
+        DOMAIN_LSU: _format_label(DOMAIN_LSU, t("knowledge_block_lsu", locale=locale)),
+        DOMAIN_DIEU_TRA_LOI: _format_label(DOMAIN_DIEU_TRA_LOI, t("knowledge_block_dieu_tra_loi", locale=locale)),
+        DOMAIN_MOM: _format_label(DOMAIN_MOM, t("knowledge_block_mom", locale=locale)),
+        DOMAIN_TONG_HOP: _format_label(DOMAIN_TONG_HOP, t("knowledge_block_tong_hop", locale=locale)),
+    }
+    doc_map = load_domain_document_map()
+    for block_name in sorted(set(doc_map.values())):
+        if block_name not in choices:
+            choices[block_name] = _format_label(
+                block_name,
+                t(f"knowledge_block_{block_name}", locale=locale, default=block_name.replace("_", " ").title()),
+            )
+    return choices
+
+
 def _knowledge_block_missing_message(ret_res: Any, locale: str) -> str:
     """Vietnamese notice when the composer-forced block has no index on this machine."""
     domain_info = ret_res.get("domain_routing") if isinstance(ret_res, dict) else None
@@ -3774,6 +3808,7 @@ else:
                     "lsu": "knowledge_block_lsu",
                     "dieu_tra_loi": "knowledge_block_dieu_tra_loi",
                     "mom": "knowledge_block_mom",
+                    "tong_hop": "knowledge_block_tong_hop",
                 }
                 for _shared_block in workspace_chat_domain_block_status():
                     _label_key = _shared_block_label_keys.get(str(_shared_block["domain"]), "")
@@ -4758,34 +4793,15 @@ else:
                     ai_backend = selected_ai_backend
 
                     # Khối tri thức (Knowledge block)
-                    from aios_habit.index_domain import (
-                        DOMAINS as _DOMAINS,
-                        DOMAIN_LSU as _DOMAIN_LSU,
-                        DOMAIN_DIEU_TRA_LOI as _DOMAIN_DIEU_TRA_LOI,
-                        DOMAIN_MOM as _DOMAIN_MOM,
-                        get_domain_counts as _get_domain_counts,
-                    )
-
                     knowledge_block_key = f"wsc_knowledge_block_{active_conversation.id}"
+                    block_choices = get_workspace_chat_block_choices(current_ui_locale)
                     if knowledge_block_key not in st.session_state:
                         query_block = str(get_query_param("block") or "").strip().lower()
-                        if query_block in _DOMAINS or query_block == "auto":
+                        if query_block in block_choices:
                             st.session_state[knowledge_block_key] = query_block
                     knowledge_block_value = str(
                         st.session_state.get(knowledge_block_key, "auto") or "auto"
                     )
-                    _block_counts = _get_domain_counts()
-                    def _format_block_label(key: str, name: str) -> str:
-                        cnt = _block_counts.get(key, 0)
-                        unit = "件" if current_ui_locale == "ja" else ("份" if current_ui_locale == "zh-CN" else "tài liệu")
-                        return f"{name} ({cnt} {unit})"
-
-                    block_choices = {
-                        "auto": _format_block_label("auto", t("knowledge_block_auto", locale=current_ui_locale)),
-                        _DOMAIN_LSU: _format_block_label(_DOMAIN_LSU, t("knowledge_block_lsu", locale=current_ui_locale)),
-                        _DOMAIN_DIEU_TRA_LOI: _format_block_label(_DOMAIN_DIEU_TRA_LOI, t("knowledge_block_dieu_tra_loi", locale=current_ui_locale)),
-                        _DOMAIN_MOM: _format_block_label(_DOMAIN_MOM, t("knowledge_block_mom", locale=current_ui_locale)),
-                    }
                     if knowledge_block_value not in block_choices:
                         knowledge_block_value = "auto"
 
@@ -4879,7 +4895,7 @@ else:
                                 f"📚 {block_choices[knowledge_block_value]}",
                                 help=t("knowledge_block_help", locale=current_ui_locale),
                             ):
-                                for _block_value in ("auto", *_DOMAINS):
+                                for _block_value in block_choices.keys():
                                     if st.button(
                                         block_choices[_block_value],
                                         key=f"wsc_block_pick_{active_conversation.id}_{_block_value}",

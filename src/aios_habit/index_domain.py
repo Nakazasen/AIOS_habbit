@@ -23,13 +23,16 @@ from typing import Any, Callable, Mapping, NamedTuple, Optional, Sequence, Set
 DOMAIN_LSU = "lsu"
 DOMAIN_DIEU_TRA_LOI = "dieu_tra_loi"
 DOMAIN_MOM = "mom"
+DOMAIN_TONG_HOP = "tong_hop"
 
 DOMAINS = (DOMAIN_LSU, DOMAIN_DIEU_TRA_LOI, DOMAIN_MOM)
+KNOWLEDGE_BLOCKS = (DOMAIN_LSU, DOMAIN_DIEU_TRA_LOI, DOMAIN_MOM, DOMAIN_TONG_HOP)
 
 DOMAIN_DISPLAY = {
     DOMAIN_LSU: "LSU",
     DOMAIN_DIEU_TRA_LOI: "Điều tra lỗi",
     DOMAIN_MOM: "MOM",
+    DOMAIN_TONG_HOP: "Tổng hợp",
 }
 
 # One on-disk collection per domain; the collection id matches the domain id.
@@ -37,6 +40,7 @@ DOMAIN_COLLECTION_IDS = {
     DOMAIN_LSU: "lsu",
     DOMAIN_DIEU_TRA_LOI: "dieu_tra_loi",
     DOMAIN_MOM: "mom",
+    DOMAIN_TONG_HOP: "tong_hop",
 }
 
 # Legacy single mixed collection id (mirrors workspace_chat_models.DEFAULT_COLLECTION_ID).
@@ -408,6 +412,7 @@ def get_domain_counts() -> dict[str, int]:
         DOMAIN_LSU: 0,
         DOMAIN_DIEU_TRA_LOI: 0,
         DOMAIN_MOM: 0,
+        DOMAIN_TONG_HOP: 0,
     }
     for doc_id, dom in doc_map.items():
         if dom in counts:
@@ -419,7 +424,7 @@ def get_domain_document_ids(domain: Optional[str]) -> Optional[tuple[str, ...]]:
     """Return tuple of document_ids belonging to the given domain block.
 
     - If ``domain`` is None or 'auto': returns None (search across all documents in index).
-    - If ``domain`` is in ('lsu', 'dieu_tra_loi', 'mom'): returns tuple of matching document_ids.
+    - If ``domain`` is in ('lsu', 'dieu_tra_loi', 'mom', 'tong_hop'): returns tuple of matching document_ids.
     """
     global _DOMAIN_DOCUMENTS_CACHE
     if domain is None or str(domain).strip().lower() in ("auto", "all", ""):
@@ -428,8 +433,7 @@ def get_domain_document_ids(domain: Optional[str]) -> Optional[tuple[str, ...]]:
     norm_domain = str(domain).strip().lower()
     if _DOMAIN_DOCUMENTS_CACHE is None:
         doc_map = load_domain_document_map()
-        grouped: dict[str, list[str]] = {d: [] for d in DOMAINS}
-        grouped["tong_hop"] = []
+        grouped: dict[str, list[str]] = {d: [] for d in KNOWLEDGE_BLOCKS}
         for doc_id, dom in doc_map.items():
             if dom in grouped:
                 grouped[dom].append(doc_id)

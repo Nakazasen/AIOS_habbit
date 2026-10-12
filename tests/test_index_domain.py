@@ -161,8 +161,19 @@ def test_forced_block_routes_even_when_routing_flag_off(monkeypatch):
     assert route.detected.confidence == 1.0
 
 
-def test_forced_block_never_selects_tong_hop(monkeypatch):
+def test_forced_block_selects_tong_hop(monkeypatch):
     route = _forced_route(monkeypatch, "tong_hop", {"tong_hop": True})
+    assert route is not None
+    assert route.applied is True
+    assert route.collection_id == "tong_hop"
+    assert route.domain == "tong_hop"
+    assert route.detected is not None
+    assert route.detected.domain == "tong_hop"
+    assert route.detected.confidence == 1.0
+
+
+def test_forced_block_unknown_domain_returns_none(monkeypatch):
+    route = _forced_route(monkeypatch, "unknown_domain", {"unknown_domain": True})
     assert route is None
 
 
