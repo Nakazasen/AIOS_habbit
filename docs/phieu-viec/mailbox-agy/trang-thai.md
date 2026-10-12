@@ -1,3 +1,13 @@
+## ĐIỀU PHỐI — VERDICT AUDIT-SHAKEDOWN-HOME: ĐẠT phần cơ chế / CHƯA ĐẠT phần model — 2026-10-12 ~21:47 +07
+
+Điều phối đã đọc toàn văn báo cáo `docs/phieu-viec/ket-qua/audit-shakedown-home.md` (commit nộp `00389bcd`) và tự đối chiếu: dòng trích "abstained" khớp nguyên văn với dòng điều phối đã kiểm chứng độc lập (`and not bool(local_synthesis.get("abstained", False))`); agy CLI 1.3.3; đọc/ghi tại clone máy nhà thông suốt; phiên bốc vé sau ~17 phút từ lúc phát hành.
+- ĐẠT: cơ chế bốc vé qua hộp thư máy nhà chạy được; thợ khai TRUNG THỰC model thật (Gemini 3.8 Flash (High)) và DỪNG đúng điều 1 của vé khi sai model.
+- CHƯA ĐẠT: phiên bốc vé chạy Gemini 3.8 Flash (High), chưa phải `claude-opus-5-5-medium` — thiết lập audit bằng opus tại máy nhà CHƯA được kiểm chứng. Mẫu này giống hệt vòng 1 tại PC0575: ở đó nguyên nhân là tiến trình canh thư giữ model cũ trong bộ nhớ từ lúc khởi động, cấu hình mới không tự áp cho các phiên do tiến trình cũ mở.
+- Điều phối KHÔNG phát vòng 2 ngay: phát tiếp khi cơ chế mở phiên chưa đổi thì chỉ lặp lại kết quả này. Điều kiện mở lại: user khởi động lại tiến trình canh thư của làn agy tại máy nhà để nó mở phiên bằng `claude-opus-5-5-medium` (như đã làm tại PC0575). User xác nhận đã xử lý thì điều phối phát `AUDIT-SHAKEDOWN-HOME-R2` ngay trong lượt.
+- Trong thời gian chờ, bản nộp Antigravity máy nhà vẫn do điều phối verdict trực tiếp như hiện hành.
+
+---
+
 # ĐIỀU PHỐI — 2026-10-12 ~21:12 +07: MỞ LẠI HỘP THƯ AGY MÁY NHÀ CHO RIÊNG VAI AUDIT (lệnh user)
 
 User đã bật Agy tại máy nhà với model **claude-opus-5-5-medium** (user xác nhận 2026-10-12 ~21:10 +07) và mở lại hộp thư này cho RIÊNG vai audit, theo đúng mô hình đã áp tại PC0575 từ 15:17 cùng ngày:
