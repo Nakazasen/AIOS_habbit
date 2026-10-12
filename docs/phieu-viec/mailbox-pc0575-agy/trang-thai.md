@@ -1,3 +1,5 @@
+> **ĐÓNG BĂNG TỪ 2026-10-12 ~13:35 +07 (lệnh của user: dồn toàn bộ vé cho Antigravity 2.0 ở cả hai máy).** Vé hiện tại QA-CONTEXT-DIAG-R2-PC0575 chạy nốt tới bản nộp; sau bản nộp này hộp thư KHÔNG nhận vé mới. Mọi việc mới phía PC0575 đi qua thư mục `hop-thu/lan-desktop-pc0575/` trong kho điều phối `aios-dieu-phoi`. Khối vé dưới đây giữ nguyên để thợ hoàn thành nốt.
+
 # Trạng thái mailbox-pc0575-agy — KDTVN-PC0575 (thợ agy — Antigravity CLI)
 
 ## Vé hiện tại: QA-CONTEXT-DIAG-R2-PC0575 (chạy lại nghiệm thu mở rộng — bốc ngay)

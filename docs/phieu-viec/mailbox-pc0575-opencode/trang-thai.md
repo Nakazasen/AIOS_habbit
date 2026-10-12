@@ -1,3 +1,5 @@
+> **ĐÓNG BĂNG TỪ 2026-10-12 ~13:35 +07 (lệnh của user: dồn toàn bộ vé cho Antigravity 2.0 ở cả hai máy).** Hộp thư này KHÔNG bốc vé nữa — mốc chờ cổng (cho-cong) dưới đây huỷ hiệu lực. Ba vé hạ tầng chưa bốc đã được phát hành lại sang làn desktop PC0575 trong kho điều phối (`hop-thu/lan-desktop-pc0575/`: DESKTOP-PC0575-OBSIDIAN-SETUP, DESKTOP-PC0575-WATCHER-FRAME-SYNC, DESKTOP-PC0575-WATCHER-STATE-CLEANUP).
+
 ﻿# Trạng thái mailbox-pc0575-opencode — KDTVN-PC0575 (thợ opencode)
 
 - Trạng thái: `moi`
