@@ -1367,6 +1367,56 @@ def is_workspace_chat_worker_warmed(
         return False
 
 
+def get_workspace_chat_worker_progress(
+    *,
+    config: Optional[WorkspaceChatRagV2CanaryConfig] = None,
+) -> dict[str, Any]:
+    """Return lightweight snapshot of worker progress for the chat wait loop."""
+    try:
+        proc = _SUBPROCESS_CLIENT._process
+        alive = proc is not None and proc.poll() is None
+        pid = proc.pid if proc is not None else None
+        exit_code = proc.poll() if proc is not None else None
+        pending = alive and _SUBPROCESS_CLIENT._pending_init is not None
+        last_reason = _SUBPROCESS_CLIENT._last_failure_reason
+        ready = is_workspace_chat_worker_warmed(config=config)
+
+        stderr_size = -1
+        stderr_mtime = 0.0
+        try:
+            resolved = config or WorkspaceChatRagV2CanaryConfig.from_env()
+            pipe_config = _warmup_pipeline_config(resolved)
+            stderr_path = Path(pipe_config.runtime_root) / "logs" / "bge_worker.stderr.log"
+            if stderr_path.is_file():
+                st = stderr_path.stat()
+                stderr_size = st.st_size
+                stderr_mtime = st.st_mtime
+        except Exception:
+            pass
+
+        return {
+            "alive": bool(alive),
+            "pid": pid,
+            "exit_code": exit_code,
+            "pending": bool(pending),
+            "ready": bool(ready),
+            "reason": ("bge_worker_init_pending" if pending else last_reason),
+            "stderr_size": stderr_size,
+            "stderr_mtime": stderr_mtime,
+        }
+    except Exception:
+        return {
+            "alive": False,
+            "pid": None,
+            "exit_code": None,
+            "pending": False,
+            "ready": False,
+            "reason": "unavailable",
+            "stderr_size": -1,
+            "stderr_mtime": 0.0,
+        }
+
+
 def ensure_workspace_chat_worker_warming(
     *,
     config: Optional[WorkspaceChatRagV2CanaryConfig] = None,

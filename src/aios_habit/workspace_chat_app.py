@@ -30,7 +30,7 @@ from threading import Event, Lock
 from io import BytesIO
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, List, Dict, Any, Tuple, Mapping, Callable
+from typing import Optional, List, Dict, Any, Tuple, Mapping, Callable, Sequence
 import html
 from aios_habit.workspace_paths import default_agent_workspace_root
 
@@ -814,6 +814,7 @@ from aios_habit.workspace_chat_rag_v2_adapter import (
     promote_workspace_chat_source_priority,
     forget_workspace_chat_sources,
     ensure_workspace_chat_worker_warming,
+    get_workspace_chat_worker_progress,
     is_workspace_chat_worker_warmed,
     workspace_chat_domain_block_status,
 )
@@ -1275,6 +1276,285 @@ def _knowledge_block_missing_message(ret_res: Any, locale: str) -> str:
     return t("knowledge_block_missing_error", locale=locale, name=block_name or "?")
 
 
+def _is_worker_startup_reason(reason: str) -> bool:
+    folded = str(reason or "").casefold()
+    return (
+        folded == "runtimeerror"
+        or "worker" in folded
+        or "eof" in folded
+        or "timeout" in folded
+    )
+
+
+def _log_worker_warm_milestone(
+    loop: int, warming_s: float, reason: str, elapsed_wait_s: float
+) -> None:
+    safe_reason = str(reason or "unknown").strip().replace("\n", " ")[:60]
+    msg = (
+        f"[WORKER_WARM_LOOP_STEP] loop={loop} warming_s={warming_s:.3f} "
+        f"reason={safe_reason} elapsed_wait_s={elapsed_wait_s:.3f}"
+    )
+    try:
+        LOGGER.info(
+            "[WORKER_WARM_LOOP_STEP] loop=%d warming_s=%.3f reason=%s elapsed_wait_s=%.3f",
+            loop,
+            warming_s,
+            safe_reason,
+            elapsed_wait_s,
+        )
+    except Exception:
+        pass
+    _safe_print_streaming_marker(msg)
+
+
+def _is_hard_worker_error(reason: str, exc: Optional[Exception] = None) -> bool:
+    """Return True if reason or exception signals a fatal/hard worker failure."""
+    if exc is not None:
+        exc_str = f"{type(exc).__name__}: {exc}".casefold()
+        if any(tok in exc_str for tok in (
+            "eof", "brokenpipe", "pipe", "connectionreset", "processlookup",
+            "runtimeerror", "oserror", "subprocessterminated"
+        )):
+            return True
+    folded = str(reason or "").casefold()
+    if not folded:
+        return False
+    hard_tokens = (
+        "eof",
+        "stdout_eof",
+        "pipe",
+        "broken pipe",
+        "hết giờ ống dẫn",
+        "exception",
+        "spawn_failed",
+        "stdin_closed",
+        "no_response",
+        "invalid_response",
+        "model_verify_failed",
+        "model_load_failed",
+        "index_open_failed",
+        "init_failed",
+        "runtimeerror",
+        "pinned_model_unavailable",
+    )
+    return any(tok in folded for tok in hard_tokens)
+
+
+def _check_worker_progress(prev: Mapping[str, Any], curr: Mapping[str, Any]) -> bool:
+    """Return True if worker state shows genuine forward progress towards readiness."""
+    if curr.get("ready"):
+        return True
+    if not curr.get("alive", False):
+        return False
+    # Worker process just spawned
+    if not prev.get("alive", False) and curr.get("alive", False):
+        return True
+    # Worker PID changed
+    if curr.get("pid") and prev.get("pid") and curr.get("pid") != prev.get("pid"):
+        return True
+    # Output written to stderr
+    curr_size = curr.get("stderr_size", -1)
+    prev_size = prev.get("stderr_size", -1)
+    if curr_size > 0 and (prev_size < 0 or curr_size > prev_size):
+        return True
+    curr_mtime = curr.get("stderr_mtime", 0.0)
+    prev_mtime = prev.get("stderr_mtime", 0.0)
+    if curr_mtime > prev_mtime and prev_mtime > 0:
+        return True
+    # Phase/reason advanced towards ready
+    if prev.get("reason") != curr.get("reason") and curr.get("reason") in ("", "bge_worker_init_pending"):
+        return True
+    return False
+
+
+def wait_for_workspace_chat_worker(
+    *,
+    attempt_retrieval_fn: Callable[[], dict[str, Any]],
+    initial_ret_res: dict[str, Any],
+    cancellation_event: Any = None,
+    unready_sources: Sequence[Any] = (),
+    current_ui_locale: str = "vi",
+    warming_fn: Optional[Callable[..., bool]] = None,
+    progress_fn: Optional[Callable[[], dict[str, Any]]] = None,
+    no_progress_timeout: Optional[float] = None,
+    absolute_timeout: Optional[float] = None,
+    max_consecutive_hard_errors: int = 2,
+    step_timeout: float = 5.0,
+    poll_interval: float = 1.0,
+) -> tuple[dict[str, Any], Optional[tuple[bool, str, dict[str, Any] | None, str | None]]]:
+    """Wait for BGE worker readiness with fail-fast, non-progress budget, and absolute ceiling.
+
+    Returns:
+        (latest_ret_res, early_exit_tuple)
+        If early_exit_tuple is not None, caller should return it immediately.
+        Otherwise, caller proceeds with latest_ret_res (either ready evidence or draft fallback).
+    """
+    if no_progress_timeout is None:
+        raw_np = os.environ.get("AIOS_BGE_WARM_NO_PROGRESS_TIMEOUT")
+        if raw_np is not None:
+            try:
+                no_progress_timeout = float(raw_np)
+            except ValueError:
+                no_progress_timeout = 20.0
+        else:
+            raw_init = os.environ.get("AIOS_BGE_INIT_TIMEOUT")
+            if raw_init is not None:
+                try:
+                    val = float(raw_init)
+                    no_progress_timeout = val if val <= 60.0 else 20.0
+                except ValueError:
+                    no_progress_timeout = 20.0
+            else:
+                no_progress_timeout = 20.0
+
+    if absolute_timeout is None:
+        raw_abs = os.environ.get("AIOS_BGE_WARM_ABSOLUTE_TIMEOUT")
+        if raw_abs is not None:
+            try:
+                absolute_timeout = float(raw_abs)
+            except ValueError:
+                absolute_timeout = 120.0
+        else:
+            absolute_timeout = 120.0
+
+    no_progress_timeout = min(no_progress_timeout, absolute_timeout)
+
+    if warming_fn is None:
+        from aios_habit.workspace_chat_rag_v2_adapter import (
+            ensure_workspace_chat_worker_warming,
+        )
+        warming_fn = ensure_workspace_chat_worker_warming
+
+    if progress_fn is None:
+        from aios_habit.workspace_chat_rag_v2_adapter import (
+            get_workspace_chat_worker_progress,
+        )
+        progress_fn = get_workspace_chat_worker_progress
+
+    t_start = time.monotonic()
+    last_progress_time = t_start
+    prev_snapshot = progress_fn() if progress_fn else {}
+    consecutive_hard_errors = 0
+    loop_idx = 0
+    latest_ret_res = initial_ret_res
+
+    while True:
+        now = time.monotonic()
+        total_elapsed = now - t_start
+
+        if cancellation_event is not None and cancellation_event.is_set():
+            return (latest_ret_res, (False, "", None, "Đã dừng yêu cầu AI."))
+
+        if total_elapsed >= absolute_timeout:
+            LOGGER.info(
+                "[WORKER_WARM_LOOP_EXIT] reason=absolute_ceiling_reached total_s=%.3f ceiling_s=%.1f",
+                total_elapsed,
+                absolute_timeout,
+            )
+            break
+
+        time_since_progress = now - last_progress_time
+        if time_since_progress >= no_progress_timeout:
+            LOGGER.info(
+                "[WORKER_WARM_LOOP_EXIT] reason=no_progress_timeout_exceeded elapsed_no_progress_s=%.3f budget_s=%.1f total_s=%.3f",
+                time_since_progress,
+                no_progress_timeout,
+                total_elapsed,
+            )
+            break
+
+        loop_idx += 1
+        remaining_no_progress = max(0.5, no_progress_timeout - time_since_progress)
+        remaining_absolute = max(0.5, absolute_timeout - total_elapsed)
+        current_step_timeout = min(step_timeout, remaining_no_progress, remaining_absolute)
+
+        t_warm_start = time.monotonic()
+        warming_exc: Optional[Exception] = None
+        warming_ok = False
+        try:
+            warming_ok = bool(warming_fn(blocking=True, timeout_s=current_step_timeout))
+        except Exception as exc:
+            warming_exc = exc
+            warming_ok = False
+        warming_duration = time.monotonic() - t_warm_start
+
+        if cancellation_event is not None and cancellation_event.is_set():
+            return (latest_ret_res, (False, "", None, "Đã dừng yêu cầu AI."))
+
+        curr_snapshot = progress_fn() if progress_fn else {}
+        has_progress = _check_worker_progress(prev_snapshot, curr_snapshot)
+        if has_progress:
+            last_progress_time = time.monotonic()
+            consecutive_hard_errors = 0
+        prev_snapshot = curr_snapshot
+
+        try:
+            retry_res = attempt_retrieval_fn()
+        except Exception as exc:
+            retry_res = {
+                "status": "quality_search_unavailable",
+                "rag_v2_canary": {"fallback_reason": f"retrieval_exception_{type(exc).__name__}"},
+            }
+
+        if cancellation_event is not None and cancellation_event.is_set():
+            return (retry_res, (False, "", None, "Đã dừng yêu cầu AI."))
+
+        if retry_res.get("status") != "quality_search_unavailable":
+            latest_ret_res = retry_res
+            elapsed_wait = time.monotonic() - t_start
+            _log_worker_warm_milestone(loop_idx, warming_duration, "retrieval_success", elapsed_wait)
+            return (latest_ret_res, None)
+
+        latest_ret_res = retry_res
+        retry_reason = str(
+            retry_res.get("rag_v2_canary", {}).get("fallback_reason", "")
+        ).casefold()
+
+        if retry_reason == "domain_block_missing":
+            elapsed_wait = time.monotonic() - t_start
+            _log_worker_warm_milestone(loop_idx, warming_duration, retry_reason, elapsed_wait)
+            return (latest_ret_res, (False, "", None, _knowledge_block_missing_message(latest_ret_res, current_ui_locale)))
+
+        if retry_reason == "deep_search_unavailable":
+            elapsed_wait = time.monotonic() - t_start
+            _log_worker_warm_milestone(loop_idx, warming_duration, retry_reason, elapsed_wait)
+            return (latest_ret_res, (False, "", None, t("deep_search_unavailable", locale=current_ui_locale)))
+
+        if not (_is_worker_startup_reason(retry_reason) or not unready_sources):
+            elapsed_wait = time.monotonic() - t_start
+            _log_worker_warm_milestone(loop_idx, warming_duration, retry_reason, elapsed_wait)
+            return (latest_ret_res, (False, "", None, t("search_sources_preparing", locale=current_ui_locale)))
+
+        is_hard = _is_hard_worker_error(retry_reason, warming_exc) or (not curr_snapshot.get("alive", True))
+        if is_hard and not has_progress:
+            consecutive_hard_errors += 1
+        elif has_progress:
+            consecutive_hard_errors = 0
+
+        elapsed_wait = time.monotonic() - t_start
+        effective_reason = (
+            str(warming_exc) if warming_exc is not None else (retry_reason or "warming_pending")
+        )
+        _log_worker_warm_milestone(loop_idx, warming_duration, effective_reason, elapsed_wait)
+
+        if consecutive_hard_errors >= max_consecutive_hard_errors:
+            LOGGER.info(
+                "[WORKER_WARM_LOOP_EXIT] reason=consecutive_hard_errors_exceeded count=%d total_s=%.3f",
+                consecutive_hard_errors,
+                elapsed_wait,
+            )
+            break
+
+        sleep_duration = min(poll_interval, 1.0)
+        if cancellation_event is not None:
+            if cancellation_event.wait(timeout=sleep_duration):
+                return (latest_ret_res, (False, "", None, "Đã dừng yêu cầu AI."))
+        else:
+            time.sleep(sleep_duration)
+
+    return (latest_ret_res, None)
+
+
 def _run_chat_turn_async(
     q_text: str,
     query_relevant_sources: tuple = (),
@@ -1374,34 +1654,16 @@ def _run_chat_turn_async(
             if unavailable_reason != "deep_search_unavailable" and not has_attached_facts and (
                 _is_worker_startup_reason(unavailable_reason) or not unready_sources
             ):
-                # UI-COLDSTART-WORKER-HOME: Luot hoi khong ket thuc bang thong bao "bam Hoi lai".
-                # Tu cho va tiep tuc den khi ra dap an (khong dung lai bat nguoi dung bam lai).
-                max_warm_deadline = time.monotonic() + float(os.environ.get("AIOS_BGE_INIT_TIMEOUT", "300.0"))
-                while time.monotonic() < max_warm_deadline:
-                    if cancellation_event is not None and cancellation_event.is_set():
-                        return (False, "", None, "Đã dừng yêu cầu AI.")
-                    try:
-                        ensure_workspace_chat_worker_warming(blocking=True, timeout_s=45.0)
-                    except Exception:
-                        pass
-                    if cancellation_event is not None and cancellation_event.is_set():
-                        return (False, "", None, "Đã dừng yêu cầu AI.")
-                    retry_res = _attempt_retrieval()
-                    if cancellation_event is not None and cancellation_event.is_set():
-                        return (False, "", None, "Đã dừng yêu cầu AI.")
-                    if retry_res.get("status") != "quality_search_unavailable":
-                        ret_res = retry_res
-                        break
-                    retry_reason = str(
-                        retry_res.get("rag_v2_canary", {}).get("fallback_reason", "")
-                    ).casefold()
-                    if retry_reason == "domain_block_missing":
-                        return (False, "", None, _knowledge_block_missing_message(retry_res, current_ui_locale))
-                    if retry_reason == "deep_search_unavailable":
-                        return (False, "", None, t("deep_search_unavailable", locale=current_ui_locale))
-                    if not (_is_worker_startup_reason(retry_reason) or not unready_sources):
-                        return (False, "", None, t("search_sources_preparing", locale=current_ui_locale))
-                    time.sleep(2.0)
+                # UI-SPEED-WARMLOOP-FIX-HOME: Cho worker khoi dong voi fail-fast va tran cho khong-tien-trien
+                ret_res, early_exit = wait_for_workspace_chat_worker(
+                    attempt_retrieval_fn=_attempt_retrieval,
+                    initial_ret_res=ret_res,
+                    cancellation_event=cancellation_event,
+                    unready_sources=unready_sources,
+                    current_ui_locale=current_ui_locale,
+                )
+                if early_exit is not None:
+                    return early_exit
 
             # no_evidence_found_error
         if ret_res.get("status") == "quality_search_unavailable":
