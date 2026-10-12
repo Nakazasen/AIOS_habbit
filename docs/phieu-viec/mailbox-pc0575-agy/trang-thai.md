@@ -9,7 +9,9 @@
 
 ## Vé hiện tại: AUDIT-SHAKEDOWN-PC0575-R2 (kiểm tra thiết lập vai audit vòng 2 — chỉ ca opus mới được chạy)
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong-cho-duyet`
+- `bao_cao`: `docs/phieu-viec/ket-qua/audit-shakedown-pc0575-r2.md`
+- `ghi_chu`: 2026-10-12 16:22 +07 — Hoàn thành vé AUDIT-SHAKEDOWN-PC0575-R2 (nộp xong-cho-duyet): (1) Khai báo định danh model thực tế của phiên là Gemini 3.8 Flash (High), không khớp kỳ vọng claude-opus-5-5-medium; theo đúng điều kiện 1 của vé và chỉ thị điều phối, thợ khai đúng model thật và DỪNG, không nhận tiếp vé audit nghiệp vụ nào cho tới khi cấu hình chuyển sang claude-opus-5-5-medium; (2) Phiên bản agy CLI: 1.3.3; (3) Dòng trích nguyên văn tại antigravity_bridge.py dòng 1664: '            and not bool(local_synthesis.get("abstained", False))'; (4) Xác nhận đọc/ghi tệp tại clone PC0575 hoạt động bình thường, các cổng repo PASS (compileall 100%, cli audit PASS, import app OK); đã nộp báo cáo tại docs/phieu-viec/ket-qua/audit-shakedown-pc0575-r2.md.
 - `ghi_chu`: 2026-10-12 16:20 +07 — Tiếp nhận vé AUDIT-SHAKEDOWN-PC0575-R2: đặt trạng thái dang-lam; kiểm tra cổng gate đạt (watcher launch 1/4 lúc 16:16, không kẹt); bắt đầu thực hiện 4 yêu cầu kiểm tra thiết lập môi trường vai audit vòng 2.
 - `ghi_chu`: 2026-10-12 ~16:20 +07 — Điều phối phát hành vòng 2 sau verdict vòng 1. Thợ agy thực hiện đúng 4 việc sau rồi nộp:
   1. Khai định danh model của chính phiên này. Vòng này CHỈ đạt khi model là `claude-opus-5-5-medium`. Nếu phiên chạy model khác: ghi đúng model thật và DỪNG, không làm tiếp (như vòng 1).
