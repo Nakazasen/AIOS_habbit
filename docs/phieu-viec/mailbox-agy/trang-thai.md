@@ -11,7 +11,8 @@ User đã bật Agy tại máy nhà với model **claude-opus-5-5-medium** (user
 
 ## Vé hiện tại: AUDIT-SHAKEDOWN-HOME (vé kiểm tra thiết lập vai audit máy nhà — bốc ngay)
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `ghi_chu`: 2026-10-12 21:29 +07 — **ĐÃ NHẬN VÉ** `AUDIT-SHAKEDOWN-HOME`: Nhận vé kiểm tra thiết lập vai audit tại máy nhà. Tiến hành khai báo định danh model phiên làm việc, phiên bản agy CLI, và trích xuất dòng điều kiện abstained từ antigravity_bridge.py.
 - `ghi_chu` (điều phối Muse — PHÁT HÀNH): 2026-10-12 ~21:12 +07 — Phát hành vé kiểm tra thiết lập theo lệnh user (đã bật Agy opus tại máy nhà). Thợ Agy thực hiện đúng 4 việc sau rồi nộp:
   1. Khai định danh model của chính phiên này (kỳ vọng: `claude-opus-5-5-medium`). Nếu phiên không chạy model đó, ghi đúng model thật và DỪNG, không làm tiếp.
   2. Ghi phiên bản agy CLI (`agy --version`).
