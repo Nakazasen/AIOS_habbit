@@ -10,13 +10,15 @@ User da bat Agy tai may cong ty voi model **claude-opus-5-5-medium** va ra lenh 
 
 ## Vé hiện tại: AUDIT-SHAKEDOWN-PC0575 (ve kiem tra thiet lap vai audit — boc ngay)
 
-- Trạng thái: `moi`
+- Trạng thái: `xong-cho-duyet`
+- `bao_cao`: `docs/phieu-viec/ket-qua/audit-shakedown-pc0575.md`
+- `ghi_chu`: 2026-10-12 16:10 +07 — Hoàn thành vé AUDIT-SHAKEDOWN-PC0575 (nộp xong-cho-duyet): (1) Khai báo định danh model thực tế của phiên là Gemini 3.8 Flash (High), không khớp kỳ vọng claude-opus-5-5-medium; theo đúng điều kiện 1 của vé và chỉ thị điều phối 15:17, thợ khai đúng model thật và DỪNG, không nhận tiếp vé audit nghiệp vụ nào cho tới khi cấu hình chuyển sang claude-opus-5-5-medium; (2) Phiên bản agy CLI: 1.3.3; (3) Dòng trích nguyên văn tại antigravity_bridge.py: '            and not bool(local_synthesis.get("abstained", False))'; (4) Xác nhận đọc/ghi tệp tại clone PC0575 hoạt động bình thường, các cổng repo PASS (compileall 100%, cli audit PASS, import app OK); đã nộp báo cáo tại docs/phieu-viec/ket-qua/audit-shakedown-pc0575.md.
+- `ghi_chu`: 2026-10-12 16:05 +07 — Dieu phoi sua dinh dang tieu de + dong trang thai cua ve nay ve dung thong le co dau cua hop thu agy (nghi pham chan boc ve phia dieu phoi — da loai tru tai cho). Noi dung ve khong doi.
 - `ghi_chu`: 2026-10-12 15:17 +07 — Dieu phoi phat ve kiem tra thiet lap theo lenh user. Tho Agy thuc hien dung 4 viec sau roi nop:
   1. Khai dinh danh model cua chinh phien nay (ky vong: claude-opus-5-5-medium). Neu phien khong chay model do, ghi dung model that va DUNG, khong lam tiep.
   2. Ghi phien ban agy CLI (`agy --version`).
   3. Doc tep `src/aios_habit/antigravity_bridge.py` tai clone `D:\Sandbox\AIOS_habbit`, tim ham `_try_local_fallback`, trich NGUYEN VAN dong dieu kien co chua chu "abstained" (dong duoc them boi commit 3e9c5602) vao bao cao.
   4. Nop bao cao tai `docs/phieu-viec/ket-qua/audit-shakedown-pc0575.md` (gom: model dinh danh, phien ban CLI, dong trich nguyen van, xac nhan doc/ghi duoc tai may) + ghi_chu trang thai `xong-cho-duyet` tai hop thu nay.
-- `ghi_chu`: 2026-10-12 16:05 +07 — Dieu phoi sua dinh dang tieu de + dong trang thai cua ve nay ve dung thong le co dau cua hop thu agy (nghi pham chan boc ve phia dieu phoi — da loai tru tai cho). Noi dung ve khong doi.
 
 ---
 
