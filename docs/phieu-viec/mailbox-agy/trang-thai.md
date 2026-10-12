@@ -1,3 +1,25 @@
+# ĐIỀU PHỐI — 2026-10-12 ~21:12 +07: MỞ LẠI HỘP THƯ AGY MÁY NHÀ CHO RIÊNG VAI AUDIT (lệnh user)
+
+User đã bật Agy tại máy nhà với model **claude-opus-5-5-medium** (user xác nhận 2026-10-12 ~21:10 +07) và mở lại hộp thư này cho RIÊNG vai audit, theo đúng mô hình đã áp tại PC0575 từ 15:17 cùng ngày:
+- Làn desktop Antigravity 2.0 vẫn là thợ CHÍNH ở máy nhà (implement + nộp bài).
+- Agy (claude-opus-5-5-medium) chỉ nhận **vé AUDIT** do điều phối phát tại hộp thư này: đọc bản nộp + diff + bằng chứng của Antigravity; lỗi nhỏ thì sửa trực tiếp và liệt kê rõ; lỗi nhiều/lớn thì kết luận "trả làm lại" kèm lý do cụ thể.
+- Agy KHÔNG nhận vé implement tính năng mới, không tự phát vé.
+- Mọi phiên audit phải chạy đúng model claude-opus-5-5-medium; phiên chạy model khác thì ghi đúng model thật và DỪNG.
+- Khối đóng băng 07:06 ở dưới CHỈ còn giá trị hồ sơ cho các vé implement cũ — vai audit theo khối này là hiệu lực hiện hành duy nhất của làn agy máy nhà.
+
+---
+
+## Vé hiện tại: AUDIT-SHAKEDOWN-HOME (vé kiểm tra thiết lập vai audit máy nhà — bốc ngay)
+
+- Trạng thái: `moi`
+- `ghi_chu` (điều phối Muse — PHÁT HÀNH): 2026-10-12 ~21:12 +07 — Phát hành vé kiểm tra thiết lập theo lệnh user (đã bật Agy opus tại máy nhà). Thợ Agy thực hiện đúng 4 việc sau rồi nộp:
+  1. Khai định danh model của chính phiên này (kỳ vọng: `claude-opus-5-5-medium`). Nếu phiên không chạy model đó, ghi đúng model thật và DỪNG, không làm tiếp.
+  2. Ghi phiên bản agy CLI (`agy --version`).
+  3. Đọc tệp `src/aios_habit/antigravity_bridge.py` tại clone `D:\Sandbox\AIOS_habbit`, tìm hàm `_try_local_fallback`, trích NGUYÊN VĂN dòng điều kiện có chứa chữ "abstained" vào báo cáo.
+  4. Nộp báo cáo tại `docs/phieu-viec/ket-qua/audit-shakedown-home.md` (gồm: model định danh, phiên bản CLI, dòng trích nguyên văn, xác nhận đọc/ghi được tại máy) + ghi_chu trạng thái `xong-cho-duyet` tại hộp thư này.
+
+---
+
 # ĐÓNG BĂNG TẠM THỜI LÀN AGY MÁY NHÀ (điều phối, theo lệnh user 2026-10-12 ~07:06)
 
 Máy nhà từ nay chỉ dùng làn Antigravity 2.0 (desktop); làn agy tạm dừng. Toàn bộ việc của làn này đã chuyển sang làn desktop (kho điều phối, thư mục hop-thu/lan-desktop/): vé đang làm STRUCTURED-LANE-TEST-FIXTURE-HOME → DESKTOP-STRUCTURED-LANE-TEST-FIXTURE-HOME (#4); hàng chờ BLOCK-SELECTOR-TONGHOP-FIX → #5, RAG-RETRIEVAL-NUMPY-COMPLETE → #1, DISK-GROWTH-DIAG → #9, EVIDENCE-DATE-REDACT-FIX → #6, AUTO-ROUTE-NAMED-DOC-FIX → #7, NOTEBOOK-SOURCE-TEXT-FIX → #8, EXTERNAL-USAGE-LOG-TIMING-FIX → #3. Thợ agy không bốc việc mới; trạng thái các vé dưới đây giữ nguyên làm hồ sơ. Bản nộp muộn (nếu có) chỉ còn giá trị tham khảo, điều phối không verdict nữa.
