@@ -79,9 +79,10 @@ def test_sidebar_block_status_reads_three_index_files(tmp_path, monkeypatch) -> 
     lsu_index.write_bytes(b"x" * 8)
 
     status = workspace_chat_domain_block_status()
-    assert [block["domain"] for block in status] == ["lsu", "dieu_tra_loi", "mom"]
+    assert [block["domain"] for block in status] == ["lsu", "dieu_tra_loi", "mom", "tong_hop"]
     by_domain = {block["domain"]: block for block in status}
     assert by_domain["lsu"]["ready"] is True
     assert by_domain["lsu"]["size_bytes"] == 8
     assert by_domain["dieu_tra_loi"]["ready"] is False
     assert by_domain["mom"]["ready"] is False
+    assert by_domain["tong_hop"]["ready"] is False

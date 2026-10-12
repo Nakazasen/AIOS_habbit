@@ -557,6 +557,12 @@ class _ErrorLookupAction(ChatAction):
     """ChatAction that also fires on a bare error code (C0030, F000, ...)."""
 
     def matches(self, request: ChatActionRequest) -> bool:
+        # DESKTOP-BLOCK-PIN-LANE-PRECEDENCE-FIX-HOME:
+        # Khi người dùng ghim một khối tri thức cụ thể (forced_domain khác None/auto),
+        # hành động tra cứu ca lỗi KHÔNG được chiếm quyền trả lời trước luồng truy hồi theo khối.
+        forced = (request.context or {}).get("forced_domain") if request.context else None
+        if forced and str(forced).strip().lower() != "auto":
+            return False
         if super().matches(request):
             return True
         return bool(_CODE_RE.search(request.question or ""))
@@ -564,6 +570,9 @@ class _ErrorLookupAction(ChatAction):
 
 def _handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
     # Fail-closed at every step: None falls back to the normal RAG flow.
+    forced = (request.context or {}).get("forced_domain") if request.context else None
+    if forced and str(forced).strip().lower() != "auto":
+        return None
     try:
         db_path = resolve_db_path(request)
         if db_path is None:

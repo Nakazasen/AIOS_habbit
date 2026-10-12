@@ -444,24 +444,28 @@ def get_domain_document_ids(domain: Optional[str]) -> Optional[tuple[str, ...]]:
     return _DOMAIN_DOCUMENTS_CACHE.get(norm_domain)
 
 
-_DOMAIN_ALL_SPECS_CACHE: Optional[list[Any]] = None
+_DOMAIN_ALL_SPECS_CACHE: dict[str, list[Any]] = {}
 
 
 def load_all_index_specs(db_path: Path | str | None = None) -> list[Any]:
-    """Load SourceSpec objects for all documents in library.sqlite (cached)."""
+    """Load SourceSpec objects for all documents in library.sqlite (cached per path)."""
     global _DOMAIN_ALL_SPECS_CACHE
-    if _DOMAIN_ALL_SPECS_CACHE is not None:
-        return _DOMAIN_ALL_SPECS_CACHE
+    if not isinstance(_DOMAIN_ALL_SPECS_CACHE, dict):
+        _DOMAIN_ALL_SPECS_CACHE = {}
 
     from aios_habit.rag_v2.pipeline import SourceSpec
     if db_path is None:
-        db_path = Path("local_runs/workspace_chat_rag_v2_production/bge_m3_hybrid/collections/tri_thuc/library.sqlite")
+        prod_path = Path("C:/AIOS_workspace_chat_rag_v2_production/bge_m3_hybrid/collections/tri_thuc/library.sqlite")
+        db_path = prod_path if prod_path.is_file() else Path("local_runs/workspace_chat_rag_v2_production/bge_m3_hybrid/collections/tri_thuc/library.sqlite")
     else:
         db_path = Path(db_path)
 
+    cache_key = str(db_path.resolve()) if db_path.is_file() else str(db_path)
+    if cache_key in _DOMAIN_ALL_SPECS_CACHE:
+        return _DOMAIN_ALL_SPECS_CACHE[cache_key]
+
     if not db_path.is_file():
-        _DOMAIN_ALL_SPECS_CACHE = []
-        return _DOMAIN_ALL_SPECS_CACHE
+        return []
 
     try:
         uri = db_path.resolve().as_uri() + "?mode=ro"
@@ -479,11 +483,10 @@ def load_all_index_specs(db_path: Path | str | None = None) -> list[Any]:
             )
             for r in rows
         ]
-        _DOMAIN_ALL_SPECS_CACHE = specs
+        _DOMAIN_ALL_SPECS_CACHE[cache_key] = specs
         return specs
     except Exception:
-        _DOMAIN_ALL_SPECS_CACHE = []
-        return _DOMAIN_ALL_SPECS_CACHE
+        return []
 
 
 CROSS_DOMAIN_EXACT_IDENTIFIER_ENV_VAR = "AIOS_RAG_CROSS_DOMAIN_EXACT_IDENTIFIER"
@@ -565,16 +568,34 @@ def _find_cross_domain_candidate_documents(
                     params.append(" OR ".join(spec_terms))
 
             sql = f"""
-                SELECT d1.document_id, COUNT(DISTINCT d1.chunk_id) as hits
+                SELECT d1.document_id, MIN(COALESCE(d1.source_name, '')), COUNT(DISTINCT d1.chunk_id) as hits
                 FROM chunks d1
                 WHERE {" AND ".join(clauses)}
                 GROUP BY d1.document_id
-                ORDER BY hits DESC
-                LIMIT ?
             """
-            params.append(max_extra_docs)
-            rows = con.execute(sql, tuple(params)).fetchall()
-            return tuple(str(r[0]) for r in rows)
+            raw_rows = con.execute(sql, tuple(params)).fetchall()
+            if not raw_rows:
+                return ()
+
+            q_clean = (question or "").lower().replace(":", " ").replace("-", " ").replace("/", " ").replace(">", " ").replace(".", " ")
+            q_words = {w for w in q_clean.split() if len(w) >= 2} if question else set()
+
+            scored = []
+            for doc_id, s_name, hits in raw_rows:
+                s_clean = str(s_name).lower().replace(":", " ").replace("-", " ").replace("/", " ").replace(">", " ").replace(".", " ").replace("(", " ").replace(")", " ")
+                s_words = {w for w in s_clean.split() if len(w) >= 2}
+                overlap = len(q_words & s_words) if q_words else 0
+                scored.append((overlap, hits, str(doc_id)))
+
+            # Khi câu hỏi nêu đích danh tên tài liệu (overlap >= 2 từ), ưu tiên tài liệu đích
+            has_title_match = any(item[0] >= 2 for item in scored)
+            if has_title_match:
+                matched = [item for item in scored if item[0] >= 2]
+                matched.sort(key=lambda item: (item[0], item[1]), reverse=True)
+                return tuple(item[2] for item in matched[:max_extra_docs])
+
+            scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
+            return tuple(item[2] for item in scored[:max_extra_docs])
     except Exception:
         return ()
 

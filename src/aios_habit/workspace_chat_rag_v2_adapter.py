@@ -3115,10 +3115,13 @@ def _managed_workbook_path(source: WorkspaceAIContextSource) -> Path | None:
 def _try_structured_excel_evidence(
     question: str,
     sources: Tuple[WorkspaceAIContextSource, ...],
+    forced_domain: Optional[str] = None,
 ) -> dict[str, Any] | None:
     """Use bounded SQL analytics only for deterministic, allow-listed plans."""
     from aios_habit.rag_v2.structured_query import try_structured_table_evidence
-    table_result = try_structured_table_evidence(question, sources)
+    table_result = try_structured_table_evidence(
+        question, sources, forced_domain=forced_domain
+    )
     if table_result is not None:
         if not table_result.get("retrieved_context_sources") and sources and table_result.get("evidence_items"):
             ev = table_result["evidence_items"][0]
@@ -3577,7 +3580,11 @@ def retrieve_workspace_chat_evidence(
     # Scope every retrieval lane before it does any potentially expensive work.
     # In particular, an operational Manual question must not inspect (or ask a
     # planner about) every enabled workbook before it reaches the selected PDF.
-    structured_result = _try_structured_excel_evidence(question, semantic_sources)
+    structured_result = _try_structured_excel_evidence(
+        question,
+        semantic_sources,
+        forced_domain=target_domain if has_forced_domain else None,
+    )
     if structured_result is not None:
         return _finish(structured_result)
 

@@ -1571,10 +1571,55 @@ def query_might_be_structured_table(question: str) -> bool:
     return any(token in q_norm or token in q_raw for token in structured_tokens) or bool(re.search(r"\b[0-9A-Z]{12}\b", question))
 
 
+LSU_STRUCTURED_FILENAMES = frozenset({
+    "2026_08_spec.csv",
+    "2026_08_error.csv",
+    "2026_08_unittest.csv",
+    "2026_08_error_bowoveradjust.csv",
+    "3v2nd19040-mount ld block  lot 18.8.2026.xlsx",
+    "3v2nd19040-mount ld block lot 18.8.2026.xlsx",
+})
+
+
+def is_structured_file_in_domain(
+    doc_title: str,
+    forced_domain: Optional[str] = None,
+    sources: Sequence[Any] | None = None,
+    custom_source_path: Path | None = None,
+) -> bool:
+    """DESKTOP-BLOCK-PIN-LANE-PRECEDENCE-FIX-HOME:
+    Xac dinh lieu tep bang cau truc co thuoc khoi dang ghim (forced_domain) hay khong.
+    - Khi khong ghim (forced_domain is None hoac 'auto'): cho phep hoat dong nhu cu (giu nguyen tinh nang).
+    - Khi truyen custom_source_path (fixture kiem thu): luon cho phep.
+    - Khi da ghim khoi cu the:
+      + Neu tep co trong sources (da duoc loc theo khoi): hop le.
+      + Cac tep staged JIG/bang tinh LSU chi hop le voi khoi 'lsu'.
+      + Nguoc lai: tra ve False de nhuong cho truy hoi theo khoi.
+    """
+    if forced_domain is None or str(forced_domain).strip().lower() in ("auto", ""):
+        return True
+    if custom_source_path is not None:
+        return True
+    norm_domain = str(forced_domain).strip().lower()
+    norm_title = str(doc_title or "").strip().lower()
+
+    if sources:
+        for s in sources:
+            name = getattr(s, "title", None) or Path(getattr(s, "path", "")).name
+            if name.strip().lower() == norm_title:
+                return True
+
+    if norm_title in LSU_STRUCTURED_FILENAMES:
+        return norm_domain == "lsu"
+
+    return False
+
+
 def try_structured_table_evidence(
     question: str,
     sources: Sequence[Any] | None = None,
     custom_source_path: Path | None = None,
+    forced_domain: Optional[str] = None,
 ) -> dict[str, Any] | None:
     """Unified structured lane for CSV and workbook analytics across both evaluation and UI.
     
@@ -1589,61 +1634,67 @@ def try_structured_table_evidence(
     if serial_match:
         serial = serial_match.group(1)
         doc_title = "2026_08_UnitTest.csv"
-        src_path = custom_source_path or find_structured_source_path(doc_title, sources)
-        if src_path and src_path.is_file():
-            res = _compute_serial_multiday_comparison(src_path, doc_title, serial, sources)
-            if res:
-                return res
+        if is_structured_file_in_domain(doc_title, forced_domain, sources, custom_source_path):
+            src_path = custom_source_path or find_structured_source_path(doc_title, sources)
+            if src_path and src_path.is_file():
+                res = _compute_serial_multiday_comparison(src_path, doc_title, serial, sources)
+                if res:
+                    return res
 
     # 2. Tra cứu thông số cơ khí (Nominal, Dung sai, Giới hạn trong bảng tính)
     param_matches = re.findall(r"\b(g[1-9]|e[1-9]|w[1-9]|d[1-9])\b", q_raw)
     if param_matches and any(k in q_norm for k in ("nominal", "gioi han", "dung sai", "kich thuoc", "3v2nd19040")):
         doc_title = "3V2ND19040-MOUNT LD BLOCK  LOT 18.8.2026.xlsx"
-        src_path = custom_source_path or find_structured_source_path(doc_title, sources)
-        if src_path and src_path.is_file():
-            res = _compute_inspection_sheet_limits(src_path, doc_title, param_matches, sources)
-            if res:
-                return res
+        if is_structured_file_in_domain(doc_title, forced_domain, sources, custom_source_path):
+            src_path = custom_source_path or find_structured_source_path(doc_title, sources)
+            if src_path and src_path.is_file():
+                res = _compute_inspection_sheet_limits(src_path, doc_title, param_matches, sources)
+                if res:
+                    return res
 
     # 3. Phân tích cặp giá trị / tổ hợp giới hạn (Lower & Upper)
     if any(k in q_norm for k in ("current", "voltage", "dong dien", "dien ap")) and any(k in q_norm for k in ("combination", "pho bien nhat", "nhieu nhat", "cap gioi han", "quy cach", "tieu chuan", "規格値", "lower", "upper")):
         doc_title = "2026_08_Spec.csv"
-        src_path = custom_source_path or find_structured_source_path(doc_title, sources)
-        if src_path and src_path.is_file():
-            res = _compute_pair_combination(src_path, doc_title, col1_name="Lower", col2_name="Upper", unit="mA", sources=sources)
-            if res:
-                return res
+        if is_structured_file_in_domain(doc_title, forced_domain, sources, custom_source_path):
+            src_path = custom_source_path or find_structured_source_path(doc_title, sources)
+            if src_path and src_path.is_file():
+                res = _compute_pair_combination(src_path, doc_title, col1_name="Lower", col2_name="Upper", unit="mA", sources=sources)
+                if res:
+                    return res
 
     # 4. Phân tích giá trị / ngày có số lượng nhiều nhất (Peak item)
     if any(k in q_norm or k in q_raw for k in ("nhieu nhat", "most", "多い日", "最多", "nhieu loi nhat")) and any(k in q_norm or k in q_raw for k in ("ngay", "日", "date", "哪一天", "khi nao")):
         doc_title = "2026_08_Error.csv"
-        src_path = custom_source_path or find_structured_source_path(doc_title, sources)
-        if src_path and src_path.is_file():
-            res = _compute_peak_item(src_path, doc_title, group_col="DATE", label="ngày", sources=sources)
-            if res:
-                return res
+        if is_structured_file_in_domain(doc_title, forced_domain, sources, custom_source_path):
+            src_path = custom_source_path or find_structured_source_path(doc_title, sources)
+            if src_path and src_path.is_file():
+                res = _compute_peak_item(src_path, doc_title, group_col="DATE", label="ngày", sources=sources)
+                if res:
+                    return res
 
     # 5. Phân tích phân bố theo màu sắc hoặc cột phân loại (Breakdown)
     if ("errcolor" in q_norm or any(color in q_norm for color in ("yellow", "cyan", "magenta", "black", "mau", "各色"))) and any(k in q_norm or k in q_raw for k in ("errcolor", "bao nhieu", "so luong", "dem", "breakdown", "phan bo", "多少件", "件数", "各色", "sac", "arimasu", "ありますか")):
         doc_title = "2026_08_Error_BowOverAdjust.csv"
-        src_path = custom_source_path or find_structured_source_path(doc_title, sources)
-        if src_path and src_path.is_file():
-            if "black" in q_norm and not any(c in q_norm for c in ("yellow", "cyan", "magenta")):
-                target_colors = ["Black"]
-            else:
-                target_colors = ["Yellow", "Cyan", "Magenta"]
-            res = _compute_column_breakdown(src_path, doc_title, col_name="ErrColor", target_values=target_colors, sources=sources)
-            if res:
-                return res
+        if is_structured_file_in_domain(doc_title, forced_domain, sources, custom_source_path):
+            src_path = custom_source_path or find_structured_source_path(doc_title, sources)
+            if src_path and src_path.is_file():
+                if "black" in q_norm and not any(c in q_norm for c in ("yellow", "cyan", "magenta")):
+                    target_colors = ["Black"]
+                else:
+                    target_colors = ["Yellow", "Cyan", "Magenta"]
+                res = _compute_column_breakdown(src_path, doc_title, col_name="ErrColor", target_values=target_colors, sources=sources)
+                if res:
+                    return res
 
     # 6. Phép cộng dồn theo JigNumber trong 2026_08_Error.csv
     if "jignumber" in q_norm or ("jig" in q_norm and any(k in q_norm or k in q_raw for k in ("error.csv", "2026_08_error", "thong ke", "phan bo", "so luong loi", "dem"))):
         doc_title = "2026_08_Error.csv"
-        src_path = custom_source_path or find_structured_source_path(doc_title, sources)
-        if src_path and src_path.is_file():
-            res = _compute_column_breakdown(src_path, doc_title, col_name="JigNumber", sources=sources)
-            if res:
-                return res
+        if is_structured_file_in_domain(doc_title, forced_domain, sources, custom_source_path):
+            src_path = custom_source_path or find_structured_source_path(doc_title, sources)
+            if src_path and src_path.is_file():
+                res = _compute_column_breakdown(src_path, doc_title, col_name="JigNumber", sources=sources)
+                if res:
+                    return res
 
     # 7. Thống kê tổng số bản ghi & phạm vi ngày (Overview & Date Range)
     if any(k in q_norm or k in q_raw for k in ("record", "ban ghi", "so luong", "dem", "件数", "thoi gian", "ky", "期間", "pham vi", "tong so", "overview", "tat ca", "bao nhieu", "thong ke", "統計", "統計を")):
@@ -1659,7 +1710,7 @@ def try_structured_table_evidence(
         if not doc_title and custom_source_path:
             doc_title = custom_source_path.name
 
-        if doc_title:
+        if doc_title and is_structured_file_in_domain(doc_title, forced_domain, sources, custom_source_path):
             src_path = custom_source_path or find_structured_source_path(doc_title, sources)
             if src_path and src_path.is_file():
                 res = _compute_record_count_and_date_range(src_path, doc_title, sources=sources)

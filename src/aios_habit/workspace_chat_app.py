@@ -5204,13 +5204,19 @@ else:
 
                             _action_nb_id = active_conversation.notebook_id or active_nb_id or ""
                             _action_notebook = load_notebook(_action_nb_id) if _action_nb_id else None
+                            _action_forced_domain = str(
+                                st.session_state.get(f"wsc_knowledge_block_{active_conversation.id}", "auto") or "auto"
+                            )
                             if handle_chat_text(
                                 q_text,
                                 conversation_id=active_conversation.id,
                                 notebook_id=_action_nb_id,
                                 workspace_id=_action_nb_id or "default",
                                 locale=current_ui_locale,
-                                context={"notebook_title": getattr(_action_notebook, "title", "") or ""},
+                                context={
+                                    "notebook_title": getattr(_action_notebook, "title", "") or "",
+                                    "forced_domain": _action_forced_domain if _action_forced_domain != "auto" else None,
+                                },
                                 save_user=lambda content: _action_save("user", content),
                                 save_assistant=lambda content: _action_save("assistant", content),
                             ):

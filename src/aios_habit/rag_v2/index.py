@@ -636,7 +636,12 @@ def _hybrid_result_is_safe(result: SearchResult, options: SearchOptions) -> bool
         expected_fingerprint = expected[result.source_path]
     else:
         return True
-    return result.metadata.get("source_fingerprint") == expected_fingerprint
+    if not expected_fingerprint:
+        return True
+    row_fp = result.metadata.get("source_fingerprint")
+    if not row_fp:
+        return True
+    return row_fp == expected_fingerprint
 
 
 def _merge_search_results(current: SearchResult, incoming: SearchResult) -> SearchResult:

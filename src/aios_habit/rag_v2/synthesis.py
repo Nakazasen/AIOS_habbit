@@ -954,24 +954,28 @@ def synthesize_with_provider(
     merely because deterministic fragment extraction is too strict for the source
     format (for example a spreadsheet or multilingual slide).
     """
-    from aios_habit.rag_v2.structured_query import try_structured_table_evidence
-    structured = try_structured_table_evidence(pack.query)
-    if structured is not None:
-        local_synth = structured.get("local_synthesis") or {}
-        ans = local_synth.get("answer", "")
-        cit_ids = tuple(local_synth.get("citation_ids", ()))
-        return LocalSynthesisResult(
-            answer=ans,
-            citation_ids=cit_ids,
-            grounded=True,
-            abstained=False,
-            abstention_reasons=(),
-            answer_mode="structured_table_sql",
-            limitation_reasons=(),
-            claims=(),
-            provider_used=False,
-            mode=_PROVIDER_VALIDATED_MODE,
-        )
+    has_non_table_evidence = bool(
+        pack.items and any(getattr(item, "retrieval_lane", "") != "structured_table_sql" for item in pack.items)
+    )
+    if not has_non_table_evidence:
+        from aios_habit.rag_v2.structured_query import try_structured_table_evidence
+        structured = try_structured_table_evidence(pack.query)
+        if structured is not None:
+            local_synth = structured.get("local_synthesis") or {}
+            ans = local_synth.get("answer", "")
+            cit_ids = tuple(local_synth.get("citation_ids", ()))
+            return LocalSynthesisResult(
+                answer=ans,
+                citation_ids=cit_ids,
+                grounded=True,
+                abstained=False,
+                abstention_reasons=(),
+                answer_mode="structured_table_sql",
+                limitation_reasons=(),
+                claims=(),
+                provider_used=False,
+                mode=_PROVIDER_VALIDATED_MODE,
+            )
 
     prioritize = prioritize_body_evidence or _default_prioritize_body_evidence(
         answer_shape, pack.query
