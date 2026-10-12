@@ -12,6 +12,7 @@ User đã bật Agy tại máy nhà với model **claude-opus-5-5-medium** (user
 ## Vé hiện tại: AUDIT-SHAKEDOWN-HOME (vé kiểm tra thiết lập vai audit máy nhà — bốc ngay)
 
 - Trạng thái: `xong-cho-duyet`
+- `commit`: `00389bcd`
 - `bao_cao`: `docs/phieu-viec/ket-qua/audit-shakedown-home.md`
 - `ghi_chu`: 2026-10-12 21:34 +07 — **HOÀN TẤT VÉ** `AUDIT-SHAKEDOWN-HOME`: Hoàn thành 4 việc theo yêu cầu: (1) Khai định danh model thực tế: Gemini 3.8 Flash (High) (không phải claude-opus-5-5-medium), tuân thủ lệnh điều phối DỪNG không bốc vé audit tiếp theo; (2) Phiên bản agy CLI: 1.3.3; (3) Trích nguyên văn dòng abstained trong `_try_local_fallback` tại `antigravity_bridge.py` (dòng 1701: `            and not bool(local_synthesis.get("abstained", False))`); (4) Xác nhận đọc/ghi tốt tại máy; compileall PASS, cli audit status PASS, import app OK. Báo cáo nộp tại `docs/phieu-viec/ket-qua/audit-shakedown-home.md`.
 - `ghi_chu`: 2026-10-12 21:29 +07 — **ĐÃ NHẬN VÉ** `AUDIT-SHAKEDOWN-HOME`: Nhận vé kiểm tra thiết lập vai audit tại máy nhà. Tiến hành khai báo định danh model phiên làm việc, phiên bản agy CLI, và trích xuất dòng điều kiện abstained từ antigravity_bridge.py.
