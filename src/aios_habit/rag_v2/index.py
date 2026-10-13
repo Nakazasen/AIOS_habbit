@@ -68,8 +68,12 @@ _SPECIAL_ENTITY_RES = (
 )
 # Structured CSV log documents that operate on the dedicated structured query lane (CSV-STRUCTURED-LANE-HOME)
 # rather than dense semantic embeddings. Dense embedding was explicitly cancelled by user & coordinator decision.
+# DESKTOP-SPEED-LSU-COVERAGE-EXEMPTION-FIX-HOME: bo sung 3 tep CSV anh em cua 2026_08_Error_BowOverAdjust.csv
 STRUCTURED_LANE_DOCUMENT_IDS: frozenset[str] = frozenset({
     "wsc-8eb2a5d21b75fa88307223b1",  # 2026_08_Error_BowOverAdjust.csv
+    "wsc-03bf475fc208c02f741d4013",  # 2026_08_Error.csv
+    "wsc-4bd2e353e19864fe786358c5",  # 2026_08_UnitTest.csv
+    "wsc-d4df39c14101e40ebad88a91",  # 2026_08_Spec.csv
 })
 
 MAX_ENTITY_BOOST = 0.060
