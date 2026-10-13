@@ -35,6 +35,7 @@ from aios_habit.rag_v2.bge_subprocess_client import (
     BgeSubprocessWorkerClient,
     default_init_timeout_seconds,
     default_query_timeout_seconds,
+    pipe_name_for_config,
 )
 from aios_habit.rag_v2.index import SearchSummary
 from aios_habit.rag_v2.pipeline import RagV2DevConfig, RagV2DevPipeline, SourceSpec
@@ -1359,9 +1360,13 @@ _WARMUP_LAST_ATTEMPT_MONO = 0.0
 _WARMUP_TTL_SECONDS = 90.0
 
 
+_LAST_WARMUP_PIPE_CONFIG: Optional[RagV2DevConfig] = None
+
+
 def is_workspace_chat_worker_warmed(
     *,
     config: Optional[WorkspaceChatRagV2CanaryConfig] = None,
+    pipe_config: Optional[RagV2DevConfig] = None,
 ) -> bool:
     """Return whether the local BGE worker subprocess is already usable."""
     try:
@@ -1370,12 +1375,14 @@ def is_workspace_chat_worker_warmed(
         return False
     if not resolved.enabled or not resolved.requested_profile.startswith("bge_m3_"):
         return False
+    target_pipe_config = pipe_config or _LAST_WARMUP_PIPE_CONFIG
+    if target_pipe_config is None:
+        try:
+            target_pipe_config = _warmup_pipeline_config(resolved)
+        except (SemanticBackendUnavailable, ValueError, OSError):
+            return False
     try:
-        pipe_config = _warmup_pipeline_config(resolved)
-    except (SemanticBackendUnavailable, ValueError, OSError):
-        return False
-    try:
-        return bool(_SUBPROCESS_CLIENT.is_ready(pipe_config))
+        return bool(_SUBPROCESS_CLIENT.is_ready(target_pipe_config))
     except Exception:
         return False
 
@@ -1386,37 +1393,90 @@ def get_workspace_chat_worker_progress(
 ) -> dict[str, Any]:
     """Return lightweight snapshot of worker progress for the chat wait loop."""
     try:
-        proc = _SUBPROCESS_CLIENT._process
-        alive = proc is not None and proc.poll() is None
-        pid = proc.pid if proc is not None else None
-        exit_code = proc.poll() if proc is not None else None
-        pending = alive and _SUBPROCESS_CLIENT._pending_init is not None
-        last_reason = _SUBPROCESS_CLIENT._last_failure_reason
-        ready = is_workspace_chat_worker_warmed(config=config)
+        resolved = config or WorkspaceChatRagV2CanaryConfig.from_env()
+    except Exception:
+        resolved = None
 
-        stderr_size = -1
-        stderr_mtime = 0.0
+    target_pipe_config = _LAST_WARMUP_PIPE_CONFIG
+    if target_pipe_config is None and resolved is not None:
         try:
-            resolved = config or WorkspaceChatRagV2CanaryConfig.from_env()
-            pipe_config = _warmup_pipeline_config(resolved)
-            stderr_path = Path(pipe_config.runtime_root) / "logs" / "bge_worker.stderr.log"
-            if stderr_path.is_file():
-                st = stderr_path.stat()
-                stderr_size = st.st_size
-                stderr_mtime = st.st_mtime
+            target_pipe_config = _warmup_pipeline_config(resolved)
         except Exception:
-            pass
+            target_pipe_config = None
 
-        return {
-            "alive": bool(alive),
-            "pid": pid,
-            "exit_code": exit_code,
-            "pending": bool(pending),
-            "ready": bool(ready),
-            "reason": ("bge_worker_init_pending" if pending else last_reason),
-            "stderr_size": stderr_size,
-            "stderr_mtime": stderr_mtime,
-        }
+    try:
+        if target_pipe_config is not None and _SUBPROCESS_CLIENT._persistent_applies(target_pipe_config):
+            with _SUBPROCESS_CLIENT._persistent_init_lock:
+                flight_key = pipe_name_for_config(target_pipe_config)
+                flight = _SUBPROCESS_CLIENT._pending_persistent_inits.get(flight_key)
+                pending = flight is not None
+                flight_started = flight.get("started", 0.0) if flight else 0.0
+
+            p_ready = _SUBPROCESS_CLIENT.readiness(target_pipe_config)
+            ready = bool(p_ready.get("ready", False))
+            alive = bool(p_ready.get("alive", False)) or pending
+            pid = p_ready.get("pid")
+            exit_code = None
+            last_reason = _SUBPROCESS_CLIENT._last_failure_reason or p_ready.get("reason", "")
+
+            stderr_size = -1
+            stderr_mtime = 0.0
+            try:
+                logs_dir = Path(target_pipe_config.runtime_root) / "logs"
+                for fname in ("bge_worker_daemon.stderr.log", "bge_worker.stderr.log"):
+                    p = logs_dir / fname
+                    if p.is_file():
+                        st = p.stat()
+                        stderr_size = max(stderr_size, st.st_size)
+                        stderr_mtime = max(stderr_mtime, st.st_mtime)
+            except Exception:
+                pass
+
+            if pending and flight_started > 0.0:
+                stderr_mtime = max(stderr_mtime, round(time.time(), 1))
+                stderr_size = max(stderr_size, 1)
+
+            return {
+                "alive": bool(alive),
+                "pid": pid,
+                "exit_code": exit_code,
+                "pending": bool(pending),
+                "ready": bool(ready),
+                "reason": ("bge_worker_init_pending" if pending else last_reason),
+                "stderr_size": stderr_size,
+                "stderr_mtime": stderr_mtime,
+            }
+        else:
+            proc = _SUBPROCESS_CLIENT._process
+            alive = proc is not None and proc.poll() is None
+            pid = proc.pid if proc is not None else None
+            exit_code = proc.poll() if proc is not None else None
+            pending = alive and _SUBPROCESS_CLIENT._pending_init is not None
+            last_reason = _SUBPROCESS_CLIENT._last_failure_reason
+            ready = is_workspace_chat_worker_warmed(config=config)
+
+            stderr_size = -1
+            stderr_mtime = 0.0
+            try:
+                if target_pipe_config is not None:
+                    stderr_path = Path(target_pipe_config.runtime_root) / "logs" / "bge_worker.stderr.log"
+                    if stderr_path.is_file():
+                        st = stderr_path.stat()
+                        stderr_size = st.st_size
+                        stderr_mtime = st.st_mtime
+            except Exception:
+                pass
+
+            return {
+                "alive": bool(alive),
+                "pid": pid,
+                "exit_code": exit_code,
+                "pending": bool(pending),
+                "ready": bool(ready),
+                "reason": ("bge_worker_init_pending" if pending else last_reason),
+                "stderr_size": stderr_size,
+                "stderr_mtime": stderr_mtime,
+            }
     except Exception:
         return {
             "alive": False,
@@ -1435,6 +1495,10 @@ def ensure_workspace_chat_worker_warming(
     config: Optional[WorkspaceChatRagV2CanaryConfig] = None,
     blocking: bool = False,
     timeout_s: float | None = None,
+    pipe_config: RagV2DevConfig | None = None,
+    verify_probe: bool = False,
+    probe_query: str = "touch panel specification",
+    probe_domain: str | None = None,
 ) -> bool:
     """Warm the BGE worker once; throttled so Streamlit reruns stay cheap.
 
@@ -1444,12 +1508,20 @@ def ensure_workspace_chat_worker_warming(
     in-flight init instead of spawning a duplicate when ``timeout_s`` is left
     at its default (``AIOS_BGE_INIT_TIMEOUT`` or 300 s).
     """
-    global _WARMUP_LAST_ATTEMPT_MONO
+    global _WARMUP_LAST_ATTEMPT_MONO, _LAST_WARMUP_PIPE_CONFIG
     now = time.monotonic()
+    if pipe_config is not None:
+        _LAST_WARMUP_PIPE_CONFIG = pipe_config
+    if not blocking and pipe_config is not None and _SUBPROCESS_CLIENT._persistent_applies(pipe_config):
+        flight_key = pipe_name_for_config(pipe_config)
+        with _SUBPROCESS_CLIENT._persistent_init_lock:
+            if flight_key in _SUBPROCESS_CLIENT._pending_persistent_inits:
+                return True
     with _WARMUP_LOCK:
-        if not blocking and (now - _WARMUP_LAST_ATTEMPT_MONO) < _WARMUP_TTL_SECONDS:
+        if not blocking and pipe_config is None and (now - _WARMUP_LAST_ATTEMPT_MONO) < _WARMUP_TTL_SECONDS:
             return False
-        _WARMUP_LAST_ATTEMPT_MONO = now
+        if pipe_config is None:
+            _WARMUP_LAST_ATTEMPT_MONO = now
     try:
         resolved = config or WorkspaceChatRagV2CanaryConfig.from_env()
     except (DeploymentManifestError, ValueError):
@@ -1459,15 +1531,26 @@ def ensure_workspace_chat_worker_warming(
 
     def _warm() -> bool:
         try:
-            try:
-                pipe_config = _warmup_pipeline_config(resolved)
-            except (SemanticBackendUnavailable, ValueError, OSError):
-                pipe_config = None
+            target_pipe_config = pipe_config or _LAST_WARMUP_PIPE_CONFIG
+            if target_pipe_config is None:
+                try:
+                    target_pipe_config = _warmup_pipeline_config(resolved)
+                except (SemanticBackendUnavailable, ValueError, OSError):
+                    target_pipe_config = None
+            actual_timeout = timeout_s if blocking else (timeout_s or default_init_timeout_seconds())
             initialize_workspace_chat_rag_v2_worker(
                 resolved,
-                timeout_s=timeout_s,
-                pipe_config=pipe_config,
+                timeout_s=actual_timeout,
+                pipe_config=target_pipe_config,
             )
+            if verify_probe:
+                coll_name = getattr(target_pipe_config, "collection_id", None) or (Path(target_pipe_config.runtime_root).name if target_pipe_config else None)
+                probe_res = probe_workspace_chat_worker(
+                    question=probe_query,
+                    config=resolved,
+                    domain=probe_domain or coll_name,
+                )
+                return bool(probe_res.get("ready", False))
             return True
         except Exception:
             LOGGER.debug("Workspace Chat BGE worker warm-up failed", exc_info=True)
@@ -1478,6 +1561,106 @@ def ensure_workspace_chat_worker_warming(
     worker = threading.Thread(target=_warm, name="wsc_bge_warmup", daemon=True)
     worker.start()
     return True
+
+
+def probe_workspace_chat_worker(
+    question: str = "touch panel specification",
+    *,
+    config: Optional[WorkspaceChatRagV2CanaryConfig] = None,
+    domain: Optional[str] = None,
+    timeout_s: float | None = None,
+) -> dict[str, Any]:
+    """Execute an honest retrieval probe against the BGE worker subprocess.
+
+    Requirements (DESKTOP-SPEED-WORKER-INIT-GUARD-HOME):
+    - Probe returning 0 chunks MUST NOT report worker ready (ready=False, ok=False).
+    - Logs distinguish 'worker song nhung probe rong' (alive but empty probe)
+      vs 'worker san sang that' (truly ready with >= 1 chunks).
+    """
+    try:
+        resolved = config or WorkspaceChatRagV2CanaryConfig.from_env()
+    except Exception:
+        resolved = None
+
+    if resolved is None or not resolved.enabled or not resolved.requested_profile.startswith("bge_m3_"):
+        LOGGER.warning("Worker probe skipped: config not enabled for bge_m3")
+        return {
+            "ok": False,
+            "ready": False,
+            "alive": False,
+            "chunks": 0,
+            "domain": domain,
+            "reason": "bge_not_enabled",
+            "message": "worker song nhung probe rong",
+        }
+
+    target_pipe_config = None
+    try:
+        if domain is not None:
+            target_pipe_config = _pipeline_config(resolved, resolved.requested_profile, read_only=True, collection_id=domain)
+        else:
+            target_pipe_config = _warmup_pipeline_config(resolved)
+    except Exception:
+        pass
+    is_alive = False
+    try:
+        if target_pipe_config and _SUBPROCESS_CLIENT._persistent_applies(target_pipe_config):
+            readiness = _SUBPROCESS_CLIENT.readiness(target_pipe_config)
+            is_alive = bool(readiness.get("alive", False))
+        else:
+            is_alive = _SUBPROCESS_CLIENT.is_alive()
+    except Exception:
+        is_alive = False
+
+    try:
+        probe_res = retrieve_workspace_chat_evidence(
+            question,
+            (),
+            forced_domain=domain,
+        )
+        chunk_count = int(probe_res.get("summary_count", 0))
+        status = str(probe_res.get("status", ""))
+    except Exception as exc:
+        chunk_count = 0
+        status = f"error_{type(exc).__name__}"
+
+    if chunk_count > 0 and status != "quality_search_unavailable":
+        LOGGER.info(
+            "BGE worker warm probe ready: worker san sang that (chunks=%d, domain=%s)",
+            chunk_count,
+            domain or "auto",
+        )
+        _safe_print_streaming_marker(
+            f"[WORKER_PROBE] status=ready chunks={chunk_count} domain={domain or 'auto'} worker san sang that"
+        )
+        return {
+            "ok": True,
+            "ready": True,
+            "alive": True,
+            "chunks": chunk_count,
+            "domain": domain,
+            "reason": "worker san sang that",
+            "message": "worker san sang that",
+        }
+    else:
+        LOGGER.warning(
+            "BGE worker warm probe empty: worker song nhung probe rong (chunks=%d, domain=%s, status=%s)",
+            chunk_count,
+            domain or "auto",
+            status,
+        )
+        _safe_print_streaming_marker(
+            f"[WORKER_PROBE] status=empty chunks={chunk_count} domain={domain or 'auto'} worker song nhung probe rong"
+        )
+        return {
+            "ok": False,
+            "ready": False,
+            "alive": is_alive,
+            "chunks": chunk_count,
+            "domain": domain,
+            "reason": "worker song nhung probe rong",
+            "message": "worker song nhung probe rong",
+        }
 
 
 def _collection_id_for_sources(context_sources: Iterable[WorkspaceAIContextSource]) -> str | None:
@@ -3054,11 +3237,23 @@ def _run_profile(
     # The normal preparation path has already done this, so the client reports
     # a cheap reused initialization in the common case.
     if pipeline_factory is RagV2DevPipeline:
-        initialize_workspace_chat_rag_v2_worker(
-            config,
-            timeout_s=default_init_timeout_seconds(),
-            pipe_config=pipe_config,
-        )
+        if _SUBPROCESS_CLIENT._persistent_applies(pipe_config):
+            if not _SUBPROCESS_CLIENT.is_ready(pipe_config):
+                LOGGER.info(
+                    "BGE worker not ready for persistent collection '%s'; deferring to warm loop",
+                    getattr(pipe_config, "collection_id", None) or Path(pipe_config.runtime_root).name,
+                )
+                try:
+                    ensure_workspace_chat_worker_warming(config=config, blocking=False, pipe_config=pipe_config)
+                except Exception:
+                    pass
+                raise RuntimeError("bge_worker_warming_in_progress")
+        else:
+            initialize_workspace_chat_rag_v2_worker(
+                config,
+                timeout_s=default_init_timeout_seconds(),
+                pipe_config=pipe_config,
+            )
     query_res_dict = _SUBPROCESS_CLIENT.query_ready(
         question,
         specs,
@@ -3649,13 +3844,13 @@ def retrieve_workspace_chat_evidence(
     has_notebook_sources = any(getattr(s, "source_scope", "") == SOURCE_SCOPE_NOTEBOOK for s in sources)
     has_forced_domain = bool(forced_domain and str(forced_domain).strip().lower() != "auto")
     use_prod_domain_specs = bool(is_prod_index and prod_pipe_cfg)
+    target_domain = (
+        forced_domain
+        if has_forced_domain
+        else (domain_route.domain if domain_route and getattr(domain_route, "applied", False) else None)
+    )
 
     if use_prod_domain_specs and prod_pipe_cfg:
-        target_domain = (
-            forced_domain
-            if has_forced_domain
-            else (domain_route.domain if domain_route and getattr(domain_route, "applied", False) else None)
-        )
         domain_specs = index_domain.get_specs_for_domain(
             target_domain, prod_pipe_cfg.index_path, question=question
         )

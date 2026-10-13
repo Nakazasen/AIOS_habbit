@@ -170,3 +170,98 @@ def test_init_timeout_keeps_loading_worker_and_resumes(tmp_path):
         assert client._pending_init is None
     finally:
         client.close()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="named-pipe transport is Windows-only")
+def test_persistent_worker_concurrent_init_single_flight(persist_env, tmp_path):
+    """Reproduce multiple concurrent callers initializing persistent worker.
+
+    DESKTOP-SPEED-WORKER-INIT-GUARD-HOME:
+    Single-flight must ensure multiple concurrent callers coalesce onto ONE
+    underlying initialization, all receive status=ok with the same PID,
+    and subsequent calls return reused=True immediately.
+    """
+    import concurrent.futures
+
+    doc = _write_doc(tmp_path)
+    spec = SourceSpec(path=doc, source_id="s1", document_id="d1")
+    pipeline = _write_pipeline(tmp_path)
+    try:
+        pipeline.ingest([spec])
+    finally:
+        pipeline.close()
+
+    cfg = _query_config(tmp_path)
+    client = BgeSubprocessWorkerClient()
+    try:
+        results = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+            futs = [
+                executor.submit(client.initialize_worker, cfg, timeout_s=180.0)
+                for _ in range(3)
+            ]
+            for fut in concurrent.futures.as_completed(futs):
+                results.append(fut.result())
+
+        assert len(results) == 3
+        for r in results:
+            assert r["status"] == "ok"
+            assert r["readiness"].get("pid") is not None
+
+        # All concurrent callers must converge on the exact same worker PID
+        pids = {r["readiness"].get("pid") for r in results}
+        assert len(pids) == 1
+
+        # Subsequent call must immediately report reused=True
+        followup = client.initialize_worker(cfg, timeout_s=10.0)
+        assert followup["status"] == "ok"
+        assert followup["reused"] is True
+        assert followup["readiness"].get("pid") == list(pids)[0]
+    finally:
+        client.shutdown_persistent_worker(cfg)
+        client.close()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="named-pipe transport is Windows-only")
+def test_persistent_worker_short_timeout_follower_warming_in_progress(persist_env, tmp_path):
+    """Caller with short timeout receives bge_worker_warming_in_progress while leader flight completes."""
+    import concurrent.futures
+    import time
+
+    doc = _write_doc(tmp_path)
+    spec = SourceSpec(path=doc, source_id="s1", document_id="d1")
+    pipeline = _write_pipeline(tmp_path)
+    try:
+        pipeline.ingest([spec])
+    finally:
+        pipeline.close()
+
+    cfg = _query_config(tmp_path)
+    client = BgeSubprocessWorkerClient()
+    try:
+        # Leader thread launches full init
+        leader_fut = concurrent.futures.ThreadPoolExecutor(max_workers=1).submit(
+            client.initialize_worker, cfg, timeout_s=180.0
+        )
+        time.sleep(0.05)
+
+        # Follower with short timeout must raise warming_in_progress without killing leader
+        try:
+            client.initialize_worker(cfg, timeout_s=0.01)
+            assert False, "Expected SemanticBackendError"
+        except SemanticBackendError as exc:
+            assert "bge_worker_warming_in_progress" in str(exc)
+
+        # Leader must still complete successfully
+        leader_res = leader_fut.result(timeout=180.0)
+        assert leader_res["status"] == "ok"
+        assert leader_res["readiness"].get("pid") is not None
+
+        # Subsequent call reports reused
+        followup = client.initialize_worker(cfg, timeout_s=5.0)
+        assert followup["status"] == "ok"
+        assert followup["reused"] is True
+    finally:
+        client.shutdown_persistent_worker(cfg)
+        client.close()
+

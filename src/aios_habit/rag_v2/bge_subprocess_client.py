@@ -166,6 +166,8 @@ class BgeSubprocessWorkerClient:
         # a caller that timed out wait for the same loading worker instead of
         # killing it and spawning a duplicate (PC0575 cold-start finding).
         self._pending_init: dict[str, Any] | None = None
+        self._persistent_init_lock = threading.RLock()
+        self._pending_persistent_inits: dict[str, Any] = {}
 
     def readiness(self, config: RagV2DevConfig | None = None) -> dict[str, Any]:
         """Return bounded worker health without launching or exposing private data."""
@@ -863,6 +865,16 @@ class BgeSubprocessWorkerClient:
         )
 
     def _persistent_readiness(self, config: RagV2DevConfig) -> dict[str, Any]:
+        flight_key = pipe_name_for_config(config)
+        with self._persistent_init_lock:
+            if flight_key in self._pending_persistent_inits:
+                return {
+                    "ready": False,
+                    "alive": True,
+                    "configuration_matches": False,
+                    "reason": "bge_worker_init_pending",
+                    "pid": None,
+                }
         try:
             response = self._persistent_exchange(
                 config,
@@ -906,33 +918,128 @@ class BgeSubprocessWorkerClient:
     ) -> dict[str, Any]:
         timeout = default_init_timeout_seconds() if timeout_s is None else float(timeout_s)
         started = time.perf_counter()
+
+        # Step 1: If persistent worker is ALREADY initialized and matching config,
+        # return reused=True immediately without sending redundant init command.
         try:
-            response = self._persistent_exchange(
-                config,
-                {"command": "init", "config": _config_to_dict(config)},
-                timeout_s=timeout,
-                connect_timeout_s=min(timeout, _PERSIST_SPAWN_WAIT_SECONDS),
-                allow_spawn=True,
-            )
-        except SemanticBackendError as exc:
-            self._last_failure_reason = str(exc)
-            raise
-        except Exception as exc:
-            self._last_failure_reason = "bge_worker_persist_init_exception"
-            raise SemanticBackendError(self._last_failure_reason) from exc
-        if response.get("status") != "ok":
-            self._last_failure_reason = str(response.get("error", "bge_worker_init_failed"))
-            raise SemanticBackendError(self._last_failure_reason)
-        readiness = response.get("readiness")
-        if not isinstance(readiness, dict):
-            self._last_failure_reason = "bge_worker_init_invalid_response"
-            raise SemanticBackendError(self._last_failure_reason)
-        self._last_failure_reason = ""
+            probe = self._persistent_readiness(config)
+            if probe.get("ready"):
+                self._last_failure_reason = ""
+                return {
+                    "status": "ok",
+                    "reused": True,
+                    "init_latency_ms": round((time.perf_counter() - started) * 1000.0, 3),
+                    "readiness": probe,
+                }
+        except Exception:
+            pass
+
+        # Step 2: Single-flight initialization coordination.
+        # Exactly ONE background thread executes the persistent exchange with the full
+        # init budget (420s). All callers (leader and followers) wait on the same event.
+        flight_key = pipe_name_for_config(config)
+        with self._persistent_init_lock:
+            if flight_key in self._pending_persistent_inits:
+                flight = self._pending_persistent_inits[flight_key]
+                is_leader = False
+            else:
+                flight = {
+                    "event": threading.Event(),
+                    "result": None,
+                    "error": None,
+                    "started": started,
+                }
+                self._pending_persistent_inits[flight_key] = flight
+                is_leader = True
+
+                def _run_flight() -> None:
+                    try:
+                        # Check health directly in case worker was already ready before exchange
+                        try:
+                            resp_health = self._persistent_exchange(
+                                config,
+                                {"command": "health", "config": _config_to_dict(config)},
+                                timeout_s=_PERSIST_PROBE_TIMEOUT_SECONDS,
+                                connect_timeout_s=_PERSIST_PROBE_TIMEOUT_SECONDS,
+                                allow_spawn=False,
+                            )
+                            if resp_health.get("initialized") and resp_health.get("configuration_matches"):
+                                res = {
+                                    "status": "ok",
+                                    "reused": True,
+                                    "init_latency_ms": round((time.perf_counter() - flight["started"]) * 1000.0, 3),
+                                    "readiness": resp_health,
+                                }
+                                flight["result"] = res
+                                self._last_failure_reason = ""
+                                return
+                        except Exception:
+                            pass
+
+                        full_init_timeout = float(default_init_timeout_seconds())
+                        response = self._persistent_exchange(
+                            config,
+                            {"command": "init", "config": _config_to_dict(config)},
+                            timeout_s=full_init_timeout,
+                            connect_timeout_s=min(full_init_timeout, _PERSIST_SPAWN_WAIT_SECONDS),
+                            allow_spawn=True,
+                        )
+                        if response.get("status") != "ok":
+                            err_msg = str(response.get("error", "bge_worker_init_failed"))
+                            self._last_failure_reason = err_msg
+                            flight["error"] = SemanticBackendError(err_msg)
+                            return
+                        readiness = response.get("readiness")
+                        if not isinstance(readiness, dict):
+                            self._last_failure_reason = "bge_worker_init_invalid_response"
+                            flight["error"] = SemanticBackendError(self._last_failure_reason)
+                            return
+                        self._last_failure_reason = ""
+                        flight["result"] = {
+                            "status": "ok",
+                            "reused": bool(readiness.get("reused", False)),
+                            "init_latency_ms": round((time.perf_counter() - flight["started"]) * 1000.0, 3),
+                            "readiness": readiness,
+                        }
+                    except SemanticBackendError as exc:
+                        flight["error"] = exc
+                        self._last_failure_reason = str(exc)
+                    except Exception as exc:
+                        flight["error"] = exc
+                        self._last_failure_reason = "bge_worker_persist_init_exception"
+                    finally:
+                        flight["event"].set()
+                        with self._persistent_init_lock:
+                            if self._pending_persistent_inits.get(flight_key) is flight:
+                                self._pending_persistent_inits.pop(flight_key, None)
+
+                bg_thread = threading.Thread(
+                    target=_run_flight,
+                    name=f"bge-flight-{flight_key[:12]}",
+                    daemon=True,
+                )
+                bg_thread.start()
+
+        # Step 3: Wait on in-flight initialization.
+        elapsed = time.perf_counter() - started
+        remaining_timeout = max(0.0, timeout - elapsed)
+        finished = flight["event"].wait(timeout=remaining_timeout)
+        if not finished:
+            raise SemanticBackendError("bge_worker_warming_in_progress")
+
+        if flight["error"] is not None:
+            err = flight["error"]
+            self._last_failure_reason = str(err)
+            if isinstance(err, SemanticBackendError):
+                raise err
+            raise SemanticBackendError(str(err)) from err
+
+        leader_result = flight["result"] or {}
         return {
-            "status": "ok",
-            "reused": bool(readiness.get("reused", False)),
+            "status": leader_result.get("status", "ok"),
+            "reused": True if not is_leader else bool(leader_result.get("reused", False)),
             "init_latency_ms": round((time.perf_counter() - started) * 1000.0, 3),
-            "readiness": readiness,
+            "readiness": leader_result.get("readiness", {}),
         }
 
     def _query_ready_persistent(
@@ -1021,6 +1128,9 @@ class BgeSubprocessWorkerClient:
         def _session() -> None:
             try:
                 import multiprocessing.connection as mpc
+
+                if not allow_spawn and not _pipe_instance_available(pipe_name):
+                    raise SemanticBackendError("bge_worker_persist_unavailable")
 
                 spawned = False
                 connect_deadline = time.monotonic() + max(float(connect_timeout_s), 0.5)

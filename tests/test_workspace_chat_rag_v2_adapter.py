@@ -2902,3 +2902,109 @@ def test_durable_semantic_coverage_matches_existing_889_by_source_name(tmp_path,
 
     assert adapter._durable_semantic_coverage_ready(source, config) is True
 
+
+def test_honest_probe_reports_unready_when_zero_chunks(monkeypatch):
+    """DESKTOP-SPEED-WORKER-INIT-GUARD-HOME: Probe returning 0 chunks MUST NOT report worker ready."""
+    config = adapter.WorkspaceChatRagV2CanaryConfig(enabled=True, requested_profile="bge_m3_hybrid")
+    monkeypatch.setattr(adapter._SUBPROCESS_CLIENT, "is_alive", lambda: True)
+    monkeypatch.setattr(
+        adapter,
+        "retrieve_workspace_chat_evidence",
+        lambda *args, **kwargs: {"status": "ok", "summary_count": 0},
+    )
+    result = adapter.probe_workspace_chat_worker("test probe", config=config, domain="tong_hop")
+    assert result["ready"] is False
+    assert result["ok"] is False
+    assert result["chunks"] == 0
+    assert result["reason"] == "worker song nhung probe rong"
+    assert result["message"] == "worker song nhung probe rong"
+
+
+def test_honest_probe_reports_ready_when_positive_chunks(monkeypatch):
+    """DESKTOP-SPEED-WORKER-INIT-GUARD-HOME: Probe returning >=1 chunks reports worker ready."""
+    config = adapter.WorkspaceChatRagV2CanaryConfig(enabled=True, requested_profile="bge_m3_hybrid")
+    monkeypatch.setattr(adapter._SUBPROCESS_CLIENT, "is_alive", lambda: True)
+    monkeypatch.setattr(
+        adapter,
+        "retrieve_workspace_chat_evidence",
+        lambda *args, **kwargs: {"status": "ok", "summary_count": 5},
+    )
+    result = adapter.probe_workspace_chat_worker("test probe", config=config, domain="tong_hop")
+    assert result["ready"] is True
+    assert result["ok"] is True
+    assert result["chunks"] == 5
+    assert result["reason"] == "worker san sang that"
+    assert result["message"] == "worker san sang that"
+
+
+def test_ensure_workspace_chat_worker_warming_respects_probe_honesty(monkeypatch):
+    """verify_probe=True must fail warm-up when probe returns 0 chunks."""
+    config = adapter.WorkspaceChatRagV2CanaryConfig(enabled=True, requested_profile="bge_m3_hybrid")
+    monkeypatch.setattr(
+        adapter,
+        "initialize_workspace_chat_rag_v2_worker",
+        lambda *args, **kwargs: {"status": "ok"},
+    )
+    # Case A: probe returns 0 chunks -> must return False
+    monkeypatch.setattr(
+        adapter,
+        "probe_workspace_chat_worker",
+        lambda *args, **kwargs: {"ok": False, "ready": False, "chunks": 0},
+    )
+    ok_empty = adapter.ensure_workspace_chat_worker_warming(
+        config=config,
+        blocking=True,
+        verify_probe=True,
+    )
+    assert ok_empty is False
+
+    # Case B: probe returns >= 1 chunks -> must return True
+    monkeypatch.setattr(
+        adapter,
+        "probe_workspace_chat_worker",
+        lambda *args, **kwargs: {"ok": True, "ready": True, "chunks": 3},
+    )
+    ok_ready = adapter.ensure_workspace_chat_worker_warming(
+        config=config,
+        blocking=True,
+        verify_probe=True,
+    )
+    assert ok_ready is True
+
+
+def test_run_profile_defers_to_warm_loop_when_persistent_worker_unready(tmp_path, monkeypatch):
+    """When persistent worker is unready, _run_profile raises bge_worker_warming_in_progress."""
+    config = _semantic_config(tmp_path)
+    (tmp_path / "pinned-bge-m3").mkdir(parents=True, exist_ok=True)
+    source = _source("Văn bản thử nghiệm")
+    monkeypatch.setattr(
+        adapter,
+        "get_workspace_chat_source_preparation_status",
+        lambda sources, config=None: {f"{s.source_scope}:{s.source_id}": adapter._PREPARATION_READY_STATE for s in sources},
+    )
+    # Force persistent mode applies, but is_ready=False
+    monkeypatch.setattr(adapter._SUBPROCESS_CLIENT, "_persistent_applies", lambda cfg: True)
+    monkeypatch.setattr(adapter._SUBPROCESS_CLIENT, "is_ready", lambda cfg: False)
+
+    warming_triggered = []
+    monkeypatch.setattr(
+        adapter,
+        "ensure_workspace_chat_worker_warming",
+        lambda **kwargs: warming_triggered.append(kwargs) or True,
+    )
+
+    with pytest.raises(RuntimeError) as exc_info:
+        adapter._run_profile(
+            "C7620 Kyocera",
+            (source,),
+            config,
+            "bge_m3_hybrid",
+            fallback_reason="",
+            pipeline_factory=adapter.RagV2DevPipeline,
+            domain_collection_id="lsu",
+        )
+
+    assert "bge_worker_warming_in_progress" in str(exc_info.value)
+    assert len(warming_triggered) == 1
+    assert warming_triggered[0].get("blocking") is False
+
