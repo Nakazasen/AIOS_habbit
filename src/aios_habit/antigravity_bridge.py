@@ -131,6 +131,42 @@ def is_local_endpoint(endpoint_url: str) -> bool:
         return False
 
 
+def resolve_router_attempt_timeout(env: Mapping[str, Any] | None = None) -> int:
+    """Resolve a unified timeout for Nakazasen Router attempt.
+
+    Ensures the outer waiting layer is never shorter than the inner call timeout
+    it is waiting for (fixing the 30s vs 90s two-layer mismatch).
+    Contract:
+      - If AIOS_ROUTER_TIMEOUT_SECONDS is explicitly configured, use it.
+      - If AIOS_ROUTER_TIMEOUT_SECONDS is not set, derive from inner provider configurations
+        (AIOS_LOCAL_AI_TIMEOUT_SECONDS, default 30 but typically 90 in .env, and AIOS_PROVIDER_TIMEOUT_SECONDS).
+    """
+    values = env if env is not None else os.environ
+    router_env = values.get("AIOS_ROUTER_TIMEOUT_SECONDS")
+    if router_env is not None and str(router_env).strip():
+        try:
+            return max(1, int(str(router_env).strip()))
+        except ValueError:
+            pass
+
+    local_timeout = 30
+    cloud_timeout = 30
+    try:
+        raw_local = values.get("AIOS_LOCAL_AI_TIMEOUT_SECONDS")
+        if raw_local is not None and str(raw_local).strip():
+            local_timeout = int(str(raw_local).strip())
+    except ValueError:
+        pass
+    try:
+        raw_cloud = values.get("AIOS_PROVIDER_TIMEOUT_SECONDS")
+        if raw_cloud is not None and str(raw_cloud).strip():
+            cloud_timeout = int(str(raw_cloud).strip())
+    except ValueError:
+        pass
+
+    return max(1, local_timeout, cloud_timeout)
+
+
 @dataclass(frozen=True)
 class AntigravityHealthStatus:
     status: str
@@ -1290,18 +1326,28 @@ def route_workspace_chat_submission(
         nonlocal evidence_items
         is_ext = (ai_mode == "external")
 
+        router_timeout = resolve_router_attempt_timeout()
+        abandoned_event = threading.Event()
+        worker_threads: list[threading.Thread] = []
+
         t_router_start = time.monotonic()
         ttft_recorded: list[float] = []
         ttft_lock = threading.Lock()
 
         ts_router_start = format_marker_timestamp()
         try:
-            LOGGER.info("[ROUTER_SYNTH_START] conv=%s backend=%s timestamp=%s", conversation_id, backend, ts_router_start)
+            LOGGER.info(
+                "[ROUTER_SYNTH_START] conv=%s backend=%s timeout_s=%d timestamp=%s",
+                conversation_id, backend, router_timeout, ts_router_start,
+            )
         except Exception:
             pass
         _safe_print_streaming_marker(f"[ROUTER_SYNTH_START] conv={conversation_id} backend={backend} timestamp={ts_router_start}")
 
         def _timed_on_chunk(chunk: str) -> None:
+            if abandoned_event.is_set():
+                # Router attempt abandoned; suppress all residual chunks so they never leak into the turn
+                return
             if chunk:
                 with ttft_lock:
                     if not ttft_recorded:
@@ -1330,26 +1376,75 @@ def route_workspace_chat_submission(
             ai_mode=ai_mode,
             anchored_context=anchored_context,
         )
-        router_timeout = int(os.environ.get("AIOS_ROUTER_TIMEOUT_SECONDS", "30"))
-        executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+
+        def _worker_wrapper() -> WorkspaceAIAnswerResult:
+            worker_threads.append(threading.current_thread())
+            return generate_workspace_ai_answer(request, object())
+
+        # Align inner provider timeouts with router_timeout during this execution
+        saved_env = {
+            "AIOS_LOCAL_AI_TIMEOUT_SECONDS": os.environ.get("AIOS_LOCAL_AI_TIMEOUT_SECONDS"),
+            "AIOS_PROVIDER_TIMEOUT_SECONDS": os.environ.get("AIOS_PROVIDER_TIMEOUT_SECONDS"),
+        }
         try:
-            router_future = executor.submit(generate_workspace_ai_answer, request, object())
+            curr_local = int(saved_env["AIOS_LOCAL_AI_TIMEOUT_SECONDS"] or "30")
+        except ValueError:
+            curr_local = 30
+        try:
+            curr_cloud = int(saved_env["AIOS_PROVIDER_TIMEOUT_SECONDS"] or "30")
+        except ValueError:
+            curr_cloud = 30
+
+        os.environ["AIOS_LOCAL_AI_TIMEOUT_SECONDS"] = str(min(curr_local, router_timeout))
+        os.environ["AIOS_PROVIDER_TIMEOUT_SECONDS"] = str(min(curr_cloud, router_timeout))
+
+        executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers=1,
+            thread_name_prefix=f"nakazasen_router_{conversation_id[:8]}",
+        )
+        try:
+            router_future = executor.submit(_worker_wrapper)
             result = router_future.result(timeout=router_timeout)
         except concurrent.futures.TimeoutError:
+            abandoned_event.set()
+            try:
+                router_future.cancel()
+            except Exception:
+                pass
             try:
                 executor.shutdown(wait=False, cancel_futures=True)
             except Exception:
                 pass
+            if worker_threads and worker_threads[0].is_alive():
+                try:
+                    worker_threads[0].join(timeout=0.1)
+                except Exception:
+                    pass
             LOGGER.warning("Nakazasen Router timed out after %ds; transferring to next backend in failover chain", router_timeout)
             return (False, "", None, f"Nakazasen Router hết thời gian chờ ({router_timeout}s).")
         except Exception as exc:
+            abandoned_event.set()
+            try:
+                router_future.cancel()
+            except Exception:
+                pass
             try:
                 executor.shutdown(wait=False, cancel_futures=True)
             except Exception:
                 pass
+            if worker_threads and worker_threads[0].is_alive():
+                try:
+                    worker_threads[0].join(timeout=0.1)
+                except Exception:
+                    pass
             LOGGER.warning("Nakazasen Router execution error: %s", exc)
             return (False, "", None, f"Lỗi Nakazasen Router: {exc}")
         finally:
+            for k, v in saved_env.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
             try:
                 executor.shutdown(wait=False)
             except Exception:
@@ -1396,6 +1491,7 @@ def route_workspace_chat_submission(
             result.error_message,
         )
         if was_cancelled():
+            abandoned_event.set()
             return (False, "", None, "Đã dừng yêu cầu AI.")
 
         from aios_habit.answer_sanitizer import clean_assistant_answer, is_system_prompt_leak
@@ -1403,6 +1499,7 @@ def route_workspace_chat_submission(
             cleaned_check = clean_assistant_answer(result.answer_text)
             if not cleaned_check or is_system_prompt_leak(result.answer_text):
                 LOGGER.warning("Antigravity Bridge phát hiện rò rỉ prompt hệ thống hoặc đáp án rỗng; vô hiệu hóa kết quả router")
+                abandoned_event.set()
                 return (False, "", None, "Đáp án AI không hợp lệ do chứa rò rỉ prompt hệ thống.")
 
             from aios_habit.answer_draft_fallback import (
@@ -1515,6 +1612,7 @@ def route_workspace_chat_submission(
             succ_msg = "Đã trả lời bằng bản thảo dự bị (chưa qua chuyên gia duyệt)." if is_draft else f"Đã nhận câu trả lời từ {provider_name}."
             return (True, succ_msg, badge, None)
 
+        abandoned_event.set()
         return (False, "", None, result.error_message or "Nakazasen Router không trả về câu trả lời.")
 
     def _try_gemini_direct() -> tuple[bool, str, dict[str, Any] | None, str | None]:

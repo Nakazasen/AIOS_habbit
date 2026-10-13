@@ -251,3 +251,128 @@ def test_router_timeout_falls_back_to_local_extractive(monkeypatch, mock_store_a
     assert badge.get("operational_mode") == "local_grounded_fallback"
     assert "Độ chính xác đạt 99.9%" in mock_store_and_trace["messages"][-1].content
 
+
+def test_router_two_layer_timeout_consistency(monkeypatch):
+    """(a) Quality Gate: Verify two-layer timeout relationship is consistent.
+
+    Outer layer timeout must never be shorter than the inner provider call timeout it is waiting for.
+    """
+    # Case 1: Default environment without overrides -> derives from AIOS_LOCAL_AI_TIMEOUT_SECONDS / provider defaults
+    t_default = bridge.resolve_router_attempt_timeout({})
+    assert t_default >= 30, f"Expected default >= 30, got {t_default}"
+
+    # Case 2: Production parity where AIOS_LOCAL_AI_TIMEOUT_SECONDS=90
+    t_prod = bridge.resolve_router_attempt_timeout({"AIOS_LOCAL_AI_TIMEOUT_SECONDS": "90"})
+    assert t_prod == 90, f"Outer layer must match inner 90s, got {t_prod}"
+
+    # Case 3: Explicit router timeout override (e.g. 5s in live test)
+    t_override = bridge.resolve_router_attempt_timeout({
+        "AIOS_ROUTER_TIMEOUT_SECONDS": "5",
+        "AIOS_LOCAL_AI_TIMEOUT_SECONDS": "90",
+    })
+    assert t_override == 5, f"Expected explicit override 5s, got {t_override}"
+
+    # Case 4: Verify inner provider timeout clamping during router attempt
+    captured_inner_env = {}
+
+    def inspect_env_router(request, context):
+        captured_inner_env["local_timeout"] = int(os.environ.get("AIOS_LOCAL_AI_TIMEOUT_SECONDS", "30"))
+        captured_inner_env["cloud_timeout"] = int(os.environ.get("AIOS_PROVIDER_TIMEOUT_SECONDS", "30"))
+        return WorkspaceAIAnswerResult(ok=True, answer_text="Inner call done.")
+
+    import os
+    monkeypatch.setenv("AIOS_ROUTER_TIMEOUT_SECONDS", "5")
+    monkeypatch.setenv("AIOS_LOCAL_AI_TIMEOUT_SECONDS", "90")
+    monkeypatch.setenv("AIOS_PROVIDER_TIMEOUT_SECONDS", "60")
+    monkeypatch.setattr("aios_habit.workspace_chat_ai_answer.generate_workspace_ai_answer", inspect_env_router)
+
+    bridge.route_workspace_chat_submission(
+        question="Test timeout consistency",
+        evidence_items=[],
+        packed_sources=(),
+        conversation_id="CONV-CONSISTENCY",
+        notebook_id="NB-1",
+        retrieval_applied=False,
+        retrieved_sources=(),
+        retrieval_summary="",
+        current_keys=(),
+        chat_history=(),
+        user_raw_input="Test",
+        backend="nakazasen_router",
+    )
+
+    # During the router attempt, inner timeout was clamped to <= router_timeout (5s)
+    assert captured_inner_env.get("local_timeout") == 5, f"Inner local timeout must be 5s, got {captured_inner_env.get('local_timeout')}"
+    assert captured_inner_env.get("cloud_timeout") == 5, f"Inner cloud timeout must be 5s, got {captured_inner_env.get('cloud_timeout')}"
+    # After the router attempt, environment was cleanly restored
+    assert os.environ.get("AIOS_LOCAL_AI_TIMEOUT_SECONDS") == "90"
+    assert os.environ.get("AIOS_PROVIDER_TIMEOUT_SECONDS") == "60"
+
+
+def test_router_abandoned_call_isolated_no_leak_no_overwrite(monkeypatch, mock_store_and_trace):
+    """(b) Quality Gate: When router times out / gives up, abandoned thread cannot leak chunks or overwrite turn."""
+    import time
+    import threading
+
+    captured_chunks = []
+    thread_event = threading.Event()
+    thread_finished = threading.Event()
+
+    def slow_hanging_router_answer(request, context):
+        # Notify that thread started
+        thread_event.set()
+        # Sleep past timeout (timeout is 1s, sleep 1.5s)
+        time.sleep(1.5)
+        # Attempt to stream chunks after timeout
+        if request.on_chunk:
+            request.on_chunk("LEAKED_CHUNK_FROM_ABANDONED_ROUTER")
+        thread_finished.set()
+        return WorkspaceAIAnswerResult(ok=True, answer_text="Late overwritten answer from router")
+
+    monkeypatch.setenv("AIOS_ROUTER_TIMEOUT_SECONDS", "1")
+    monkeypatch.setattr("aios_habit.workspace_chat_ai_answer.generate_workspace_ai_answer", slow_hanging_router_answer)
+
+    ev_items = [
+        {"evidence_id": "EV-1", "title": "Báo cáo thử nghiệm", "text": "Hệ thống an toàn 100%."}
+    ]
+
+    t0 = time.monotonic()
+    ok, msg, badge, err = bridge.route_workspace_chat_submission(
+        question="Nội dung báo cáo?",
+        evidence_items=ev_items,
+        packed_sources=(),
+        conversation_id="CONV-ABANDON-ISOLATION",
+        notebook_id="NB-1",
+        retrieval_applied=True,
+        retrieved_sources=(),
+        retrieval_summary="",
+        current_keys=(),
+        chat_history=(),
+        user_raw_input="Nội dung báo cáo?",
+        backend="nakazasen_router",
+        on_chunk=lambda chunk: captured_chunks.append(chunk),
+    )
+    t_elapsed = time.monotonic() - t0
+
+    # 1. Timeout occurred at ~1s (not flat 30s)
+    assert 0.9 <= t_elapsed < 2.5, f"Expected timeout at ~1s, got {t_elapsed:.2f}s"
+    assert ok is True
+    assert badge.get("fallback_used") is True
+    assert badge.get("operational_mode") == "local_grounded_fallback"
+
+    # 2. Wait for background thread to complete its delayed execution
+    thread_finished.wait(timeout=2.0)
+    time.sleep(0.1)
+
+    # 3. Verify NO leaked chunks from the abandoned router thread
+    assert all("LEAKED_CHUNK_FROM_ABANDONED_ROUTER" not in c for c in captured_chunks), (
+        f"Leaked chunks detected: {captured_chunks}"
+    )
+
+    # 4. Verify messages in store: strictly local fallback message, NOT overwritten by late router answer
+    messages = mock_store_and_trace["messages"]
+    assert len(messages) >= 1
+    final_message = messages[-1]
+    assert "Hệ thống an toàn 100%" in final_message.content
+    assert "Late overwritten answer from router" not in final_message.content
+
