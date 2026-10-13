@@ -33,6 +33,7 @@ from aios_habit.rag_v2.adaptive_retrieval import (
 )
 from aios_habit.rag_v2.bge_subprocess_client import (
     BgeSubprocessWorkerClient,
+    _pipe_instance_available,
     default_init_timeout_seconds,
     default_query_timeout_seconds,
     pipe_name_for_config,
@@ -1353,6 +1354,7 @@ def initialize_workspace_chat_rag_v2_worker(
 _WARMUP_LOCK = threading.Lock()
 _WARMUP_LAST_ATTEMPT_MONO = 0.0
 _WARMUP_TTL_SECONDS = 90.0
+_WARMUP_ATTEMPTS: dict[str, float] = {}
 
 
 _LAST_WARMUP_PIPE_CONFIG: Optional[RagV2DevConfig] = None
@@ -1503,7 +1505,7 @@ def ensure_workspace_chat_worker_warming(
     in-flight init instead of spawning a duplicate when ``timeout_s`` is left
     at its default (``AIOS_BGE_INIT_TIMEOUT`` or 300 s).
     """
-    global _WARMUP_LAST_ATTEMPT_MONO, _LAST_WARMUP_PIPE_CONFIG
+    global _WARMUP_LAST_ATTEMPT_MONO, _LAST_WARMUP_PIPE_CONFIG, _WARMUP_ATTEMPTS
     now = time.monotonic()
     if pipe_config is not None:
         _LAST_WARMUP_PIPE_CONFIG = pipe_config
@@ -1512,11 +1514,32 @@ def ensure_workspace_chat_worker_warming(
         with _SUBPROCESS_CLIENT._persistent_init_lock:
             if flight_key in _SUBPROCESS_CLIENT._pending_persistent_inits:
                 return True
+
+    warmup_key = "__default__"
+    if pipe_config is not None:
+        try:
+            warmup_key = pipe_name_for_config(pipe_config)
+        except Exception:
+            warmup_key = str(getattr(pipe_config, "collection_id", None) or "custom")
+
     with _WARMUP_LOCK:
-        if not blocking and pipe_config is None and (now - _WARMUP_LAST_ATTEMPT_MONO) < _WARMUP_TTL_SECONDS:
-            return False
-        if pipe_config is None:
+        if _WARMUP_LAST_ATTEMPT_MONO == 0.0 and warmup_key == "__default__":
+            _WARMUP_ATTEMPTS.pop(warmup_key, None)
+        last_attempt = _WARMUP_ATTEMPTS.get(warmup_key, 0.0)
+        if warmup_key == "__default__":
+            last_attempt = max(last_attempt, _WARMUP_LAST_ATTEMPT_MONO)
+        if not blocking and (now - last_attempt) < _WARMUP_TTL_SECONDS:
+            pipe_present = (
+                _pipe_instance_available(warmup_key)
+                if (warmup_key != "__default__" and warmup_key.startswith(r"\\.\pipe\\"))
+                else False
+            )
+            if pipe_present:
+                return False
+        _WARMUP_ATTEMPTS[warmup_key] = now
+        if warmup_key == "__default__":
             _WARMUP_LAST_ATTEMPT_MONO = now
+
     try:
         resolved = config or WorkspaceChatRagV2CanaryConfig.from_env()
     except (DeploymentManifestError, ValueError):
@@ -1526,12 +1549,12 @@ def ensure_workspace_chat_worker_warming(
 
     def _warm() -> bool:
         try:
-            target_pipe_config = pipe_config or _LAST_WARMUP_PIPE_CONFIG
+            target_pipe_config = pipe_config
             if target_pipe_config is None:
                 try:
                     target_pipe_config = _warmup_pipeline_config(resolved)
                 except (SemanticBackendUnavailable, ValueError, OSError):
-                    target_pipe_config = None
+                    target_pipe_config = _LAST_WARMUP_PIPE_CONFIG
             actual_timeout = timeout_s if blocking else (timeout_s or default_init_timeout_seconds())
             initialize_workspace_chat_rag_v2_worker(
                 resolved,
@@ -1558,6 +1581,65 @@ def ensure_workspace_chat_worker_warming(
     return True
 
 
+def ensure_workspace_chat_startup_warming(
+    *,
+    config: Optional[WorkspaceChatRagV2CanaryConfig] = None,
+    collections: Sequence[str] = ("tong_hop", "lsu", "dieu_tra_loi"),
+) -> dict[str, bool]:
+    """Trigger background non-blocking warming for startup collections.
+
+    Requirements (DESKTOP-SPEED-WARM-ALIGNMENT-FIX-HOME):
+    - Warms main knowledge collections (tong_hop, lsu, dieu_tra_loi) in background (blocking=False).
+    - Preserves default tri_thuc warming behavior.
+    - An error warming one collection must NOT crash the app or block others.
+    """
+    results: dict[str, bool] = {}
+
+    # Giữ nguyên hành vi làm ấm tri_thuc mặc định
+    try:
+        results["tri_thuc"] = ensure_workspace_chat_worker_warming(
+            config=config,
+            blocking=False,
+        )
+    except Exception as exc:
+        LOGGER.warning("Startup warming failed for tri_thuc: %s", exc)
+        results["tri_thuc"] = False
+
+    try:
+        resolved = config or WorkspaceChatRagV2CanaryConfig.from_env()
+    except Exception as exc:
+        LOGGER.warning("Could not resolve canary config for startup warming: %s", exc)
+        return results
+
+    if not resolved.enabled or not resolved.requested_profile.startswith("bge_m3_"):
+        return results
+
+    profile = resolved.requested_profile
+    for col_id in collections:
+        try:
+            p_cfg = _pipeline_config(
+                resolved,
+                profile,
+                read_only=True,
+                collection_id=col_id,
+            )
+            if getattr(p_cfg, "index_path", None) and p_cfg.index_path.is_file():
+                started = ensure_workspace_chat_worker_warming(
+                    config=resolved,
+                    blocking=False,
+                    pipe_config=p_cfg,
+                )
+                results[col_id] = started
+            else:
+                LOGGER.info("Startup warming skipped for '%s': index file not found", col_id)
+                results[col_id] = False
+        except Exception as exc:
+            LOGGER.warning("Startup warming failed for collection '%s': %s", col_id, exc)
+            results[col_id] = False
+
+    return results
+
+
 def probe_workspace_chat_worker(
     question: str = "touch panel specification",
     *,
@@ -1567,8 +1649,10 @@ def probe_workspace_chat_worker(
 ) -> dict[str, Any]:
     """Execute an honest retrieval probe against the BGE worker subprocess.
 
-    Requirements (DESKTOP-SPEED-WORKER-INIT-GUARD-HOME):
+    Requirements (DESKTOP-SPEED-WORKER-INIT-GUARD-HOME & DESKTOP-SPEED-WARM-ALIGNMENT-FIX-HOME):
     - Probe returning 0 chunks MUST NOT report worker ready (ready=False, ok=False).
+    - Probe under persistent mode MUST verify from turn perspective (named pipe exists + is_ready True)
+      before reporting worker ready (ready=True, ok=True).
     - Logs distinguish 'worker song nhung probe rong' (alive but empty probe)
       vs 'worker san sang that' (truly ready with >= 1 chunks).
     """
@@ -1619,7 +1703,17 @@ def probe_workspace_chat_worker(
         chunk_count = 0
         status = f"error_{type(exc).__name__}"
 
-    if chunk_count > 0 and status != "quality_search_unavailable":
+    turn_perspective_ready = True
+    turn_perspective_reason = ""
+    if target_pipe_config is not None and _SUBPROCESS_CLIENT._persistent_applies(target_pipe_config):
+        p_name = pipe_name_for_config(target_pipe_config)
+        pipe_ok = _pipe_instance_available(p_name)
+        client_ready = bool(_SUBPROCESS_CLIENT.is_ready(target_pipe_config))
+        turn_perspective_ready = bool(pipe_ok and client_ready)
+        if not turn_perspective_ready:
+            turn_perspective_reason = f"pipe_exists={pipe_ok}, is_ready={client_ready}"
+
+    if chunk_count > 0 and status != "quality_search_unavailable" and turn_perspective_ready:
         LOGGER.info(
             "BGE worker warm probe ready: worker san sang that (chunks=%d, domain=%s)",
             chunk_count,
@@ -1638,14 +1732,18 @@ def probe_workspace_chat_worker(
             "message": "worker san sang that",
         }
     else:
+        fail_reason = "worker song nhung probe rong"
+        if not turn_perspective_ready:
+            fail_reason = f"worker probe tra ve nhung duong luot chua san sang ({turn_perspective_reason})"
         LOGGER.warning(
-            "BGE worker warm probe empty: worker song nhung probe rong (chunks=%d, domain=%s, status=%s)",
+            "BGE worker warm probe not ready: %s (chunks=%d, domain=%s, status=%s)",
+            fail_reason,
             chunk_count,
             domain or "auto",
             status,
         )
         _safe_print_streaming_marker(
-            f"[WORKER_PROBE] status=empty chunks={chunk_count} domain={domain or 'auto'} worker song nhung probe rong"
+            f"[WORKER_PROBE] status={'empty' if chunk_count == 0 else 'unaligned'} chunks={chunk_count} domain={domain or 'auto'} {fail_reason}"
         )
         return {
             "ok": False,
@@ -1653,8 +1751,8 @@ def probe_workspace_chat_worker(
             "alive": is_alive,
             "chunks": chunk_count,
             "domain": domain,
-            "reason": "worker song nhung probe rong",
-            "message": "worker song nhung probe rong",
+            "reason": fail_reason,
+            "message": fail_reason,
         }
 
 

@@ -1037,9 +1037,16 @@ def _running_under_streamlit() -> bool:
 # thêm runtime.exists() để bộ đọc luôn được làm nóng đúng collection.
 if _running_under_streamlit():
     try:
-        ensure_workspace_chat_worker_warming()
+        from aios_habit.workspace_chat_rag_v2_adapter import (
+            ensure_workspace_chat_startup_warming,
+            ensure_workspace_chat_worker_warming,
+        )
+        ensure_workspace_chat_startup_warming()
     except Exception:
-        pass
+        try:
+            ensure_workspace_chat_worker_warming()
+        except Exception:
+            pass
     try:
         from aios_habit.production_prediction.rt_app_wire import ensure_rt_alert_pipeline
         ensure_rt_alert_pipeline()

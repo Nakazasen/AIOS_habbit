@@ -322,7 +322,11 @@ class _WorkerSession:
                     phases_ms["model_verify"] = _elapsed_ms(phase_started)
                     phase_started = time.perf_counter()
                     init_phase = "model_load"
-                    synthesis_provider = create_synthesis_provider()
+                    synthesis_provider = (
+                        create_synthesis_provider()
+                        if getattr(config, "enable_provider_synthesis", False)
+                        else None
+                    )
                     pipeline = RagV2DevPipeline(
                         config,
                         synthesis_provider=synthesis_provider,
@@ -729,6 +733,15 @@ def serve_main(pipe_name: str) -> None:
     )
 
     _configure_worker_logging()
+    from aios_habit.rag_v2.bge_subprocess_client import _pipe_instance_available
+    if _pipe_instance_available(pipe_name):
+        print(
+            f"bge_worker_serve pipe={pipe_name} already exists; pid={os.getpid()} exiting duplicate.",
+            file=sys.stderr,
+            flush=True,
+        )
+        return
+
     session = _WorkerSession(mode="serve")
     listener = mpc.Listener(pipe_name, family="AF_PIPE", authkey=authkey_for_worker())
     print(

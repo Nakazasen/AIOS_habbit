@@ -1186,6 +1186,46 @@ class BgeSubprocessWorkerClient:
             logs_dir.mkdir(parents=True, exist_ok=True)
         except OSError:
             return
+        if _pipe_instance_available(pipe_name):
+            LOGGER.info("Persistent worker already listening on pipe %s; skip spawn", pipe_name)
+            return
+
+        clean_tag = pipe_name.replace("\\", "_").replace(".", "_")
+        pid_file = logs_dir / f"bge_worker_{clean_tag}.pid"
+        if pid_file.is_file():
+            try:
+                old_pid = int(pid_file.read_text(encoding="utf-8").strip())
+                is_running = False
+                try:
+                    import psutil
+                    if psutil.pid_exists(old_pid):
+                        p = psutil.Process(old_pid)
+                        if p.is_running() and p.status() != psutil.STATUS_ZOMBIE:
+                            cmdline = " ".join(p.cmdline()).casefold()
+                            if "bge_subprocess_worker" in cmdline:
+                                is_running = True
+                except ImportError:
+                    if os.name == "nt":
+                        import ctypes
+                        from ctypes import wintypes
+                        kernel32 = ctypes.windll.kernel32
+                        h = kernel32.OpenProcess(0x1000, False, old_pid)
+                        if h:
+                            exit_code = wintypes.DWORD()
+                            if kernel32.GetExitCodeProcess(h, ctypes.byref(exit_code)) and exit_code.value == 259:
+                                is_running = True
+                            kernel32.CloseHandle(h)
+                if is_running:
+                    LOGGER.info(
+                        "Persistent worker already running (pid=%d) for pipe %s; skip spawn",
+                        old_pid,
+                        pipe_name,
+                    )
+                    return
+                pid_file.unlink(missing_ok=True)
+            except Exception:
+                pass
+
         log_path = logs_dir / "bge_worker_daemon.stderr.log"
         cmd = [
             self._python_executable,
@@ -1214,7 +1254,7 @@ class BgeSubprocessWorkerClient:
         )
         try:
             with log_path.open("a", encoding="utf-8") as log_handle:
-                subprocess.Popen(
+                proc = subprocess.Popen(
                     cmd,
                     stdin=subprocess.DEVNULL,
                     stdout=log_handle,
@@ -1224,6 +1264,10 @@ class BgeSubprocessWorkerClient:
                     creationflags=creationflags,
                     close_fds=True,
                 )
+                try:
+                    pid_file.write_text(str(proc.pid), encoding="utf-8")
+                except Exception:
+                    pass
         except Exception as exc:
             LOGGER.warning("Persistent BGE worker spawn failed: %s", type(exc).__name__)
 

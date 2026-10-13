@@ -19,6 +19,24 @@ import time
 import urllib.request
 import uuid
 
+# DESKTOP-SPEED-WARM-ALIGNMENT-FIX-HOME:
+# Dat AIOS_RAGV2_WORKER_PERSIST=1 TRUOC khi import/goi ham probe,
+# de probe kich hoat dung daemon named pipe ma duong luot dung.
+os.environ["AIOS_RAGV2_WORKER_PERSIST"] = "1"
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+os.environ["AIOS_RETRIEVAL_DEVICE"] = "cpu"
+os.environ["AIOS_RAG_V2_NUMPY_DENSE"] = "1"
+os.environ["AIOS_RAG_V2_NUMPY_SCORING"] = "1"
+os.environ["AIOS_BGE_QUERY_TIMEOUT"] = "1200"
+os.environ["AIOS_BGE_INIT_TIMEOUT"] = "420"
+os.environ["AIOS_BGE_WARM_ABSOLUTE_TIMEOUT"] = "420"
+os.environ["AIOS_BGE_WARM_NO_PROGRESS_TIMEOUT"] = "120"
+os.environ["AIOS_BGE_PERSIST_CONNECT_TIMEOUT"] = "420"
+os.environ["AIOS_AI_BACKEND"] = "nakazasen_router"
+os.environ["PYTHONIOENCODING"] = "utf-8"
+
 APP_DIR = Path(r"D:\Sandbox\AIOS_habbit")
 sys.path.insert(0, str(APP_DIR / "src"))
 
@@ -139,28 +157,43 @@ def kill_server(proc: subprocess.Popen):
                 pass
 
 
-def warm_up_tong_hop() -> int:
+def warm_up_collection(collection_id: str, probe_query: str = "touch panel specification") -> int:
     from aios_habit.workspace_chat_rag_v2_adapter import (
         ensure_workspace_chat_worker_warming,
         probe_workspace_chat_worker,
         _pipeline_config,
         WorkspaceChatRagV2CanaryConfig,
+        _SUBPROCESS_CLIENT,
     )
+    from aios_habit.rag_v2.bge_worker_protocol import pipe_name_for_config
+    from aios_habit.rag_v2.bge_subprocess_client import _pipe_instance_available
+
     cfg = WorkspaceChatRagV2CanaryConfig.from_env()
-    p_cfg_tong_hop = _pipeline_config(cfg, cfg.requested_profile, read_only=True, collection_id="tong_hop")
-    print("[WARM] Kich hoat lam am BGE persistent worker cho khoi 'tong_hop'...")
-    ensure_workspace_chat_worker_warming(blocking=False, pipe_config=p_cfg_tong_hop)
+    p_cfg = _pipeline_config(cfg, cfg.requested_profile, read_only=True, collection_id=collection_id)
+    p_name = pipe_name_for_config(p_cfg)
+    print(f"[WARM] Kich hoat lam am BGE persistent worker cho khoi '{collection_id}' (pipe={p_name})...")
+    ensure_workspace_chat_worker_warming(blocking=False, pipe_config=p_cfg)
 
     t_start = time.time()
     while time.time() - t_start < 300:
-        res = probe_workspace_chat_worker(question="touch panel specification", domain="tong_hop")
+        res = probe_workspace_chat_worker(question=probe_query, domain=collection_id)
         c_cnt = int(res.get("chunks", 0))
-        if res.get("ready") and c_cnt > 0:
-            print(f"[WARM] Worker 'tong_hop' da san sang: {c_cnt} chunks! (ok=True)")
+        pipe_ok = _pipe_instance_available(p_name)
+        ready_ok = bool(_SUBPROCESS_CLIENT.is_ready(p_cfg))
+        if res.get("ready") and c_cnt > 0 and pipe_ok and ready_ok:
+            print(f"[WARM] Worker '{collection_id}' da san sang tu goc nhin duong luot: {c_cnt} chunks, pipe_ok={pipe_ok}, is_ready={ready_ok}! (ok=True)")
             return c_cnt
-        print(f"[WARM] Dang nap worker 'tong_hop'... chunks={c_cnt}, cho 5s...")
+        print(f"[WARM] Dang nap worker '{collection_id}'... chunks={c_cnt}, pipe_ok={pipe_ok}, is_ready={ready_ok}, cho 5s...")
         time.sleep(5.0)
     return 0
+
+
+def warm_up_tong_hop() -> int:
+    return warm_up_collection("tong_hop", "touch panel specification")
+
+
+def warm_up_lsu() -> int:
+    return warm_up_collection("lsu", "lsu beam")
 
 
 def main():
