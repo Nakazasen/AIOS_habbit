@@ -16,6 +16,7 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 
+
 DEFAULT_TIMEOUT_SECONDS = int(os.environ.get("AIOS_CAGENT_TIMEOUT_SECONDS", "20"))
 DEFAULT_CAGENT_API_URL = "https://kdtvn-ai.cmcts.vn/api/v1/prediction/1881aa32-c996-4e6f-9257-78246177ba9f"
 
@@ -49,10 +50,32 @@ class CAgentResponse:
     error_message: str = ""
 
 
-def _safe_error(value: object) -> str:
+def _mask_secret(text: str, secret: str) -> str:
+    """Mask occurrences of secret token from text/logs/error messages."""
+    if not text or not secret:
+        return text
+    return text.replace(secret, "[REDACTED]")
+
+
+def _safe_error(value: object, key: str = "") -> str:
     """Return a concise error without reflecting endpoint details or secrets."""
     text = str(value or "").replace("\r", " ").replace("\n", " ").strip()
+    if key:
+        text = _mask_secret(text, key)
     return text[:180]
+
+
+def _resolve_api_key(api_key: str | None = None) -> str:
+    """Resolve C-Agent API key from argument, environment, or .env file."""
+    if api_key is not None:
+        return str(api_key).strip()
+    try:
+        from aios_habit.workspace_paths import load_env_file
+
+        load_env_file()
+    except Exception:
+        pass
+    return str(os.environ.get("AIOS_CAGENT_API_KEY", "") or "").strip()
 
 
 def _extract_text(payload: Any) -> str:
@@ -73,6 +96,7 @@ def call_cagent_prediction(
     timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS,
     cancellation_event: Any | None = None,
     retry_backoff_seconds: float = DEFAULT_RETRY_BACKOFF_SECONDS,
+    api_key: str | None = None,
 ) -> CAgentResponse:
     """Submit one approved Workspace Chat prompt to a C-AGENT AgentFlow.
 
@@ -85,13 +109,21 @@ def call_cagent_prediction(
     if parsed.scheme not in {"https", "http"} or not parsed.netloc:
         return CAgentResponse(False, error_message="C-AGENT API chưa có URL AgentFlow hợp lệ.")
 
+    resolved_api_key = _resolve_api_key(api_key)
+
+    def _make_error(msg: str) -> CAgentResponse:
+        return CAgentResponse(False, error_message=_mask_secret(msg, resolved_api_key))
+
     question = f"{system_prompt}\n\n{user_prompt}".strip()
     body = json.dumps({"question": question}, ensure_ascii=False).encode("utf-8")
+    headers = {"Content-Type": "application/json", "Accept": "application/json"}
+    if resolved_api_key:
+        headers["Authorization"] = f"Bearer {resolved_api_key}"
     request = Request(
         endpoint,
         data=body,
         method="POST",
-        headers={"Content-Type": "application/json", "Accept": "application/json"},
+        headers=headers,
     )
 
     effective_timeout = max(1, int(timeout_seconds))
@@ -101,16 +133,13 @@ def call_cagent_prediction(
         return bool(callable(checker) and checker())
 
     def timeout_response() -> CAgentResponse:
-        return CAgentResponse(
-            False,
-            error_message=_TIMEOUT_MESSAGE_TEMPLATE.format(timeout=effective_timeout),
-        )
+        return _make_error(_TIMEOUT_MESSAGE_TEMPLATE.format(timeout=effective_timeout))
 
     total_attempts = MAX_RETRIES + 1
     raw = ""
     for attempt in range(1, total_attempts + 1):
         if cancelled():
-            return CAgentResponse(False, error_message=_CANCELLED_MESSAGE)
+            return _make_error(_CANCELLED_MESSAGE)
         try:
             with urlopen(request, timeout=effective_timeout) as response:
                 raw = response.read().decode("utf-8")
@@ -118,6 +147,8 @@ def call_cagent_prediction(
         except HTTPError as error:
             try:
                 err_body = error.read().decode("utf-8", errors="replace")
+                if resolved_api_key:
+                    err_body = _mask_secret(err_body, resolved_api_key)
                 logging.getLogger(__name__).warning("C-AGENT API HTTP %s: %s", error.code, err_body[:500])
             except Exception:
                 pass
@@ -125,30 +156,27 @@ def call_cagent_prediction(
                 if attempt < total_attempts:
                     _sleep_before_retry(retry_backoff_seconds)
                     continue
-                return CAgentResponse(
-                    False,
-                    error_message=_SERVER_BUSY_MESSAGE_TEMPLATE.format(code=error.code),
-                )
-            return CAgentResponse(False, error_message=f"C-AGENT API trả về HTTP {error.code}.")
+                return _make_error(_SERVER_BUSY_MESSAGE_TEMPLATE.format(code=error.code))
+            return _make_error(f"C-AGENT API trả về HTTP {error.code}.")
         except URLError as error:
             if isinstance(getattr(error, "reason", None), TimeoutError):
                 return timeout_response()
             if attempt < total_attempts:
                 _sleep_before_retry(retry_backoff_seconds)
                 continue
-            return CAgentResponse(False, error_message=_NETWORK_ERROR_MESSAGE)
+            return _make_error(_NETWORK_ERROR_MESSAGE)
         except TimeoutError:
             return timeout_response()
         except OSError as error:
-            return CAgentResponse(False, error_message=f"Lỗi kết nối C-AGENT API: {_safe_error(error)}")
+            return _make_error(f"Lỗi kết nối C-AGENT API: {_safe_error(error, resolved_api_key)}")
 
     try:
         payload = json.loads(raw)
     except json.JSONDecodeError:
-        return CAgentResponse(False, error_message=_INVALID_PAYLOAD_MESSAGE)
+        return _make_error(_INVALID_PAYLOAD_MESSAGE)
     text = _extract_text(payload)
     if not text:
-        return CAgentResponse(False, error_message=_INVALID_PAYLOAD_MESSAGE)
+        return _make_error(_INVALID_PAYLOAD_MESSAGE)
     return CAgentResponse(True, text=text)
 
 
@@ -161,14 +189,16 @@ def _sleep_before_retry(seconds: float) -> None:
 class CAgentWorkspaceProviderClient:
     """Adapter matching ``WorkspaceAIProviderClient`` without retaining a token."""
 
-    def __init__(self, endpoint_url: str = "") -> None:
+    def __init__(self, endpoint_url: str = "", *, api_key: str | None = None) -> None:
         self.endpoint_url = str(endpoint_url or os.environ.get("AIOS_CAGENT_API_URL", "") or DEFAULT_CAGENT_API_URL).strip()
+        self._api_key = api_key
 
     def generate(self, *, system_prompt: str, user_prompt: str) -> str:
         response = call_cagent_prediction(
             self.endpoint_url,
             system_prompt=system_prompt,
             user_prompt=user_prompt,
+            api_key=self._api_key,
         )
         if not response.ok:
             raise RuntimeError(response.error_message)
