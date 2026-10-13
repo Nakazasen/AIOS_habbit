@@ -1185,6 +1185,9 @@ class LocalChunkIndex:
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_chunks_retrievable ON chunks(retrievable, document_id)"
         )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_chunks_retrievable_doc_fp ON chunks(retrievable, document_id, source_fingerprint)"
+        )
         self._conn.executescript(
             """
             CREATE TABLE IF NOT EXISTS chunk_embeddings (
