@@ -1,7 +1,7 @@
 ## Vé hiện tại: AUDIT-SHAKEDOWN-HOME-R2 (vé kiểm tra thiết lập vai audit máy nhà — VÒNG 2, bốc ngay)
 
 - Trạng thái: `xong-cho-duyet`
-- `commit`: `b20a158`
+- `commit`: `95b9137`
 - `bao_cao`: `docs/phieu-viec/ket-qua/audit-shakedown-home-r2.md`
 - `ghi_chu`: 2026-10-13 07:35 +07 — **HOÀN TẤT VÉ** `AUDIT-SHAKEDOWN-HOME-R2`: Hoàn thành 4 việc theo yêu cầu: (1) Khai định danh model thực tế: Gemini 3.8 Flash (High) (không phải claude-opus-5-5-medium), phát hiện nguyên nhân gốc rễ do config.local.ps1 ghi đè $agyModel = "gemini-3.8-flash-high", tuân thủ lệnh điều phối DỪNG không bốc vé audit/implement tiếp theo; (2) Phiên bản agy CLI: 1.3.3; (3) Trích nguyên văn dòng abstained trong `_try_local_fallback` tại `antigravity_bridge.py` (dòng 1733: `            and not bool(local_synthesis.get("abstained", False))`); (4) Xác nhận đọc/ghi tốt tại máy; compileall PASS, cli audit status PASS, import app OK, pytest test_rag_v2_structured_query PASS 24/24. Báo cáo nộp tại `docs/phieu-viec/ket-qua/audit-shakedown-home-r2.md`.
 - `ghi_chu`: 2026-10-13 07:33 +07 — **ĐÃ NHẬN VÉ** `AUDIT-SHAKEDOWN-HOME-R2`: Kiểm cổng gate: watcher mở lần 2/4 (chưa chạm 4 lần, không đặt `cho-muse`); vé đủ điều kiện bốc ngay. Bắt đầu thực hiện 4 yêu cầu kiểm tra thiết lập vai audit vòng 2 (khai model phiên, phiên bản CLI, trích dòng abstained tại antigravity_bridge.py, điều tra nguyên nhân model chạy thực tế).
