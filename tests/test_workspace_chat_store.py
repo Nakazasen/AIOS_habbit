@@ -1299,3 +1299,122 @@ def test_log_external_ai_usage_defaults_to_zero_when_no_timings(tmp_path, monkey
     assert lines[1]["ttft_sec"] == 0.0
 
 
+def test_evidence_trace_append_only_semantic_equivalence(tmp_path, monkeypatch):
+    """Verify that append-only trace storage preserves exact in-place replacement semantics.
+
+    Replaced traces maintain their position in the returned list, physical file stores
+    the raw append log, and compaction cleans up dead records without altering read results.
+    """
+    test_traces_file = tmp_path / "traces_append_test.jsonl"
+    monkeypatch.setattr(store, "TRACES_FILE", test_traces_file)
+    store.clear_store_cache()
+
+    t1 = _make_sample_trace("t1", assistant_message_id="a1", query="Q1 initial")
+    t2 = _make_sample_trace("t2", assistant_message_id="a2", query="Q2 initial")
+    t3 = _make_sample_trace("t3", assistant_message_id="a3", query="Q3 initial")
+
+    store.save_evidence_trace(t1)
+    store.save_evidence_trace(t2)
+    store.save_evidence_trace(t3)
+
+    # Replace T1 by assistant_message_id "a1"
+    t1_updated = _make_sample_trace("t1_v2", assistant_message_id="a1", query="Q1 updated")
+    store.save_evidence_trace(t1_updated)
+
+    # Replace T2 by trace_id "t2"
+    t2_updated = _make_sample_trace("t2", assistant_message_id="a2_v2", query="Q2 updated")
+    store.save_evidence_trace(t2_updated)
+
+    # Append new T4
+    t4 = _make_sample_trace("t4", assistant_message_id="a4", query="Q4 initial")
+    store.save_evidence_trace(t4)
+
+    # 1. Read semantics: length must be 4, exact replacement in-place
+    active_traces = store.load_all_evidence_traces()
+    assert len(active_traces) == 4
+    assert active_traces[0].trace_id == "t1_v2"
+    assert active_traces[0].query == "Q1 updated"
+    assert active_traces[1].trace_id == "t2"
+    assert active_traces[1].assistant_message_id == "a2_v2"
+    assert active_traces[1].query == "Q2 updated"
+    assert active_traces[2].trace_id == "t3"
+    assert active_traces[3].trace_id == "t4"
+
+    # 2. Raw disk file must have 6 lines (proving append-only without full rewrite)
+    raw_lines = [l for l in test_traces_file.read_text(encoding="utf-8").splitlines() if l.strip()]
+    assert len(raw_lines) == 6
+
+    # 3. Simulate process restart by clearing cache
+    store.clear_store_cache()
+    reloaded = store.load_all_evidence_traces()
+    assert len(reloaded) == 4
+    assert reloaded[0].trace_id == "t1_v2"
+    assert reloaded[1].assistant_message_id == "a2_v2"
+    assert reloaded[2].trace_id == "t3"
+    assert reloaded[3].trace_id == "t4"
+
+    # 4. Compaction: compact_evidence_traces rewrites only active traces
+    compacted = store.compact_evidence_traces(force=True)
+    assert compacted is True
+    compacted_lines = [l for l in test_traces_file.read_text(encoding="utf-8").splitlines() if l.strip()]
+    assert len(compacted_lines) == 4
+
+    # 5. After compaction, read semantics remain 100% identical
+    post_compact_traces = store.load_all_evidence_traces()
+    assert len(post_compact_traces) == 4
+    assert [t.trace_id for t in post_compact_traces] == ["t1_v2", "t2", "t3", "t4"]
+
+
+def test_messages_append_only_persistence_and_cache(tmp_path, monkeypatch):
+    """Verify that save_message appends durably and correctly updates cache."""
+    test_msgs_file = tmp_path / "messages_append_test.jsonl"
+    monkeypatch.setattr(store, "MESSAGES_FILE", test_msgs_file)
+    store.clear_store_cache()
+
+    m1 = ChatMessage(id="m1", conversation_id="conv_a", role="user", content="Question 1")
+    m2 = ChatMessage(id="m2", conversation_id="conv_a", role="assistant", content="Answer 1")
+    m3 = ChatMessage(id="m3", conversation_id="conv_b", role="user", content="Question 2")
+
+    store.save_message(m1)
+    store.save_message(m2)
+    store.save_message(m3)
+
+    # Check load_all_messages
+    all_msgs = store.load_all_messages()
+    assert len(all_msgs) == 3
+    assert [m.id for m in all_msgs] == ["m1", "m2", "m3"]
+
+    # Check conversation filter
+    conv_a_msgs = store.load_messages("conv_a")
+    assert len(conv_a_msgs) == 2
+    assert [m.id for m in conv_a_msgs] == ["m1", "m2"]
+
+    # Check raw lines on disk
+    raw_lines = [l for l in test_msgs_file.read_text(encoding="utf-8").splitlines() if l.strip()]
+    assert len(raw_lines) == 3
+
+    # Check reload after clear cache
+    store.clear_store_cache()
+    reloaded_msgs = store.load_all_messages()
+    assert len(reloaded_msgs) == 3
+    assert [m.id for m in reloaded_msgs] == ["m1", "m2", "m3"]
+
+
+def test_workspace_chat_store_class_message_and_compaction_methods(tmp_path, monkeypatch):
+    """Verify WorkspaceChatStore wrapper methods for messages and compaction."""
+    test_dir = tmp_path / "custom_chat_store"
+    test_dir.mkdir()
+    ws_store = store.WorkspaceChatStore(chat_dir=test_dir)
+
+    msg = ChatMessage(id="ws_m1", conversation_id="ws_conv", role="user", content="Hello")
+    ws_store.save_message(msg)
+
+    loaded = ws_store.load_messages("ws_conv")
+    assert len(loaded) == 1
+    assert loaded[0].id == "ws_m1"
+
+    # Test compaction on empty / small file
+    assert ws_store.compact_evidence_traces(force=False) is False
+
+
+

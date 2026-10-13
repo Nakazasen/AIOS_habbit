@@ -9,7 +9,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable, List, Optional
 from aios_habit.evidence_trace_schema import EvidenceTrace
-from aios_habit.local_jsonl import atomic_write_jsonl, atomic_write_jsonl_batch, clear_jsonl_cache, load_jsonl_records
+from aios_habit.local_jsonl import (
+    atomic_write_jsonl,
+    atomic_write_jsonl_batch,
+    clear_jsonl_cache,
+    load_jsonl_records,
+    serialize_record,
+    _JSONL_CACHE,
+)
 from aios_habit.workspace_chat_models import (
     COLLECTION_KIND_KNOWLEDGE,
     DEFAULT_COLLECTION_ID,
@@ -35,6 +42,43 @@ TRACES_FILE = LOCAL_CHAT_DIR / "traces.jsonl"
 EXTERNAL_AI_USAGE_FILE = LOCAL_CHAT_DIR / "external_ai_usage.jsonl"
 LOGGER = logging.getLogger(__name__)
 _STORE_LOCK = threading.RLock()
+_RECONCILED_TRACE_CACHE: dict[tuple[Path, int, int], List[EvidenceTrace]] = {}
+_DEAD_TRACE_COUNT_HINT: dict[Path, int] = {}
+
+
+def _append_jsonl_record(path: Path, record: Any) -> None:
+    """Durably append a single serialized record to a JSONL file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = json.dumps(serialize_record(record), ensure_ascii=False) + "\n"
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(payload)
+        f.flush()
+        try:
+            os.fsync(f.fileno())
+        except OSError:
+            pass
+
+
+def _invalidate_store_cache(path: Optional[Path] = None) -> None:
+    """Evict in-memory cache for a specific file or all store files."""
+    with _STORE_LOCK:
+        if path is not None:
+            resolved = path.resolve()
+            for k in list(_RECONCILED_TRACE_CACHE.keys()):
+                if k[0] == resolved:
+                    del _RECONCILED_TRACE_CACHE[k]
+            stale_keys = [k for k in _JSONL_CACHE if k[0] == resolved]
+            for k in stale_keys:
+                _JSONL_CACHE.pop(k, None)
+        else:
+            _RECONCILED_TRACE_CACHE.clear()
+            _DEAD_TRACE_COUNT_HINT.clear()
+            clear_jsonl_cache()
+
+
+def clear_store_cache() -> None:
+    """Clear all in-memory caches across local JSONL and chat store."""
+    _invalidate_store_cache(None)
 
 def init_chat_store():
     LOCAL_CHAT_DIR.mkdir(parents=True, exist_ok=True)
@@ -626,12 +670,91 @@ def _trace_nb_id(t: EvidenceTrace) -> str:
     return str(getattr(t, "notebook_id", "") or (t.metadata.get("notebook_id") if isinstance(getattr(t, "metadata", None), dict) else "") or "")
 
 
+def _reconcile_evidence_traces(raw_records: Iterable[EvidenceTrace]) -> List[EvidenceTrace]:
+    """Reconcile sequential append-only trace records preserving in-place replacement semantics.
+
+    For each incoming record:
+      - If an existing record shares non-empty assistant_message_id or trace_id:
+        it replaces the FIRST matching record in-place.
+      - If no match is found, it is appended.
+    This guarantees 100% semantic equivalence with legacy read-modify-rewrite logic.
+    """
+    raw_list = list(raw_records)
+    if not raw_list:
+        return []
+
+    # Fast path: check if all records have distinct non-empty identifiers
+    seen_ast: set[str] = set()
+    seen_tid: set[str] = set()
+    has_dup = False
+    for t in raw_list:
+        aid = _trace_ast_id(t)
+        tid = _trace_id(t)
+        if aid and aid in seen_ast:
+            has_dup = True
+            break
+        if tid and tid in seen_tid:
+            has_dup = True
+            break
+        if aid:
+            seen_ast.add(aid)
+        if tid:
+            seen_tid.add(tid)
+    if not has_dup:
+        return list(raw_list)
+
+    reconciled: List[EvidenceTrace] = []
+    for item in raw_list:
+        curr_ast_id = _trace_ast_id(item)
+        curr_tid = _trace_id(item)
+        found_idx = -1
+        for i, existing in enumerate(reconciled):
+            item_ast_id = _trace_ast_id(existing)
+            item_tid = _trace_id(existing)
+            if curr_ast_id and item_ast_id and curr_ast_id == item_ast_id:
+                found_idx = i
+                break
+            if curr_tid and item_tid and curr_tid == item_tid:
+                found_idx = i
+                break
+        if found_idx >= 0:
+            reconciled[found_idx] = item
+        else:
+            reconciled.append(item)
+    return reconciled
+
+
 def load_all_evidence_traces(traces_file: Optional[Path] = None) -> List[EvidenceTrace]:
     target_file = traces_file if traces_file is not None else TRACES_FILE
     with _STORE_LOCK:
         if not target_file.exists():
             return []
-        return load_jsonl_records(target_file, _deserialize_evidence_trace)
+
+        # If global jsonl cache was cleared externally, reset trace cache as well
+        if len(_JSONL_CACHE) == 0 and len(_RECONCILED_TRACE_CACHE) > 0:
+            _RECONCILED_TRACE_CACHE.clear()
+
+        resolved = target_file.resolve()
+        try:
+            stat = target_file.stat()
+        except OSError:
+            return []
+
+        cache_key = (resolved, stat.st_mtime_ns, stat.st_size)
+        if cache_key in _RECONCILED_TRACE_CACHE:
+            return list(_RECONCILED_TRACE_CACHE[cache_key])
+
+        # Cache miss / cold load: read raw records and reconcile
+        raw_records = load_jsonl_records(target_file, _deserialize_evidence_trace)
+        reconciled = _reconcile_evidence_traces(raw_records)
+
+        # Evict old cache keys for this path
+        for k in list(_RECONCILED_TRACE_CACHE.keys()):
+            if k[0] == resolved:
+                del _RECONCILED_TRACE_CACHE[k]
+
+        _RECONCILED_TRACE_CACHE[cache_key] = reconciled
+        return list(reconciled)
 
 
 def load_evidence_trace(trace_id: str, traces_file: Optional[Path] = None) -> Optional[EvidenceTrace]:
@@ -664,31 +787,113 @@ def load_message_trace(message_id: str, traces_file: Optional[Path] = None) -> O
 def save_evidence_trace(trace: EvidenceTrace, traces_file: Optional[Path] = None) -> EvidenceTrace:
     target_file = traces_file if traces_file is not None else TRACES_FILE
     with _STORE_LOCK:
-        clear_jsonl_cache()
-        traces = load_all_evidence_traces(traces_file=target_file)
+        if not target_file.exists():
+            target_file.parent.mkdir(parents=True, exist_ok=True)
+            target_file.touch()
+
+        # If global jsonl cache was cleared externally, reset trace cache
+        if len(_JSONL_CACHE) == 0 and len(_RECONCILED_TRACE_CACHE) > 0:
+            _RECONCILED_TRACE_CACHE.clear()
+
+        resolved = target_file.resolve()
+        stat_before = target_file.stat()
+        cache_key_before = (resolved, stat_before.st_mtime_ns, stat_before.st_size)
+        cached_traces = _RECONCILED_TRACE_CACHE.get(cache_key_before)
+
+        # Durably append the trace record to disk (append-only)
+        _append_jsonl_record(target_file, trace)
+
+        stat_after = target_file.stat()
+        cache_key_after = (resolved, stat_after.st_mtime_ns, stat_after.st_size)
 
         curr_ast_id = _trace_ast_id(trace)
         curr_tid = _trace_id(trace)
-
         found_idx = -1
-        for i, item in enumerate(traces):
-            item_ast_id = _trace_ast_id(item)
-            item_tid = _trace_id(item)
-            if curr_ast_id and item_ast_id and curr_ast_id == item_ast_id:
-                found_idx = i
-                break
-            if curr_tid and item_tid and curr_tid == item_tid:
-                found_idx = i
-                break
 
-        if found_idx >= 0:
-            traces[found_idx] = trace
+        if cached_traces is not None:
+            new_traces = list(cached_traces)
+            for i, item in enumerate(new_traces):
+                item_ast_id = _trace_ast_id(item)
+                item_tid = _trace_id(item)
+                if curr_ast_id and item_ast_id and curr_ast_id == item_ast_id:
+                    found_idx = i
+                    break
+                if curr_tid and item_tid and curr_tid == item_tid:
+                    found_idx = i
+                    break
+
+            if found_idx >= 0:
+                new_traces[found_idx] = trace
+                _DEAD_TRACE_COUNT_HINT[resolved] = _DEAD_TRACE_COUNT_HINT.get(resolved, 0) + 1
+            else:
+                new_traces.append(trace)
+
+            for k in list(_RECONCILED_TRACE_CACHE.keys()):
+                if k[0] == resolved:
+                    del _RECONCILED_TRACE_CACHE[k]
+
+            _RECONCILED_TRACE_CACHE[cache_key_after] = new_traces
         else:
-            traces.append(trace)
+            for k in list(_RECONCILED_TRACE_CACHE.keys()):
+                if k[0] == resolved:
+                    del _RECONCILED_TRACE_CACHE[k]
 
-        atomic_write_jsonl(target_file, traces)
-        clear_jsonl_cache()
+        # Automatic compaction when dead traces exceed threshold
+        if _DEAD_TRACE_COUNT_HINT.get(resolved, 0) >= 200:
+            compact_evidence_traces(target_file, dead_threshold=200, dead_ratio=0.25)
+            _DEAD_TRACE_COUNT_HINT[resolved] = 0
+
         return trace
+
+
+def compact_evidence_traces(
+    traces_file: Optional[Path] = None,
+    *,
+    force: bool = False,
+    dead_threshold: int = 200,
+    dead_ratio: float = 0.25,
+) -> bool:
+    """Compact append-only traces.jsonl file by rewriting only active reconciled traces.
+
+    Triggers compaction if force is True, or if dead records exceed thresholds.
+    """
+    target_file = traces_file if traces_file is not None else TRACES_FILE
+    with _STORE_LOCK:
+        if not target_file.exists():
+            return False
+
+        try:
+            with target_file.open("r", encoding="utf-8") as f:
+                raw_count = sum(1 for line in f if line.strip())
+        except OSError:
+            return False
+
+        reconciled = load_all_evidence_traces(traces_file=target_file)
+        dead_count = raw_count - len(reconciled)
+
+        if not force:
+            if dead_count < dead_threshold:
+                return False
+            if raw_count > 0 and (dead_count / raw_count) < dead_ratio:
+                return False
+
+        atomic_write_jsonl(target_file, reconciled)
+        _invalidate_store_cache(target_file)
+        try:
+            stat = target_file.stat()
+            cache_key = (target_file.resolve(), stat.st_mtime_ns, stat.st_size)
+            _RECONCILED_TRACE_CACHE[cache_key] = list(reconciled)
+        except OSError:
+            pass
+        _DEAD_TRACE_COUNT_HINT[target_file.resolve()] = 0
+        LOGGER.info(
+            "Compacted %s: reduced from %d raw records to %d active records (removed %d dead)",
+            target_file.name,
+            raw_count,
+            len(reconciled),
+            dead_count,
+        )
+        return True
 
 
 def load_notebooks() -> List[DocumentNotebook]:
@@ -891,21 +1096,46 @@ def delete_conversation(conv_id: str) -> bool:
         (SOURCE_SELECTIONS_FILE, selections),
         (TRACES_FILE, remaining_traces),
     ))
+    _invalidate_store_cache(MESSAGES_FILE)
+    _invalidate_store_cache(TRACES_FILE)
 
     return True
 
 def load_all_messages() -> List[ChatMessage]:
-    if not MESSAGES_FILE.exists():
-        return []
-    return load_jsonl_records(MESSAGES_FILE, _deserialize_message)
+    with _STORE_LOCK:
+        if not MESSAGES_FILE.exists():
+            return []
+        return load_jsonl_records(MESSAGES_FILE, _deserialize_message)
 
 def load_messages(conv_id: str) -> List[ChatMessage]:
     return [m for m in load_all_messages() if m.conversation_id == conv_id]
 
-def save_message(msg: ChatMessage):
-    messages = load_all_messages()
-    messages.append(msg)
-    atomic_write_jsonl(MESSAGES_FILE, messages)
+def save_message(msg: ChatMessage) -> None:
+    with _STORE_LOCK:
+        if not MESSAGES_FILE.exists():
+            MESSAGES_FILE.parent.mkdir(parents=True, exist_ok=True)
+            MESSAGES_FILE.touch()
+
+        resolved = MESSAGES_FILE.resolve()
+        stat_before = MESSAGES_FILE.stat()
+        cache_key_before = (resolved, stat_before.st_mtime_ns, stat_before.st_size, _deserialize_message)
+        cached_msgs = _JSONL_CACHE.get(cache_key_before)
+
+        _append_jsonl_record(MESSAGES_FILE, msg)
+
+        stat_after = MESSAGES_FILE.stat()
+        cache_key_after = (resolved, stat_after.st_mtime_ns, stat_after.st_size, _deserialize_message)
+
+        if cached_msgs is not None:
+            new_msgs = list(cached_msgs) + [msg]
+            stale_keys = [k for k in _JSONL_CACHE if k[0] == resolved]
+            for k in stale_keys:
+                _JSONL_CACHE.pop(k, None)
+            _JSONL_CACHE[cache_key_after] = new_msgs
+        else:
+            stale_keys = [k for k in _JSONL_CACHE if k[0] == resolved]
+            for k in stale_keys:
+                _JSONL_CACHE.pop(k, None)
 
 def load_all_temporary_sources() -> List[TemporaryConversationSource]:
     if not TEMPORARY_SOURCES_FILE.exists():
@@ -1226,6 +1456,8 @@ def delete_notebook_permanently(notebook_id: str) -> bool:
     except OSError:
         LOGGER.exception("Could not delete notebook %s without losing related records", notebook_id)
         return False
+    _invalidate_store_cache(MESSAGES_FILE)
+    _invalidate_store_cache(TRACES_FILE)
     return True
 
 
@@ -1352,3 +1584,17 @@ class WorkspaceChatStore:
     def load_message_trace(self, message_id: str, traces_file: Optional[Path] = None) -> Optional[EvidenceTrace]:
         target = traces_file if traces_file is not None else self.traces_file
         return load_message_trace(message_id, traces_file=target)
+
+    def load_all_messages(self) -> List[ChatMessage]:
+        return load_all_messages()
+
+    def load_messages(self, conv_id: str) -> List[ChatMessage]:
+        return load_messages(conv_id)
+
+    def save_message(self, msg: ChatMessage) -> None:
+        save_message(msg)
+
+    def compact_evidence_traces(self, traces_file: Optional[Path] = None, force: bool = False) -> bool:
+        target = traces_file if traces_file is not None else self.traces_file
+        return compact_evidence_traces(traces_file=target, force=force)
+

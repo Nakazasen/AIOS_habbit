@@ -285,17 +285,26 @@ class TestEvidenceTraceIdempotency:
         )
         save_fn(trace_v2)
 
-        # Verify only 1 record exists in traces.jsonl
         traces_file = sandboxed_chat_store / "traces.jsonl"
         assert traces_file.exists()
-        lines = [line.strip() for line in traces_file.read_text(encoding="utf-8").splitlines() if line.strip()]
-        assert len(lines) == 1, f"Expected exactly 1 line in traces.jsonl, found {len(lines)}"
+
+        # Verify read semantics: exactly 1 active record reflecting the updated trace
+        loaded_all = chat_store.load_all_evidence_traces(traces_file=traces_file)
+        assert len(loaded_all) == 1
+        assert loaded_all[0].trace_id == "trc_idemp_02"
 
         # Verify loaded trace reflects the updated trace
-        loaded = load_msg_fn("msg_ast_repeat")
+        loaded = load_msg_fn("msg_ast_repeat", traces_file=traces_file)
         assert loaded is not None
         assert loaded.trace_id == "trc_idemp_02"
         assert loaded.answer_text == "Updated refined answer [1]."
+
+        # Compaction purges obsolete records down to exactly 1 active line on disk
+        compact_fn = getattr(chat_store, "compact_evidence_traces", None)
+        assert callable(compact_fn)
+        compact_fn(traces_file=traces_file, force=True)
+        lines = [line.strip() for line in traces_file.read_text(encoding="utf-8").splitlines() if line.strip()]
+        assert len(lines) == 1, f"Expected exactly 1 line in traces.jsonl after compaction, found {len(lines)}"
 
 
 # ---------------------------------------------------------------------------
