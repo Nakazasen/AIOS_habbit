@@ -153,6 +153,7 @@ def start_server(port: int, log_file: Path) -> subprocess.Popen:
     env["AIOS_AI_BACKEND"] = "nakazasen_router"
     env["PYTHONIOENCODING"] = "utf-8"
     env["PYTHONUNBUFFERED"] = "1"
+    env["STREAMLIT_SERVER_PORT"] = str(port)
     if log_file.exists():
         try:
             log_file.unlink()

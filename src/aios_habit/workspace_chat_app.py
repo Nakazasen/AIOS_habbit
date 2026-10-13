@@ -1662,12 +1662,33 @@ def _run_chat_turn_async(
             ):
                 # UI-SPEED-WARMLOOP-FIX-HOME: Cho worker khoi dong voi fail-fast va tran cho khong-tien-trien
                 t_wait_worker_start = time.time()
+                target_warm_pipe_cfg = None
+                if forced_domain_choice and forced_domain_choice != "auto":
+                    try:
+                        from aios_habit.workspace_chat_rag_v2_adapter import (
+                            _pipeline_config,
+                            WorkspaceChatRagV2CanaryConfig,
+                        )
+                        c_canary = WorkspaceChatRagV2CanaryConfig.from_env()
+                        target_warm_pipe_cfg = _pipeline_config(
+                            c_canary, c_canary.requested_profile, read_only=True, collection_id=forced_domain_choice
+                        )
+                    except Exception:
+                        target_warm_pipe_cfg = None
+
+                def _targeted_warming(*, blocking: bool = True, timeout_s: float | None = None) -> bool:
+                    from aios_habit.workspace_chat_rag_v2_adapter import ensure_workspace_chat_worker_warming
+                    return ensure_workspace_chat_worker_warming(
+                        blocking=blocking, timeout_s=timeout_s, pipe_config=target_warm_pipe_cfg
+                    )
+
                 ret_res, early_exit = wait_for_workspace_chat_worker(
                     attempt_retrieval_fn=_attempt_retrieval,
                     initial_ret_res=ret_res,
                     cancellation_event=cancellation_event,
                     unready_sources=unready_sources,
                     current_ui_locale=current_ui_locale,
+                    warming_fn=_targeted_warming,
                 )
                 worker_wait_s += max(0.0, time.time() - t_wait_worker_start)
                 if early_exit is not None:

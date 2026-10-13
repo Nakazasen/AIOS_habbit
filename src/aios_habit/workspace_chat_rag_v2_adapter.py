@@ -1549,12 +1549,12 @@ def ensure_workspace_chat_worker_warming(
 
     def _warm() -> bool:
         try:
-            target_pipe_config = pipe_config
+            target_pipe_config = pipe_config or _LAST_WARMUP_PIPE_CONFIG
             if target_pipe_config is None:
                 try:
                     target_pipe_config = _warmup_pipeline_config(resolved)
                 except (SemanticBackendUnavailable, ValueError, OSError):
-                    target_pipe_config = _LAST_WARMUP_PIPE_CONFIG
+                    target_pipe_config = None
             actual_timeout = timeout_s if blocking else (timeout_s or default_init_timeout_seconds())
             initialize_workspace_chat_rag_v2_worker(
                 resolved,
