@@ -1,6 +1,8 @@
 ## Vé hiện tại: AUDIT-SHAKEDOWN-HOME-R2 (vé kiểm tra thiết lập vai audit máy nhà — VÒNG 2, bốc ngay)
 
-- Trạng thái: `moi`
+- Trạng thái: `dang-lam`
+- `bao_cao`: `docs/phieu-viec/ket-qua/audit-shakedown-home-r2.md`
+- `ghi_chu`: 2026-10-13 07:33 +07 — **ĐÃ NHẬN VÉ** `AUDIT-SHAKEDOWN-HOME-R2`: Kiểm cổng gate: watcher mở lần 2/4 (chưa chạm 4 lần, không đặt `cho-muse`); vé đủ điều kiện bốc ngay. Bắt đầu thực hiện 4 yêu cầu kiểm tra thiết lập vai audit vòng 2 (khai model phiên, phiên bản CLI, trích dòng abstained tại antigravity_bridge.py, điều tra nguyên nhân model chạy thực tế).
 - `ghi_chu` (điều phối Muse — PHÁT HÀNH): 2026-10-13 ~06:28 +07 — Phát hành vòng 2 trên cơ sở user xác nhận đã khởi động lại tiến trình canh thư làn agy tại máy nhà (06:27 +07) để tiến trình mở phiên bằng `claude-opus-5-5-medium`. Vòng 1 (tối 12/10) verdict: ĐẠT phần cơ chế / CHƯA ĐẠT phần model — phiên bốc vé chạy Gemini 3.8 Flash (High) vì tiến trình canh thư cũ giữ model trong bộ nhớ. Thợ Agy thực hiện đúng 4 việc sau rồi nộp:
   1. Khai định danh model của chính phiên này (kỳ vọng: `claude-opus-5-5-medium`). Nếu phiên không chạy model đó, ghi đúng model thật và DỪNG, không làm tiếp.
   2. Ghi phiên bản agy CLI (`agy --version`).
