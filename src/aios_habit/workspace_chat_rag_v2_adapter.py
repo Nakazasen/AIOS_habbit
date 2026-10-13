@@ -1643,11 +1643,13 @@ def ensure_workspace_chat_startup_warming(
             LOGGER.warning("Startup warming failed for collection '%s': %s", col_id, exc)
             results[col_id] = False
 
-    # Giữ nguyên hành vi làm ấm tri_thuc mặc định
+    # Giữ nguyên hành vi làm ấm tri_thuc mặc định với pipe_config tường minh
     try:
+        tri_thuc_pipe_cfg = _warmup_pipeline_config(resolved)
         results["tri_thuc"] = ensure_workspace_chat_worker_warming(
             config=resolved,
             blocking=False,
+            pipe_config=tri_thuc_pipe_cfg,
         )
     except Exception as exc:
         LOGGER.warning("Startup warming failed for tri_thuc: %s", exc)
