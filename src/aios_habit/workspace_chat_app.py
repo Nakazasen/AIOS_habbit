@@ -36,15 +36,11 @@ from aios_habit.workspace_paths import default_agent_workspace_root
 
 LOGGER = logging.getLogger("aios_habit.workspace_chat_app")
 
-def _safe_print_streaming_marker(msg: str) -> None:
-    try:
-        if hasattr(sys.stdout, "buffer") and sys.stdout.buffer is not None:
-            sys.stdout.buffer.write((msg + "\n").encode("utf-8", errors="replace"))
-            sys.stdout.buffer.flush()
-        else:
-            print(msg.encode("ascii", errors="backslashreplace").decode("ascii"), flush=True)
-    except Exception:
-        pass
+from aios_habit.streaming_markers import (
+    _safe_print_streaming_marker,
+    format_marker_timestamp,
+    emit_pre_synth_step_marker,
+)
 
 
 # Provider calls can take minutes. Keep them off Streamlit's UI run so the
@@ -1586,16 +1582,18 @@ def _run_chat_turn_async(
 
     t_turn_start = time.time()
     worker_wait_s: float = 0.0
+    ts_start = format_marker_timestamp()
     try:
         LOGGER.info(
-            "[STREAMING_QA_START] conv=%s backend=%s question=%s",
+            "[STREAMING_QA_START] conv=%s backend=%s question=%s timestamp=%s",
             conversation_id,
             ai_backend,
             q_text[:60].encode("ascii", errors="backslashreplace").decode("ascii"),
+            ts_start,
         )
     except Exception:
         pass
-    _safe_print_streaming_marker(f"[STREAMING_QA_START] conv={conversation_id} backend={ai_backend} question={q_text[:60]}")
+    _safe_print_streaming_marker(f"[STREAMING_QA_START] conv={conversation_id} backend={ai_backend} question={q_text[:60]} timestamp={ts_start}")
 
     if cancellation_event is not None and cancellation_event.is_set():
         return (False, "", None, "Đã dừng yêu cầu AI.")
@@ -1704,17 +1702,19 @@ def _run_chat_turn_async(
                     )
                     if draft_res is not None:
                         turn_total_s = time.time() - t_turn_start
+                        ts_draft = format_marker_timestamp()
                         try:
                             LOGGER.info(
-                                "[DRAFT_FALLBACK_COMPLETE] conv=%s wait_s=%.3f total_s=%.3f",
+                                "[DRAFT_FALLBACK_COMPLETE] conv=%s wait_s=%.3f total_s=%.3f timestamp=%s",
                                 conversation_id,
                                 worker_wait_s,
                                 turn_total_s,
+                                ts_draft,
                             )
                         except Exception:
                             pass
                         _safe_print_streaming_marker(
-                            f"[DRAFT_FALLBACK_COMPLETE] conv={conversation_id} wait_s={worker_wait_s:.3f} total_s={turn_total_s:.3f}"
+                            f"[DRAFT_FALLBACK_COMPLETE] conv={conversation_id} wait_s={worker_wait_s:.3f} total_s={turn_total_s:.3f} timestamp={ts_draft}"
                         )
                         return draft_res
                 return (False, "", None, err_msg)
@@ -1738,17 +1738,19 @@ def _run_chat_turn_async(
                 )
                 if draft_res is not None:
                     turn_total_s = time.time() - t_turn_start
+                    ts_draft = format_marker_timestamp()
                     try:
                         LOGGER.info(
-                            "[DRAFT_FALLBACK_COMPLETE] conv=%s wait_s=%.3f total_s=%.3f",
+                            "[DRAFT_FALLBACK_COMPLETE] conv=%s wait_s=%.3f total_s=%.3f timestamp=%s",
                             conversation_id,
                             worker_wait_s,
                             turn_total_s,
+                            ts_draft,
                         )
                     except Exception:
                         pass
                     _safe_print_streaming_marker(
-                        f"[DRAFT_FALLBACK_COMPLETE] conv={conversation_id} wait_s={worker_wait_s:.3f} total_s={turn_total_s:.3f}"
+                        f"[DRAFT_FALLBACK_COMPLETE] conv={conversation_id} wait_s={worker_wait_s:.3f} total_s={turn_total_s:.3f} timestamp={ts_draft}"
                     )
                     return draft_res
                 # st.session_state.wsc_action_error = "Chưa tìm thấy đoạn phù hợp trong nguồn đang bật."
@@ -1756,19 +1758,28 @@ def _run_chat_turn_async(
                 return (False, "", None, err_msg)
         else:
             retrieval_applied = True
+            emit_pre_synth_step_marker(conversation_id, "retrieval_received")
             retrieved_sources = ret_res.get("retrieved_context_sources", ())
             evidence_items = ret_res.get("evidence_items", [])
             retrieval_summary = ret_res.get("safe_owner_message", "")
+            emit_pre_synth_step_marker(conversation_id, "sources_formatted")
             # Domain routing transparency: state which knowledge block was
             # searched. Ambiguous questions name the most plausible block.
             retrieval_summary = _prefix_domain_block_badge(
                 retrieval_summary, ret_res.get("domain_routing")
             )
+            emit_pre_synth_step_marker(conversation_id, "domain_badge_attached")
     else:
         retrieval_applied = False
         retrieved_sources = ()
         evidence_items = []
         retrieval_summary = "Đang trả lời trực tiếp qua nội dung văn bản nguồn."
+        emit_pre_synth_step_marker(conversation_id, "retrieval_received")
+        emit_pre_synth_step_marker(conversation_id, "sources_formatted")
+        emit_pre_synth_step_marker(conversation_id, "domain_badge_attached")
+
+    emit_pre_synth_step_marker(conversation_id, "executor_enqueued")
+    emit_pre_synth_step_marker(conversation_id, "executor_task_started")
 
     if cancellation_event is not None and cancellation_event.is_set():
         return (False, "", None, "Đã dừng yêu cầu AI.")
@@ -1799,19 +1810,21 @@ def _run_chat_turn_async(
     turn_total_s = t_turn_end - t_turn_start
     badge = res[2] if len(res) > 2 and isinstance(res[2], dict) else {}
     eff_backend = (badge.get("provider") or badge.get("ai_source") or ai_backend) if badge else ai_backend
+    ts_complete = format_marker_timestamp()
     try:
         LOGGER.info(
-            "[STREAMING_QA_COMPLETE] conv=%s total_s=%.3f total_ms=%.1f backend=%s ok=%s",
+            "[STREAMING_QA_COMPLETE] conv=%s total_s=%.3f total_ms=%.1f backend=%s ok=%s timestamp=%s",
             conversation_id,
             turn_total_s,
             turn_total_s * 1000,
             eff_backend,
             res[0],
+            ts_complete,
         )
     except Exception:
         pass
     _safe_print_streaming_marker(
-        f"[STREAMING_QA_COMPLETE] conv={conversation_id} total_s={turn_total_s:.3f} total_ms={turn_total_s * 1000:.1f} backend={eff_backend} ok={res[0]}"
+        f"[STREAMING_QA_COMPLETE] conv={conversation_id} total_s={turn_total_s:.3f} total_ms={turn_total_s * 1000:.1f} backend={eff_backend} ok={res[0]} timestamp={ts_complete}"
     )
     return res
 
@@ -6023,17 +6036,19 @@ else:
                                         if stream_state["first_token_time"] is None:
                                             stream_state["first_token_time"] = time.time()
                                             ttft_s = stream_state["first_token_time"] - stream_state["started_at"]
+                                            ts_first_token = format_marker_timestamp()
                                             try:
                                                 LOGGER.info(
-                                                    "[STREAMING_QA_FIRST_TOKEN] conv=%s ttft_s=%.3f ttft_ms=%.1f",
+                                                    "[STREAMING_QA_FIRST_TOKEN] conv=%s ttft_s=%.3f ttft_ms=%.1f timestamp=%s",
                                                     active_conversation.id,
                                                     ttft_s,
                                                     ttft_s * 1000,
+                                                    ts_first_token,
                                                 )
                                             except Exception:
                                                 pass
                                             _safe_print_streaming_marker(
-                                                f"[STREAMING_QA_FIRST_TOKEN] conv={active_conversation.id} ttft_s={ttft_s:.3f} ttft_ms={ttft_s * 1000:.1f}"
+                                                f"[STREAMING_QA_FIRST_TOKEN] conv={active_conversation.id} ttft_s={ttft_s:.3f} ttft_ms={ttft_s * 1000:.1f} timestamp={ts_first_token}"
                                             )
                                         stream_state["text"] += delta
 

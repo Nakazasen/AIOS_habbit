@@ -34,15 +34,11 @@ from aios_habit.ide_handoff_bridge import (
 LOGGER = logging.getLogger(__name__)
 
 
-def _safe_print_streaming_marker(msg: str) -> None:
-    try:
-        if hasattr(sys.stdout, "buffer") and sys.stdout.buffer is not None:
-            sys.stdout.buffer.write((msg + "\n").encode("utf-8", errors="replace"))
-            sys.stdout.buffer.flush()
-        else:
-            print(msg.encode("ascii", errors="backslashreplace").decode("ascii"), flush=True)
-    except Exception:
-        pass
+from aios_habit.streaming_markers import (
+    _safe_print_streaming_marker,
+    format_marker_timestamp,
+    emit_pre_synth_step_marker,
+)
 
 
 DEFAULT_ANTIGRAVITY_ENDPOINT = os.environ.get(
@@ -1298,11 +1294,12 @@ def route_workspace_chat_submission(
         ttft_recorded: list[float] = []
         ttft_lock = threading.Lock()
 
+        ts_router_start = format_marker_timestamp()
         try:
-            LOGGER.info("[ROUTER_SYNTH_START] conv=%s backend=%s", conversation_id, backend)
+            LOGGER.info("[ROUTER_SYNTH_START] conv=%s backend=%s timestamp=%s", conversation_id, backend, ts_router_start)
         except Exception:
             pass
-        _safe_print_streaming_marker(f"[ROUTER_SYNTH_START] conv={conversation_id} backend={backend}")
+        _safe_print_streaming_marker(f"[ROUTER_SYNTH_START] conv={conversation_id} backend={backend} timestamp={ts_router_start}")
 
         def _timed_on_chunk(chunk: str) -> None:
             if chunk:
@@ -1374,18 +1371,20 @@ def route_workspace_chat_submission(
             calc_ttft = round(measured_ttft, 4)
             effective_ttft_sec = calc_ttft if calc_ttft > 0.0 else (0.0001 if ttft_recorded else 0.0)
 
+        ts_router_done = format_marker_timestamp()
         try:
             LOGGER.info(
-                "[ROUTER_SYNTH_DONE] conv=%s duration_s=%.3f ttft_s=%.3f latency_s=%.3f",
+                "[ROUTER_SYNTH_DONE] conv=%s duration_s=%.3f ttft_s=%.3f latency_s=%.3f timestamp=%s",
                 conversation_id,
                 effective_duration_sec,
                 effective_ttft_sec,
                 effective_duration_sec,
+                ts_router_done,
             )
         except Exception:
             pass
         _safe_print_streaming_marker(
-            f"[ROUTER_SYNTH_DONE] conv={conversation_id} latency_s={effective_duration_sec:.3f} ttft_s={effective_ttft_sec:.3f} duration_s={effective_duration_sec:.3f}"
+            f"[ROUTER_SYNTH_DONE] conv={conversation_id} latency_s={effective_duration_sec:.3f} ttft_s={effective_ttft_sec:.3f} duration_s={effective_duration_sec:.3f} timestamp={ts_router_done}"
         )
 
         LOGGER.info(
@@ -1882,6 +1881,8 @@ def route_workspace_chat_submission(
     else:
         chain = [backend, "nakazasen_router", "local"]
 
+    emit_pre_synth_step_marker(conversation_id, "route_privacy_done")
+
     for candidate in chain:
         if was_cancelled():
             return (False, "", None, "Đã dừng yêu cầu AI.")
@@ -1897,6 +1898,7 @@ def route_workspace_chat_submission(
             elif candidate == "cagent_api":
                 res = _try_cagent_api()
             elif candidate == "nakazasen_router":
+                emit_pre_synth_step_marker(conversation_id, "pre_router")
                 res = _try_nakazasen_router()
             elif candidate == "local":
                 res = _try_local_fallback()
