@@ -1644,62 +1644,80 @@ def _run_chat_turn_async(
         )
 
     if should_retrieve:
-        ret_res = _attempt_retrieval()
-        if cancellation_event is not None and cancellation_event.is_set():
-            return (False, "", None, "Đã dừng yêu cầu AI.")
-
-        has_attached_facts = (
-            "[Dữ kiện trích từ tệp đính kèm" in q_text
-            or "[Nội dung chữ đọc được từ ảnh đính kèm" in q_text
+        active_domain = forced_domain if (forced_domain and forced_domain != "auto") else None
+        if not active_domain:
+            try:
+                from aios_habit.index_domain import detect_domain_from_question
+                cls_dom = detect_domain_from_question(q_text)
+                if cls_dom and cls_dom.domain:
+                    active_domain = cls_dom.domain
+            except Exception:
+                active_domain = None
+        from aios_habit.workspace_chat_rag_v2_adapter import (
+            set_user_retrieval_active,
+            set_user_retrieval_finished,
         )
+        set_user_retrieval_active(active_domain)
+        try:
+            ret_res = _attempt_retrieval()
+            if cancellation_event is not None and cancellation_event.is_set():
+                return (False, "", None, "Đã dừng yêu cầu AI.")
 
-        if ret_res.get("status") == "quality_search_unavailable":
-            unavailable_reason = str(
-                ret_res.get("rag_v2_canary", {}).get("fallback_reason", "")
-            ).casefold()
-            if unavailable_reason == "domain_block_missing":
-                return (False, "", None, _knowledge_block_missing_message(ret_res, current_ui_locale))
-            if unavailable_reason != "deep_search_unavailable" and not has_attached_facts and (
-                _is_worker_startup_reason(unavailable_reason) or not unready_sources
-            ):
-                # UI-SPEED-WARMLOOP-FIX-HOME: Cho worker khoi dong voi fail-fast va tran cho khong-tien-trien
-                t_wait_worker_start = time.time()
-                target_warm_pipe_cfg = None
-                if forced_domain and forced_domain != "auto":
-                    try:
-                        from aios_habit.workspace_chat_rag_v2_adapter import (
-                            _pipeline_config,
-                            WorkspaceChatRagV2CanaryConfig,
-                        )
-                        c_canary = WorkspaceChatRagV2CanaryConfig.from_env()
-                        target_warm_pipe_cfg = _pipeline_config(
-                            c_canary, c_canary.requested_profile, read_only=True, collection_id=forced_domain
-                        )
-                    except Exception:
-                        target_warm_pipe_cfg = None
+            has_attached_facts = (
+                "[Dữ kiện trích từ tệp đính kèm" in q_text
+                or "[Nội dung chữ đọc được từ ảnh đính kèm" in q_text
+            )
 
-                def _targeted_warming(*, blocking: bool = True, timeout_s: float | None = None) -> bool:
-                    from aios_habit.workspace_chat_rag_v2_adapter import ensure_workspace_chat_worker_warming
-                    return ensure_workspace_chat_worker_warming(
-                        blocking=blocking, timeout_s=timeout_s, pipe_config=target_warm_pipe_cfg
+            if ret_res.get("status") == "quality_search_unavailable":
+                unavailable_reason = str(
+                    ret_res.get("rag_v2_canary", {}).get("fallback_reason", "")
+                ).casefold()
+                if unavailable_reason == "domain_block_missing":
+                    return (False, "", None, _knowledge_block_missing_message(ret_res, current_ui_locale))
+                if unavailable_reason != "deep_search_unavailable" and not has_attached_facts and (
+                    _is_worker_startup_reason(unavailable_reason) or not unready_sources
+                ):
+                    # UI-SPEED-WARMLOOP-FIX-HOME: Cho worker khoi dong voi fail-fast va tran cho khong-tien-trien
+                    t_wait_worker_start = time.time()
+                    target_warm_pipe_cfg = None
+                    target_col_for_warm = forced_domain if (forced_domain and forced_domain != "auto") else active_domain
+                    if target_col_for_warm and target_col_for_warm != "auto":
+                        try:
+                            from aios_habit.workspace_chat_rag_v2_adapter import (
+                                _pipeline_config,
+                                WorkspaceChatRagV2CanaryConfig,
+                            )
+                            c_canary = WorkspaceChatRagV2CanaryConfig.from_env()
+                            target_warm_pipe_cfg = _pipeline_config(
+                                c_canary, c_canary.requested_profile, read_only=True, collection_id=target_col_for_warm
+                            )
+                        except Exception:
+                            target_warm_pipe_cfg = None
+
+                    def _targeted_warming(*, blocking: bool = True, timeout_s: float | None = None) -> bool:
+                        from aios_habit.workspace_chat_rag_v2_adapter import ensure_workspace_chat_worker_warming
+                        return ensure_workspace_chat_worker_warming(
+                            blocking=blocking, timeout_s=timeout_s, pipe_config=target_warm_pipe_cfg
+                        )
+
+                    def _targeted_progress() -> dict[str, Any]:
+                        from aios_habit.workspace_chat_rag_v2_adapter import get_workspace_chat_worker_progress
+                        return get_workspace_chat_worker_progress(pipe_config=target_warm_pipe_cfg)
+
+                    ret_res, early_exit = wait_for_workspace_chat_worker(
+                        attempt_retrieval_fn=_attempt_retrieval,
+                        initial_ret_res=ret_res,
+                        cancellation_event=cancellation_event,
+                        unready_sources=unready_sources,
+                        current_ui_locale=current_ui_locale,
+                        warming_fn=_targeted_warming,
+                        progress_fn=_targeted_progress,
                     )
-
-                def _targeted_progress() -> dict[str, Any]:
-                    from aios_habit.workspace_chat_rag_v2_adapter import get_workspace_chat_worker_progress
-                    return get_workspace_chat_worker_progress(pipe_config=target_warm_pipe_cfg)
-
-                ret_res, early_exit = wait_for_workspace_chat_worker(
-                    attempt_retrieval_fn=_attempt_retrieval,
-                    initial_ret_res=ret_res,
-                    cancellation_event=cancellation_event,
-                    unready_sources=unready_sources,
-                    current_ui_locale=current_ui_locale,
-                    warming_fn=_targeted_warming,
-                    progress_fn=_targeted_progress,
-                )
-                worker_wait_s += max(0.0, time.time() - t_wait_worker_start)
-                if early_exit is not None:
-                    return early_exit
+                    worker_wait_s += max(0.0, time.time() - t_wait_worker_start)
+                    if early_exit is not None:
+                        return early_exit
+        finally:
+            set_user_retrieval_finished(active_domain)
 
             # no_evidence_found_error
         if ret_res.get("status") == "quality_search_unavailable":

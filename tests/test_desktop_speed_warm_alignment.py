@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import time
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -95,7 +96,7 @@ def test_ensure_workspace_chat_startup_warming_calls_all_collections(monkeypatch
     warmed_calls = []
 
     def mock_warming(*, config=None, blocking=False, pipe_config=None, **kwargs):
-        coll_id = getattr(pipe_config, "collection_id", None) if pipe_config else "tri_thuc"
+        coll_id = getattr(pipe_config, "collection_id", None)
         warmed_calls.append({"collection": coll_id, "blocking": blocking, "pipe_config": pipe_config})
         return True
 
@@ -116,21 +117,23 @@ def test_ensure_workspace_chat_startup_warming_calls_all_collections(monkeypatch
         collections=("tong_hop", "lsu", "dieu_tra_loi"),
     )
 
-    assert "tri_thuc" in results
-    assert "tong_hop" in results
-    assert "lsu" in results
-    assert "dieu_tra_loi" in results
+    assert results["tri_thuc"] is True
+    assert results["tong_hop"] is True
+    assert results["lsu"] is True
+    assert results["dieu_tra_loi"] is True
 
-    # Verify all calls used non-blocking mode
+    # Bất biến: cả 4 khối đều được gọi làm ấm không chặn (blocking=False)
     assert len(warmed_calls) == 4
     for call in warmed_calls:
         assert call["blocking"] is False
 
-    warmed_colls = [c["collection"] for c in warmed_calls]
-    assert "tri_thuc" in warmed_colls
-    assert "tong_hop" in warmed_colls
-    assert "lsu" in warmed_colls
-    assert "dieu_tra_loi" in warmed_colls
+    # 3 khối ban đầu mang collection_id tương ứng
+    initial_colls = [c["collection"] for c in warmed_calls[:3]]
+    assert set(initial_colls) == {"tong_hop", "lsu", "dieu_tra_loi"}
+
+    # Riêng tri_thuc mang pipe_config thật không-None (DESKTOP-SPEED-TRITHUC-WARM-FIX-HOME)
+    tri_thuc_call = warmed_calls[3]
+    assert tri_thuc_call["pipe_config"] is not None
 
 
 def test_startup_warming_resilience_to_single_collection_failure(monkeypatch):
@@ -140,7 +143,7 @@ def test_startup_warming_resilience_to_single_collection_failure(monkeypatch):
     warmed_calls = []
 
     def mock_warming_with_failure(*, config=None, blocking=False, pipe_config=None, **kwargs):
-        coll_id = getattr(pipe_config, "collection_id", None) if pipe_config else "tri_thuc"
+        coll_id = getattr(pipe_config, "collection_id", None)
         if coll_id == "lsu":
             raise RuntimeError("disk IO error on lsu")
         warmed_calls.append(coll_id)
@@ -167,3 +170,50 @@ def test_startup_warming_resilience_to_single_collection_failure(monkeypatch):
     assert results["tong_hop"] is True
     assert results["lsu"] is False  # Failed gracefully
     assert results["dieu_tra_loi"] is True  # Proceeded despite lsu failure
+
+
+def test_warm_priority_scope_activation_and_deactivation():
+    """Verify set_user_retrieval_active, set_user_retrieval_finished, and scope manager."""
+    adapter.set_user_retrieval_active("dieu_tra_loi")
+    try:
+        assert adapter._ACTIVE_USER_RETRIEVAL_COUNT >= 1
+        assert "dieu_tra_loi" in adapter._ACTIVE_USER_RETRIEVAL_COLLECTIONS
+    finally:
+        adapter.set_user_retrieval_finished("dieu_tra_loi")
+
+    with adapter.user_retrieval_priority_scope("lsu"):
+        assert adapter._ACTIVE_USER_RETRIEVAL_COUNT >= 1
+        assert "lsu" in adapter._ACTIVE_USER_RETRIEVAL_COLLECTIONS
+
+    assert "lsu" not in adapter._ACTIVE_USER_RETRIEVAL_COLLECTIONS
+
+
+def test_background_warm_does_not_yield_for_matching_collection():
+    """When user retrieval is active for dieu_tra_loi, warming dieu_tra_loi must proceed immediately."""
+    with adapter.user_retrieval_priority_scope("dieu_tra_loi"):
+        # Calling _check_and_yield_background_warming for dieu_tra_loi must return immediately
+        t0 = time.monotonic()
+        adapter._check_and_yield_background_warming("dieu_tra_loi", None, max_yield_timeout_s=5.0)
+        assert (time.monotonic() - t0) < 0.5
+
+
+def test_background_warm_yields_for_unrelated_collection():
+    """When user retrieval is active for dieu_tra_loi, warming tong_hop must yield until user retrieval finishes."""
+    import threading
+
+    yield_completed = []
+
+    def warm_worker():
+        adapter._check_and_yield_background_warming("tong_hop", None, max_yield_timeout_s=5.0)
+        yield_completed.append(True)
+
+    with adapter.user_retrieval_priority_scope("dieu_tra_loi"):
+        th = threading.Thread(target=warm_worker, daemon=True)
+        th.start()
+        time.sleep(0.3)
+        # Background worker must be yielding (not completed yet)
+        assert len(yield_completed) == 0
+
+    # Once scope exits, background worker must resume and complete
+    th.join(timeout=2.0)
+    assert len(yield_completed) == 1

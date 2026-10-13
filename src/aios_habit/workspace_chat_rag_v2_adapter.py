@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections import Counter
 import concurrent.futures
+import contextlib
 from dataclasses import dataclass
 import functools
 import hashlib
@@ -1491,6 +1492,159 @@ def get_workspace_chat_worker_progress(
 _BACKGROUND_WARM_EXECUTOR: concurrent.futures.ThreadPoolExecutor | None = None
 _BACKGROUND_WARM_LOCK = threading.Lock()
 
+_USER_RETRIEVAL_PRIORITY_LOCK = threading.RLock()
+_USER_RETRIEVAL_PRIORITY_CONDITION = threading.Condition(_USER_RETRIEVAL_PRIORITY_LOCK)
+_ACTIVE_USER_RETRIEVAL_COLLECTIONS: set[str] = set()
+_ACTIVE_USER_RETRIEVAL_COLLECTION_COUNTS: dict[str, int] = {}
+_ACTIVE_USER_RETRIEVAL_COUNT: int = 0
+
+
+def set_user_retrieval_active(collection_id: str | None = None) -> None:
+    """Register that a user turn is actively waiting for or executing retrieval.
+
+    When active, background warming for collections OTHER than collection_id
+    must yield until the user retrieval finishes (DESKTOP-SPEED-WARM-PRIORITY-FIX-HOME).
+    """
+    global _ACTIVE_USER_RETRIEVAL_COUNT
+    with _USER_RETRIEVAL_PRIORITY_LOCK:
+        _ACTIVE_USER_RETRIEVAL_COUNT += 1
+        if collection_id:
+            col_clean = str(collection_id).strip().lower()
+            _ACTIVE_USER_RETRIEVAL_COLLECTION_COUNTS[col_clean] = (
+                _ACTIVE_USER_RETRIEVAL_COLLECTION_COUNTS.get(col_clean, 0) + 1
+            )
+            _ACTIVE_USER_RETRIEVAL_COLLECTIONS.add(col_clean)
+        LOGGER.info(
+            "[WARM_PRIORITY] User retrieval active: count=%d collections=%s",
+            _ACTIVE_USER_RETRIEVAL_COUNT,
+            sorted(_ACTIVE_USER_RETRIEVAL_COLLECTIONS),
+        )
+
+
+def set_user_retrieval_finished(collection_id: str | None = None) -> None:
+    """Mark that a user turn finished its retrieval phase."""
+    global _ACTIVE_USER_RETRIEVAL_COUNT
+    with _USER_RETRIEVAL_PRIORITY_LOCK:
+        if _ACTIVE_USER_RETRIEVAL_COUNT > 0:
+            _ACTIVE_USER_RETRIEVAL_COUNT -= 1
+        if collection_id:
+            col_clean = str(collection_id).strip().lower()
+            if col_clean in _ACTIVE_USER_RETRIEVAL_COLLECTION_COUNTS:
+                _ACTIVE_USER_RETRIEVAL_COLLECTION_COUNTS[col_clean] -= 1
+                if _ACTIVE_USER_RETRIEVAL_COLLECTION_COUNTS[col_clean] <= 0:
+                    _ACTIVE_USER_RETRIEVAL_COLLECTION_COUNTS.pop(col_clean, None)
+                    _ACTIVE_USER_RETRIEVAL_COLLECTIONS.discard(col_clean)
+            else:
+                _ACTIVE_USER_RETRIEVAL_COLLECTIONS.discard(col_clean)
+        if _ACTIVE_USER_RETRIEVAL_COUNT == 0:
+            _ACTIVE_USER_RETRIEVAL_COLLECTION_COUNTS.clear()
+            _ACTIVE_USER_RETRIEVAL_COLLECTIONS.clear()
+        LOGGER.info(
+            "[WARM_PRIORITY] User retrieval finished: count=%d remaining=%s",
+            _ACTIVE_USER_RETRIEVAL_COUNT,
+            sorted(_ACTIVE_USER_RETRIEVAL_COLLECTIONS),
+        )
+        _USER_RETRIEVAL_PRIORITY_CONDITION.notify_all()
+
+
+def update_user_retrieval_collection(collection_id: str | None) -> None:
+    """Update or add active collection for the current user retrieval."""
+    if not collection_id:
+        return
+    col_clean = str(collection_id).strip().lower()
+    with _USER_RETRIEVAL_PRIORITY_LOCK:
+        _ACTIVE_USER_RETRIEVAL_COLLECTION_COUNTS[col_clean] = (
+            _ACTIVE_USER_RETRIEVAL_COLLECTION_COUNTS.get(col_clean, 0) + 1
+        )
+        _ACTIVE_USER_RETRIEVAL_COLLECTIONS.add(col_clean)
+        _USER_RETRIEVAL_PRIORITY_CONDITION.notify_all()
+
+
+@contextlib.contextmanager
+def user_retrieval_priority_scope(collection_id: str | None = None):
+    """Context manager to scope user retrieval priority."""
+    set_user_retrieval_active(collection_id)
+    try:
+        yield
+    finally:
+        set_user_retrieval_finished(collection_id)
+
+
+def _collection_id_from_pipe_config(pipe_config: RagV2DevConfig | None) -> str | None:
+    """Extract clean collection id from RagV2DevConfig or mock object."""
+    if pipe_config is None:
+        return None
+    col = getattr(pipe_config, "collection_id", None)
+    if col:
+        return str(col).strip().lower()
+    runtime_root = getattr(pipe_config, "runtime_root", None)
+    if runtime_root:
+        p = Path(runtime_root)
+        if p.name.lower() in ("lsu", "dieu_tra_loi", "tong_hop", "tri_thuc"):
+            return p.name.lower()
+        if p.parent.name.lower() == "collections":
+            return p.name.lower()
+    index_path = getattr(pipe_config, "index_path", None)
+    if index_path:
+        p = Path(index_path)
+        if p.parent.name.lower() in ("lsu", "dieu_tra_loi", "tong_hop", "tri_thuc"):
+            return p.parent.name.lower()
+    return None
+
+
+def _check_and_yield_background_warming(
+    target_col: str | None,
+    target_pipe_config: RagV2DevConfig | None,
+    max_yield_timeout_s: float = 60.0,
+) -> None:
+    """Yield background warming if a user query is currently waiting for retrieval on another collection."""
+    deadline = time.monotonic() + max_yield_timeout_s
+    yielded = False
+    while True:
+        with _USER_RETRIEVAL_PRIORITY_LOCK:
+            if _ACTIVE_USER_RETRIEVAL_COUNT <= 0:
+                if yielded:
+                    col_name = target_col or "unknown"
+                    resume_msg = (
+                        f"[WARM_PRIORITY_RESUME] Luot truy hoi nguoi dung da xong, khoi '{col_name}' "
+                        f"tiep tuc lam am nen timestamp={format_marker_timestamp()}"
+                    )
+                    LOGGER.info(resume_msg)
+                    _safe_print_streaming_marker(resume_msg)
+                return
+
+            if target_col and target_col in _ACTIVE_USER_RETRIEVAL_COLLECTIONS:
+                proceed_msg = (
+                    f"[WARM_PRIORITY_PROCEED] Khoi '{target_col}' trung voi luot nguoi dung dang cho truy hoi, "
+                    f"tien hanh lam am ngay timestamp={format_marker_timestamp()}"
+                )
+                LOGGER.info(proceed_msg)
+                _safe_print_streaming_marker(proceed_msg)
+                return
+
+            col_name = target_col or "unknown"
+            active_cols = sorted(_ACTIVE_USER_RETRIEVAL_COLLECTIONS)
+            now_str = format_marker_timestamp()
+            yield_msg = (
+                f"[WARM_PRIORITY_YIELD] Khoi '{col_name}' nhuong cho luot nguoi dung dang cho truy hoi "
+                f"(active_collections={active_cols}) timestamp={now_str}"
+            )
+            LOGGER.info(yield_msg)
+            _safe_print_streaming_marker(yield_msg)
+            yielded = True
+
+            remaining = max(0.1, deadline - time.monotonic())
+            _USER_RETRIEVAL_PRIORITY_CONDITION.wait(timeout=min(remaining, 1.0))
+
+            if time.monotonic() >= deadline:
+                timeout_msg = (
+                    f"[WARM_PRIORITY_TIMEOUT] Khoi '{col_name}' het thoi gian cho nhuong ({max_yield_timeout_s}s), "
+                    f"tiep tuc lam am nen..."
+                )
+                LOGGER.warning(timeout_msg)
+                _safe_print_streaming_marker(timeout_msg)
+                return
+
 
 def _get_background_warm_executor() -> concurrent.futures.ThreadPoolExecutor:
     global _BACKGROUND_WARM_EXECUTOR
@@ -1572,6 +1726,17 @@ def ensure_workspace_chat_worker_warming(
                 except (SemanticBackendUnavailable, ValueError, OSError):
                     target_pipe_config = None
             actual_timeout = timeout_s if blocking else (timeout_s or default_init_timeout_seconds())
+
+            if not blocking:
+                target_col = _collection_id_from_pipe_config(target_pipe_config)
+                is_already_ready = (
+                    target_pipe_config is not None
+                    and _SUBPROCESS_CLIENT._persistent_applies(target_pipe_config)
+                    and _SUBPROCESS_CLIENT.is_ready(target_pipe_config)
+                )
+                if not is_already_ready:
+                    _check_and_yield_background_warming(target_col, target_pipe_config)
+
             initialize_workspace_chat_rag_v2_worker(
                 resolved,
                 timeout_s=actual_timeout,
@@ -4065,6 +4230,9 @@ def retrieve_workspace_chat_evidence(
         if has_forced_domain
         else (domain_route.domain if domain_route and getattr(domain_route, "applied", False) else None)
     )
+    active_retrieval_col = target_domain or domain_collection_id
+    if active_retrieval_col:
+        update_user_retrieval_collection(active_retrieval_col)
 
     if use_prod_domain_specs and prod_pipe_cfg:
         domain_specs = index_domain.get_specs_for_domain(
@@ -4146,21 +4314,22 @@ def retrieve_workspace_chat_evidence(
         routing_reason_codes = init_routing.reason_codes
 
     try:
-        initial_result = _run_profile(
-            question,
-            semantic_sources,
-            resolved,
-            "bge_m3_hybrid",
-            fallback_reason="",
-            pipeline_factory=pipeline_factory,
-            expansion=expansion,
-            rerank_requested=rerank_requested,
-            routing_reason_codes=routing_reason_codes,
-            policy_version=resolved.policy_version,
-            search_preference=pref_str,
-            pre_decision=pre_dec.classification.value if pre_dec else "fast",
-            domain_collection_id=domain_collection_id,
-        )
+        with user_retrieval_priority_scope(active_retrieval_col):
+            initial_result = _run_profile(
+                question,
+                semantic_sources,
+                resolved,
+                "bge_m3_hybrid",
+                fallback_reason="",
+                pipeline_factory=pipeline_factory,
+                expansion=expansion,
+                rerank_requested=rerank_requested,
+                routing_reason_codes=routing_reason_codes,
+                policy_version=resolved.policy_version,
+                search_preference=pref_str,
+                pre_decision=pre_dec.classification.value if pre_dec else "fast",
+                domain_collection_id=domain_collection_id,
+            )
 
         if init_routing is not None and init_routing.degraded:
             canary = initial_result.setdefault("rag_v2_canary", {})
