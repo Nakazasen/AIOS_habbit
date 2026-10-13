@@ -1349,6 +1349,8 @@ def _check_worker_progress(prev: Mapping[str, Any], curr: Mapping[str, Any]) -> 
         return True
     if not curr.get("alive", False):
         return False
+    if curr.get("pending", False):
+        return True
     # Worker process just spawned
     if not prev.get("alive", False) and curr.get("alive", False):
         return True
@@ -1663,7 +1665,7 @@ def _run_chat_turn_async(
                 # UI-SPEED-WARMLOOP-FIX-HOME: Cho worker khoi dong voi fail-fast va tran cho khong-tien-trien
                 t_wait_worker_start = time.time()
                 target_warm_pipe_cfg = None
-                if forced_domain_choice and forced_domain_choice != "auto":
+                if forced_domain and forced_domain != "auto":
                     try:
                         from aios_habit.workspace_chat_rag_v2_adapter import (
                             _pipeline_config,
@@ -1671,7 +1673,7 @@ def _run_chat_turn_async(
                         )
                         c_canary = WorkspaceChatRagV2CanaryConfig.from_env()
                         target_warm_pipe_cfg = _pipeline_config(
-                            c_canary, c_canary.requested_profile, read_only=True, collection_id=forced_domain_choice
+                            c_canary, c_canary.requested_profile, read_only=True, collection_id=forced_domain
                         )
                     except Exception:
                         target_warm_pipe_cfg = None
@@ -1682,6 +1684,10 @@ def _run_chat_turn_async(
                         blocking=blocking, timeout_s=timeout_s, pipe_config=target_warm_pipe_cfg
                     )
 
+                def _targeted_progress() -> dict[str, Any]:
+                    from aios_habit.workspace_chat_rag_v2_adapter import get_workspace_chat_worker_progress
+                    return get_workspace_chat_worker_progress(pipe_config=target_warm_pipe_cfg)
+
                 ret_res, early_exit = wait_for_workspace_chat_worker(
                     attempt_retrieval_fn=_attempt_retrieval,
                     initial_ret_res=ret_res,
@@ -1689,6 +1695,7 @@ def _run_chat_turn_async(
                     unready_sources=unready_sources,
                     current_ui_locale=current_ui_locale,
                     warming_fn=_targeted_warming,
+                    progress_fn=_targeted_progress,
                 )
                 worker_wait_s += max(0.0, time.time() - t_wait_worker_start)
                 if early_exit is not None:

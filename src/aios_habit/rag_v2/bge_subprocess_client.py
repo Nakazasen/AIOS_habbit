@@ -168,6 +168,7 @@ class BgeSubprocessWorkerClient:
         self._pending_init: dict[str, Any] | None = None
         self._persistent_init_lock = threading.RLock()
         self._pending_persistent_inits: dict[str, Any] = {}
+        self._persistent_spawn_init_lock = threading.Lock()
 
     def readiness(self, config: RagV2DevConfig | None = None) -> dict[str, Any]:
         """Return bounded worker health without launching or exposing private data."""
@@ -976,14 +977,37 @@ class BgeSubprocessWorkerClient:
                         except Exception:
                             pass
 
-                        full_init_timeout = float(default_init_timeout_seconds())
-                        response = self._persistent_exchange(
-                            config,
-                            {"command": "init", "config": _config_to_dict(config)},
-                            timeout_s=full_init_timeout,
-                            connect_timeout_s=min(full_init_timeout, _PERSIST_SPAWN_WAIT_SECONDS),
-                            allow_spawn=True,
-                        )
+                        with self._persistent_spawn_init_lock:
+                            # Re-check health inside lock in case worker became ready while waiting
+                            try:
+                                resp_health = self._persistent_exchange(
+                                    config,
+                                    {"command": "health", "config": _config_to_dict(config)},
+                                    timeout_s=_PERSIST_PROBE_TIMEOUT_SECONDS,
+                                    connect_timeout_s=_PERSIST_PROBE_TIMEOUT_SECONDS,
+                                    allow_spawn=False,
+                                )
+                                if resp_health.get("initialized") and resp_health.get("configuration_matches"):
+                                    res = {
+                                        "status": "ok",
+                                        "reused": True,
+                                        "init_latency_ms": round((time.perf_counter() - flight["started"]) * 1000.0, 3),
+                                        "readiness": resp_health,
+                                    }
+                                    flight["result"] = res
+                                    self._last_failure_reason = ""
+                                    return
+                            except Exception:
+                                pass
+
+                            full_init_timeout = float(default_init_timeout_seconds())
+                            response = self._persistent_exchange(
+                                config,
+                                {"command": "init", "config": _config_to_dict(config)},
+                                timeout_s=full_init_timeout,
+                                connect_timeout_s=min(full_init_timeout, _PERSIST_SPAWN_WAIT_SECONDS),
+                                allow_spawn=True,
+                            )
                         if response.get("status") != "ok":
                             err_msg = str(response.get("error", "bge_worker_init_failed"))
                             self._last_failure_reason = err_msg

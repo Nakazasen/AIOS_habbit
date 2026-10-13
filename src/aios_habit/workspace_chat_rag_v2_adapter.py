@@ -1387,6 +1387,7 @@ def is_workspace_chat_worker_warmed(
 def get_workspace_chat_worker_progress(
     *,
     config: Optional[WorkspaceChatRagV2CanaryConfig] = None,
+    pipe_config: Optional[WorkspaceChatBgeSubprocessPipelineConfig] = None,
 ) -> dict[str, Any]:
     """Return lightweight snapshot of worker progress for the chat wait loop."""
     try:
@@ -1394,7 +1395,7 @@ def get_workspace_chat_worker_progress(
     except Exception:
         resolved = None
 
-    target_pipe_config = _LAST_WARMUP_PIPE_CONFIG
+    target_pipe_config = pipe_config or _LAST_WARMUP_PIPE_CONFIG
     if target_pipe_config is None and resolved is not None:
         try:
             target_pipe_config = _warmup_pipeline_config(resolved)
@@ -1487,6 +1488,21 @@ def get_workspace_chat_worker_progress(
         }
 
 
+_BACKGROUND_WARM_EXECUTOR: concurrent.futures.ThreadPoolExecutor | None = None
+_BACKGROUND_WARM_LOCK = threading.Lock()
+
+
+def _get_background_warm_executor() -> concurrent.futures.ThreadPoolExecutor:
+    global _BACKGROUND_WARM_EXECUTOR
+    with _BACKGROUND_WARM_LOCK:
+        if _BACKGROUND_WARM_EXECUTOR is None:
+            _BACKGROUND_WARM_EXECUTOR = concurrent.futures.ThreadPoolExecutor(
+                max_workers=1,
+                thread_name_prefix="wsc_bge_warmup_seq",
+            )
+        return _BACKGROUND_WARM_EXECUTOR
+
+
 def ensure_workspace_chat_worker_warming(
     *,
     config: Optional[WorkspaceChatRagV2CanaryConfig] = None,
@@ -1576,15 +1592,15 @@ def ensure_workspace_chat_worker_warming(
 
     if blocking:
         return _warm()
-    worker = threading.Thread(target=_warm, name="wsc_bge_warmup", daemon=True)
-    worker.start()
+    executor = _get_background_warm_executor()
+    executor.submit(_warm)
     return True
 
 
 def ensure_workspace_chat_startup_warming(
     *,
     config: Optional[WorkspaceChatRagV2CanaryConfig] = None,
-    collections: Sequence[str] = ("tong_hop", "lsu", "dieu_tra_loi"),
+    collections: Sequence[str] = ("lsu", "dieu_tra_loi", "tong_hop"),
 ) -> dict[str, bool]:
     """Trigger background non-blocking warming for startup collections.
 
@@ -1594,16 +1610,6 @@ def ensure_workspace_chat_startup_warming(
     - An error warming one collection must NOT crash the app or block others.
     """
     results: dict[str, bool] = {}
-
-    # Giữ nguyên hành vi làm ấm tri_thuc mặc định
-    try:
-        results["tri_thuc"] = ensure_workspace_chat_worker_warming(
-            config=config,
-            blocking=False,
-        )
-    except Exception as exc:
-        LOGGER.warning("Startup warming failed for tri_thuc: %s", exc)
-        results["tri_thuc"] = False
 
     try:
         resolved = config or WorkspaceChatRagV2CanaryConfig.from_env()
@@ -1636,6 +1642,16 @@ def ensure_workspace_chat_startup_warming(
         except Exception as exc:
             LOGGER.warning("Startup warming failed for collection '%s': %s", col_id, exc)
             results[col_id] = False
+
+    # Giữ nguyên hành vi làm ấm tri_thuc mặc định
+    try:
+        results["tri_thuc"] = ensure_workspace_chat_worker_warming(
+            config=resolved,
+            blocking=False,
+        )
+    except Exception as exc:
+        LOGGER.warning("Startup warming failed for tri_thuc: %s", exc)
+        results["tri_thuc"] = False
 
     return results
 
@@ -4222,7 +4238,15 @@ def retrieve_workspace_chat_evidence(
 
 def close_workspace_chat_rag_v2_runtimes(*, timeout_s: float | None = 10.0) -> None:
     """Close and evict cached in-process and background preparation runtimes."""
-    global _PREPARATION_EXECUTOR, _DRAIN_IS_RUNNING
+    global _PREPARATION_EXECUTOR, _DRAIN_IS_RUNNING, _BACKGROUND_WARM_EXECUTOR
+    with _BACKGROUND_WARM_LOCK:
+        if _BACKGROUND_WARM_EXECUTOR is not None:
+            try:
+                _BACKGROUND_WARM_EXECUTOR.shutdown(wait=False)
+            except Exception:
+                pass
+            _BACKGROUND_WARM_EXECUTOR = None
+
     with _PREPARATION_LOCK:
         if _PREPARATION_EXECUTOR is not None:
             try:

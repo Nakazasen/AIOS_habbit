@@ -278,12 +278,13 @@ def run_single_turn(
                 if not in_conv_window:
                     continue
 
-                if "[RETRIEVAL_MICRO_TIMING]" in line_clean and not t_micro:
+                if "[RETRIEVAL_MICRO_TIMING]" in line_clean and f"collection={block}" in line_clean and not t_micro:
                     micro_line = line_clean
                     t_micro = time.time()
                     log(f"[MARKER DETECTED] {micro_line}")
 
-                if ("[STREAMING_QA_COMPLETE]" in line_clean or "[DRAFT_FALLBACK_COMPLETE]" in line_clean) and not t_complete:
+                if (("[STREAMING_QA_COMPLETE]" in line_clean and f"conv={conv_id}" in line_clean) or
+                    ("[DRAFT_FALLBACK_COMPLETE]" in line_clean and f"conv={conv_id}" in line_clean)) and not t_complete:
                     complete_line = line_clean
                     t_complete = time.time()
                     log(f"[MARKER DETECTED] {complete_line}")
@@ -375,6 +376,8 @@ def main():
         kill_server(server_proc)
         sys.exit(1)
     log("[STARTUP] Server da san sang.")
+    log("[STARTUP] Cho 50s de tien trinh lam am khoi dong lsu tien vao giai doan cache preload...")
+    time.sleep(50.0)
 
     results = {}
     try:
@@ -395,7 +398,9 @@ def main():
             )
             results["c7620"] = res_c7620
 
-            # 3b. Ban ngay luot JAM4212 (dieu_tra_loi)
+            # 3b. Ban luot JAM4212 (dieu_tra_loi) trong khi lam am khoi dong dieu_tra_loi dang chay
+            log("[STARTUP] Cho 50s de tien trinh lam am khoi dong dieu_tra_loi tien vao giai doan cache preload...")
+            time.sleep(50.0)
             conv_jam = f"CONV-PROFILE-VERIFY-02-DIEU-{uuid.uuid4().hex[:6].upper()}"
             res_jam = run_single_turn(
                 page,
