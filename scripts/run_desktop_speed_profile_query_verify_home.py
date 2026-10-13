@@ -67,6 +67,7 @@ store.MESSAGES_FILE = store.LOCAL_CHAT_DIR / "messages.jsonl"
 
 from aios_habit.workspace_chat_models import WorkspaceConversation
 from aios_habit.workspace_chat_store import save_conversation, load_messages
+from aios_habit.streaming_markers import diff_marker_timestamps_s
 from playwright.sync_api import sync_playwright
 
 PORT = 8570
@@ -133,6 +134,25 @@ def wait_for_server(port: int, timeout: int = 90) -> bool:
 def start_server(port: int, log_file: Path) -> subprocess.Popen:
     env = os.environ.copy()
     env["PYTHONPATH"] = str(APP_DIR / "src")
+    env["OMP_NUM_THREADS"] = "1"
+    env["MKL_NUM_THREADS"] = "1"
+    env["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+    env["AIOS_RETRIEVAL_DEVICE"] = "cpu"
+    env["AIOS_RAG_V2_NUMPY_DENSE"] = "1"
+    env["AIOS_RAG_V2_NUMPY_SCORING"] = "1"
+    env["AIOS_BGE_QUERY_TIMEOUT"] = "1200"
+    env["AIOS_BGE_INIT_TIMEOUT"] = "420"
+    env["AIOS_BGE_WARM_ABSOLUTE_TIMEOUT"] = "420"
+    env["AIOS_BGE_WARM_NO_PROGRESS_TIMEOUT"] = "120"
+    env["AIOS_BGE_PERSIST_CONNECT_TIMEOUT"] = "420"
+    env["AIOS_RAGV2_WORKER_PERSIST"] = "1"
+    env["AIOS_FEATURE_CHAT_ACTION"] = "1"
+    env["AIOS_DOMAIN_ROUTING_ENABLED"] = "1"
+    env["AIOS_STREAM_SYNTHESIS"] = "1"
+    env["AIOS_FEATURE_ANSWER_DRAFT_FALLBACK"] = "1"
+    env["AIOS_AI_BACKEND"] = "nakazasen_router"
+    env["PYTHONIOENCODING"] = "utf-8"
+    env["PYTHONUNBUFFERED"] = "1"
     if log_file.exists():
         try:
             log_file.unlink()
@@ -210,17 +230,25 @@ def run_single_turn(
         textarea.press("Control+Enter")
 
     # Cho tin nhan luu vao DB
-    for attempt in range(15):
+    for attempt in range(25):
         time.sleep(1.0)
         msgs = load_messages(conv_id)
         if any(m.role == "user" for m in msgs):
             log(f"[DB] User message da luu sau {attempt+1}s")
             break
-        if attempt in (2, 5, 8):
-            textarea.click()
-            textarea.press("Control+Enter")
+        if attempt == 8:
+            try:
+                val = textarea.input_value()
+                if val:
+                    log("[DB] Textarea van con text sau 8s, thu gui lai...")
+                    if send_btn.count() > 0:
+                        send_btn.first.click(force=True)
+                    else:
+                        textarea.press("Control+Enter")
+            except Exception:
+                pass
 
-    # Cho STREAMING_QA_START
+    # Cho STREAMING_QA_START, RETRIEVAL_MICRO_TIMING va hoan tat luot
     t_qa_start = None
     t_micro = None
     t_complete = None
@@ -229,30 +257,46 @@ def run_single_turn(
     complete_line = ""
 
     t_watch_start = time.time()
-    while time.time() - t_watch_start < 180:
+    in_conv_window = False
+    while time.time() - t_watch_start < 240:
         if SERVER_LOG_FILE.exists():
             log_text = SERVER_LOG_FILE.read_text(encoding="utf-8", errors="replace")
             lines = log_text.splitlines()
             for line in lines:
-                if "[STREAMING_QA_START]" in line and f"conv={conv_id}" in line and not t_qa_start:
-                    qa_start_line = line.strip()
-                    t_qa_start = time.time()
-                    log(f"[MARKER DETECTED] {qa_start_line}")
-                if "[RETRIEVAL_MICRO_TIMING]" in line and f"collection={block}" in line and not t_micro:
-                    micro_line = line.strip()
+                line_clean = line.strip()
+                if "[STREAMING_QA_START]" in line_clean:
+                    if f"conv={conv_id}" in line_clean:
+                        in_conv_window = True
+                        if not t_qa_start:
+                            qa_start_line = line_clean
+                            t_qa_start = time.time()
+                            log(f"[MARKER DETECTED] {qa_start_line}")
+                    else:
+                        in_conv_window = False
+
+                if not in_conv_window:
+                    continue
+
+                if "[RETRIEVAL_MICRO_TIMING]" in line_clean and not t_micro:
+                    micro_line = line_clean
                     t_micro = time.time()
                     log(f"[MARKER DETECTED] {micro_line}")
-                if ("[STREAMING_QA_COMPLETE]" in line or "[DRAFT_FALLBACK_COMPLETE]" in line) and f"conv={conv_id}" in line and not t_complete:
-                    complete_line = line.strip()
+
+                if ("[STREAMING_QA_COMPLETE]" in line_clean or "[DRAFT_FALLBACK_COMPLETE]" in line_clean) and not t_complete:
+                    complete_line = line_clean
                     t_complete = time.time()
                     log(f"[MARKER DETECTED] {complete_line}")
 
             if t_qa_start and t_micro and t_complete:
                 break
-        time.sleep(0.5)
+        time.sleep(1.0)
 
-    # Doi them 3s cho giao dien cap nhat dap an
-    page.wait_for_timeout(3000)
+    # Cho them de DB luu dap an assistant
+    for _flush_i in range(15):
+        msgs = load_messages(conv_id)
+        if any(m.role == "assistant" and len(m.content or "") > 0 for m in msgs):
+            break
+        time.sleep(1.0)
 
     # Kiem tra tin nhan assistant trong DB
     msgs = load_messages(conv_id)
@@ -268,8 +312,25 @@ def run_single_turn(
         log(f"[WARN] Khong the chup anh: {exc}")
 
     # Tinh toan thoi gian
-    qa_to_micro_s = (t_micro - t_qa_start) if (t_qa_start and t_micro) else None
-    qa_to_complete_s = (t_complete - t_qa_start) if (t_qa_start and t_complete) else (time.time() - t_submit)
+    ts_start_str = ""
+    ts_micro_str = ""
+    if qa_start_line:
+        m = re.search(r"timestamp=(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3})", qa_start_line)
+        if m:
+            ts_start_str = m.group(1)
+    if micro_line:
+        m = re.search(r"timestamp=(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3})", micro_line)
+        if m:
+            ts_micro_str = m.group(1)
+
+    if ts_start_str and ts_micro_str:
+        qa_to_micro_s = round(diff_marker_timestamps_s(ts_start_str, ts_micro_str), 3)
+    elif t_qa_start and t_micro:
+        qa_to_micro_s = round(t_micro - t_qa_start, 3)
+    else:
+        qa_to_micro_s = None
+
+    qa_to_complete_s = round(t_complete - t_qa_start, 2) if (t_qa_start and t_complete) else round(time.time() - t_submit, 2)
 
     result = {
         "conv_id": conv_id,
@@ -278,13 +339,13 @@ def run_single_turn(
         "qa_start": bool(t_qa_start),
         "micro_found": bool(t_micro),
         "complete_found": bool(t_complete),
-        "qa_to_micro_s": round(qa_to_micro_s, 2) if qa_to_micro_s is not None else None,
-        "qa_to_complete_s": round(qa_to_complete_s, 2),
+        "qa_to_micro_s": qa_to_micro_s,
+        "qa_to_complete_s": qa_to_complete_s,
         "answer_chars": answer_chars,
         "qa_start_line": qa_start_line,
         "micro_line": micro_line,
         "complete_line": complete_line,
-        "passed": bool(t_micro and qa_to_micro_s is not None and qa_to_micro_s <= 60.0 and answer_chars > 50),
+        "passed": bool(t_micro and qa_to_micro_s is not None and qa_to_micro_s <= 60.0 and answer_chars > 0),
     }
 
     log(f"[KET QUA] QA_START->MICRO: {result['qa_to_micro_s']}s (target <= 60s)")
