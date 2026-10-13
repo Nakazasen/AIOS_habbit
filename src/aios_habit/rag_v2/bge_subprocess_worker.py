@@ -125,6 +125,12 @@ def _serialize_query_result(result: RagV2QueryResult) -> dict[str, Any]:
                 getattr(summary, "multivector_maxsim_latency_ms", 0.0)
             ),
             "rerank_latency_ms": summary.rerank_latency_ms,
+            "dense_latency_ms": float(getattr(summary, "dense_latency_ms", 0.0) or 0.0),
+            "sparse_latency_ms": float(getattr(summary, "sparse_latency_ms", 0.0) or 0.0),
+            "fusion_latency_ms": float(getattr(summary, "fusion_latency_ms", 0.0) or 0.0),
+            "embed_latency_ms": float(getattr(summary, "embed_latency_ms", 0.0) or 0.0),
+            "dense_load_latency_ms": float(getattr(summary, "dense_load_latency_ms", 0.0) or 0.0),
+            "dense_resident": bool(getattr(summary, "dense_resident", True)),
         },
         "insufficiency_reasons": list(result.evidence_pack.insufficiency_reasons),
         "items": items,

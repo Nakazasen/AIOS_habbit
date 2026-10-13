@@ -1585,6 +1585,7 @@ def _run_chat_turn_async(
     )
 
     t_turn_start = time.time()
+    worker_wait_s: float = 0.0
     try:
         LOGGER.info(
             "[STREAMING_QA_START] conv=%s backend=%s question=%s",
@@ -1655,6 +1656,7 @@ def _run_chat_turn_async(
                 _is_worker_startup_reason(unavailable_reason) or not unready_sources
             ):
                 # UI-SPEED-WARMLOOP-FIX-HOME: Cho worker khoi dong voi fail-fast va tran cho khong-tien-trien
+                t_wait_worker_start = time.time()
                 ret_res, early_exit = wait_for_workspace_chat_worker(
                     attempt_retrieval_fn=_attempt_retrieval,
                     initial_ret_res=ret_res,
@@ -1662,6 +1664,7 @@ def _run_chat_turn_async(
                     unready_sources=unready_sources,
                     current_ui_locale=current_ui_locale,
                 )
+                worker_wait_s += max(0.0, time.time() - t_wait_worker_start)
                 if early_exit is not None:
                     return early_exit
 
@@ -1700,6 +1703,19 @@ def _run_chat_turn_async(
                         on_chunk=on_chunk,
                     )
                     if draft_res is not None:
+                        turn_total_s = time.time() - t_turn_start
+                        try:
+                            LOGGER.info(
+                                "[DRAFT_FALLBACK_COMPLETE] conv=%s wait_s=%.3f total_s=%.3f",
+                                conversation_id,
+                                worker_wait_s,
+                                turn_total_s,
+                            )
+                        except Exception:
+                            pass
+                        _safe_print_streaming_marker(
+                            f"[DRAFT_FALLBACK_COMPLETE] conv={conversation_id} wait_s={worker_wait_s:.3f} total_s={turn_total_s:.3f}"
+                        )
                         return draft_res
                 return (False, "", None, err_msg)
         elif ret_res["summary_count"] == 0:
@@ -1721,6 +1737,19 @@ def _run_chat_turn_async(
                     on_chunk=on_chunk,
                 )
                 if draft_res is not None:
+                    turn_total_s = time.time() - t_turn_start
+                    try:
+                        LOGGER.info(
+                            "[DRAFT_FALLBACK_COMPLETE] conv=%s wait_s=%.3f total_s=%.3f",
+                            conversation_id,
+                            worker_wait_s,
+                            turn_total_s,
+                        )
+                    except Exception:
+                        pass
+                    _safe_print_streaming_marker(
+                        f"[DRAFT_FALLBACK_COMPLETE] conv={conversation_id} wait_s={worker_wait_s:.3f} total_s={turn_total_s:.3f}"
+                    )
                     return draft_res
                 # st.session_state.wsc_action_error = "Chưa tìm thấy đoạn phù hợp trong nguồn đang bật."
                 err_msg = t("no_matched_segments_error", locale=current_ui_locale)

@@ -572,6 +572,9 @@ class SearchSummary:
     assembly_latency_ms: float = 0.0
     context_expansion_latency_ms: float = 0.0
     context_expansion_added_chunk_count: int = 0
+    embed_latency_ms: float = 0.0
+    dense_load_latency_ms: float = 0.0
+    dense_resident: bool = True
 
 
 @dataclass(frozen=True)
@@ -2741,6 +2744,13 @@ class LocalChunkIndex:
             self.ensure_embeddings()
         descriptor = backend.descriptor
         load_started = perf_counter()
+        db_key = str(self.db_path.resolve()) if hasattr(self, "db_path") and self.db_path else ""
+        cache_key = (db_key, descriptor.fingerprint, descriptor.dimension)
+        already_resident = (
+            self._dense_matrix_cache is not None
+            and self._dense_matrix_cache.fingerprint == descriptor.fingerprint
+            and self._dense_matrix_cache.dimension == descriptor.dimension
+        ) or (cache_key in _PROCESS_DENSE_MATRIX_CACHE)
         cache = self._dense_matrix_cache_for(descriptor.fingerprint, descriptor.dimension)
         load_ms = (perf_counter() - load_started) * 1000.0
         if cache is None:
@@ -2865,6 +2875,11 @@ class LocalChunkIndex:
             fuse_ms,
             (perf_counter() - started) * 1000.0,
         )
+        self._last_dense_timings = {
+            "embed_ms": embed_ms,
+            "load_ms": load_ms,
+            "resident": already_resident,
+        }
         return results
 
     def _chunk_rows_by_id(self, chunk_ids: Iterable[str]) -> dict[str, sqlite3.Row]:
@@ -3219,13 +3234,22 @@ class LocalChunkIndex:
                 thin_retry=True,
             )
 
+        dense_timings = getattr(self, "_last_dense_timings", {})
+        embed_ms = float(dense_timings.get("embed_ms", 0.0))
+        dense_load_ms = float(dense_timings.get("load_ms", 0.0))
+        dense_resident = bool(dense_timings.get("resident", True))
+        dense_scan_ms = max(0.0, dense_latency_ms - embed_ms)
+
         return SearchResponse(
             results=response.results,
             summary=replace(
                 response.summary,
                 lexical_latency_ms=lexical_latency_ms,
-                dense_latency_ms=dense_latency_ms,
+                dense_latency_ms=dense_scan_ms,
                 sparse_latency_ms=sparse_latency_ms,
+                embed_latency_ms=embed_ms,
+                dense_load_latency_ms=dense_load_ms,
+                dense_resident=dense_resident,
             ),
         )
 

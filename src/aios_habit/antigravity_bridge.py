@@ -33,6 +33,18 @@ from aios_habit.ide_handoff_bridge import (
 
 LOGGER = logging.getLogger(__name__)
 
+
+def _safe_print_streaming_marker(msg: str) -> None:
+    try:
+        if hasattr(sys.stdout, "buffer") and sys.stdout.buffer is not None:
+            sys.stdout.buffer.write((msg + "\n").encode("utf-8", errors="replace"))
+            sys.stdout.buffer.flush()
+        else:
+            print(msg.encode("ascii", errors="backslashreplace").decode("ascii"), flush=True)
+    except Exception:
+        pass
+
+
 DEFAULT_ANTIGRAVITY_ENDPOINT = os.environ.get(
     "AIOS_ANTIGRAVITY_BRIDGE_URL", "http://127.0.0.1:8585/v1/chat/completions"
 )
@@ -1286,6 +1298,12 @@ def route_workspace_chat_submission(
         ttft_recorded: list[float] = []
         ttft_lock = threading.Lock()
 
+        try:
+            LOGGER.info("[ROUTER_SYNTH_START] conv=%s backend=%s", conversation_id, backend)
+        except Exception:
+            pass
+        _safe_print_streaming_marker(f"[ROUTER_SYNTH_START] conv={conversation_id} backend={backend}")
+
         def _timed_on_chunk(chunk: str) -> None:
             if chunk:
                 with ttft_lock:
@@ -1355,6 +1373,20 @@ def route_workspace_chat_submission(
         else:
             calc_ttft = round(measured_ttft, 4)
             effective_ttft_sec = calc_ttft if calc_ttft > 0.0 else (0.0001 if ttft_recorded else 0.0)
+
+        try:
+            LOGGER.info(
+                "[ROUTER_SYNTH_DONE] conv=%s duration_s=%.3f ttft_s=%.3f latency_s=%.3f",
+                conversation_id,
+                effective_duration_sec,
+                effective_ttft_sec,
+                effective_duration_sec,
+            )
+        except Exception:
+            pass
+        _safe_print_streaming_marker(
+            f"[ROUTER_SYNTH_DONE] conv={conversation_id} latency_s={effective_duration_sec:.3f} ttft_s={effective_ttft_sec:.3f} duration_s={effective_duration_sec:.3f}"
+        )
 
         LOGGER.info(
             "BRIDGE NAKAZASEN ROUTER RESULT: ok=%s provider=%s model=%s reason=%s error=%s",

@@ -17,6 +17,7 @@ import os
 from pathlib import Path
 import re
 import sqlite3
+import sys
 import threading
 import time
 from typing import Any, Callable, Iterable, Mapping, Optional, Tuple
@@ -74,6 +75,18 @@ from aios_habit.workspace_chat_rag_v2_deployment import (
 )
 
 LOGGER = logging.getLogger(__name__)
+
+
+def _safe_print_streaming_marker(msg: str) -> None:
+    try:
+        if hasattr(sys.stdout, "buffer") and sys.stdout.buffer is not None:
+            sys.stdout.buffer.write((msg + "\n").encode("utf-8", errors="replace"))
+            sys.stdout.buffer.flush()
+        else:
+            print(msg.encode("ascii", errors="backslashreplace").decode("ascii"), flush=True)
+    except Exception:
+        pass
+
 
 _SUBPROCESS_CLIENT = BgeSubprocessWorkerClient()
 
@@ -2870,6 +2883,12 @@ def _map_serialized_query_result(
         "degraded": degraded,
         "degraded_reason": degraded_reason,
         "rerank_latency_ms": float(summary_dict.get("rerank_latency_ms", 0.0) or routing.get("rerank_latency_ms", 0.0) or 0.0),
+        "dense_latency_ms": float(summary_dict.get("dense_latency_ms", 0.0) or 0.0),
+        "sparse_latency_ms": float(summary_dict.get("sparse_latency_ms", 0.0) or 0.0),
+        "fusion_latency_ms": float(summary_dict.get("fusion_latency_ms", 0.0) or 0.0),
+        "embed_latency_ms": float(summary_dict.get("embed_latency_ms", 0.0) or 0.0),
+        "dense_load_latency_ms": float(summary_dict.get("dense_load_latency_ms", 0.0) or 0.0),
+        "dense_resident": bool(summary_dict.get("dense_resident", True)),
         "policy_version": policy_version,
     }
 
@@ -3067,6 +3086,28 @@ def _run_profile(
         "workspace_chat_rag_v2 %s",
         json.dumps(mapped["rag_v2_canary"], sort_keys=True),
     )
+    summary_dict = query_res_dict.get("summary", {}) if isinstance(query_res_dict, dict) else {}
+    embed_ms = float(summary_dict.get("embed_latency_ms", 0.0) or 0.0)
+    dense_ms = float(summary_dict.get("dense_latency_ms", 0.0) or 0.0)
+    sparse_ms = float(summary_dict.get("sparse_latency_ms", 0.0) or 0.0)
+    fuse_ms = float(summary_dict.get("fusion_latency_ms", 0.0) or 0.0)
+    dense_resident = bool(summary_dict.get("dense_resident", True))
+    dense_load_ms = float(summary_dict.get("dense_load_latency_ms", 0.0) or 0.0)
+    target_collection = str(domain_collection_id or getattr(pipe_config, "collection_id", "") or "default")
+    resident_str = "thuong_tru" if dense_resident else "nap_trong_lan_goi"
+
+    marker_msg = (
+        f"[RETRIEVAL_MICRO_TIMING] collection={target_collection} "
+        f"embed_ms={embed_ms:.2f} dense_ms={dense_ms:.2f} "
+        f"sparse_ms={sparse_ms:.2f} fuse_ms={fuse_ms:.2f} "
+        f"dense_resident={dense_resident} dense_state={resident_str} "
+        f"dense_load_ms={dense_load_ms:.2f}"
+    )
+    _safe_print_streaming_marker(marker_msg)
+    try:
+        LOGGER.info(marker_msg)
+    except Exception:
+        pass
     return mapped
 
 
@@ -3636,6 +3677,17 @@ def retrieve_workspace_chat_evidence(
         forced_domain=target_domain if has_forced_domain else None,
     )
     if structured_result is not None:
+        target_coll = str(target_domain or domain_collection_id or "structured")
+        marker_msg = (
+            f"[RETRIEVAL_MICRO_TIMING] collection={target_coll} "
+            f"embed_ms=0.00 dense_ms=0.00 sparse_ms=0.00 fuse_ms=0.00 "
+            f"dense_resident=True dense_state=thuong_tru dense_load_ms=0.00"
+        )
+        _safe_print_streaming_marker(marker_msg)
+        try:
+            LOGGER.info(marker_msg)
+        except Exception:
+            pass
         return _finish(structured_result)
 
     pref_str = str(search_preference or "auto").casefold()
