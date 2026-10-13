@@ -1,3 +1,14 @@
+## ĐIỀU PHỐI — VERDICT AUDIT-SHAKEDOWN-HOME-R2: ĐẠT phần cơ chế / CHƯA ĐẠT phần model (vòng 2) + ĐÃ TÌM RA GỐC RỄ — 2026-10-13 ~07:4x +07
+
+Điều phối đã đọc toàn văn báo cáo `docs/phieu-viec/ket-qua/audit-shakedown-home-r2.md` và tự đối chiếu dòng trích "abstained" tại tip nhánh: đúng nguyên văn dòng 1733 của `antigravity_bridge.py` (đã dịch chuyển từ 1701 do commit gắn mốc `6c5ffe5f`).
+
+- ĐẠT: cơ chế bốc vé vòng 2 chạy đúng sau khi user khởi động lại canh thư (watcher đã mở phiên 06:28 và 07:01); thợ khai TRUNG THỰC model thật và DỪNG đúng điều 1; kèm phân tích gốc rễ có bằng chứng tại máy.
+- CHƯA ĐẠT: phiên vẫn chạy Gemini 3.8 Flash (High), chưa phải `claude-opus-5-5-medium`.
+- GỐC RỄ (thợ điều tra tại máy, điều phối ghi nhận): `Watch-Mailbox.ps1` (dòng 242–243) luôn nạp `config.local.ps1`; tại `D:\Sandbox\Vong_lap_giao_viec\config.local.ps1` dòng 18, `$agyModel = "gemini-3.8-flash-high"` ghi đè cứng giá trị đúng trong `che-do-tho.json`. Vì vậy khởi động lại canh thư KHÔNG đủ — tiến trình mới vẫn nạp model Gemini từ tệp cấu hình cục bộ.
+- Điều kiện mở vòng 3 (R3): sửa dòng 18 của `config.local.ps1` thành `$agyModel = "claude-opus-5-5-medium"` rồi khởi động lại `Watch-Mailbox.ps1`. Điều phối phát R3 ngay trong lượt user xác nhận đã sửa (hoặc khi vé desktop sửa cấu hình nộp xong, nếu user chọn giao thợ làm).
+
+---
+
 ## Vé hiện tại: AUDIT-SHAKEDOWN-HOME-R2 (vé kiểm tra thiết lập vai audit máy nhà — VÒNG 2, bốc ngay)
 
 - Trạng thái: `xong-cho-duyet`
