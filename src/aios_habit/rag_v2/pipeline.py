@@ -903,17 +903,23 @@ class RagV2DevPipeline:
         # procedure, prerequisite, and safety chunks needed to answer one
         # operational question.  Preserve the configured cap for multi-source
         # searches, but permit the normal retrieval window for one document.
+        allowed_document_ids_set = frozenset(allowed_documents)
+        allowed_privacy_labels_set = (
+            frozenset(self.config.allowed_privacy_labels)
+            if self.config.allowed_privacy_labels is not None
+            else None
+        )
         effective_per_document_limit = (
             max(self.config.retrieval_limit, self.config.rerank_limit)
             if (
-                len(set(allowed_documents)) == 1
+                len(allowed_document_ids_set) == 1
                 and plan.intent_category in {"procedure", "actionable_output", "diagnosis"}
             )
             else self.config.per_document_limit
         )
         options = SearchOptions(
-            allowed_privacy_labels=self.config.allowed_privacy_labels,
-            allowed_document_ids=tuple(allowed_documents),
+            allowed_privacy_labels=allowed_privacy_labels_set,
+            allowed_document_ids=allowed_document_ids_set,
             allowed_source_paths=tuple(allowed_paths),
             expected_source_fingerprints=expected,
             candidate_limit=self.config.candidate_limit,
@@ -970,10 +976,11 @@ class RagV2DevPipeline:
                 (perf_counter() - select_started) * 1000.0,
             )
             if picked_ids:
-                allowed_documents = [item for item in allowed_documents if item in set(picked_ids)]
+                picked_ids_set = frozenset(picked_ids)
+                allowed_documents = [item for item in allowed_documents if item in picked_ids_set]
                 options = replace(
                     options,
-                    allowed_document_ids=tuple(allowed_documents),
+                    allowed_document_ids=frozenset(allowed_documents),
                 )
 
         if summary_first and plan.retrieval_mode == "overview":

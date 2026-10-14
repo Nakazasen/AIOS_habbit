@@ -494,18 +494,60 @@ def _metadata_flag(metadata: Mapping[str, Any], key: str) -> bool:
 class SearchOptions:
     """Generic, local-only constraints for a RAG v2 retrieval request."""
 
-    allowed_privacy_labels: Optional[Tuple[str, ...]] = None
-    allowed_document_ids: Optional[Tuple[str, ...]] = None
-    allowed_source_paths: Optional[Tuple[str, ...]] = None
+    allowed_privacy_labels: Optional[Tuple[str, ...] | frozenset[str]] = None
+    allowed_document_ids: Optional[Tuple[str, ...] | frozenset[str]] = None
+    allowed_source_paths: Optional[Tuple[str, ...] | frozenset[str]] = None
     expected_source_fingerprints: Mapping[str, str] = field(default_factory=dict)
     candidate_limit: int = 100
     per_document_limit: int = 2
+    allowed_privacy_labels_set: Optional[frozenset[str]] = field(
+        init=False, repr=False, compare=False, default=None
+    )
+    allowed_document_ids_set: Optional[frozenset[str]] = field(
+        init=False, repr=False, compare=False, default=None
+    )
+    allowed_source_paths_set: Optional[frozenset[str]] = field(
+        init=False, repr=False, compare=False, default=None
+    )
 
     def __post_init__(self) -> None:
         if self.candidate_limit < 1:
             raise ValueError("candidate_limit must be at least 1")
         if self.per_document_limit < 1:
             raise ValueError("per_document_limit must be at least 1")
+        object.__setattr__(
+            self,
+            "allowed_privacy_labels_set",
+            self.allowed_privacy_labels
+            if isinstance(self.allowed_privacy_labels, frozenset)
+            else (
+                frozenset(self.allowed_privacy_labels)
+                if self.allowed_privacy_labels is not None
+                else None
+            ),
+        )
+        object.__setattr__(
+            self,
+            "allowed_document_ids_set",
+            self.allowed_document_ids
+            if isinstance(self.allowed_document_ids, frozenset)
+            else (
+                frozenset(self.allowed_document_ids)
+                if self.allowed_document_ids is not None
+                else None
+            ),
+        )
+        object.__setattr__(
+            self,
+            "allowed_source_paths_set",
+            self.allowed_source_paths
+            if isinstance(self.allowed_source_paths, frozenset)
+            else (
+                frozenset(self.allowed_source_paths)
+                if self.allowed_source_paths is not None
+                else None
+            ),
+        )
 
 
 @dataclass(frozen=True)
@@ -620,20 +662,27 @@ def _ordered_union(*values: Iterable[str]) -> tuple[str, ...]:
 
 def _hybrid_result_is_safe(result: SearchResult, options: SearchOptions) -> bool:
     """Recheck every fused candidate against the original safety constraints."""
+    allowed_docs = getattr(options, "allowed_document_ids_set", options.allowed_document_ids)
     document_is_allowed = (
-        options.allowed_document_ids is None
-        or result.document_id in options.allowed_document_ids
+        allowed_docs is None
+        or result.document_id in allowed_docs
     )
     if not document_is_allowed:
         return False
+    allowed_paths = getattr(options, "allowed_source_paths_set", options.allowed_source_paths)
     if (
-        options.allowed_document_ids is None
-        and options.allowed_source_paths is not None
-        and result.source_path not in options.allowed_source_paths
+        allowed_docs is None
+        and allowed_paths is not None
+        and result.source_path not in allowed_paths
     ):
         return False
+    allowed_privacy = getattr(options, "allowed_privacy_labels_set", None)
     if options.allowed_privacy_labels is not None:
-        allowed = set(options.allowed_privacy_labels)
+        allowed = (
+            allowed_privacy
+            if allowed_privacy is not None
+            else frozenset(options.allowed_privacy_labels)
+        )
         if not result.privacy_labels or any(label not in allowed for label in result.privacy_labels):
             return False
     expected = options.expected_source_fingerprints
@@ -2561,6 +2610,56 @@ class LocalChunkIndex:
         )
         return count, elapsed_ms
 
+    @staticmethod
+    def _eligible_cache_indices(
+        cache: _DenseMatrixCache | _SparseVectorCache,
+        options: SearchOptions,
+    ) -> list[int]:
+        """Filter cached dense/sparse indices directly from metadata tuples without dict allocation."""
+        allowed_docs = getattr(options, "allowed_document_ids_set", None)
+        if allowed_docs is None and options.allowed_document_ids is not None:
+            allowed_docs = frozenset(options.allowed_document_ids)
+        allowed_paths = getattr(options, "allowed_source_paths_set", None)
+        if allowed_paths is None and options.allowed_source_paths is not None:
+            allowed_paths = frozenset(options.allowed_source_paths)
+        allowed_privacy = getattr(options, "allowed_privacy_labels_set", None)
+        if allowed_privacy is None and options.allowed_privacy_labels is not None:
+            allowed_privacy = frozenset(options.allowed_privacy_labels)
+        expected = options.expected_source_fingerprints
+        has_expected = bool(expected)
+        document_ids = cache.document_ids
+        source_paths = cache.source_paths
+        source_fingerprints = cache.source_fingerprints
+        privacy_labels_col = cache.privacy_labels
+        eligible: list[int] = []
+        for index in range(len(cache.chunk_ids)):
+            doc_id = document_ids[index]
+            if allowed_docs is not None:
+                if doc_id not in allowed_docs:
+                    continue
+            elif allowed_paths is not None:
+                if source_paths[index] not in allowed_paths:
+                    continue
+            if allowed_privacy is not None:
+                labels = privacy_labels_col[index]
+                if not labels or not all(label in allowed_privacy for label in labels):
+                    continue
+            if has_expected:
+                row_fp = source_fingerprints[index]
+                if row_fp:
+                    if doc_id in expected:
+                        exp = expected[doc_id]
+                        if exp and row_fp != exp:
+                            continue
+                    else:
+                        src_path = source_paths[index]
+                        if src_path in expected:
+                            exp = expected[src_path]
+                            if exp and row_fp != exp:
+                                continue
+            eligible.append(index)
+        return eligible
+
     def _sparse_candidates_cached(
         self,
         plan: RetrievalQueryPlan,
@@ -2580,20 +2679,7 @@ class LocalChunkIndex:
         """
         backend = self._sparse_backend
         assert backend is not None
-        eligible: list[int] = []
-        for index in range(len(cache.chunk_ids)):
-            row = {
-                "document_id": cache.document_ids[index],
-                "source_path": cache.source_paths[index],
-                "source_fingerprint": cache.source_fingerprints[index],
-            }
-            if not self._is_selected(row, options):
-                continue
-            if not self._privacy_is_allowed(cache.privacy_labels[index], options):
-                continue
-            if self._is_stale(row, options):
-                continue
-            eligible.append(index)
+        eligible = self._eligible_cache_indices(cache, options)
         eligible_mask = bytearray(len(cache.chunk_ids))
         for index in eligible:
             eligible_mask[index] = 1
@@ -2762,20 +2848,7 @@ class LocalChunkIndex:
         load_ms = (perf_counter() - load_started) * 1000.0
         if cache is None:
             return None
-        eligible: list[int] = []
-        for index, privacy_labels in enumerate(cache.privacy_labels):
-            row = {
-                "document_id": cache.document_ids[index],
-                "source_path": cache.source_paths[index],
-                "source_fingerprint": cache.source_fingerprints[index],
-            }
-            if not self._is_selected(row, options):
-                continue
-            if not self._privacy_is_allowed(privacy_labels, options):
-                continue
-            if self._is_stale(row, options):
-                continue
-            eligible.append(index)
+        eligible = self._eligible_cache_indices(cache, options)
         fused: dict[str, dict[str, Any]] = {}
         embed_ms = 0.0
         score_ms = 0.0
@@ -3833,37 +3906,54 @@ class LocalChunkIndex:
             lex_v2 is not None
             and lex_v2["NARROW_ELIGIBILITY"]
         )
-        if narrow_eligibility:
-            indexed_rows = self._conn.execute(
-                "SELECT chunk_id, document_id, source_path,"
-                " privacy_labels_json, source_fingerprint"
-                " FROM chunks WHERE retrievable = 1"
-            ).fetchall()
+        if options.allowed_document_ids is not None:
+            total_indexed_count = self.count()
+            allowed_docs_set = (
+                options.allowed_document_ids_set
+                if options.allowed_document_ids_set is not None
+                else frozenset(options.allowed_document_ids)
+            )
+            indexed_rows = self._select_retrievable_rows_by_document_ids(
+                allowed_docs_set,
+                narrow=narrow_eligibility,
+            )
         else:
-            indexed_rows = self._conn.execute(
-                "SELECT * FROM chunks WHERE retrievable = 1"
-            ).fetchall()
-        lex_timings["indexed_rows"] = float(len(indexed_rows))
+            if narrow_eligibility:
+                indexed_rows = self._conn.execute(
+                    "SELECT chunk_id, document_id, source_path,"
+                    " privacy_labels_json, source_fingerprint"
+                    " FROM chunks WHERE retrievable = 1"
+                ).fetchall()
+            else:
+                indexed_rows = self._conn.execute(
+                    "SELECT * FROM chunks WHERE retrievable = 1"
+                ).fetchall()
+            total_indexed_count = len(indexed_rows)
+        lex_timings["indexed_rows"] = float(total_indexed_count)
 
         if not terms:
             return self._empty_response(
                 query=query_text,
-                indexed_chunk_count=len(indexed_rows),
+                indexed_chunk_count=total_indexed_count,
                 reason="empty_or_tokenless_query",
             )
         if limit <= 0:
             return self._empty_response(
                 query=query_text,
-                indexed_chunk_count=len(indexed_rows),
+                indexed_chunk_count=total_indexed_count,
                 reason="non_positive_limit",
             )
 
         eligible_rows: List[sqlite3.Row] = []
-        filtered_by_source = 0
+        filtered_by_source = (
+            max(0, total_indexed_count - len(indexed_rows))
+            if options.allowed_document_ids is not None
+            else 0
+        )
         filtered_by_privacy = 0
         filtered_as_stale = 0
         for row in indexed_rows:
-            if not self._is_selected(row, options):
+            if options.allowed_document_ids is None and not self._is_selected(row, options):
                 filtered_by_source += 1
                 continue
             # OPT-RAGV2-LEXICAL B2 PRIVACY_LAZY: skip the per-row JSON parse
@@ -3911,6 +4001,26 @@ class LocalChunkIndex:
             )
         use_score_cache = lex_v2 is not None and lex_v2["SCORE_CACHE"]
         row_bundle_cache: Dict[str, Dict[str, Any]] = {}
+        # ARCH-02: populate rag_v2_eligible_chunks at most once per search_with_summary
+        # before iterating over query_plan.variants.
+        needs_eligible_temp_table = (
+            self._fts5_available
+            and bool(eligible_ids)
+            and not (lex_v2 is not None and lex_v2["SKIP_FULL_ELIGIBLE"] and eligible_complete)
+            and any(
+                bool(extract_content_terms(v.text)) and not _CJK_RE.search(v.text)
+                for v in query_plan.variants
+            )
+        )
+        eligible_temp_populated = (
+            self._populate_eligible_temp_table(
+                eligible_ids,
+                lex_timings,
+                use_txn=bool(lex_v2 and lex_v2["TEMP_TXN"]),
+            )
+            if needs_eligible_temp_table
+            else False
+        )
         for variant in query_plan.variants:
             variant_terms = extract_content_terms(variant.text)
             if not variant_terms:
@@ -3926,6 +4036,7 @@ class LocalChunkIndex:
                     lex_v2=lex_v2,
                     identifier_patterns=rescue_patterns,
                     query_plan=query_plan,
+                    eligible_temp_populated=eligible_temp_populated,
                 )
             else:
                 candidate_rows, backend = self._candidate_rows(
@@ -3935,6 +4046,7 @@ class LocalChunkIndex:
                     identifier_patterns=rescue_patterns,
                     query_plan=query_plan,
                     timings=lex_timings,
+                    eligible_temp_populated=eligible_temp_populated,
                 )
             if backend != "fts5_bm25":
                 candidate_backend = "deterministic_scan"
@@ -4223,7 +4335,7 @@ class LocalChunkIndex:
         evidence_set_coverage = self._evidence_set_term_coverage(returned_candidates, query_plan)
 
         reasons = self._insufficiency_reasons(
-            indexed_count=len(indexed_rows),
+            indexed_count=total_indexed_count,
             eligible_count=len(eligible_rows),
             candidate_count=len(candidates),
             result_count=len(results),
@@ -4296,7 +4408,7 @@ class LocalChunkIndex:
             )
         summary = SearchSummary(
             query=query_text,
-            indexed_chunk_count=len(indexed_rows),
+            indexed_chunk_count=total_indexed_count,
             eligible_chunk_count=len(eligible_rows),
             candidate_count=len(candidates),
             returned_count=len(results),
@@ -4459,6 +4571,77 @@ class LocalChunkIndex:
         by_id = {str(row["chunk_id"]): row for row in eligible_rows}
         return [by_id[chunk_id] for chunk_id in ids if chunk_id in by_id]
 
+    def _select_retrievable_rows_by_document_ids(
+        self,
+        allowed_document_ids: Iterable[str],
+        *,
+        narrow: bool = False,
+    ) -> List[sqlite3.Row]:
+        """Fetch retrievable chunk rows matching allowed_document_ids in safe SQL batches.
+
+        Preserves the exact (document_id, rowid) ordering of the full
+        ``WHERE retrievable = 1`` scan via ``idx_chunks_retrievable``.
+        """
+        sorted_doc_ids = sorted({str(doc_id) for doc_id in allowed_document_ids})
+        if not sorted_doc_ids:
+            return []
+        columns = (
+            "chunk_id, document_id, source_path, privacy_labels_json, source_fingerprint"
+            if narrow
+            else "*"
+        )
+        rows: List[sqlite3.Row] = []
+        for start in range(0, len(sorted_doc_ids), 500):
+            batch = sorted_doc_ids[start : start + 500]
+            placeholders = ", ".join(["?"] * len(batch))
+            batch_rows = self._conn.execute(
+                f"SELECT {columns} FROM chunks"
+                f" WHERE retrievable = 1 AND document_id IN ({placeholders})"
+                " ORDER BY document_id, rowid",
+                batch,
+            ).fetchall()
+            rows.extend(batch_rows)
+        return rows
+
+    def _populate_eligible_temp_table(
+        self,
+        eligible_ids: Sequence[str],
+        timings: Optional[Dict[str, float]] = None,
+        *,
+        use_txn: bool = True,
+    ) -> bool:
+        """Populate rag_v2_eligible_chunks once per search_with_summary call (ARCH-02)."""
+        try:
+            self._conn.execute(
+                "CREATE TEMP TABLE IF NOT EXISTS rag_v2_eligible_chunks (chunk_id TEXT PRIMARY KEY)"
+            )
+            began_txn = bool(use_txn) and not self._conn.in_transaction
+            if began_txn:
+                self._conn.execute("BEGIN")
+            try:
+                self._conn.execute("DELETE FROM rag_v2_eligible_chunks")
+                build_start = perf_counter()
+                self._conn.executemany(
+                    "INSERT INTO rag_v2_eligible_chunks(chunk_id) VALUES (?)",
+                    ((str(chunk_id),) for chunk_id in eligible_ids),
+                )
+                build_ms = (perf_counter() - build_start) * 1000.0
+            except Exception:
+                if began_txn:
+                    self._conn.execute("ROLLBACK")
+                raise
+            if began_txn:
+                self._conn.execute("COMMIT")
+        except sqlite3.OperationalError:
+            self._fts5_available = False
+            return False
+        if timings is not None:
+            timings["temp_build_ms"] = timings.get("temp_build_ms", 0.0) + build_ms
+            timings["temp_inserted_rows"] = timings.get("temp_inserted_rows", 0.0) + float(
+                len(eligible_ids)
+            )
+        return True
+
     def _candidate_rows(
         self,
         query: str,
@@ -4468,6 +4651,7 @@ class LocalChunkIndex:
         identifier_patterns: Sequence[re.Pattern[str]] = (),
         query_plan: Optional[RetrievalQueryPlan] = None,
         timings: Optional[Dict[str, float]] = None,
+        eligible_temp_populated: bool = False,
     ) -> tuple[List[sqlite3.Row], str]:
         if not self._fts5_available or not eligible_rows:
             return list(eligible_rows), "deterministic_scan"
@@ -4496,24 +4680,14 @@ class LocalChunkIndex:
                 return prefiltered, "deterministic_scan"
             return list(eligible_rows), "deterministic_scan"
         match_query = " OR ".join(f'"{term.replace(chr(34), chr(34) * 2)}"' for term in terms)
+        if not eligible_temp_populated:
+            if not self._populate_eligible_temp_table(
+                [str(row["chunk_id"]) for row in eligible_rows],
+                timings,
+                use_txn=False,
+            ):
+                return list(eligible_rows), "deterministic_scan"
         try:
-            self._conn.execute(
-                "CREATE TEMP TABLE IF NOT EXISTS rag_v2_eligible_chunks (chunk_id TEXT PRIMARY KEY)"
-            )
-            self._conn.execute("DELETE FROM rag_v2_eligible_chunks")
-            # OPT-RAGV2-LEXICAL B1: (a) temp-table build vs (b) FTS MATCH+bm25.
-            build_start = perf_counter()
-            self._conn.executemany(
-                "INSERT INTO rag_v2_eligible_chunks(chunk_id) VALUES (?)",
-                ((row["chunk_id"],) for row in eligible_rows),
-            )
-            if timings is not None:
-                timings["temp_build_ms"] = timings.get("temp_build_ms", 0.0) + (
-                    perf_counter() - build_start
-                ) * 1000.0
-                timings["temp_inserted_rows"] = timings.get("temp_inserted_rows", 0.0) + float(
-                    len(eligible_rows)
-                )
             match_start = perf_counter()
             ranked_ids = self._conn.execute(
                 """
@@ -4669,33 +4843,22 @@ class LocalChunkIndex:
         limit: int,
         timings: Optional[Dict[str, float]] = None,
         use_txn: bool = True,
+        *,
+        eligible_temp_populated: bool = False,
     ) -> Optional[List[str]]:
-        """V2 FTS branch: temp-table build (+ optional explicit txn) + MATCH.
+        """V2 FTS branch: temp-table build (once per search) + MATCH.
 
         Returns the ranked chunk ids, or None when FTS5 is unavailable (the
         caller falls back to the deterministic scan, mirroring _candidate_rows).
         """
+        if not eligible_temp_populated:
+            if not self._populate_eligible_temp_table(
+                eligible_ids,
+                timings,
+                use_txn=use_txn,
+            ):
+                return None
         try:
-            self._conn.execute(
-                "CREATE TEMP TABLE IF NOT EXISTS rag_v2_eligible_chunks (chunk_id TEXT PRIMARY KEY)"
-            )
-            began_txn = bool(use_txn) and not self._conn.in_transaction
-            if began_txn:
-                self._conn.execute("BEGIN")
-            try:
-                self._conn.execute("DELETE FROM rag_v2_eligible_chunks")
-                build_start = perf_counter()
-                self._conn.executemany(
-                    "INSERT INTO rag_v2_eligible_chunks(chunk_id) VALUES (?)",
-                    ((chunk_id,) for chunk_id in eligible_ids),
-                )
-                build_ms = (perf_counter() - build_start) * 1000.0
-            except Exception:
-                if began_txn:
-                    self._conn.execute("ROLLBACK")
-                raise
-            if began_txn:
-                self._conn.execute("COMMIT")
             match_start = perf_counter()
             ranked = self._conn.execute(
                 """
@@ -4713,10 +4876,6 @@ class LocalChunkIndex:
             self._fts5_available = False
             return None
         if timings is not None:
-            timings["temp_build_ms"] = timings.get("temp_build_ms", 0.0) + build_ms
-            timings["temp_inserted_rows"] = timings.get("temp_inserted_rows", 0.0) + float(
-                len(eligible_ids)
-            )
             timings["fts_match_ms"] = timings.get("fts_match_ms", 0.0) + match_ms
         return [str(row["chunk_id"]) for row in ranked]
 
@@ -4731,6 +4890,7 @@ class LocalChunkIndex:
         lex_v2: Dict[str, bool],
         identifier_patterns: Sequence[re.Pattern[str]] = (),
         query_plan: Optional[RetrievalQueryPlan] = None,
+        eligible_temp_populated: bool = False,
     ) -> tuple[List[sqlite3.Row], str]:
         """Phase-B2 candidate path: same results as _candidate_rows.
 
@@ -4804,6 +4964,7 @@ class LocalChunkIndex:
                 limit,
                 timings,
                 use_txn=lex_v2["TEMP_TXN"],
+                eligible_temp_populated=eligible_temp_populated,
             )
             if ranked_ids is None:
                 return self._fetch_chunk_rows(eligible_ids), "deterministic_scan"
@@ -4968,21 +5129,29 @@ class LocalChunkIndex:
         )
 
     @staticmethod
-    def _is_selected(row: sqlite3.Row, options: SearchOptions) -> bool:
+    def _is_selected(row: sqlite3.Row | Mapping[str, Any], options: SearchOptions) -> bool:
         # A document ID is the canonical selection key. Absolute paths can change
         # when a sealed index is moved or a workspace is cloned; the independent
         # fingerprint validation still rejects altered source content.
         if options.allowed_document_ids is not None:
-            return row["document_id"] in options.allowed_document_ids
+            allowed_docs = options.allowed_document_ids_set
+            if allowed_docs is None:
+                allowed_docs = frozenset(options.allowed_document_ids)
+            return row["document_id"] in allowed_docs
         if options.allowed_source_paths is not None:
-            return row["source_path"] in options.allowed_source_paths
+            allowed_paths = options.allowed_source_paths_set
+            if allowed_paths is None:
+                allowed_paths = frozenset(options.allowed_source_paths)
+            return row["source_path"] in allowed_paths
         return True
 
     @staticmethod
     def _privacy_is_allowed(privacy_labels: tuple[str, ...], options: SearchOptions) -> bool:
         if options.allowed_privacy_labels is None:
             return True
-        allowed = set(options.allowed_privacy_labels)
+        allowed = options.allowed_privacy_labels_set
+        if allowed is None:
+            allowed = frozenset(options.allowed_privacy_labels)
         return bool(privacy_labels) and all(label in allowed for label in privacy_labels)
 
     @staticmethod
