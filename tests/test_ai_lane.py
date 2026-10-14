@@ -104,3 +104,18 @@ def test_describe_decision_for_answer_is_vietnamese():
     text = describe_decision_for_answer(decision)
     assert "Đang dùng:" in text
     assert backend_label_vi(BACKEND_GEMINI_WEB) in text
+
+
+def test_manual_override_supersedes_remembered_lane():
+    session = {"lane_conv1": BACKEND_GEMINI_WEB}
+    decision = auto_backend_for_conversation(
+        "lane_conv1",
+        session,
+        bridge_available=True,
+        cagent_endpoint="http://x",
+        manual_override="cagent_api",
+    )
+    assert decision.backend == BACKEND_CAGENT
+    assert decision.automatic is False
+    assert session["lane_conv1"] == BACKEND_CAGENT
+

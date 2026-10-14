@@ -260,6 +260,7 @@ def test_cagent_prediction_without_api_key_has_no_authorization_header(monkeypat
         return _Response({"text": "OK anonymous"})
 
     monkeypatch.delenv("AIOS_CAGENT_API_KEY", raising=False)
+    monkeypatch.setattr("aios_habit.cagent_auth.get_valid_access_token", lambda *_a, **_k: "")
     monkeypatch.setattr("aios_habit.cagent_api.urlopen", fake_urlopen)
 
     response = call_cagent_prediction(

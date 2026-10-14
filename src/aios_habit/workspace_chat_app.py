@@ -4274,28 +4274,6 @@ else:
             # does not misleadingly start with an empty C-AGENT field.
             if cagent_endpoint:
                 os.environ["AIOS_CAGENT_API_URL"] = cagent_endpoint
-
-            from aios_habit.cagent_auth import clear_session, get_auth_status, login_cagent
-
-            auth_status = get_auth_status()
-            if auth_status.get("logged_in"):
-                c_user = auth_status.get("username") or "đã lưu"
-                st.caption(f"🔐 Đã đăng nhập C-Agent: **{c_user}** (Tự động gia hạn phiên)")
-                if st.button("Đăng xuất C-Agent", key="wsc_cagent_logout_btn", help="Xóa phiên đăng nhập đã lưu"):
-                    clear_session()
-                    safe_rerun()
-            else:
-                with st.expander("🔑 Đăng nhập tài khoản C-Agent", expanded=True):
-                    st.caption("Nhập tài khoản C-Agent để tự động tạo và gia hạn phiên làm việc:")
-                    u_in = st.text_input("Tên đăng nhập", value="tvn183660", key="wsc_cagent_user_inp")
-                    p_in = st.text_input("Mật khẩu", type="password", key="wsc_cagent_pass_inp")
-                    if st.button("Đăng nhập C-Agent", key="wsc_cagent_login_sub_btn", use_container_width=True):
-                        ok, msg = login_cagent(u_in, p_in, base_url=cagent_endpoint)
-                        if ok:
-                            st.session_state.wsc_action_message = msg
-                            safe_rerun()
-                        else:
-                            st.session_state.wsc_action_error = msg
         if selected_ai_backend == "cagent_api":
             st.caption(t("cagent_selected_status", locale=current_ui_locale))
         elif selected_ai_backend == "nakazasen_router":
@@ -5383,6 +5361,28 @@ else:
                                     ).strip()
                                     if cagent_endpoint:
                                         os.environ["AIOS_CAGENT_API_URL"] = cagent_endpoint
+
+                                    from aios_habit.cagent_auth import clear_session, get_auth_status, login_cagent
+
+                                    auth_status = get_auth_status()
+                                    if auth_status.get("logged_in"):
+                                        c_user = auth_status.get("username") or "đã lưu"
+                                        st.caption(f"🔐 Đã đăng nhập C-Agent: **{c_user}** (Tự động gia hạn phiên)")
+                                        if st.button("Đăng xuất C-Agent", key="wsc_cagent_logout_btn", help="Xóa phiên đăng nhập đã lưu"):
+                                            clear_session()
+                                            safe_rerun()
+                                    else:
+                                        with st.expander("🔑 Đăng nhập tài khoản C-Agent", expanded=True):
+                                            st.caption("Nhập tài khoản C-Agent để tự động tạo và gia hạn phiên làm việc:")
+                                            u_in = st.text_input("Tên đăng nhập", value="tvn183660", key="wsc_cagent_user_inp")
+                                            p_in = st.text_input("Mật khẩu", type="password", key="wsc_cagent_pass_inp")
+                                            if st.button("Đăng nhập C-Agent", key="wsc_cagent_login_sub_btn", use_container_width=True):
+                                                ok, msg = login_cagent(u_in, p_in, base_url=cagent_endpoint)
+                                                if ok:
+                                                    st.session_state.wsc_action_message = msg
+                                                    safe_rerun()
+                                                else:
+                                                    st.session_state.wsc_action_error = msg
                                 elif selected_ai_backend == "local":
                                     st.markdown(f"**{t('dest_local_title', locale=current_ui_locale)}**")
                                     st.caption(t("dest_local_caption", locale=current_ui_locale))

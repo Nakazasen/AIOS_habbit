@@ -17,7 +17,7 @@ from urllib.request import Request, urlopen
 
 
 
-DEFAULT_TIMEOUT_SECONDS = int(os.environ.get("AIOS_CAGENT_TIMEOUT_SECONDS", "20"))
+DEFAULT_TIMEOUT_SECONDS = int(os.environ.get("AIOS_CAGENT_TIMEOUT_SECONDS", "60"))
 DEFAULT_CAGENT_API_URL = "https://kdtvn-ai.cmcts.vn/api/v1/prediction/1881aa32-c996-4e6f-9257-78246177ba9f"
 
 # WIRE-QA-CAGENT spec §2: tối đa 1 lần thử lại, backoff cố định 2–3 giây,

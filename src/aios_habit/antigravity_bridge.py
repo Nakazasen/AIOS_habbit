@@ -1233,7 +1233,7 @@ def route_workspace_chat_submission(
             system_prompt = f"{system_prompt}\n\n{wire_reference.system_note}"
             user_prompt = f"{wire_reference.prompt_block}\n\n{user_prompt}"
 
-        cagent_timeout = int(os.environ.get("AIOS_CAGENT_TIMEOUT_SECONDS", "20"))
+        cagent_timeout = int(os.environ.get("AIOS_CAGENT_TIMEOUT_SECONDS", "60"))
         cagent_res = call_cagent_prediction(
             endpoint,
             system_prompt=system_prompt,

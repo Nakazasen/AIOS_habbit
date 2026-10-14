@@ -171,7 +171,10 @@ def test_composer_knowledge_block_switch_defaults_to_auto_with_four_choices() ->
 
     assert 'with st.container(key=f"wsc-block-{active_conversation.id}"):' in source
     assert 'st.session_state.get(knowledge_block_key, "auto")' in source
-    assert 'for _block_value in ("auto", *_DOMAINS):' in source
+    assert (
+        'for _block_value in ("auto", *_DOMAINS):' in source
+        or "for _block_value in block_choices.keys():" in source
+    )
     assert 'st.session_state[knowledge_block_key] = _block_value' in source
     assert "forced_domain=str(" in source
     assert "st.tabs" not in source.split('key=f"wsc-block-', 1)[1][:1200]
@@ -603,4 +606,39 @@ def test_one_shot_csv_text_inlined_into_question_without_persistent_source() -> 
     assert 'Dữ kiện trích từ tệp đính kèm' in source
     assert 'nội dung tệp đã được rút gọn' in source
     assert 'st.session_state.pop(pasted_image_key, None)' in source
+
+
+def test_cagent_login_ui_is_in_live_composer_popover_not_legacy_header() -> None:
+    """DESKTOP-PC0575-CAGENT-LOGIN-UI-WIRE: C-Agent login block must live in the
+    active toolbar_cagent_col popover under cagent_api (company machine UI), not
+    inside the commented-out _legacy_connector_panel, and must stay separated
+    from the nakazasen_router branch (home machine UI)."""
+    source = _app_source()
+    legacy_marker = "_legacy_connector_panel"
+    after_marker = source.split(legacy_marker, 1)[1]
+    legacy_body, live = after_marker.split('"""', 2)[1], after_marker.split('"""', 2)[2]
+
+    assert "login_cagent" not in legacy_body
+    assert "wsc_cagent_login_sub_btn" not in legacy_body
+
+    toolbar_cagent_section = live.split("with toolbar_cagent_col:", 1)[1].split("with toolbar_mode_col:", 1)[0]
+    router_branch = toolbar_cagent_section.split('if selected_ai_backend == "nakazasen_router":', 1)[1].split(
+        'elif selected_ai_backend == "cagent_api":', 1
+    )[0]
+    cagent_branch = toolbar_cagent_section.split('elif selected_ai_backend == "cagent_api":', 1)[1].split(
+        'elif selected_ai_backend == "local":', 1
+    )[0]
+
+    # Home machine UI (Command Code / Router) must not contain C-Agent login controls
+    assert "dest_command_code_title" in router_branch
+    assert "login_cagent" not in router_branch
+    assert "wsc_cagent_login_sub_btn" not in router_branch
+
+    # Company machine UI (C-Agent) must contain both endpoint input and C-Agent login/status controls
+    assert "from aios_habit.cagent_auth import clear_session, get_auth_status, login_cagent" in cagent_branch
+    assert "wsc_cagent_logout_btn" in cagent_branch
+    assert "wsc_cagent_user_inp" in cagent_branch
+    assert "wsc_cagent_pass_inp" in cagent_branch
+    assert "wsc_cagent_login_sub_btn" in cagent_branch
+
 

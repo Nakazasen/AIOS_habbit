@@ -132,7 +132,7 @@ def auto_backend_for_conversation(
     )
     get = getattr(session_state, "get", None)
     remembered = get(memory_key) if callable(get) else None
-    if isinstance(remembered, str) and remembered in BACKENDS:
+    if decision.automatic and isinstance(remembered, str) and remembered in BACKENDS:
         signals = dict(
             bridge_available=bridge_available,
             cagent_endpoint=cagent_endpoint,
