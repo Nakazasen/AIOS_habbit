@@ -1044,7 +1044,7 @@ if _running_under_streamlit():
         ensure_workspace_chat_startup_warming()
     except Exception:
         try:
-            ensure_workspace_chat_worker_warming()
+            ensure_workspace_chat_worker_warming(collection_id="tri_thuc")
         except Exception:
             pass
     try:
@@ -1708,12 +1708,18 @@ def _run_chat_turn_async(
                     def _targeted_warming(*, blocking: bool = True, timeout_s: float | None = None) -> bool:
                         from aios_habit.workspace_chat_rag_v2_adapter import ensure_workspace_chat_worker_warming
                         return ensure_workspace_chat_worker_warming(
-                            blocking=blocking, timeout_s=timeout_s, pipe_config=target_warm_pipe_cfg
+                            blocking=blocking,
+                            timeout_s=timeout_s,
+                            pipe_config=target_warm_pipe_cfg,
+                            collection_id=target_col_for_warm,
                         )
 
                     def _targeted_progress() -> dict[str, Any]:
                         from aios_habit.workspace_chat_rag_v2_adapter import get_workspace_chat_worker_progress
-                        return get_workspace_chat_worker_progress(pipe_config=target_warm_pipe_cfg)
+                        return get_workspace_chat_worker_progress(
+                            pipe_config=target_warm_pipe_cfg,
+                            collection_id=target_col_for_warm,
+                        )
 
                     ret_res, early_exit = wait_for_workspace_chat_worker(
                         attempt_retrieval_fn=_attempt_retrieval,
@@ -4764,7 +4770,21 @@ else:
                                         locale=current_ui_locale,
                                     )
                                     try:
-                                        _worker_warmed = is_workspace_chat_worker_warmed()
+                                        _target_warm_col = str(
+                                            (
+                                                active_ai_request.get("forced_domain")
+                                                if isinstance(active_ai_request, dict)
+                                                else None
+                                            )
+                                            or st.session_state.get(
+                                                f"wsc_knowledge_block_{active_conversation.id}",
+                                                "auto",
+                                            )
+                                            or "tri_thuc"
+                                        )
+                                        _worker_warmed = is_workspace_chat_worker_warmed(
+                                            collection_id=_target_warm_col
+                                        )
                                     except Exception:
                                         _worker_warmed = True
                                     if not _worker_warmed:
@@ -6150,6 +6170,10 @@ else:
                                     "cancellation_event": cancellation_event,
                                     "stream_state": stream_state,
                                     "ai_mode": getattr(active_conversation, "ai_mode", "grounded"),
+                                    "forced_domain": str(
+                                        st.session_state.get(f"wsc_knowledge_block_{active_conversation.id}", "auto")
+                                        or "auto"
+                                    ),
                                 }
                                 safe_rerun()
 

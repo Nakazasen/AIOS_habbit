@@ -1323,11 +1323,32 @@ def _warmup_pipeline_config(
     )
 
 
+def _resolve_target_pipe_config(
+    config: WorkspaceChatRagV2CanaryConfig,
+    *,
+    pipe_config: Optional[RagV2DevConfig] = None,
+    collection_id: Optional[str] = None,
+) -> RagV2DevConfig:
+    """Deterministically resolve the target worker pipeline config without global fallback state."""
+    if pipe_config is not None:
+        return pipe_config
+    norm_col = normalize_knowledge_collection(collection_id)
+    if norm_col and norm_col not in ("auto", "tri_thuc"):
+        return _pipeline_config(
+            config,
+            config.requested_profile,
+            read_only=True,
+            collection_id=norm_col,
+        )
+    return _warmup_pipeline_config(config)
+
+
 def initialize_workspace_chat_rag_v2_worker(
     config: WorkspaceChatRagV2CanaryConfig,
     *,
     timeout_s: float | None = None,
     pipe_config: RagV2DevConfig | None = None,
+    collection_id: str | None = None,
 ) -> dict[str, Any]:
     """Initialize the activated semantic worker before corpus materialization.
 
@@ -1339,7 +1360,11 @@ def initialize_workspace_chat_rag_v2_worker(
     if not profile.startswith("bge_m3_"):
         return {"status": "not_required"}
     try:
-        effective_config = pipe_config or _warmup_pipeline_config(config)
+        effective_config = _resolve_target_pipe_config(
+            config,
+            pipe_config=pipe_config,
+            collection_id=collection_id,
+        )
         return _safe_init_report(
             _SUBPROCESS_CLIENT.initialize_worker(
                 effective_config,
@@ -1357,15 +1382,14 @@ _WARMUP_LAST_ATTEMPT_MONO = 0.0
 _WARMUP_TTL_SECONDS = 90.0
 _WARMUP_ATTEMPTS: dict[str, float] = {}
 _WARMUP_IN_QUEUE: set[str] = set()
-
-
-_LAST_WARMUP_PIPE_CONFIG: Optional[RagV2DevConfig] = None
+_WARMUP_RUNNING_KEYS: set[str] = set()
 
 
 def is_workspace_chat_worker_warmed(
     *,
     config: Optional[WorkspaceChatRagV2CanaryConfig] = None,
     pipe_config: Optional[RagV2DevConfig] = None,
+    collection_id: Optional[str] = None,
 ) -> bool:
     """Return whether the local BGE worker subprocess is already usable."""
     try:
@@ -1374,12 +1398,14 @@ def is_workspace_chat_worker_warmed(
         return False
     if not resolved.enabled or not resolved.requested_profile.startswith("bge_m3_"):
         return False
-    target_pipe_config = pipe_config or _LAST_WARMUP_PIPE_CONFIG
-    if target_pipe_config is None:
-        try:
-            target_pipe_config = _warmup_pipeline_config(resolved)
-        except (SemanticBackendUnavailable, ValueError, OSError):
-            return False
+    try:
+        target_pipe_config = _resolve_target_pipe_config(
+            resolved,
+            pipe_config=pipe_config,
+            collection_id=collection_id,
+        )
+    except (SemanticBackendUnavailable, ValueError, OSError):
+        return False
     try:
         return bool(_SUBPROCESS_CLIENT.is_ready(target_pipe_config))
     except Exception:
@@ -1390,6 +1416,7 @@ def get_workspace_chat_worker_progress(
     *,
     config: Optional[WorkspaceChatRagV2CanaryConfig] = None,
     pipe_config: Optional[WorkspaceChatBgeSubprocessPipelineConfig] = None,
+    collection_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Return lightweight snapshot of worker progress for the chat wait loop."""
     try:
@@ -1397,10 +1424,14 @@ def get_workspace_chat_worker_progress(
     except Exception:
         resolved = None
 
-    target_pipe_config = pipe_config or _LAST_WARMUP_PIPE_CONFIG
+    target_pipe_config = pipe_config
     if target_pipe_config is None and resolved is not None:
         try:
-            target_pipe_config = _warmup_pipeline_config(resolved)
+            target_pipe_config = _resolve_target_pipe_config(
+                resolved,
+                pipe_config=pipe_config,
+                collection_id=collection_id,
+            )
         except Exception:
             target_pipe_config = None
 
@@ -1453,7 +1484,11 @@ def get_workspace_chat_worker_progress(
             exit_code = proc.poll() if proc is not None else None
             pending = alive and _SUBPROCESS_CLIENT._pending_init is not None
             last_reason = _SUBPROCESS_CLIENT._last_failure_reason
-            ready = is_workspace_chat_worker_warmed(config=config)
+            ready = is_workspace_chat_worker_warmed(
+                config=resolved or config,
+                pipe_config=target_pipe_config,
+                collection_id=collection_id,
+            )
 
             stderr_size = -1
             stderr_mtime = 0.0
@@ -1490,7 +1525,11 @@ def get_workspace_chat_worker_progress(
         }
 
 
+_MAX_WARM_COLLECTION_EXECUTORS = 4
+_MAX_USER_TARGET_WARM_WORKERS = 2
 _BACKGROUND_WARM_EXECUTOR: concurrent.futures.ThreadPoolExecutor | None = None
+_COLLECTION_WARM_EXECUTORS: dict[str, concurrent.futures.ThreadPoolExecutor] = {}
+_USER_TARGET_WARM_EXECUTOR: concurrent.futures.ThreadPoolExecutor | None = None
 _BACKGROUND_WARM_LOCK = threading.Lock()
 
 _USER_RETRIEVAL_PRIORITY_LOCK = threading.RLock()
@@ -1711,15 +1750,57 @@ def _check_and_yield_background_warming(
             _USER_RETRIEVAL_PRIORITY_CONDITION.wait(timeout=1.0)
 
 
-def _get_background_warm_executor() -> concurrent.futures.ThreadPoolExecutor:
+def _normalize_warm_executor_key(collection_id: str | None) -> str:
+    norm = normalize_knowledge_collection(collection_id)
+    if norm in ("tri_thuc", "tong_hop", "lsu", "dieu_tra_loi"):
+        return norm
+    if norm and norm != "auto":
+        return norm
+    return "tri_thuc"
+
+
+def _get_background_warm_executor(
+    collection_id: str | None = None,
+) -> concurrent.futures.ThreadPoolExecutor:
+    """Return a bounded per-collection background warm executor (max_workers=1 per collection)."""
     global _BACKGROUND_WARM_EXECUTOR
+    col_key = _normalize_warm_executor_key(collection_id)
     with _BACKGROUND_WARM_LOCK:
-        if _BACKGROUND_WARM_EXECUTOR is None:
+        existing = _COLLECTION_WARM_EXECUTORS.get(col_key)
+        if existing is not None and not getattr(existing, "_shutdown", False):
+            return existing
+        if existing is not None:
+            _COLLECTION_WARM_EXECUTORS.pop(col_key, None)
+        if len(_COLLECTION_WARM_EXECUTORS) < _MAX_WARM_COLLECTION_EXECUTORS:
+            executor = concurrent.futures.ThreadPoolExecutor(
+                max_workers=1,
+                thread_name_prefix=f"wsc_bge_warmup_{col_key}",
+            )
+            _COLLECTION_WARM_EXECUTORS[col_key] = executor
+            if col_key == "tri_thuc" and (
+                _BACKGROUND_WARM_EXECUTOR is None
+                or getattr(_BACKGROUND_WARM_EXECUTOR, "_shutdown", False)
+            ):
+                _BACKGROUND_WARM_EXECUTOR = executor
+            return executor
+        if _BACKGROUND_WARM_EXECUTOR is None or getattr(_BACKGROUND_WARM_EXECUTOR, "_shutdown", False):
             _BACKGROUND_WARM_EXECUTOR = concurrent.futures.ThreadPoolExecutor(
                 max_workers=1,
                 thread_name_prefix="wsc_bge_warmup_seq",
             )
         return _BACKGROUND_WARM_EXECUTOR
+
+
+def _get_user_target_warm_executor() -> concurrent.futures.ThreadPoolExecutor:
+    """Return dedicated bounded executor for the active user target collection."""
+    global _USER_TARGET_WARM_EXECUTOR
+    with _BACKGROUND_WARM_LOCK:
+        if _USER_TARGET_WARM_EXECUTOR is None or getattr(_USER_TARGET_WARM_EXECUTOR, "_shutdown", False):
+            _USER_TARGET_WARM_EXECUTOR = concurrent.futures.ThreadPoolExecutor(
+                max_workers=_MAX_USER_TARGET_WARM_WORKERS,
+                thread_name_prefix="wsc_bge_warmup_target",
+            )
+        return _USER_TARGET_WARM_EXECUTOR
 
 
 def ensure_workspace_chat_worker_warming(
@@ -1728,6 +1809,7 @@ def ensure_workspace_chat_worker_warming(
     blocking: bool = False,
     timeout_s: float | None = None,
     pipe_config: RagV2DevConfig | None = None,
+    collection_id: str | None = None,
     verify_probe: bool = False,
     probe_query: str = "touch panel specification",
     probe_domain: str | None = None,
@@ -1740,26 +1822,54 @@ def ensure_workspace_chat_worker_warming(
     in-flight init instead of spawning a duplicate when ``timeout_s`` is left
     at its default (``AIOS_BGE_INIT_TIMEOUT`` or 300 s).
     """
-    global _WARMUP_LAST_ATTEMPT_MONO, _LAST_WARMUP_PIPE_CONFIG, _WARMUP_ATTEMPTS
+    global _WARMUP_LAST_ATTEMPT_MONO, _WARMUP_ATTEMPTS
     now = time.monotonic()
-    if pipe_config is not None:
-        _LAST_WARMUP_PIPE_CONFIG = pipe_config
-    if not blocking and pipe_config is not None and _SUBPROCESS_CLIENT._persistent_applies(pipe_config):
-        flight_key = pipe_name_for_config(pipe_config)
+
+    effective_pipe_config = pipe_config
+    if effective_pipe_config is None and collection_id is not None:
+        try:
+            _tmp_resolved = config or WorkspaceChatRagV2CanaryConfig.from_env()
+            if _tmp_resolved.enabled and _tmp_resolved.requested_profile.startswith("bge_m3_"):
+                effective_pipe_config = _resolve_target_pipe_config(
+                    _tmp_resolved,
+                    pipe_config=None,
+                    collection_id=collection_id,
+                )
+        except Exception:
+            effective_pipe_config = None
+
+    if (
+        not blocking
+        and effective_pipe_config is not None
+        and _SUBPROCESS_CLIENT._persistent_applies(effective_pipe_config)
+    ):
+        flight_key = pipe_name_for_config(effective_pipe_config)
         with _SUBPROCESS_CLIENT._persistent_init_lock:
             if flight_key in _SUBPROCESS_CLIENT._pending_persistent_inits:
                 return True
 
     warmup_key = "__default__"
-    if pipe_config is not None:
+    if effective_pipe_config is not None:
         try:
-            warmup_key = pipe_name_for_config(pipe_config)
+            warmup_key = pipe_name_for_config(effective_pipe_config)
         except Exception:
-            warmup_key = str(getattr(pipe_config, "collection_id", None) or "custom")
+            warmup_key = str(getattr(effective_pipe_config, "collection_id", None) or "custom")
+    elif collection_id is not None:
+        norm_col = normalize_knowledge_collection(collection_id)
+        if norm_col and norm_col not in ("auto", "tri_thuc"):
+            warmup_key = f"__col__:{norm_col}"
+
+    hint_col = (
+        _collection_id_from_pipe_config(effective_pipe_config)
+        or normalize_knowledge_collection(collection_id)
+        or "tri_thuc"
+    )
+    with _USER_RETRIEVAL_PRIORITY_LOCK:
+        is_priority_target = _collection_matches_active(
+            hint_col, _ACTIVE_USER_RETRIEVAL_COLLECTIONS
+        )
 
     with _WARMUP_LOCK:
-        if not blocking and warmup_key in _WARMUP_IN_QUEUE:
-            return True
         if _WARMUP_LAST_ATTEMPT_MONO == 0.0 and warmup_key == "__default__":
             _WARMUP_ATTEMPTS.pop(warmup_key, None)
         last_attempt = _WARMUP_ATTEMPTS.get(warmup_key, 0.0)
@@ -1773,6 +1883,10 @@ def ensure_workspace_chat_worker_warming(
             )
             if warmup_key == "__default__" or pipe_present:
                 return False
+        if not blocking and warmup_key in _WARMUP_RUNNING_KEYS:
+            return True
+        if not blocking and warmup_key in _WARMUP_IN_QUEUE and not is_priority_target:
+            return True
         _WARMUP_ATTEMPTS[warmup_key] = now
         if warmup_key == "__default__":
             _WARMUP_LAST_ATTEMPT_MONO = now
@@ -1785,16 +1899,30 @@ def ensure_workspace_chat_worker_warming(
         return False
 
     def _warm() -> bool:
+        claimed_running = False
+        if not blocking:
+            with _WARMUP_LOCK:
+                if warmup_key in _WARMUP_RUNNING_KEYS:
+                    return True
+                _WARMUP_RUNNING_KEYS.add(warmup_key)
+                claimed_running = True
         try:
-            target_pipe_config = pipe_config or _LAST_WARMUP_PIPE_CONFIG
+            target_pipe_config = effective_pipe_config
             if target_pipe_config is None:
                 try:
-                    target_pipe_config = _warmup_pipeline_config(resolved)
+                    target_pipe_config = _resolve_target_pipe_config(
+                        resolved,
+                        pipe_config=pipe_config,
+                        collection_id=collection_id,
+                    )
                 except (SemanticBackendUnavailable, ValueError, OSError):
                     target_pipe_config = None
             actual_timeout = timeout_s if blocking else (timeout_s or default_init_timeout_seconds())
 
-            target_col = _collection_id_from_pipe_config(target_pipe_config)
+            target_col = (
+                _collection_id_from_pipe_config(target_pipe_config)
+                or normalize_knowledge_collection(collection_id)
+            )
             is_already_ready = (
                 target_pipe_config is not None
                 and _SUBPROCESS_CLIENT._persistent_applies(target_pipe_config)
@@ -1841,7 +1969,11 @@ def ensure_workspace_chat_worker_warming(
                     except Exception:
                         pass
             if verify_probe:
-                coll_name = getattr(target_pipe_config, "collection_id", None) or (Path(target_pipe_config.runtime_root).name if target_pipe_config else None)
+                coll_name = (
+                    getattr(target_pipe_config, "collection_id", None)
+                    or (Path(target_pipe_config.runtime_root).name if target_pipe_config else None)
+                    or target_col
+                )
                 probe_res = probe_workspace_chat_worker(
                     question=probe_query,
                     config=resolved,
@@ -1853,17 +1985,24 @@ def ensure_workspace_chat_worker_warming(
             LOGGER.debug("Workspace Chat BGE worker warm-up failed", exc_info=True)
             return False
         finally:
-            if not blocking:
+            if not blocking and claimed_running:
                 with _WARMUP_LOCK:
+                    _WARMUP_RUNNING_KEYS.discard(warmup_key)
                     _WARMUP_IN_QUEUE.discard(warmup_key)
 
     if blocking:
         return _warm()
     with _WARMUP_LOCK:
-        if warmup_key in _WARMUP_IN_QUEUE:
+        if warmup_key in _WARMUP_RUNNING_KEYS:
+            return True
+        if warmup_key in _WARMUP_IN_QUEUE and not is_priority_target:
             return True
         _WARMUP_IN_QUEUE.add(warmup_key)
-    executor = _get_background_warm_executor()
+    executor = (
+        _get_user_target_warm_executor()
+        if is_priority_target
+        else _get_background_warm_executor(hint_col)
+    )
     executor.submit(_warm)
     return True
 
@@ -1905,6 +2044,7 @@ def ensure_workspace_chat_startup_warming(
                     config=resolved,
                     blocking=False,
                     pipe_config=p_cfg,
+                    collection_id=col_id,
                 )
                 results[col_id] = started
             else:
@@ -1921,6 +2061,7 @@ def ensure_workspace_chat_startup_warming(
             config=resolved,
             blocking=False,
             pipe_config=tri_thuc_pipe_cfg,
+            collection_id="tri_thuc",
         )
     except Exception as exc:
         LOGGER.warning("Startup warming failed for tri_thuc: %s", exc)
@@ -3498,8 +3639,10 @@ def _map_serialized_query_result(
 _INDEX_FINGERPRINT_CACHE: dict[tuple[str, int, int], dict[str, Optional[str]]] = {}
 _INDEX_FINGERPRINT_FULL_SCANNED: set[tuple[str, int, int]] = set()
 _INDEX_COVERED_DOC_IDS_CACHE: dict[tuple[str, int, int], set[str]] = {}
-_DOMAIN_SPECS_QUERY_CACHE: dict[tuple[str, str, int, int, str], tuple[Any, ...]] = {}
-_PREWARMING_DOMAIN_SPECS_KEYS: set[tuple[str, str, str]] = set()
+_INDEX_COVERED_DOC_STATUS_CACHE: dict[tuple[str, int, int], dict[str, bool]] = {}
+_INDEX_COVERED_FULL_SCANNED: set[tuple[str, int, int]] = set()
+_DOMAIN_SPECS_QUERY_CACHE: dict[tuple[str, str, int, int, tuple[str, ...]], tuple[Any, ...]] = {}
+_PREWARMING_DOMAIN_SPECS_KEYS: set[tuple[str, str, tuple[str, ...]]] = set()
 _INDEX_FINGERPRINT_LOCK = threading.Lock()
 
 
@@ -3509,6 +3652,8 @@ def clear_covered_source_fingerprints_cache() -> None:
         _INDEX_FINGERPRINT_CACHE.clear()
         _INDEX_FINGERPRINT_FULL_SCANNED.clear()
         _INDEX_COVERED_DOC_IDS_CACHE.clear()
+        _INDEX_COVERED_DOC_STATUS_CACHE.clear()
+        _INDEX_COVERED_FULL_SCANNED.clear()
         _DOMAIN_SPECS_QUERY_CACHE.clear()
         _PREWARMING_DOMAIN_SPECS_KEYS.clear()
 
@@ -3518,7 +3663,7 @@ def _get_cached_specs_for_domain(
     spec_index_path: Path | str,
     question: Optional[str] = None,
 ) -> tuple[Any, ...]:
-    """Return domain SourceSpecs with an in-memory cache keyed by index file stat and question."""
+    """Return domain SourceSpecs with an in-memory cache keyed by index file stat and exact mechanical IDs."""
     from aios_habit import index_domain
 
     resolved_path = Path(spec_index_path).resolve()
@@ -3529,12 +3674,13 @@ def _get_cached_specs_for_domain(
     except OSError:
         return tuple(index_domain.get_specs_for_domain(target_domain, spec_index_path, question=question))
 
+    exact_ids = tuple(index_domain.extract_exact_mechanical_identifiers(str(question or "")))
     cache_key = (
         str(target_domain or "").strip().lower(),
         str(resolved_path),
         stat.st_mtime_ns,
         stat.st_size,
-        str(question or ""),
+        exact_ids,
     )
     with _INDEX_FINGERPRINT_LOCK:
         cached = _DOMAIN_SPECS_QUERY_CACHE.get(cache_key)
@@ -3559,6 +3705,8 @@ def _prewarm_domain_specs_async(
     question: Optional[str] = None,
 ) -> None:
     """Pre-warm domain specs and read-only covered doc_ids in background while worker is initializing."""
+    from aios_habit import index_domain
+
     try:
         resolved_path = Path(spec_index_path).resolve()
         if not resolved_path.is_file():
@@ -3566,10 +3714,11 @@ def _prewarm_domain_specs_async(
     except Exception:
         return
 
+    exact_ids = tuple(index_domain.extract_exact_mechanical_identifiers(str(question or "")))
     dedup_key = (
         str(target_domain or "").strip().lower(),
         str(resolved_path),
-        str(question or ""),
+        exact_ids,
     )
     with _INDEX_FINGERPRINT_LOCK:
         if dedup_key in _PREWARMING_DOMAIN_SPECS_KEYS:
@@ -3578,8 +3727,13 @@ def _prewarm_domain_specs_async(
 
     def _run_prewarm() -> None:
         try:
-            _get_cached_specs_for_domain(target_domain, resolved_path, question=question)
-            _get_covered_source_fingerprints(resolved_path, read_only=True)
+            specs = _get_cached_specs_for_domain(target_domain, resolved_path, question=question)
+            cand_ids = [s.document_id for s in specs if getattr(s, "document_id", None)]
+            _get_covered_source_fingerprints(
+                resolved_path,
+                candidate_doc_ids=cand_ids or None,
+                read_only=True,
+            )
         except Exception:
             pass
         finally:
@@ -3606,14 +3760,14 @@ def _get_covered_source_fingerprints(
 ) -> dict[str, str]:
     """Retrieve mapping of document_id -> source_fingerprint for retrievable chunks.
 
-    Optimized for DESKTOP-SPEED-PROFILE-QUERY-FIX-HOME:
+    Optimized for DESKTOP-SPEED-PROFILE-QUERY-FIX-HOME & ARCH-11:
     1. Caches results in-memory keyed by (resolved_path, mtime_ns, size) so repeat
        calls within the same turn (including retry/escalation loops) or across turns
        do not re-scan the database.
-    2. When querying SQLite, filters by candidate_doc_ids IN (...) using the existing
-       idx_chunks_retrievable index, avoiding a costly full-table scan on large indexes
-       (e.g. 1.96 GB lsu index drops from 123s to <0.5s).
-    3. Guarantees 100% semantic identity with the legacy GROUP BY query.
+    2. When querying SQLite (both read_only=True and read_only=False), filters by
+       candidate_doc_ids IN (...) in batches of 500 using idx_chunks_retrievable,
+       avoiding a costly full-table scan on large indexes.
+    3. Guarantees 100% semantic identity with the legacy query.
     """
     resolved_path = Path(index_path).resolve()
     if not resolved_path.is_file():
@@ -3631,23 +3785,77 @@ def _get_covered_source_fingerprints(
     )
 
     if read_only:
+        if candidate_list is not None and not candidate_list:
+            return {}
         with _INDEX_FINGERPRINT_LOCK:
-            covered_set = _INDEX_COVERED_DOC_IDS_CACHE.get(cache_key)
-        if covered_set is None:
-            uri = resolved_path.as_uri() + "?mode=ro"
-            with sqlite3.connect(uri, uri=True) as conn:
+            if cache_key not in _INDEX_COVERED_DOC_STATUS_CACHE:
+                stale_ro_keys = [
+                    k
+                    for k in (
+                        set(_INDEX_COVERED_DOC_IDS_CACHE)
+                        | set(_INDEX_COVERED_DOC_STATUS_CACHE)
+                        | set(_INDEX_COVERED_FULL_SCANNED)
+                    )
+                    if k[0] == cache_key[0] and k != cache_key
+                ]
+                for k in stale_ro_keys:
+                    _INDEX_COVERED_DOC_IDS_CACHE.pop(k, None)
+                    _INDEX_COVERED_DOC_STATUS_CACHE.pop(k, None)
+                    _INDEX_COVERED_FULL_SCANNED.discard(k)
+                _INDEX_COVERED_DOC_STATUS_CACHE[cache_key] = {}
+
+            status_map = _INDEX_COVERED_DOC_STATUS_CACHE[cache_key]
+            is_ro_full = cache_key in _INDEX_COVERED_FULL_SCANNED
+
+            if candidate_list is None:
+                if is_ro_full:
+                    covered_set = _INDEX_COVERED_DOC_IDS_CACHE.get(cache_key, set())
+                    return {d: "" for d in covered_set}
+                ro_missing_ids: Optional[list[str]] = None
+            else:
+                if is_ro_full:
+                    covered_set = _INDEX_COVERED_DOC_IDS_CACHE.get(cache_key, set())
+                    return {d: "" for d in candidate_list if d in covered_set}
+                ro_missing_ids = [d for d in candidate_list if d not in status_map]
+                if not ro_missing_ids:
+                    return {d: "" for d in candidate_list if status_map.get(d, False)}
+
+        uri = resolved_path.as_uri() + "?mode=ro"
+        with sqlite3.connect(uri, uri=True) as conn:
+            if ro_missing_ids is None:
                 rows = conn.execute(
                     "SELECT DISTINCT document_id FROM chunks WHERE retrievable = 1"
                 ).fetchall()
-            covered_set = {str(r[0]) for r in rows if r and r[0] is not None}
-            with _INDEX_FINGERPRINT_LOCK:
-                stale_keys = [k for k in _INDEX_COVERED_DOC_IDS_CACHE if k[0] == cache_key[0]]
-                for k in stale_keys:
-                    _INDEX_COVERED_DOC_IDS_CACHE.pop(k, None)
-                _INDEX_COVERED_DOC_IDS_CACHE[cache_key] = covered_set
-        if candidate_list is None:
-            return {d: "" for d in covered_set}
-        return {d: "" for d in candidate_list if d in covered_set}
+                covered_set = {str(r[0]) for r in rows if r and r[0] is not None}
+                with _INDEX_FINGERPRINT_LOCK:
+                    _INDEX_COVERED_DOC_IDS_CACHE[cache_key] = covered_set
+                    status_map = _INDEX_COVERED_DOC_STATUS_CACHE.setdefault(cache_key, {})
+                    for d in covered_set:
+                        status_map[d] = True
+                    _INDEX_COVERED_FULL_SCANNED.add(cache_key)
+                    return {d: "" for d in covered_set}
+            else:
+                found_docs: set[str] = set()
+                for chunk in _chunk_sequence(ro_missing_ids, 500):
+                    placeholders = ",".join("?" for _ in chunk)
+                    rows = conn.execute(
+                        f"""
+                        SELECT DISTINCT document_id
+                        FROM chunks
+                        WHERE retrievable = 1 AND document_id IN ({placeholders})
+                        """,
+                        chunk,
+                    ).fetchall()
+                    for row in rows:
+                        if row and row[0] is not None:
+                            found_docs.add(str(row[0]))
+                with _INDEX_FINGERPRINT_LOCK:
+                    covered_set = _INDEX_COVERED_DOC_IDS_CACHE.setdefault(cache_key, set())
+                    covered_set.update(found_docs)
+                    status_map = _INDEX_COVERED_DOC_STATUS_CACHE.setdefault(cache_key, {})
+                    for d in ro_missing_ids:
+                        status_map[d] = d in found_docs
+                    return {d: "" for d in candidate_list if status_map.get(d, False)}
 
     with _INDEX_FINGERPRINT_LOCK:
         if cache_key not in _INDEX_FINGERPRINT_CACHE:
@@ -3803,7 +4011,12 @@ def _run_profile(
                     getattr(pipe_config, "collection_id", None) or Path(pipe_config.runtime_root).name,
                 )
                 try:
-                    ensure_workspace_chat_worker_warming(config=config, blocking=False, pipe_config=pipe_config)
+                    ensure_workspace_chat_worker_warming(
+                        config=config,
+                        blocking=False,
+                        pipe_config=pipe_config,
+                        collection_id=domain_collection_id,
+                    )
                 except Exception:
                     pass
                 raise RuntimeError("bge_worker_warming_in_progress")
@@ -4491,6 +4704,7 @@ def retrieve_workspace_chat_evidence(
                     config=resolved,
                     blocking=False,
                     pipe_config=target_pipe_cfg,
+                    collection_id=active_retrieval_col,
                 )
             except Exception:
                 pass
@@ -4680,10 +4894,23 @@ def retrieve_workspace_chat_evidence(
 
 def close_workspace_chat_rag_v2_runtimes(*, timeout_s: float | None = 10.0) -> None:
     """Close and evict cached in-process and background preparation runtimes."""
-    global _PREPARATION_EXECUTOR, _DRAIN_IS_RUNNING, _BACKGROUND_WARM_EXECUTOR
+    global _PREPARATION_EXECUTOR, _DRAIN_IS_RUNNING, _BACKGROUND_WARM_EXECUTOR, _USER_TARGET_WARM_EXECUTOR
     with _WARMUP_LOCK:
         _WARMUP_IN_QUEUE.clear()
+        _WARMUP_RUNNING_KEYS.clear()
     with _BACKGROUND_WARM_LOCK:
+        for col_exec in list(_COLLECTION_WARM_EXECUTORS.values()):
+            try:
+                col_exec.shutdown(wait=False)
+            except Exception:
+                pass
+        _COLLECTION_WARM_EXECUTORS.clear()
+        if _USER_TARGET_WARM_EXECUTOR is not None:
+            try:
+                _USER_TARGET_WARM_EXECUTOR.shutdown(wait=False)
+            except Exception:
+                pass
+            _USER_TARGET_WARM_EXECUTOR = None
         if _BACKGROUND_WARM_EXECUTOR is not None:
             try:
                 _BACKGROUND_WARM_EXECUTOR.shutdown(wait=False)
