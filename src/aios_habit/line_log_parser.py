@@ -7,6 +7,7 @@ import hashlib
 import io
 import re
 import sqlite3
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -231,6 +232,27 @@ def line_events_db_path(collection_id: str | None = None) -> Path:
     return root / LINE_EVENTS_BASENAME
 
 
+def _ensure_query_indexes(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_line_events_code ON line_events(code)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_line_events_station ON line_events(station)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_line_events_code_nocase "
+        "ON line_events(code COLLATE NOCASE, occurred_at DESC)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_line_events_station_nocase "
+        "ON line_events(station COLLATE NOCASE, occurred_at DESC)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_line_events_occurred_at "
+        "ON line_events(occurred_at DESC)"
+    )
+
+
 def _ensure_schema(conn: sqlite3.Connection) -> None:
     conn.execute(
         """
@@ -248,12 +270,39 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
         )
         """
     )
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_line_events_code ON line_events(code)"
-    )
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_line_events_station ON line_events(station)"
-    )
+    _ensure_query_indexes(conn)
+
+
+_ASCII_LOWER_TABLE = str.maketrans(
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+    "abcdefghijklmnopqrstuvwxyz",
+)
+_LINE_EVENTS_CACHE_LOCK = threading.Lock()
+_LINE_EVENTS_VOCAB_CACHE: dict[
+    tuple[str, int, int],
+    tuple[int, tuple[tuple[str, str], ...], tuple[tuple[str, str], ...]],
+] = {}
+
+
+def _sqlite_ascii_lower(value: str) -> str:
+    return (value or "").translate(_ASCII_LOWER_TABLE)
+
+
+def clear_line_events_cache() -> None:
+    """Clear the in-memory line_events vocabulary and count cache."""
+    with _LINE_EVENTS_CACHE_LOCK:
+        _LINE_EVENTS_VOCAB_CACHE.clear()
+
+
+def _invalidate_line_events_cache_for_path(db_path: Path | str) -> None:
+    try:
+        resolved = str(Path(db_path).resolve())
+    except OSError:
+        resolved = str(db_path)
+    with _LINE_EVENTS_CACHE_LOCK:
+        stale_keys = [k for k in _LINE_EVENTS_VOCAB_CACHE if k[0] == resolved]
+        for k in stale_keys:
+            _LINE_EVENTS_VOCAB_CACHE.pop(k, None)
 
 
 def ingest_line_log_bytes(
@@ -310,6 +359,7 @@ def ingest_line_log_bytes(
         ).fetchall()
     finally:
         conn.close()
+    _invalidate_line_events_cache_for_path(db_path)
     return LineLogIngestSummary(
         ok=True,
         dialect=parsed.dialect,
@@ -388,6 +438,155 @@ def _looks_like_investigation(question: str) -> bool:
     return any(hint in folded for hint in _INVESTIGATION_HINTS)
 
 
+def _get_line_events_vocab(
+    db_path: Path,
+) -> tuple[int, tuple[tuple[str, str], ...], tuple[tuple[str, str], ...]]:
+    """Return (total_count, codes_vocab, stations_vocab) cached by file (path, mtime_ns, size)."""
+    try:
+        resolved = db_path.resolve()
+        st = resolved.stat()
+        cache_key = (str(resolved), int(st.st_mtime_ns), int(st.st_size))
+    except OSError:
+        return (0, (), ())
+
+    with _LINE_EVENTS_CACHE_LOCK:
+        cached = _LINE_EVENTS_VOCAB_CACHE.get(cache_key)
+        if cached is not None:
+            return cached
+
+    conn = sqlite3.connect(str(resolved))
+    try:
+        try:
+            existing_idx = {
+                str(r[0])
+                for r in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='line_events'"
+                ).fetchall()
+            }
+            if not {
+                "idx_line_events_code_nocase",
+                "idx_line_events_station_nocase",
+                "idx_line_events_occurred_at",
+            }.issubset(existing_idx):
+                with conn:
+                    _ensure_query_indexes(conn)
+        except sqlite3.OperationalError:
+            pass
+
+        total = int(conn.execute("SELECT COUNT(*) FROM line_events").fetchone()[0])
+        if total <= 0:
+            result: tuple[int, tuple[tuple[str, str], ...], tuple[tuple[str, str], ...]] = (0, (), ())
+        else:
+            codes_rows = conn.execute(
+                """
+                WITH RECURSIVE dc(c) AS (
+                    SELECT MIN(code) FROM line_events
+                    UNION ALL
+                    SELECT (SELECT MIN(code) FROM line_events WHERE code > dc.c)
+                    FROM dc WHERE dc.c IS NOT NULL
+                )
+                SELECT c FROM dc WHERE c IS NOT NULL AND c != ''
+                """
+            ).fetchall()
+            stations_rows = conn.execute(
+                """
+                WITH RECURSIVE ds(s) AS (
+                    SELECT MIN(station) FROM line_events
+                    UNION ALL
+                    SELECT (SELECT MIN(station) FROM line_events WHERE station > ds.s)
+                    FROM ds WHERE ds.s IS NOT NULL
+                )
+                SELECT s FROM ds WHERE s IS NOT NULL AND s != ''
+                """
+            ).fetchall()
+            codes_vocab = tuple((str(r[0]), _sqlite_ascii_lower(str(r[0]))) for r in codes_rows)
+            stations_vocab = tuple((str(r[0]), _sqlite_ascii_lower(str(r[0]))) for r in stations_rows)
+            result = (total, codes_vocab, stations_vocab)
+    except sqlite3.Error:
+        return (0, (), ())
+    finally:
+        conn.close()
+
+    try:
+        st_after = resolved.stat()
+        after_key = (str(resolved), int(st_after.st_mtime_ns), int(st_after.st_size))
+    except OSError:
+        after_key = cache_key
+
+    with _LINE_EVENTS_CACHE_LOCK:
+        _LINE_EVENTS_VOCAB_CACHE[after_key] = result
+        if after_key != cache_key:
+            _LINE_EVENTS_VOCAB_CACHE[cache_key] = result
+    return result
+
+
+def _resolve_token_clauses(
+    tokens: Sequence[str],
+    codes_vocab: Sequence[tuple[str, str]],
+    stations_vocab: Sequence[tuple[str, str]],
+) -> list[tuple[int, tuple[str, ...], tuple[str, ...]]]:
+    clauses: list[tuple[int, tuple[str, ...], tuple[str, ...]]] = []
+    for ord_idx, token in enumerate(tokens):
+        if len(token) < 2:
+            continue
+        m_codes = tuple(raw for raw, low in codes_vocab if low == token or token in low)
+        m_stations = tuple(raw for raw, low in stations_vocab if low == token or token in low)
+        if m_codes or m_stations:
+            clauses.append((ord_idx, m_codes, m_stations))
+    return clauses
+
+
+def _query_matched_events_single_sql(
+    conn: sqlite3.Connection,
+    token_clauses: Sequence[tuple[int, tuple[str, ...], tuple[str, ...]]],
+    cap: int,
+) -> list[sqlite3.Row]:
+    if not token_clauses:
+        return []
+    subqueries: list[str] = []
+    params: list[Any] = []
+    for ord_idx, m_codes, m_stations in token_clauses:
+        where_parts: list[str] = []
+        if m_codes:
+            ph = ",".join("?" for _ in m_codes)
+            where_parts.append(f"code COLLATE NOCASE IN ({ph})")
+            params.extend(m_codes)
+        if m_stations:
+            ph = ",".join("?" for _ in m_stations)
+            where_parts.append(f"station COLLATE NOCASE IN ({ph})")
+            params.extend(m_stations)
+        where_sql = " OR ".join(where_parts)
+        subqueries.append(
+            f"""
+            SELECT {int(ord_idx)} AS token_ord,
+                   event_id, source_name, dialect, occurred_at, station, code,
+                   serial, duration_s, provenance
+            FROM (
+                SELECT event_id, source_name, dialect, occurred_at, station, code,
+                       serial, duration_s, provenance
+                FROM line_events
+                WHERE {where_sql}
+                ORDER BY occurred_at DESC, rowid ASC
+                LIMIT ?
+            )
+            """
+        )
+        params.append(cap)
+
+    full_sql = "\nUNION ALL\n".join(subqueries)
+    raw_rows = conn.execute(full_sql, params).fetchall()
+
+    rows: list[sqlite3.Row] = []
+    current_ord: int | None = None
+    for row in raw_rows:
+        t_ord = int(row["token_ord"])
+        if current_ord is not None and t_ord != current_ord and len(rows) >= cap:
+            break
+        current_ord = t_ord
+        rows.append(row)
+    return rows
+
+
 def match_line_events_for_question(
     question: str,
     collection_id: str | None = None,
@@ -399,41 +598,31 @@ def match_line_events_for_question(
     empty = {"events": (), "mode": "none", "count": 0, "owner_text": ""}
     if not db_path.is_file():
         return empty
+    total, codes_vocab, stations_vocab = _get_line_events_vocab(db_path)
+    if total <= 0:
+        return empty
+
     tokens = _question_tokens(question)
+    token_clauses = _resolve_token_clauses(tokens, codes_vocab, stations_vocab)
+    is_investigation = _looks_like_investigation(question)
+
+    # Gate: skip opening/scanning line_events when question has neither token match nor investigation signal
+    if not token_clauses and not is_investigation:
+        return empty
+
     cap = max(1, min(int(limit), 12))
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
     try:
-        total = int(conn.execute("SELECT COUNT(*) FROM line_events").fetchone()[0])
-        if total <= 0:
-            return empty
-        rows: list[sqlite3.Row] = []
-        for token in tokens:
-            if len(token) < 2:
-                continue
-            found = conn.execute(
-                """
-                SELECT event_id, source_name, dialect, occurred_at, station, code,
-                       serial, duration_s, provenance
-                FROM line_events
-                WHERE lower(code) = ? OR lower(station) = ?
-                   OR instr(lower(code), ?) > 0 OR instr(lower(station), ?) > 0
-                ORDER BY occurred_at DESC
-                LIMIT ?
-                """,
-                (token, token, token, token, cap),
-            ).fetchall()
-            rows.extend(found)
-            if len(rows) >= cap:
-                break
+        rows = _query_matched_events_single_sql(conn, token_clauses, cap)
         mode = "matched"
-        if not rows and _looks_like_investigation(question):
+        if not rows and is_investigation:
             rows = conn.execute(
                 """
                 SELECT event_id, source_name, dialect, occurred_at, station, code,
                        serial, duration_s, provenance
                 FROM line_events
-                ORDER BY occurred_at DESC
+                ORDER BY occurred_at DESC, rowid ASC
                 LIMIT ?
                 """,
                 (min(5, cap),),

@@ -444,46 +444,275 @@ def get_domain_document_ids(domain: Optional[str]) -> Optional[tuple[str, ...]]:
     return _DOMAIN_DOCUMENTS_CACHE.get(norm_domain)
 
 
+COVERING_CATALOG_INDEX_NAME = "idx_chunks_doc_source_catalog"
+DOCUMENT_CATALOG_TABLE_NAME = "document_catalog"
+
 _DOMAIN_ALL_SPECS_CACHE: dict[str, list[Any]] = {}
+_DOMAIN_ALL_SPECS_STAT_CACHE: dict[str, tuple[int, int]] = {}
 
 
-def load_all_index_specs(db_path: Path | str | None = None) -> list[Any]:
+def clear_index_specs_cache() -> None:
+    """Clear the in-memory SourceSpec catalog cache."""
+    global _DOMAIN_ALL_SPECS_CACHE, _DOMAIN_ALL_SPECS_STAT_CACHE
+    if isinstance(_DOMAIN_ALL_SPECS_CACHE, dict):
+        _DOMAIN_ALL_SPECS_CACHE.clear()
+    else:
+        _DOMAIN_ALL_SPECS_CACHE = {}
+    if isinstance(_DOMAIN_ALL_SPECS_STAT_CACHE, dict):
+        _DOMAIN_ALL_SPECS_STAT_CACHE.clear()
+    else:
+        _DOMAIN_ALL_SPECS_STAT_CACHE = {}
+
+
+def _catalog_manifest_path(db_path: Path) -> Path:
+    return db_path.parent / f".{db_path.name}.catalog.local.json"
+
+
+def _read_catalog_manifest(
+    db_path: Path,
+    mtime_ns: int,
+    size_bytes: int,
+) -> Optional[list[tuple[str, str, str]]]:
+    manifest_path = _catalog_manifest_path(db_path)
+    if not manifest_path.is_file():
+        return None
+    try:
+        import json
+
+        raw = json.loads(manifest_path.read_text(encoding="utf-8"))
+        if (
+            not isinstance(raw, dict)
+            or int(raw.get("schema_version", 0)) != 1
+            or int(raw.get("db_mtime_ns", -1)) != int(mtime_ns)
+            or int(raw.get("db_size", -1)) != int(size_bytes)
+        ):
+            return None
+        entries = raw.get("entries")
+        if not isinstance(entries, list):
+            return None
+        return [
+            (str(item[0]), str(item[1]), str(item[2]))
+            for item in entries
+            if isinstance(item, (list, tuple)) and len(item) >= 3
+        ]
+    except Exception:
+        return None
+
+
+def _write_catalog_manifest(
+    db_path: Path,
+    mtime_ns: int,
+    size_bytes: int,
+    rows: Sequence[tuple[Any, ...]],
+) -> None:
+    manifest_path = _catalog_manifest_path(db_path)
+    tmp_path = manifest_path.with_suffix(f".{os.getpid()}.tmp")
+    try:
+        import json
+
+        payload = {
+            "schema_version": 1,
+            "db_mtime_ns": int(mtime_ns),
+            "db_size": int(size_bytes),
+            "entries": [
+                [str(r[0]), str(r[1] or ""), str(r[2] or "")]
+                for r in rows
+            ],
+        }
+        tmp_path.write_text(
+            json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+            encoding="utf-8",
+        )
+        os.replace(tmp_path, manifest_path)
+    except Exception:
+        try:
+            if tmp_path.exists():
+                tmp_path.unlink()
+        except OSError:
+            pass
+
+
+def _query_index_catalog_rows(con: sqlite3.Connection) -> list[tuple[str, str, str]]:
+    """Load (document_id, MIN(source_path), MIN(source_name)) without scanning chunks table."""
+    schema_objs = {
+        (str(row[0]), str(row[1]))
+        for row in con.execute(
+            "SELECT type, name FROM sqlite_master WHERE type IN ('table', 'index')"
+        ).fetchall()
+    }
+    if ("table", DOCUMENT_CATALOG_TABLE_NAME) in schema_objs:
+        cat_rows = con.execute(
+            f"SELECT document_id, source_path, source_name "
+            f"FROM {DOCUMENT_CATALOG_TABLE_NAME} ORDER BY document_id"
+        ).fetchall()
+        if cat_rows:
+            return [(str(r[0]), str(r[1] or ""), str(r[2] or "")) for r in cat_rows]
+
+    has_covering_idx = ("index", COVERING_CATALOG_INDEX_NAME) in schema_objs
+    has_doc_idx = ("index", "idx_chunks_document_id") in schema_objs
+
+    if has_covering_idx or not has_doc_idx:
+        sql = """
+            WITH RECURSIVE docs(doc_id) AS (
+                SELECT MIN(document_id) FROM chunks
+                UNION ALL
+                SELECT (SELECT MIN(document_id) FROM chunks WHERE document_id > docs.doc_id)
+                FROM docs
+                WHERE docs.doc_id IS NOT NULL
+            )
+            SELECT d.doc_id,
+                   (SELECT MIN(source_path) FROM chunks WHERE document_id = d.doc_id),
+                   (SELECT MIN(source_name) FROM chunks WHERE document_id = d.doc_id)
+            FROM docs d
+            WHERE d.doc_id IS NOT NULL
+            ORDER BY d.doc_id
+        """
+    else:
+        sql = """
+            WITH RECURSIVE docs(doc_id) AS (
+                SELECT MIN(document_id) FROM chunks
+                UNION ALL
+                SELECT (SELECT MIN(document_id) FROM chunks WHERE document_id > docs.doc_id)
+                FROM docs
+                WHERE docs.doc_id IS NOT NULL
+            )
+            SELECT d.doc_id,
+                   (SELECT source_path FROM chunks WHERE document_id = d.doc_id LIMIT 1),
+                   (SELECT source_name FROM chunks WHERE document_id = d.doc_id LIMIT 1)
+            FROM docs d
+            WHERE d.doc_id IS NOT NULL
+            ORDER BY d.doc_id
+        """
+    raw_rows = con.execute(sql).fetchall()
+    return [(str(r[0]), str(r[1] or ""), str(r[2] or "")) for r in raw_rows]
+
+
+def ensure_index_catalog(db_path: Path | str) -> bool:
+    """Ensure covering index on (document_id, source_path, source_name) and sidecar manifest."""
+    path = Path(db_path)
+    if not path.is_file():
+        return False
+    con: Optional[sqlite3.Connection] = None
+    try:
+        con = sqlite3.connect(str(path.resolve()), timeout=10.0)
+        with con:
+            con.execute(
+                f"CREATE INDEX IF NOT EXISTS {COVERING_CATALOG_INDEX_NAME} "
+                "ON chunks(document_id, source_path, source_name)"
+            )
+        rows = _query_index_catalog_rows(con)
+    except Exception:
+        return False
+    finally:
+        if con is not None:
+            con.close()
+    try:
+        st = path.stat()
+        _write_catalog_manifest(path.resolve(), st.st_mtime_ns, st.st_size, rows)
+    except OSError:
+        pass
+    return True
+
+
+def _build_source_specs(rows: Sequence[tuple[Any, ...]]) -> list[Any]:
+    from aios_habit.rag_v2.pipeline import SourceSpec
+
+    cwd_resolved = Path.cwd().resolve()
+    try:
+        cwd_entries = {name.lower() for name in os.listdir(cwd_resolved)}
+    except OSError:
+        cwd_entries = set()
+
+    specs: list[Any] = []
+    for r in rows:
+        doc_id = str(r[0])
+        raw = str(r[2] if r[2] else r[1])
+        if (
+            raw
+            and "/" not in raw
+            and "\\" not in raw
+            and ":" not in raw
+            and raw not in (".", "..")
+            and raw.lower() not in cwd_entries
+        ):
+            resolved_p = cwd_resolved / raw
+        else:
+            resolved_p = Path(raw).resolve()
+        spec = object.__new__(SourceSpec)
+        object.__setattr__(spec, "path", resolved_p)
+        object.__setattr__(spec, "source_id", doc_id)
+        object.__setattr__(spec, "document_id", doc_id or _fallback_doc_id(resolved_p))
+        object.__setattr__(spec, "privacy_labels", ("local_only",))
+        object.__setattr__(spec, "enabled", True)
+        object.__setattr__(spec, "owner_consent", True)
+        object.__setattr__(spec, "language_hints", ("vi", "ja", "en"))
+        specs.append(spec)
+    return specs
+
+
+def _fallback_doc_id(resolved_path: Path) -> str:
+    from aios_habit.rag_v2.pipeline import _stable_document_id
+
+    return _stable_document_id(resolved_path)
+
+
+def load_all_index_specs(
+    db_path: Path | str | None = None,
+    *,
+    use_manifest: bool = True,
+) -> list[Any]:
     """Load SourceSpec objects for all documents in library.sqlite (cached per path)."""
-    global _DOMAIN_ALL_SPECS_CACHE
+    global _DOMAIN_ALL_SPECS_CACHE, _DOMAIN_ALL_SPECS_STAT_CACHE
     if not isinstance(_DOMAIN_ALL_SPECS_CACHE, dict):
         _DOMAIN_ALL_SPECS_CACHE = {}
+    if not isinstance(_DOMAIN_ALL_SPECS_STAT_CACHE, dict):
+        _DOMAIN_ALL_SPECS_STAT_CACHE = {}
 
-    from aios_habit.rag_v2.pipeline import SourceSpec
     if db_path is None:
         prod_path = Path("C:/AIOS_workspace_chat_rag_v2_production/bge_m3_hybrid/collections/tri_thuc/library.sqlite")
         db_path = prod_path if prod_path.is_file() else Path("local_runs/workspace_chat_rag_v2_production/bge_m3_hybrid/collections/tri_thuc/library.sqlite")
     else:
         db_path = Path(db_path)
 
-    cache_key = str(db_path.resolve()) if db_path.is_file() else str(db_path)
-    if cache_key in _DOMAIN_ALL_SPECS_CACHE:
-        return _DOMAIN_ALL_SPECS_CACHE[cache_key]
+    is_file = db_path.is_file()
+    resolved_path = db_path.resolve() if is_file else db_path
+    cache_key = str(resolved_path)
 
-    if not db_path.is_file():
+    current_stat: Optional[tuple[int, int]] = None
+    if is_file:
+        try:
+            st = resolved_path.stat()
+            current_stat = (int(st.st_mtime_ns), int(st.st_size))
+        except OSError:
+            current_stat = None
+
+    if cache_key in _DOMAIN_ALL_SPECS_CACHE:
+        cached_stat = _DOMAIN_ALL_SPECS_STAT_CACHE.get(cache_key)
+        if cached_stat is None or current_stat is None or cached_stat == current_stat:
+            return _DOMAIN_ALL_SPECS_CACHE[cache_key]
+
+    if not is_file:
         return []
 
     try:
-        uri = db_path.resolve().as_uri() + "?mode=ro"
-        with sqlite3.connect(uri, uri=True, timeout=10.0) as con:
-            rows = con.execute(
-                "SELECT document_id, MIN(source_path), MIN(source_name) FROM chunks GROUP BY document_id ORDER BY document_id"
-            ).fetchall()
-        specs = [
-            SourceSpec(
-                path=Path(str(r[2] if r[2] else r[1])),
-                source_id=str(r[0]),
-                document_id=str(r[0]),
-                owner_consent=True,
-                language_hints=("vi", "ja", "en"),
-            )
-            for r in rows
-        ]
+        rows: Optional[list[tuple[str, str, str]]] = None
+        if use_manifest and current_stat is not None:
+            rows = _read_catalog_manifest(resolved_path, current_stat[0], current_stat[1])
+
+        if rows is None:
+            uri = resolved_path.as_uri() + "?mode=ro"
+            con = sqlite3.connect(uri, uri=True, timeout=10.0)
+            try:
+                rows = _query_index_catalog_rows(con)
+            finally:
+                con.close()
+            if use_manifest and current_stat is not None and rows:
+                _write_catalog_manifest(resolved_path, current_stat[0], current_stat[1], rows)
+
+        specs = _build_source_specs(rows)
         _DOMAIN_ALL_SPECS_CACHE[cache_key] = specs
+        if current_stat is not None:
+            _DOMAIN_ALL_SPECS_STAT_CACHE[cache_key] = current_stat
         return specs
     except Exception:
         return []
