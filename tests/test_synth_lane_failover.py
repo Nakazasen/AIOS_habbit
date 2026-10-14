@@ -272,13 +272,32 @@ def test_router_two_layer_timeout_consistency(monkeypatch):
     })
     assert t_override == 5, f"Expected explicit override 5s, got {t_override}"
 
-    # Case 4: Verify inner provider timeout clamping during router attempt
-    captured_inner_env = {}
+    # Case 4: Verify inner provider timeout clamping via explicit request.timeout_seconds without mutating os.environ (ARCH-06)
+    captured_inner_state = {}
 
     def inspect_env_router(request, context):
-        captured_inner_env["local_timeout"] = int(os.environ.get("AIOS_LOCAL_AI_TIMEOUT_SECONDS", "30"))
-        captured_inner_env["cloud_timeout"] = int(os.environ.get("AIOS_PROVIDER_TIMEOUT_SECONDS", "30"))
-        return WorkspaceAIAnswerResult(ok=True, answer_text="Inner call done.")
+        from aios_habit.ai_router import provider_configs_from_env
+        captured_inner_state["request_timeout"] = getattr(request, "timeout_seconds", None)
+        captured_inner_state["env_local_during_call"] = os.environ.get("AIOS_LOCAL_AI_TIMEOUT_SECONDS")
+        captured_inner_state["env_cloud_during_call"] = os.environ.get("AIOS_PROVIDER_TIMEOUT_SECONDS")
+        cfgs = provider_configs_from_env(
+            {
+                "AIOS_LOCAL_AI_ENDPOINT": "http://127.0.0.1:11434/v1/chat/completions",
+                "AIOS_LOCAL_AI_MODEL": "local-test-model",
+                "AIOS_LOCAL_AI_TIMEOUT_SECONDS": "90",
+                "GEMINI_API_KEY": "fake-key",
+                "AIOS_PROVIDER_TIMEOUT_SECONDS": "60",
+            },
+            timeout_seconds=request.timeout_seconds,
+        )
+        captured_inner_state["local_timeout"] = next(c.timeout_seconds for c in cfgs if c.trusted_internal)
+        captured_inner_state["cloud_timeout"] = next(c.timeout_seconds for c in cfgs if not c.trusted_internal)
+        return WorkspaceAIAnswerResult(
+            ok=True,
+            answer_text="Inner call done.",
+            included_source_titles=(),
+            warnings=(),
+        )
 
     import os
     monkeypatch.setenv("AIOS_ROUTER_TIMEOUT_SECONDS", "5")
@@ -301,10 +320,13 @@ def test_router_two_layer_timeout_consistency(monkeypatch):
         backend="nakazasen_router",
     )
 
-    # During the router attempt, inner timeout was clamped to <= router_timeout (5s)
-    assert captured_inner_env.get("local_timeout") == 5, f"Inner local timeout must be 5s, got {captured_inner_env.get('local_timeout')}"
-    assert captured_inner_env.get("cloud_timeout") == 5, f"Inner cloud timeout must be 5s, got {captured_inner_env.get('cloud_timeout')}"
-    # After the router attempt, environment was cleanly restored
+    # Explicit request.timeout_seconds is 5s and clamps provider configs to <= 5s
+    assert captured_inner_state.get("request_timeout") == 5
+    assert captured_inner_state.get("local_timeout") == 5, f"Inner local timeout must be 5s, got {captured_inner_state.get('local_timeout')}"
+    assert captured_inner_state.get("cloud_timeout") == 5, f"Inner cloud timeout must be 5s, got {captured_inner_state.get('cloud_timeout')}"
+    # os.environ is NEVER mutated during or after the router attempt (ARCH-06)
+    assert captured_inner_state.get("env_local_during_call") == "90"
+    assert captured_inner_state.get("env_cloud_during_call") == "60"
     assert os.environ.get("AIOS_LOCAL_AI_TIMEOUT_SECONDS") == "90"
     assert os.environ.get("AIOS_PROVIDER_TIMEOUT_SECONDS") == "60"
 

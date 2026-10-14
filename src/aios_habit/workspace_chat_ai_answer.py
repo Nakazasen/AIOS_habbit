@@ -66,6 +66,8 @@ class WorkspaceAIAnswerRequest:
     on_chunk: Any = None
     ai_mode: str = "grounded"
     anchored_context: Optional[str] = None
+    timeout_seconds: Optional[int] = None
+    router_deadline_monotonic: Optional[float] = None
 
 
 @dataclass(frozen=True)
@@ -684,6 +686,8 @@ def _build_outbound_manifest(
 def _generate_real_router_answer(
     request: WorkspaceAIAnswerRequest,
 ) -> WorkspaceAIAnswerResult:
+    req_timeout = getattr(request, "timeout_seconds", None)
+    req_deadline = getattr(request, "router_deadline_monotonic", None)
     if getattr(request, "ai_mode", "grounded") == "external":
         from aios_habit.brain_gateway import SanitizedRouterPayload
         from aios_habit.workspace_chat_router_adapter import generate_answer_via_router_detailed
@@ -698,7 +702,15 @@ def _generate_real_router_answer(
                 "ui_locale": request.ui_locale,
             },
         )
-        detailed_result = generate_answer_via_router_detailed(payload, on_chunk=request.on_chunk)
+        try:
+            detailed_result = generate_answer_via_router_detailed(
+                payload,
+                on_chunk=request.on_chunk,
+                timeout_seconds=req_timeout,
+                router_deadline_monotonic=req_deadline,
+            )
+        except TypeError:
+            detailed_result = generate_answer_via_router_detailed(payload, on_chunk=request.on_chunk)
         if detailed_result.ok:
             return WorkspaceAIAnswerResult(
                 ok=True,
@@ -822,10 +834,18 @@ def _generate_real_router_answer(
         effective_provider = ""
         effective_model = ""
     else:
-        detailed = generate_answer_via_router_detailed(
-            decision.sanitized_payload,
-            on_chunk=request.on_chunk,
-        )
+        try:
+            detailed = generate_answer_via_router_detailed(
+                decision.sanitized_payload,
+                on_chunk=request.on_chunk,
+                timeout_seconds=req_timeout,
+                router_deadline_monotonic=req_deadline,
+            )
+        except TypeError:
+            detailed = generate_answer_via_router_detailed(
+                decision.sanitized_payload,
+                on_chunk=request.on_chunk,
+            )
         ok = detailed.ok
         response_text = detailed.text
         effective_provider = detailed.route.effective_provider if detailed.route else ""

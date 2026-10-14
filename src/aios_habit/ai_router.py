@@ -5,7 +5,12 @@ import urllib.error
 from dataclasses import dataclass, field, replace
 from typing import Callable, Any
 
-from aios_habit.ai_provider_bridge import ProviderConfig, answer_with_provider
+from aios_habit.ai_provider_bridge import (
+    ProviderConfig,
+    answer_with_provider,
+    get_configured_local_ai_timeout_seconds,
+    get_configured_provider_timeout_seconds,
+)
 from aios_habit.provider_catalog import get_provider_profile, is_provider_allowed_for_safety_mode
 from aios_habit.provider_health import (
     ProviderHealthStore,
@@ -47,6 +52,8 @@ class RouterRequest:
     privacy_label: str = "cloud_safe"
     ai_mode: str = "grounded"
     on_chunk: Any = None
+    timeout_seconds: int | None = None
+    router_deadline_monotonic: float | None = None
 
 
 @dataclass
@@ -166,7 +173,20 @@ def select_candidate_providers(request: RouterRequest, provider_configs: list[Ro
 
 
 def call_openai_compatible_provider(config: RouterProviderConfig, request: RouterRequest) -> str:
-    pcfg = ProviderConfig(provider_type=config.provider_id, endpoint_url=config.endpoint_url, model_name=config.model_name, api_key=config.api_key, locality="local" if config.trusted_internal else "cloud", timeout_seconds=config.timeout_seconds, enabled=config.enabled)
+    req_timeout = getattr(request, "timeout_seconds", None)
+    effective_timeout = int(config.timeout_seconds)
+    if req_timeout is not None:
+        effective_timeout = max(1, min(effective_timeout, int(req_timeout)))
+    pcfg = ProviderConfig(
+        provider_type=config.provider_id,
+        endpoint_url=config.endpoint_url,
+        model_name=config.model_name,
+        api_key=config.api_key,
+        locality="local" if config.trusted_internal else "cloud",
+        timeout_seconds=effective_timeout,
+        enabled=config.enabled,
+        router_deadline_monotonic=getattr(request, "router_deadline_monotonic", None),
+    )
     res = answer_with_provider(
         request.question,
         request.source_context,
@@ -510,14 +530,22 @@ def _env_int(
     return max(minimum, min(maximum, parsed))
 
 
-def provider_configs_from_env(env: dict[str, Any] | None = None) -> list[RouterProviderConfig]:
+def provider_configs_from_env(
+    env: dict[str, Any] | None = None,
+    *,
+    timeout_seconds: int | None = None,
+) -> list[RouterProviderConfig]:
     """Create provider configs from environment without logging secrets."""
     import os
     from aios_habit.ai_provider_bridge import is_local_endpoint
     values = env if env is not None else os.environ
     configs: list[RouterProviderConfig] = []
-    local_timeout = _env_int(values, "AIOS_LOCAL_AI_TIMEOUT_SECONDS", 30)
-    cloud_timeout = _env_int(values, "AIOS_PROVIDER_TIMEOUT_SECONDS", 30)
+    local_timeout = get_configured_local_ai_timeout_seconds(env)
+    cloud_timeout = get_configured_provider_timeout_seconds(env)
+    if timeout_seconds is not None:
+        clamped_timeout = max(1, min(120, int(timeout_seconds)))
+        local_timeout = max(1, min(local_timeout, clamped_timeout))
+        cloud_timeout = max(1, min(cloud_timeout, clamped_timeout))
     local_endpoint = str(values.get("AIOS_LOCAL_AI_ENDPOINT") or "").strip()
     raw_local_model = str(values.get("AIOS_LOCAL_AI_MODEL") or "").strip()
     raw_failover_models = str(values.get("AIOS_LOCAL_AI_FAILOVER_MODELS") or "").strip()
@@ -608,12 +636,32 @@ def provider_env_presence(env: dict[str, Any] | None = None) -> dict[str, bool]:
     return {name: bool(values.get(name)) for name in names}
 
 
-def providers_from_env_or_session(catalog=None, session_state: dict[str, Any] | None = None) -> list[RouterProviderConfig]:
+def providers_from_env_or_session(
+    catalog=None,
+    session_state: dict[str, Any] | None = None,
+    *,
+    timeout_seconds: int | None = None,
+) -> list[RouterProviderConfig]:
     session_state = session_state or {}
     endpoint = str(session_state.get("local_ai_endpoint", "")).strip()
     model = str(session_state.get("local_ai_model", "")).strip()
-    configs = provider_configs_from_env()
+    configs = provider_configs_from_env(timeout_seconds=timeout_seconds)
     if endpoint and model:
-        configs.append(RouterProviderConfig("openai_compatible_local", "AI trong máy tương thích OpenAI", endpoint, model, str(session_state.get("local_ai_api_key", "")), True, True, 10, int(session_state.get("local_ai_timeout", 30))))
+        sess_timeout = int(session_state.get("local_ai_timeout", get_configured_local_ai_timeout_seconds()))
+        if timeout_seconds is not None:
+            sess_timeout = max(1, min(sess_timeout, int(timeout_seconds)))
+        configs.append(
+            RouterProviderConfig(
+                "openai_compatible_local",
+                "AI trong máy tương thích OpenAI",
+                endpoint,
+                model,
+                str(session_state.get("local_ai_api_key", "")),
+                True,
+                True,
+                10,
+                sess_timeout,
+            )
+        )
     return configs
 

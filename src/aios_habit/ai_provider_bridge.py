@@ -2,12 +2,14 @@ import ipaddress
 import json
 import os
 import socket
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping, Optional, Protocol
 
+import aios_habit.workspace_paths  # Ensures .env is loaded once before reading initial timeout config
 from aios_habit.rag_evidence import RAGEvidencePack
 from aios_habit.rag_answer_composer import StrongModelAnswer, stable_answer_draft_id
 
@@ -29,6 +31,11 @@ _EMPTY_ANSWER_RETRY_DIRECTIVE = (
     "\n\nQUAN TRỌNG: Trả lời TRỰC TIẾP trong nội dung chính; giữ phần suy luận "
     "nội bộ thật ngắn; tuyệt đối không để nội dung trả lời rỗng."
 )
+MIN_REASONING_RETRY_BUDGET_SECONDS = 0.25
+TIMEOUT_STREAM_INTERRUPTED_NOTICE_VI = (
+    "\n\n[Lưu ý: Phản hồi bị ngắt do hết thời gian chờ; "
+    "đã giữ lại phần nội dung hợp lệ đã nhận.]"
+)
 
 
 class ProviderEmptyAnswerError(RuntimeError):
@@ -46,6 +53,7 @@ class ProviderConfig:
     enabled: bool = False
     max_context_chars: int = DEFAULT_MAX_CONTEXT_CHARS
     max_tokens: int = DEFAULT_MAX_TOKENS
+    router_deadline_monotonic: Optional[float] = None
 
 
 @dataclass
@@ -129,10 +137,59 @@ def _as_int(value: Any, default: int, minimum: int, maximum: int) -> int:
     return max(minimum, min(maximum, parsed))
 
 
+# ARCH-06: One-time loaded timeout configuration values at module initialization
+CONFIGURED_LOCAL_AI_TIMEOUT_SECONDS: int = _as_int(
+    os.environ.get("AIOS_LOCAL_AI_TIMEOUT_SECONDS"),
+    DEFAULT_TIMEOUT_SECONDS,
+    1,
+    120,
+)
+CONFIGURED_PROVIDER_TIMEOUT_SECONDS: int = _as_int(
+    os.environ.get("AIOS_PROVIDER_TIMEOUT_SECONDS"),
+    DEFAULT_TIMEOUT_SECONDS,
+    1,
+    120,
+)
+
+
+def get_configured_local_ai_timeout_seconds(
+    env: Optional[Mapping[str, Any]] = None,
+) -> int:
+    """Return local AI timeout from explicit mapping if supplied, else the one-time loaded config."""
+    if env is not None:
+        if "AIOS_LOCAL_AI_TIMEOUT_SECONDS" not in env:
+            return DEFAULT_TIMEOUT_SECONDS
+        return _as_int(
+            env.get("AIOS_LOCAL_AI_TIMEOUT_SECONDS"),
+            DEFAULT_TIMEOUT_SECONDS,
+            1,
+            120,
+        )
+    return CONFIGURED_LOCAL_AI_TIMEOUT_SECONDS
+
+
+def get_configured_provider_timeout_seconds(
+    env: Optional[Mapping[str, Any]] = None,
+) -> int:
+    """Return cloud provider timeout from explicit mapping if supplied, else the one-time loaded config."""
+    if env is not None:
+        if "AIOS_PROVIDER_TIMEOUT_SECONDS" not in env:
+            return DEFAULT_TIMEOUT_SECONDS
+        return _as_int(
+            env.get("AIOS_PROVIDER_TIMEOUT_SECONDS"),
+            DEFAULT_TIMEOUT_SECONDS,
+            1,
+            120,
+        )
+    return CONFIGURED_PROVIDER_TIMEOUT_SECONDS
+
+
 def load_provider_config_from_env_or_session(
     session_values: Optional[Mapping[str, Any]] = None,
+    *,
+    timeout_seconds: Optional[int] = None,
 ) -> ProviderConfig:
-    """Load config from transient UI state first, then environment variables."""
+    """Load config from transient UI state first, then one-time loaded configuration."""
     session = session_values or {}
     endpoint = str(
         session.get("local_ai_endpoint")
@@ -163,9 +220,14 @@ def load_provider_config_from_env_or_session(
         enabled = _as_bool(os.getenv("AIOS_LOCAL_AI_ENABLED"), enabled_default)
     else:
         enabled = enabled_default
+    raw_timeout = (
+        timeout_seconds
+        if timeout_seconds is not None
+        else session.get("local_ai_timeout", CONFIGURED_LOCAL_AI_TIMEOUT_SECONDS)
+    )
     timeout = _as_int(
-        session.get("local_ai_timeout", os.getenv("AIOS_LOCAL_AI_TIMEOUT_SECONDS")),
-        DEFAULT_TIMEOUT_SECONDS,
+        raw_timeout,
+        CONFIGURED_LOCAL_AI_TIMEOUT_SECONDS,
         1,
         120,
     )
@@ -283,6 +345,7 @@ def _post_chat_once(
     *,
     stream: bool = False,
     on_chunk: Optional[Callable[[str], None]] = None,
+    timeout_seconds: Optional[float] = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "model": config.model_name,
@@ -308,43 +371,73 @@ def _post_chat_once(
         headers=headers,
         method="POST",
     )
-    with urllib.request.urlopen(request, timeout=config.timeout_seconds) as response:
+    effective_timeout = (
+        max(0.05, float(timeout_seconds))
+        if timeout_seconds is not None
+        else max(0.05, float(config.timeout_seconds))
+    )
+    with urllib.request.urlopen(request, timeout=effective_timeout) as response:
         if payload.get("stream"):
             full_chunks: list[str] = []
             reasoning_chunks: list[str] = []
+            raw_lines: list[bytes] = []
+            saw_sse_data = False
             finish_reason: str = ""
-            for line_bytes in response:
-                line_str = line_bytes.decode("utf-8").strip()
-                if not line_str or not line_str.startswith("data:"):
-                    continue
-                data_body = line_str[5:].strip()
-                if data_body == "[DONE]":
-                    break
-                try:
-                    event_json = json.loads(data_body)
-                except Exception:
-                    continue
-                choices = event_json.get("choices") or []
-                if not choices:
-                    continue
-                delta = choices[0].get("delta") or {}
-                if choices[0].get("finish_reason"):
-                    finish_reason = str(choices[0]["finish_reason"]).strip().lower()
+            try:
+                for line_bytes in response:
+                    raw_lines.append(line_bytes)
+                    line_str = line_bytes.decode("utf-8", errors="replace").strip()
+                    if not line_str or not line_str.startswith("data:"):
+                        continue
+                    saw_sse_data = True
+                    data_body = line_str[5:].strip()
+                    if data_body == "[DONE]":
+                        break
+                    try:
+                        event_json = json.loads(data_body)
+                    except Exception:
+                        continue
+                    choices = event_json.get("choices") or []
+                    if not choices:
+                        continue
+                    delta = choices[0].get("delta") or {}
+                    if choices[0].get("finish_reason"):
+                        finish_reason = str(choices[0]["finish_reason"]).strip().lower()
 
-                # CẤM tuyệt đối lấy reasoning / reasoning_content làm câu trả lời cho người dùng!
-                if "reasoning_content" in delta and delta["reasoning_content"]:
-                    reasoning_chunks.append(str(delta["reasoning_content"]))
-                elif "reasoning" in delta and delta["reasoning"]:
-                    reasoning_chunks.append(str(delta["reasoning"]))
+                    # CẤM tuyệt đối lấy reasoning / reasoning_content làm câu trả lời cho người dùng!
+                    if "reasoning_content" in delta and delta["reasoning_content"]:
+                        reasoning_chunks.append(str(delta["reasoning_content"]))
+                    elif "reasoning" in delta and delta["reasoning"]:
+                        reasoning_chunks.append(str(delta["reasoning"]))
 
-                content_chunk = delta.get("content")
-                if content_chunk:
-                    full_chunks.append(content_chunk)
+                    content_chunk = delta.get("content")
+                    if content_chunk:
+                        full_chunks.append(content_chunk)
+                        if on_chunk:
+                            try:
+                                on_chunk(content_chunk)
+                            except Exception:
+                                pass
+            except (TimeoutError, socket.timeout):
+                if not full_chunks:
+                    raise
+                finish_reason = "timeout"
+
+            if not saw_sse_data and raw_lines:
+                raw_body = b"".join(raw_lines).decode("utf-8", errors="replace").strip()
+                if raw_body.startswith("{"):
+                    parsed_json = json.loads(raw_body)
                     if on_chunk:
                         try:
-                            on_chunk(content_chunk)
+                            choices = parsed_json.get("choices") or []
+                            if choices:
+                                msg_obj = choices[0].get("message") or {}
+                                content_val = msg_obj.get("content")
+                                if content_val:
+                                    on_chunk(str(content_val))
                         except Exception:
                             pass
+                    return parsed_json
 
             full_text = "".join(full_chunks)
             msg_dict: dict[str, Any] = {"content": full_text}
@@ -368,6 +461,24 @@ def _first_choice(data: dict[str, Any]) -> tuple[dict[str, Any], str]:
     return message, finish_reason
 
 
+def _has_sufficient_retry_budget(
+    *,
+    elapsed_first_s: float,
+    remaining_budget_s: float,
+    total_budget_s: float,
+) -> bool:
+    """Return True only when enough router_timeout budget remains for a reasoning-only retry."""
+    if remaining_budget_s < MIN_REASONING_RETRY_BUDGET_SECONDS:
+        return False
+    # Retry doubles max_tokens, so require at least as much remaining budget as
+    # the first attempt took, and at least 35% of the total timeout budget.
+    if remaining_budget_s < elapsed_first_s:
+        return False
+    if total_budget_s > 0.0 and remaining_budget_s < (total_budget_s * 0.35):
+        return False
+    return True
+
+
 def _post_chat(
     config: ProviderConfig,
     user_prompt: str,
@@ -386,6 +497,18 @@ def _post_chat(
         else getattr(config, "max_tokens", DEFAULT_MAX_TOKENS) or DEFAULT_MAX_TOKENS
     )
     use_stream = bool(on_chunk is not None or os.environ.get("AIOS_STREAM_SYNTHESIS", "1") == "1")
+    t_call_start = time.monotonic()
+    total_budget_s = max(0.05, float(getattr(config, "timeout_seconds", DEFAULT_TIMEOUT_SECONDS) or DEFAULT_TIMEOUT_SECONDS))
+    deadline_monotonic = getattr(config, "router_deadline_monotonic", None)
+    if deadline_monotonic is not None:
+        try:
+            deadline_remaining = float(deadline_monotonic) - t_call_start
+            if deadline_remaining <= 0.0:
+                raise TimeoutError("Router timeout budget exhausted before provider call.")
+            total_budget_s = min(total_budget_s, deadline_remaining)
+        except (TypeError, ValueError):
+            pass
+
     msg, finish_reason = _first_choice(
         _post_chat_once(
             config,
@@ -394,8 +517,17 @@ def _post_chat(
             effective_max_tokens,
             stream=use_stream,
             on_chunk=on_chunk,
+            timeout_seconds=total_budget_s,
         )
     )
+
+    elapsed_first_s = max(0.0, time.monotonic() - t_call_start)
+    remaining_budget_s = max(0.0, total_budget_s - elapsed_first_s)
+    if deadline_monotonic is not None:
+        try:
+            remaining_budget_s = min(remaining_budget_s, max(0.0, float(deadline_monotonic) - time.monotonic()))
+        except (TypeError, ValueError):
+            pass
 
     # CẤM tuyệt đối lấy reasoning / reasoning_content làm câu trả lời cho người dùng!
     # Reasoning là chuỗi suy luận nội bộ (CoT) làm rò rỉ prompt hệ thống và đánh giá an toàn.
@@ -405,10 +537,18 @@ def _post_chat(
             str(msg.get("reasoning_content") or msg.get("reasoning") or "").strip()
         )
         retry_budget = min(EMPTY_ANSWER_RETRY_TOKEN_CEILING, effective_max_tokens * 2)
-        if (reasoning_only or finish_reason == "length") and retry_budget > effective_max_tokens:
-            # The endpoint spent the whole budget on internal reasoning. Ask
-            # exactly once more for a direct answer, with a larger output
-            # budget and an explicit "answer directly" directive.
+        can_retry = (
+            (reasoning_only or finish_reason == "length")
+            and retry_budget > effective_max_tokens
+            and _has_sufficient_retry_budget(
+                elapsed_first_s=elapsed_first_s,
+                remaining_budget_s=remaining_budget_s,
+                total_budget_s=total_budget_s,
+            )
+        )
+        if can_retry:
+            # The endpoint spent the whole budget on internal reasoning and sufficient
+            # time budget remains in router_timeout. Ask once more for a direct answer.
             msg, finish_reason = _first_choice(
                 _post_chat_once(
                     config,
@@ -417,6 +557,7 @@ def _post_chat(
                     retry_budget,
                     stream=use_stream,
                     on_chunk=on_chunk,
+                    timeout_seconds=remaining_budget_s,
                 )
             )
             raw_content = str(msg.get("content") or "").strip()
@@ -433,6 +574,15 @@ def _post_chat(
         raise ProviderEmptyAnswerError(
             "Nội dung từ endpoint rỗng sau khi lọc (chỉ có suy luận nội bộ hoặc rò rỉ prompt hệ thống)."
         )
+
+    if finish_reason == "timeout":
+        cleaned = cleaned.rstrip(",;-—–/\\ \n\t") + TIMEOUT_STREAM_INTERRUPTED_NOTICE_VI
+        if on_chunk is not None:
+            try:
+                on_chunk(TIMEOUT_STREAM_INTERRUPTED_NOTICE_VI)
+            except Exception:
+                pass
+        return cleaned
 
     is_trunc, trunc_reason = inspect_truncation(cleaned, finish_reason=finish_reason)
     if is_trunc:

@@ -139,8 +139,13 @@ def resolve_router_attempt_timeout(env: Mapping[str, Any] | None = None) -> int:
     Contract:
       - If AIOS_ROUTER_TIMEOUT_SECONDS is explicitly configured, use it.
       - If AIOS_ROUTER_TIMEOUT_SECONDS is not set, derive from inner provider configurations
-        (AIOS_LOCAL_AI_TIMEOUT_SECONDS, default 30 but typically 90 in .env, and AIOS_PROVIDER_TIMEOUT_SECONDS).
+        (CONFIGURED_LOCAL_AI_TIMEOUT_SECONDS and CONFIGURED_PROVIDER_TIMEOUT_SECONDS).
     """
+    from aios_habit.ai_provider_bridge import (
+        get_configured_local_ai_timeout_seconds,
+        get_configured_provider_timeout_seconds,
+    )
+
     values = env if env is not None else os.environ
     router_env = values.get("AIOS_ROUTER_TIMEOUT_SECONDS")
     if router_env is not None and str(router_env).strip():
@@ -149,21 +154,8 @@ def resolve_router_attempt_timeout(env: Mapping[str, Any] | None = None) -> int:
         except ValueError:
             pass
 
-    local_timeout = 30
-    cloud_timeout = 30
-    try:
-        raw_local = values.get("AIOS_LOCAL_AI_TIMEOUT_SECONDS")
-        if raw_local is not None and str(raw_local).strip():
-            local_timeout = int(str(raw_local).strip())
-    except ValueError:
-        pass
-    try:
-        raw_cloud = values.get("AIOS_PROVIDER_TIMEOUT_SECONDS")
-        if raw_cloud is not None and str(raw_cloud).strip():
-            cloud_timeout = int(str(raw_cloud).strip())
-    except ValueError:
-        pass
-
+    local_timeout = get_configured_local_ai_timeout_seconds(env)
+    cloud_timeout = get_configured_provider_timeout_seconds(env)
     return max(1, local_timeout, cloud_timeout)
 
 
@@ -1331,8 +1323,11 @@ def route_workspace_chat_submission(
         worker_threads: list[threading.Thread] = []
 
         t_router_start = time.monotonic()
+        router_deadline_monotonic = t_router_start + float(router_timeout)
         ttft_recorded: list[float] = []
+        streamed_chunks: list[str] = []
         ttft_lock = threading.Lock()
+        partial_timeout_recovered = False
 
         ts_router_start = format_marker_timestamp()
         try:
@@ -1352,10 +1347,11 @@ def route_workspace_chat_submission(
                 with ttft_lock:
                     if not ttft_recorded:
                         ttft_recorded.append(time.monotonic() - t_router_start)
+                    streamed_chunks.append(chunk)
             if on_chunk is not None:
                 on_chunk(chunk)
 
-        effective_on_chunk = _timed_on_chunk if (on_chunk is not None or is_ext) else on_chunk
+        effective_on_chunk = _timed_on_chunk
 
         request = WorkspaceAIAnswerRequest(
             conversation_id=conversation_id,
@@ -1375,28 +1371,50 @@ def route_workspace_chat_submission(
             on_chunk=effective_on_chunk,
             ai_mode=ai_mode,
             anchored_context=anchored_context,
+            timeout_seconds=router_timeout,
+            router_deadline_monotonic=router_deadline_monotonic,
         )
 
         def _worker_wrapper() -> WorkspaceAIAnswerResult:
             worker_threads.append(threading.current_thread())
             return generate_workspace_ai_answer(request, object())
 
-        # Align inner provider timeouts with router_timeout during this execution
-        saved_env = {
-            "AIOS_LOCAL_AI_TIMEOUT_SECONDS": os.environ.get("AIOS_LOCAL_AI_TIMEOUT_SECONDS"),
-            "AIOS_PROVIDER_TIMEOUT_SECONDS": os.environ.get("AIOS_PROVIDER_TIMEOUT_SECONDS"),
-        }
-        try:
-            curr_local = int(saved_env["AIOS_LOCAL_AI_TIMEOUT_SECONDS"] or "30")
-        except ValueError:
-            curr_local = 30
-        try:
-            curr_cloud = int(saved_env["AIOS_PROVIDER_TIMEOUT_SECONDS"] or "30")
-        except ValueError:
-            curr_cloud = 30
-
-        os.environ["AIOS_LOCAL_AI_TIMEOUT_SECONDS"] = str(min(curr_local, router_timeout))
-        os.environ["AIOS_PROVIDER_TIMEOUT_SECONDS"] = str(min(curr_cloud, router_timeout))
+        def _recover_partial_stream_on_timeout() -> WorkspaceAIAnswerResult | None:
+            from aios_habit.workspace_chat_ai_answer import WorkspaceAIAnswerResult
+            with ttft_lock:
+                partial_raw = "".join(streamed_chunks).strip()
+            if not partial_raw or was_cancelled():
+                return None
+            from aios_habit.answer_sanitizer import clean_assistant_answer, is_system_prompt_leak
+            cleaned_partial = clean_assistant_answer(partial_raw)
+            if not cleaned_partial or is_system_prompt_leak(partial_raw):
+                return None
+            timeout_notice = (
+                f"\n\n[Lưu ý: Phản hồi bị ngắt do hết thời gian chờ ({router_timeout}s); "
+                "đã giữ lại phần nội dung hợp lệ đã nhận.]"
+            )
+            if "[Lưu ý: Phản hồi bị ngắt do hết thời gian chờ" not in cleaned_partial:
+                preserved_text = cleaned_partial + timeout_notice
+                if on_chunk is not None:
+                    try:
+                        on_chunk(timeout_notice)
+                    except Exception:
+                        pass
+            else:
+                preserved_text = cleaned_partial
+            return WorkspaceAIAnswerResult(
+                ok=True,
+                answer_text=preserved_text,
+                included_source_titles=(),
+                warnings=(f"Phản hồi bị ngắt do hết thời gian chờ ({router_timeout}s).",),
+                externally_sent=True,
+                provider_success=True,
+                provider_completion_status="partial_timeout",
+                grounding_status="external_ai" if is_ext else "grounded_partial_timeout",
+                outcome_status="partial_timeout",
+                effective_provider="Nakazasen Router",
+                effective_model="configured_by_provider",
+            )
 
         executor = concurrent.futures.ThreadPoolExecutor(
             max_workers=1,
@@ -1420,8 +1438,18 @@ def route_workspace_chat_submission(
                     worker_threads[0].join(timeout=0.1)
                 except Exception:
                     pass
-            LOGGER.warning("Nakazasen Router timed out after %ds; transferring to next backend in failover chain", router_timeout)
-            return (False, "", None, f"Nakazasen Router hết thời gian chờ ({router_timeout}s).")
+            recovered = _recover_partial_stream_on_timeout()
+            if recovered is not None:
+                partial_timeout_recovered = True
+                result = recovered
+                LOGGER.warning(
+                    "Nakazasen Router timed out after %ds; preserved %d chars of valid streamed content",
+                    router_timeout,
+                    len(recovered.answer_text),
+                )
+            else:
+                LOGGER.warning("Nakazasen Router timed out after %ds; transferring to next backend in failover chain", router_timeout)
+                return (False, "", None, f"Nakazasen Router hết thời gian chờ ({router_timeout}s).")
         except Exception as exc:
             abandoned_event.set()
             try:
@@ -1440,15 +1468,19 @@ def route_workspace_chat_submission(
             LOGGER.warning("Nakazasen Router execution error: %s", exc)
             return (False, "", None, f"Lỗi Nakazasen Router: {exc}")
         finally:
-            for k, v in saved_env.items():
-                if v is None:
-                    os.environ.pop(k, None)
-                else:
-                    os.environ[k] = v
             try:
                 executor.shutdown(wait=False)
             except Exception:
                 pass
+
+        if not result.ok:
+            err_check = f"{getattr(result, 'error_message', '')} {getattr(result, 'provider_completion_status', '')}".lower()
+            if any(tok in err_check for tok in ("timeout", "timed out", "hết thời gian chờ")):
+                abandoned_event.set()
+                recovered = _recover_partial_stream_on_timeout()
+                if recovered is not None:
+                    partial_timeout_recovered = True
+                    result = recovered
 
         t_router_end = time.monotonic()
         measured_duration = max(0.0, t_router_end - t_router_start)
@@ -1540,6 +1572,9 @@ def route_workspace_chat_submission(
                 model_name = effective_mod or "configured_by_provider"
                 final_answer = clean_assistant_answer(result.answer_text) or result.answer_text
 
+            if "[Lưu ý: Phản hồi bị ngắt do hết thời gian chờ" in final_answer:
+                partial_timeout_recovered = True
+
             trace = build_evidence_trace_from_citations(
                 query=question,
                 answer_text=final_answer,
@@ -1558,6 +1593,7 @@ def route_workspace_chat_submission(
                     "ai_mode": "draft_fallback" if is_draft else ai_mode,
                     "draft_source": draft_decision.draft_source if is_draft else "",
                     "has_draft_label": is_draft,
+                    "partial_timeout": partial_timeout_recovered,
                 },
             )
             save_evidence_trace(trace)
@@ -1606,10 +1642,16 @@ def route_workspace_chat_submission(
                 "memory_titles": () if is_draft else result.memory_titles,
                 "memory_consent_fingerprint": None if is_draft else result.memory_consent_fingerprint,
                 "is_draft_fallback": is_draft,
+                "partial_timeout": partial_timeout_recovered,
                 "duration_sec": effective_duration_sec if is_ext else 0.0,
                 "ttft_sec": effective_ttft_sec if is_ext else 0.0,
             }
-            succ_msg = "Đã trả lời bằng bản thảo dự bị (chưa qua chuyên gia duyệt)." if is_draft else f"Đã nhận câu trả lời từ {provider_name}."
+            if is_draft:
+                succ_msg = "Đã trả lời bằng bản thảo dự bị (chưa qua chuyên gia duyệt)."
+            elif partial_timeout_recovered:
+                succ_msg = f"Đã giữ lại phần câu trả lời hợp lệ từ {provider_name} (ngắt do hết thời gian chờ)."
+            else:
+                succ_msg = f"Đã nhận câu trả lời từ {provider_name}."
             return (True, succ_msg, badge, None)
 
         abandoned_event.set()

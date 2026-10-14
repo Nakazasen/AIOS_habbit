@@ -261,6 +261,8 @@ def _generate_via_internal_router(
     payload: SanitizedRouterPayload,
     *,
     on_chunk: Any = None,
+    timeout_seconds: int | None = None,
+    router_deadline_monotonic: float | None = None,
 ) -> WorkspaceRouterDetailedResult:
     """Internal route using aios_habit.ai_router connected to local/failover Command Code pool."""
     from aios_habit.ai_router import RouterRequest, provider_configs_from_env, route_answer
@@ -270,7 +272,13 @@ def _generate_via_internal_router(
     query_language = detect_query_language(payload.sanitized_question)
 
     try:
-        configs = provider_configs_from_env()
+        if timeout_seconds is not None:
+            try:
+                configs = provider_configs_from_env(timeout_seconds=timeout_seconds)
+            except TypeError:
+                configs = provider_configs_from_env()
+        else:
+            configs = provider_configs_from_env()
     except Exception as error:
         LOGGER.error("Failed to load provider configs from env: %s", error)
         route = ResilientRouteOutcome(status=ROUTE_INFRASTRUCTURE_INVALID, error_type="config_load_failed")
@@ -291,6 +299,8 @@ def _generate_via_internal_router(
         query_language=query_language,
         ai_mode=payload.metadata.get("ai_mode", "grounded"),
         on_chunk=on_chunk,
+        timeout_seconds=timeout_seconds,
+        router_deadline_monotonic=router_deadline_monotonic,
     )
 
     try:
@@ -360,6 +370,8 @@ def generate_answer_via_router_detailed(
     payload: SanitizedRouterPayload,
     *,
     on_chunk: Any = None,
+    timeout_seconds: int | None = None,
+    router_deadline_monotonic: float | None = None,
 ) -> WorkspaceRouterDetailedResult:
     """Call delegated router with the Gateway-approved sanitized payload.
     
@@ -374,7 +386,12 @@ def generate_answer_via_router_detailed(
     if _should_use_legacy_router():
         return _generate_via_legacy_router(payload)
 
-    return _generate_via_internal_router(payload, on_chunk=on_chunk)
+    return _generate_via_internal_router(
+        payload,
+        on_chunk=on_chunk,
+        timeout_seconds=timeout_seconds,
+        router_deadline_monotonic=router_deadline_monotonic,
+    )
 
 
 def generate_answer_via_router(payload: SanitizedRouterPayload) -> Tuple[bool, str]:
