@@ -621,6 +621,7 @@ class SearchSummary:
     embed_latency_ms: float = 0.0
     dense_load_latency_ms: float = 0.0
     dense_resident: bool = True
+    coverage_verify_ms: float = field(default=0.0, compare=False)
 
 
 @dataclass(frozen=True)
@@ -1181,6 +1182,18 @@ class LocalChunkIndex:
         # Ghi bang TEMP (vd rag_v2_eligible_chunks cua nhanh lexical FTS) khong
         # cham vao bo dem nay.
         self._main_write_seq = 0
+        self._temp_write_changes = 0
+        self._doc_fingerprint_cache_token: tuple[int, ...] | None = None
+        self._doc_fingerprint_cache: dict[str, Optional[str]] = {}
+        self._doc_chunk_meta_cache_token: tuple[int, ...] | None = None
+        self._doc_chunk_meta_cache: dict[str, tuple[Optional[str], int]] = {}
+        self._doc_embed_count_cache_token: tuple[int, ...] | None = None
+        self._doc_dense_count_cache: dict[tuple[str, str], int] = {}
+        self._doc_sparse_count_cache: dict[tuple[str, str], int] = {}
+        self._doc_multivector_count_cache: dict[tuple[str, str, str], int] = {}
+        self._coverage_result_cache_token: tuple[int, ...] | None = None
+        self._coverage_result_cache: dict[tuple[Any, ...], Dict[str, Any]] = {}
+        self._coverage_cache_lock = threading.RLock()
         if self._read_only:
             self._fts5_available = bool(enable_fts5 and self._conn.execute(
                 "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'chunks_fts'"
@@ -1194,6 +1207,11 @@ class LocalChunkIndex:
                 and embedding_backend.capability.available
             ):
                 self.ensure_embeddings()
+        self._has_retrievable_doc_fp_index = bool(
+            self._conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = 'idx_chunks_retrievable_doc_fp'"
+            ).fetchone()
+        )
 
     @property
     def retrieval_backend(self) -> str:
@@ -2083,15 +2101,99 @@ class LocalChunkIndex:
             "stale_multivector_embedding_count": stale_multivector_count,
         }
 
+    def _coverage_cache_token(self) -> tuple[int, ...]:
+        base_token = self._index_cache_token()
+        if self._read_only:
+            return base_token
+        non_temp_changes = max(0, self._conn.total_changes - self._temp_write_changes)
+        return (*base_token, non_temp_changes)
+
+    def _ensure_coverage_caches_fresh(self, token: tuple[int, ...]) -> None:
+        if self._doc_fingerprint_cache_token != token:
+            self._doc_fingerprint_cache = {}
+            self._doc_fingerprint_cache_token = token
+        if self._doc_chunk_meta_cache_token != token:
+            self._doc_chunk_meta_cache = {}
+            self._doc_chunk_meta_cache_token = token
+        if self._doc_embed_count_cache_token != token:
+            self._doc_dense_count_cache = {}
+            self._doc_sparse_count_cache = {}
+            self._doc_multivector_count_cache = {}
+            self._doc_embed_count_cache_token = token
+        if self._coverage_result_cache_token != token:
+            self._coverage_result_cache = {}
+            self._coverage_result_cache_token = token
+
+    def get_document_fingerprints(self, document_ids: Iterable[str]) -> dict[str, Optional[str]]:
+        """Return stored source fingerprints for a batch of indexed documents, cached by _index_cache_token()."""
+        ids = tuple(dict.fromkeys(
+            str(doc_id).strip()
+            for doc_id in document_ids
+            if str(doc_id).strip()
+        ))
+        if not ids:
+            return {}
+        with self._coverage_cache_lock:
+            token = self._coverage_cache_token()
+            self._ensure_coverage_caches_fresh(token)
+            missing = [doc_id for doc_id in ids if doc_id not in self._doc_fingerprint_cache]
+            if missing and self._read_only:
+                dense_cache = self._dense_matrix_cache
+                if dense_cache is not None and dense_cache.token == self._index_cache_token():
+                    for doc_id, fp_val in zip(dense_cache.document_ids, dense_cache.source_fingerprints):
+                        if doc_id not in self._doc_fingerprint_cache and fp_val:
+                            stripped = str(fp_val).strip()
+                            if stripped:
+                                self._doc_fingerprint_cache[doc_id] = stripped
+                    missing = [doc_id for doc_id in ids if doc_id not in self._doc_fingerprint_cache]
+            if missing:
+                for start in range(0, len(missing), 500):
+                    batch = missing[start : start + 500]
+                    if self._has_retrievable_doc_fp_index:
+                        placeholders = ",".join("?" for _ in batch)
+                        rows = self._conn.execute(
+                            f"""
+                            SELECT document_id, MIN(source_fingerprint) AS fp
+                            FROM chunks
+                            WHERE retrievable = 1
+                              AND document_id IN ({placeholders})
+                              AND source_fingerprint IS NOT NULL
+                            GROUP BY document_id
+                            """,
+                            batch,
+                        ).fetchall()
+                    else:
+                        values_sql = ",".join("(?)" for _ in batch)
+                        rows = self._conn.execute(
+                            f"""
+                            WITH req(doc_id) AS (VALUES {values_sql})
+                            SELECT req.doc_id AS document_id,
+                                   (SELECT c.source_fingerprint
+                                    FROM chunks AS c
+                                    WHERE c.retrievable = 1
+                                      AND c.document_id = req.doc_id
+                                      AND c.source_fingerprint IS NOT NULL
+                                    LIMIT 1) AS fp
+                            FROM req
+                            """,
+                            batch,
+                        ).fetchall()
+                    fetched: dict[str, Optional[str]] = {}
+                    for row in rows:
+                        raw_fp = row["fp"]
+                        fetched[str(row["document_id"])] = (
+                            str(raw_fp).strip() if raw_fp and str(raw_fp).strip() else None
+                        )
+                    for doc_id in batch:
+                        self._doc_fingerprint_cache[doc_id] = fetched.get(doc_id)
+            return {doc_id: self._doc_fingerprint_cache.get(doc_id) for doc_id in ids}
+
     def get_document_fingerprint(self, document_id: str) -> Optional[str]:
         """Return the stored source fingerprint for an indexed document, if available."""
-        if not document_id:
+        normalized = str(document_id or "").strip()
+        if not normalized:
             return None
-        row = self._conn.execute(
-            "SELECT source_fingerprint FROM chunks WHERE document_id = ? AND retrievable = 1 AND source_fingerprint IS NOT NULL LIMIT 1",
-            (str(document_id).strip(),),
-        ).fetchone()
-        return str(row[0]).strip() if row and row[0] else None
+        return self.get_document_fingerprints((normalized,)).get(normalized)
 
     def verify_selected_document_coverage(
         self,
@@ -2135,172 +2237,431 @@ class LocalChunkIndex:
                 "documents_complete": False,
             }
 
-        placeholders = ",".join("?" for _ in selected)
-        rows = self._conn.execute(
-            f"""
-            SELECT document_id,
-                   MIN(source_fingerprint) AS min_fingerprint,
-                   MAX(source_fingerprint) AS max_fingerprint,
-                   COUNT(*) AS chunk_count
-            FROM chunks
-            WHERE retrievable = 1 AND document_id IN ({placeholders})
-            GROUP BY document_id
-            """,
-            selected,
-        ).fetchall()
-        actual_fingerprints = {
-            str(row["document_id"]): (
-                str(row["min_fingerprint"])
-                if row["min_fingerprint"] is not None
-                and row["min_fingerprint"] == row["max_fingerprint"]
-                else ""
+        with self._coverage_cache_lock:
+            token = self._coverage_cache_token()
+            self._ensure_coverage_caches_fresh(token)
+            selected_set = set(selected)
+            backend = self._embedding_backend
+            backend_fp = backend.descriptor.fingerprint if backend is not None else ""
+            multivector_backend = self._multivector_backend
+            multivector_descriptor = (
+                multivector_backend.multivector_descriptor
+                if multivector_required
+                and multivector_backend is not None
+                and multivector_backend.multivector_capability.available
+                else None
             )
-            for row in rows
-        }
-        missing_document_ids = tuple(sorted(set(selected) - set(actual_fingerprints)))
-        fingerprint_mismatch_document_ids = tuple(sorted(
-            document_id
-            for document_id, fingerprint in expected.items()
-            if document_id in set(selected)
-            and fingerprint != ""
-            and actual_fingerprints.get(document_id) != fingerprint
-        ))
-        documents_complete = not missing_document_ids and not fingerprint_mismatch_document_ids
-        retrievable_chunk_count = sum(int(row["chunk_count"]) for row in rows)
+            mv_fp = multivector_descriptor.fingerprint if multivector_descriptor is not None else ""
+            expected_relevant = tuple(sorted(
+                (doc_id, fp)
+                for doc_id, fp in expected.items()
+                if doc_id in selected_set and fp != ""
+            ))
+            result_cache_key = (
+                selected,
+                expected_relevant,
+                bool(sparse_required),
+                bool(multivector_required),
+                backend_fp,
+                mv_fp,
+            )
+            cached_result = self._coverage_result_cache.get(result_cache_key)
+            if cached_result is not None:
+                return dict(cached_result)
 
-        backend = self._embedding_backend
-        if backend is None:
-            return {
-                "valid": False,
-                "reason": "embedding_backend_not_configured",
+            missing_meta_docs = [
+                doc_id for doc_id in selected if doc_id not in self._doc_chunk_meta_cache
+            ]
+            if missing_meta_docs:
+                fetched_meta: dict[str, tuple[Optional[str], int]] = {}
+                if self._has_retrievable_doc_fp_index or not self._read_only:
+                    for start in range(0, len(missing_meta_docs), 500):
+                        batch = missing_meta_docs[start : start + 500]
+                        placeholders = ",".join("?" for _ in batch)
+                        rows = self._conn.execute(
+                            f"""
+                            SELECT document_id,
+                                   MIN(source_fingerprint) AS min_fingerprint,
+                                   MAX(source_fingerprint) AS max_fingerprint,
+                                   COUNT(*) AS chunk_count
+                            FROM chunks
+                            WHERE retrievable = 1 AND document_id IN ({placeholders})
+                            GROUP BY document_id
+                            """,
+                            batch,
+                        ).fetchall()
+                        for row in rows:
+                            doc_id = str(row["document_id"])
+                            cnt = int(row["chunk_count"])
+                            fp = (
+                                str(row["min_fingerprint"])
+                                if row["min_fingerprint"] is not None
+                                and row["min_fingerprint"] == row["max_fingerprint"]
+                                else ""
+                            )
+                            fetched_meta[doc_id] = (fp, cnt)
+                            if doc_id not in self._doc_fingerprint_cache:
+                                self._doc_fingerprint_cache[doc_id] = (
+                                    fp.strip() if fp and fp.strip() else None
+                                )
+                else:
+                    count_map: dict[str, int] = {}
+                    for start in range(0, len(missing_meta_docs), 500):
+                        batch = missing_meta_docs[start : start + 500]
+                        placeholders = ",".join("?" for _ in batch)
+                        rows = self._conn.execute(
+                            f"""
+                            SELECT document_id, COUNT(*) AS chunk_count
+                            FROM chunks
+                            WHERE retrievable = 1 AND document_id IN ({placeholders})
+                            GROUP BY document_id
+                            """,
+                            batch,
+                        ).fetchall()
+                        for row in rows:
+                            count_map[str(row["document_id"])] = int(row["chunk_count"])
+                    if count_map:
+                        fps = self.get_document_fingerprints(tuple(count_map.keys()))
+                        for doc_id, cnt in count_map.items():
+                            fetched_meta[doc_id] = (str(fps.get(doc_id) or ""), cnt)
+                for doc_id in missing_meta_docs:
+                    self._doc_chunk_meta_cache[doc_id] = fetched_meta.get(doc_id, (None, 0))
+
+            actual_fingerprints: dict[str, str] = {}
+            doc_chunk_counts: dict[str, int] = {}
+            for doc_id in selected:
+                fp_val, cnt_val = self._doc_chunk_meta_cache.get(doc_id, (None, 0))
+                if fp_val is not None and cnt_val > 0:
+                    actual_fingerprints[doc_id] = fp_val
+                    doc_chunk_counts[doc_id] = cnt_val
+
+            missing_document_ids = tuple(sorted(selected_set - set(actual_fingerprints)))
+            fingerprint_mismatch_document_ids = tuple(sorted(
+                document_id
+                for document_id, fingerprint in expected.items()
+                if document_id in selected_set
+                and fingerprint != ""
+                and actual_fingerprints.get(document_id) != fingerprint
+            ))
+            documents_complete = not missing_document_ids and not fingerprint_mismatch_document_ids
+            retrievable_chunk_count = sum(doc_chunk_counts.values())
+
+            if backend is None:
+                report = {
+                    "valid": False,
+                    "reason": "embedding_backend_not_configured",
+                    "document_count": len(actual_fingerprints),
+                    "retrievable_chunk_count": retrievable_chunk_count,
+                    "missing_document_ids": missing_document_ids,
+                    "fingerprint_mismatch_document_ids": fingerprint_mismatch_document_ids,
+                    "documents_complete": documents_complete,
+                    "dense_embedding_count": 0,
+                    "sparse_embedding_count": 0,
+                    "multivector_embedding_count": 0,
+                    "dense_complete": False,
+                    "sparse_complete": not sparse_required,
+                    "multivector_complete": not multivector_required,
+                }
+                self._coverage_result_cache[result_cache_key] = report
+                return dict(report)
+
+            descriptor = backend.descriptor
+            present_selected = tuple(doc_id for doc_id in selected if doc_id in doc_chunk_counts)
+
+            if self._read_only:
+                missing_dense = [
+                    doc_id
+                    for doc_id in present_selected
+                    if (descriptor.fingerprint, doc_id) not in self._doc_dense_count_cache
+                ]
+                if missing_dense:
+                    dense_cache = self._dense_matrix_cache
+                    if (
+                        dense_cache is not None
+                        and dense_cache.token == self._index_cache_token()
+                        and dense_cache.fingerprint == descriptor.fingerprint
+                    ):
+                        resident_dense_counts = Counter(dense_cache.document_ids)
+                        for doc_id in missing_dense:
+                            if resident_dense_counts.get(doc_id, 0) == doc_chunk_counts[doc_id]:
+                                self._doc_dense_count_cache[(descriptor.fingerprint, doc_id)] = (
+                                    doc_chunk_counts[doc_id]
+                                )
+                        missing_dense = [
+                            doc_id
+                            for doc_id in missing_dense
+                            if (descriptor.fingerprint, doc_id) not in self._doc_dense_count_cache
+                        ]
+                    for start in range(0, len(missing_dense), 500):
+                        batch = missing_dense[start : start + 500]
+                        placeholders = ",".join("?" for _ in batch)
+                        rows = self._conn.execute(
+                            f"""
+                            SELECT c.document_id, COUNT(*) AS embed_count
+                            FROM chunks AS c
+                            JOIN chunk_embeddings AS e ON e.chunk_id = c.chunk_id
+                            WHERE c.retrievable = 1
+                              AND c.document_id IN ({placeholders})
+                              AND e.model_fingerprint = ?
+                            GROUP BY c.document_id
+                            """,
+                            (*batch, descriptor.fingerprint),
+                        ).fetchall()
+                        fetched_dense = {
+                            str(row["document_id"]): int(row["embed_count"]) for row in rows
+                        }
+                        for doc_id in batch:
+                            self._doc_dense_count_cache[(descriptor.fingerprint, doc_id)] = (
+                                fetched_dense.get(doc_id, 0)
+                            )
+
+                if sparse_required:
+                    missing_sparse = [
+                        doc_id
+                        for doc_id in present_selected
+                        if (descriptor.fingerprint, doc_id) not in self._doc_sparse_count_cache
+                    ]
+                    if missing_sparse:
+                        sparse_cache = self._sparse_vector_cache
+                        if (
+                            sparse_cache is not None
+                            and sparse_cache.token == self._index_cache_token()
+                            and sparse_cache.fingerprint == descriptor.fingerprint
+                        ):
+                            resident_sparse_counts = Counter(sparse_cache.document_ids)
+                            for doc_id in missing_sparse:
+                                if resident_sparse_counts.get(doc_id, 0) == doc_chunk_counts[doc_id]:
+                                    self._doc_sparse_count_cache[(descriptor.fingerprint, doc_id)] = (
+                                        doc_chunk_counts[doc_id]
+                                    )
+                            missing_sparse = [
+                                doc_id
+                                for doc_id in missing_sparse
+                                if (descriptor.fingerprint, doc_id) not in self._doc_sparse_count_cache
+                            ]
+                        for start in range(0, len(missing_sparse), 500):
+                            batch = missing_sparse[start : start + 500]
+                            placeholders = ",".join("?" for _ in batch)
+                            rows = self._conn.execute(
+                                f"""
+                                SELECT c.document_id, COUNT(*) AS embed_count
+                                FROM chunks AS c
+                                JOIN chunk_sparse_embeddings AS s ON s.chunk_id = c.chunk_id
+                                WHERE c.retrievable = 1
+                                  AND c.document_id IN ({placeholders})
+                                  AND s.model_fingerprint = ?
+                                GROUP BY c.document_id
+                                """,
+                                (*batch, descriptor.fingerprint),
+                            ).fetchall()
+                            fetched_sparse = {
+                                str(row["document_id"]): int(row["embed_count"]) for row in rows
+                            }
+                            for doc_id in batch:
+                                self._doc_sparse_count_cache[(descriptor.fingerprint, doc_id)] = (
+                                    fetched_sparse.get(doc_id, 0)
+                                )
+
+                if multivector_required and multivector_descriptor is not None:
+                    missing_mv = [
+                        doc_id
+                        for doc_id in present_selected
+                        if (descriptor.fingerprint, mv_fp, doc_id)
+                        not in self._doc_multivector_count_cache
+                    ]
+                    for start in range(0, len(missing_mv), 500):
+                        batch = missing_mv[start : start + 500]
+                        placeholders = ",".join("?" for _ in batch)
+                        rows = self._conn.execute(
+                            f"""
+                            SELECT c.document_id, COUNT(*) AS embed_count
+                            FROM chunks AS c
+                            JOIN chunk_multivector_embeddings AS m ON m.chunk_id = c.chunk_id
+                            WHERE c.retrievable = 1
+                              AND c.document_id IN ({placeholders})
+                              AND m.model_fingerprint = ?
+                              AND m.representation_fingerprint = ?
+                            GROUP BY c.document_id
+                            """,
+                            (*batch, descriptor.fingerprint, mv_fp),
+                        ).fetchall()
+                        fetched_mv = {
+                            str(row["document_id"]): int(row["embed_count"]) for row in rows
+                        }
+                        for doc_id in batch:
+                            self._doc_multivector_count_cache[
+                                (descriptor.fingerprint, mv_fp, doc_id)
+                            ] = fetched_mv.get(doc_id, 0)
+            else:
+                missing_dense = [
+                    doc_id
+                    for doc_id in present_selected
+                    if (descriptor.fingerprint, doc_id) not in self._doc_dense_count_cache
+                ]
+                for start in range(0, len(missing_dense), 500):
+                    batch = missing_dense[start : start + 500]
+                    placeholders = ",".join("?" for _ in batch)
+                    dense_rows = self._conn.execute(
+                        f"""
+                        SELECT c.document_id, c.text, e.content_hash
+                        FROM chunks AS c
+                        JOIN chunk_embeddings AS e ON e.chunk_id = c.chunk_id
+                        WHERE c.retrievable = 1
+                          AND c.document_id IN ({placeholders})
+                          AND e.model_fingerprint = ?
+                        """,
+                        (*batch, descriptor.fingerprint),
+                    ).fetchall()
+                    counts_by_doc: Counter[str] = Counter()
+                    for row in dense_rows:
+                        if str(row["content_hash"]) == _embedding_content_hash(str(row["text"])):
+                            counts_by_doc[str(row["document_id"])] += 1
+                    for doc_id in batch:
+                        self._doc_dense_count_cache[(descriptor.fingerprint, doc_id)] = (
+                            counts_by_doc.get(doc_id, 0)
+                        )
+
+                if sparse_required:
+                    missing_sparse = [
+                        doc_id
+                        for doc_id in present_selected
+                        if (descriptor.fingerprint, doc_id) not in self._doc_sparse_count_cache
+                    ]
+                    for start in range(0, len(missing_sparse), 500):
+                        batch = missing_sparse[start : start + 500]
+                        placeholders = ",".join("?" for _ in batch)
+                        sparse_rows = self._conn.execute(
+                            f"""
+                            SELECT c.document_id, c.text, s.content_hash
+                            FROM chunks AS c
+                            JOIN chunk_sparse_embeddings AS s ON s.chunk_id = c.chunk_id
+                            WHERE c.retrievable = 1
+                              AND c.document_id IN ({placeholders})
+                              AND s.model_fingerprint = ?
+                            """,
+                            (*batch, descriptor.fingerprint),
+                        ).fetchall()
+                        counts_by_doc = Counter()
+                        for row in sparse_rows:
+                            if str(row["content_hash"]) == _embedding_content_hash(str(row["text"])):
+                                counts_by_doc[str(row["document_id"])] += 1
+                        for doc_id in batch:
+                            self._doc_sparse_count_cache[(descriptor.fingerprint, doc_id)] = (
+                                counts_by_doc.get(doc_id, 0)
+                            )
+
+                if multivector_required and multivector_descriptor is not None:
+                    missing_mv = [
+                        doc_id
+                        for doc_id in present_selected
+                        if (descriptor.fingerprint, mv_fp, doc_id)
+                        not in self._doc_multivector_count_cache
+                    ]
+                    for start in range(0, len(missing_mv), 500):
+                        batch = missing_mv[start : start + 500]
+                        placeholders = ",".join("?" for _ in batch)
+                        mv_rows = self._conn.execute(
+                            f"""
+                            SELECT c.document_id, c.text, m.content_hash, m.representation_fingerprint
+                            FROM chunks AS c
+                            JOIN chunk_multivector_embeddings AS m ON m.chunk_id = c.chunk_id
+                            WHERE c.retrievable = 1
+                              AND c.document_id IN ({placeholders})
+                              AND m.model_fingerprint = ?
+                            """,
+                            (*batch, descriptor.fingerprint),
+                        ).fetchall()
+                        counts_by_doc = Counter()
+                        for row in mv_rows:
+                            if (
+                                str(row["content_hash"]) == _embedding_content_hash(str(row["text"]))
+                                and str(row["representation_fingerprint"]) == mv_fp
+                            ):
+                                counts_by_doc[str(row["document_id"])] += 1
+                        for doc_id in batch:
+                            self._doc_multivector_count_cache[
+                                (descriptor.fingerprint, mv_fp, doc_id)
+                            ] = counts_by_doc.get(doc_id, 0)
+
+            dense_embedding_count = sum(
+                self._doc_dense_count_cache.get((descriptor.fingerprint, doc_id), 0)
+                for doc_id in present_selected
+            )
+            sparse_embedding_count = (
+                sum(
+                    self._doc_sparse_count_cache.get((descriptor.fingerprint, doc_id), 0)
+                    for doc_id in present_selected
+                )
+                if sparse_required
+                else 0
+            )
+            multivector_embedding_count = (
+                sum(
+                    self._doc_multivector_count_cache.get(
+                        (descriptor.fingerprint, mv_fp, doc_id), 0
+                    )
+                    for doc_id in present_selected
+                )
+                if (multivector_required and multivector_descriptor is not None)
+                else 0
+            )
+
+            semantic_required_chunk_count = sum(
+                cnt
+                for doc_id, cnt in doc_chunk_counts.items()
+                if doc_id not in STRUCTURED_LANE_DOCUMENT_IDS
+            )
+            semantic_dense_count = sum(
+                self._doc_dense_count_cache.get((descriptor.fingerprint, doc_id), 0)
+                for doc_id in present_selected
+                if doc_id not in STRUCTURED_LANE_DOCUMENT_IDS
+            )
+            dense_complete = (
+                semantic_dense_count == semantic_required_chunk_count
+                if semantic_required_chunk_count > 0
+                else True
+            )
+            if sparse_required:
+                semantic_sparse_count = sum(
+                    self._doc_sparse_count_cache.get((descriptor.fingerprint, doc_id), 0)
+                    for doc_id in present_selected
+                    if doc_id not in STRUCTURED_LANE_DOCUMENT_IDS
+                )
+                sparse_complete = (
+                    semantic_sparse_count == semantic_required_chunk_count
+                    if semantic_required_chunk_count > 0
+                    else True
+                )
+            else:
+                sparse_complete = True
+            multivector_complete = (
+                not multivector_required
+                or multivector_embedding_count == retrievable_chunk_count
+            )
+            report = {
+                "valid": bool(
+                    documents_complete
+                    and retrievable_chunk_count > 0
+                    and dense_complete
+                    and sparse_complete
+                    and multivector_complete
+                ),
+                "reason": "" if documents_complete else "document_identity_mismatch",
                 "document_count": len(actual_fingerprints),
                 "retrievable_chunk_count": retrievable_chunk_count,
                 "missing_document_ids": missing_document_ids,
                 "fingerprint_mismatch_document_ids": fingerprint_mismatch_document_ids,
                 "documents_complete": documents_complete,
-                "dense_embedding_count": 0,
-                "sparse_embedding_count": 0,
-                "multivector_embedding_count": 0,
-                "dense_complete": False,
-                "sparse_complete": not sparse_required,
-                "multivector_complete": not multivector_required,
+                "model_fingerprint": descriptor.fingerprint,
+                "dense_embedding_count": dense_embedding_count,
+                "sparse_embedding_count": sparse_embedding_count,
+                "multivector_embedding_count": multivector_embedding_count,
+                "dense_complete": dense_complete,
+                "sparse_complete": sparse_complete,
+                "multivector_complete": multivector_complete,
             }
-
-        descriptor = backend.descriptor
-        dense_rows = self._conn.execute(
-            f"""
-            SELECT c.document_id, c.text, e.content_hash
-            FROM chunks AS c
-            JOIN chunk_embeddings AS e ON e.chunk_id = c.chunk_id
-            WHERE c.retrievable = 1
-              AND c.document_id IN ({placeholders})
-              AND e.model_fingerprint = ?
-            """,
-            (*selected, descriptor.fingerprint),
-        ).fetchall()
-        dense_embedding_count = sum(
-            str(row["content_hash"]) == _embedding_content_hash(str(row["text"]))
-            for row in dense_rows
-        )
-        sparse_embedding_count = 0
-        if sparse_required:
-            sparse_rows = self._conn.execute(
-                f"""
-                SELECT c.document_id, c.text, s.content_hash
-                FROM chunks AS c
-                JOIN chunk_sparse_embeddings AS s ON s.chunk_id = c.chunk_id
-                WHERE c.retrievable = 1
-                  AND c.document_id IN ({placeholders})
-                  AND s.model_fingerprint = ?
-                """,
-                (*selected, descriptor.fingerprint),
-            ).fetchall()
-            sparse_embedding_count = sum(
-                str(row["content_hash"]) == _embedding_content_hash(str(row["text"]))
-                for row in sparse_rows
-            )
-        multivector_embedding_count = 0
-        if multivector_required:
-            multivector_backend = self._multivector_backend
-            multivector_descriptor = (
-                multivector_backend.multivector_descriptor
-                if multivector_backend is not None
-                and multivector_backend.multivector_capability.available
-                else None
-            )
-            if multivector_descriptor is not None:
-                multivector_rows = self._conn.execute(
-                    f"""
-                    SELECT c.document_id, c.text, m.content_hash, m.representation_fingerprint
-                    FROM chunks AS c
-                    JOIN chunk_multivector_embeddings AS m ON m.chunk_id = c.chunk_id
-                    WHERE c.retrievable = 1
-                      AND c.document_id IN ({placeholders})
-                      AND m.model_fingerprint = ?
-                    """,
-                    (*selected, descriptor.fingerprint),
-                ).fetchall()
-                multivector_embedding_count = sum(
-                    str(row["content_hash"]) == _embedding_content_hash(str(row["text"]))
-                    and str(row["representation_fingerprint"])
-                    == multivector_descriptor.fingerprint
-                    for row in multivector_rows
-                )
-
-        semantic_required_chunk_count = sum(
-            int(row["chunk_count"])
-            for row in rows
-            if str(row["document_id"]) not in STRUCTURED_LANE_DOCUMENT_IDS
-        )
-        semantic_dense_count = sum(
-            str(row["content_hash"]) == _embedding_content_hash(str(row["text"]))
-            for row in dense_rows
-            if str(row["document_id"]) not in STRUCTURED_LANE_DOCUMENT_IDS
-        )
-        dense_complete = (
-            semantic_dense_count == semantic_required_chunk_count
-            if semantic_required_chunk_count > 0
-            else True
-        )
-        if sparse_required:
-            semantic_sparse_count = sum(
-                str(row["content_hash"]) == _embedding_content_hash(str(row["text"]))
-                for row in sparse_rows
-                if str(row["document_id"]) not in STRUCTURED_LANE_DOCUMENT_IDS
-            )
-            sparse_complete = (
-                semantic_sparse_count == semantic_required_chunk_count
-                if semantic_required_chunk_count > 0
-                else True
-            )
-        else:
-            sparse_complete = True
-        multivector_complete = (
-            not multivector_required
-            or multivector_embedding_count == retrievable_chunk_count
-        )
-        return {
-            "valid": bool(
-                documents_complete
-                and retrievable_chunk_count > 0
-                and dense_complete
-                and sparse_complete
-                and multivector_complete
-            ),
-            "reason": "" if documents_complete else "document_identity_mismatch",
-            "document_count": len(actual_fingerprints),
-            "retrievable_chunk_count": retrievable_chunk_count,
-            "missing_document_ids": missing_document_ids,
-            "fingerprint_mismatch_document_ids": fingerprint_mismatch_document_ids,
-            "documents_complete": documents_complete,
-            "model_fingerprint": descriptor.fingerprint,
-            "dense_embedding_count": dense_embedding_count,
-            "sparse_embedding_count": sparse_embedding_count,
-            "multivector_embedding_count": multivector_embedding_count,
-            "dense_complete": dense_complete,
-            "sparse_complete": sparse_complete,
-            "multivector_complete": multivector_complete,
-        }
+            self._coverage_result_cache[result_cache_key] = report
+            return dict(report)
 
     def _note_main_db_write(self) -> None:
         """Ghi nhan 1 lan ghi bang main qua instance nay (OPT-RAGV2-LEXICAL Phase A).
@@ -2966,12 +3327,17 @@ class LocalChunkIndex:
         ids = tuple(dict.fromkeys(chunk_ids))
         if not ids:
             return {}
-        placeholders = ",".join("?" for _ in ids)
-        rows = self._conn.execute(
-            f"SELECT * FROM chunks WHERE chunk_id IN ({placeholders})",
-            ids,
-        ).fetchall()
-        return {str(row["chunk_id"]): row for row in rows}
+        by_id: dict[str, sqlite3.Row] = {}
+        for start in range(0, len(ids), 500):
+            batch = ids[start : start + 500]
+            placeholders = ",".join("?" for _ in batch)
+            rows = self._conn.execute(
+                f"SELECT * FROM chunks WHERE chunk_id IN ({placeholders})",
+                batch,
+            ).fetchall()
+            for row in rows:
+                by_id[str(row["chunk_id"])] = row
+        return by_id
 
     def dense_candidates(
         self,
@@ -4611,6 +4977,7 @@ class LocalChunkIndex:
         use_txn: bool = True,
     ) -> bool:
         """Populate rag_v2_eligible_chunks once per search_with_summary call (ARCH-02)."""
+        before_changes = self._conn.total_changes
         try:
             self._conn.execute(
                 "CREATE TEMP TABLE IF NOT EXISTS rag_v2_eligible_chunks (chunk_id TEXT PRIMARY KEY)"
@@ -4635,6 +5002,8 @@ class LocalChunkIndex:
         except sqlite3.OperationalError:
             self._fts5_available = False
             return False
+        finally:
+            self._temp_write_changes += max(0, self._conn.total_changes - before_changes)
         if timings is not None:
             timings["temp_build_ms"] = timings.get("temp_build_ms", 0.0) + build_ms
             timings["temp_inserted_rows"] = timings.get("temp_inserted_rows", 0.0) + float(

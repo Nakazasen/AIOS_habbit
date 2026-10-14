@@ -3595,6 +3595,7 @@ def _map_serialized_query_result(
         "embed_latency_ms": float(summary_dict.get("embed_latency_ms", 0.0) or 0.0),
         "dense_load_latency_ms": float(summary_dict.get("dense_load_latency_ms", 0.0) or 0.0),
         "dense_resident": bool(summary_dict.get("dense_resident", True)),
+        "coverage_verify_ms": float(summary_dict.get("coverage_verify_ms", 0.0) or 0.0),
         "policy_version": policy_version,
     }
 
@@ -4110,15 +4111,18 @@ def _run_profile(
     fuse_ms = float(summary_dict.get("fusion_latency_ms", 0.0) or 0.0)
     dense_resident = bool(summary_dict.get("dense_resident", True))
     dense_load_ms = float(summary_dict.get("dense_load_latency_ms", 0.0) or 0.0)
+    coverage_verify_ms = float(summary_dict.get("coverage_verify_ms", 0.0) or 0.0)
     target_collection = str(domain_collection_id or getattr(pipe_config, "collection_id", "") or "default")
     resident_str = "thuong_tru" if dense_resident else "nap_trong_lan_goi"
     timestamp = format_marker_timestamp()
     if isinstance(mapped.get("rag_v2_canary"), dict):
         mapped["rag_v2_canary"]["pipe_wait_ms"] = round(pipe_wait_ms, 2)
+        mapped["rag_v2_canary"]["coverage_verify_ms"] = round(coverage_verify_ms, 2)
 
     marker_msg = (
         f"[RETRIEVAL_MICRO_TIMING] collection={target_collection} "
         f"pipe_wait_ms={pipe_wait_ms:.2f} "
+        f"coverage_verify_ms={coverage_verify_ms:.2f} "
         f"embed_ms={embed_ms:.2f} embed_wait_ms={embed_wait_ms:.2f} embed_compute_ms={embed_compute_ms:.2f} "
         f"dense_ms={dense_ms:.2f} sparse_ms={sparse_ms:.2f} fuse_ms={fuse_ms:.2f} "
         f"dense_resident={dense_resident} dense_state={resident_str} "
@@ -4763,6 +4767,7 @@ def retrieve_workspace_chat_evidence(
         marker_msg = (
             f"[RETRIEVAL_MICRO_TIMING] collection={target_coll} "
             f"pipe_wait_ms=0.00 "
+            f"coverage_verify_ms=0.00 "
             f"embed_ms=0.00 embed_wait_ms=0.00 embed_compute_ms=0.00 "
             f"dense_ms=0.00 sparse_ms=0.00 fuse_ms=0.00 "
             f"dense_resident=True dense_state=thuong_tru dense_load_ms=0.00 timestamp={timestamp}"

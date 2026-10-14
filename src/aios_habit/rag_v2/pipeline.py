@@ -437,6 +437,7 @@ class RagV2QueryResult:
     degraded: bool = False
     degraded_reason: str = ""
     policy_version: str = "adaptive-reranking-v1"
+    coverage_verify_ms: float = field(default=0.0, compare=False)
 
 
 def _is_retrieval_lab_profile(profile: str) -> bool:
@@ -880,14 +881,24 @@ class RagV2DevPipeline:
                 focused_max=self.config.focused_max_variants,
                 full_max=self.config.full_max_variants,
             )
+        coverage_started = perf_counter()
         expected = {}
         allowed_paths = []
         allowed_documents = []
+        db_fingerprints: dict[str, Optional[str]] = {}
+        batch_fp_fn = getattr(self.index, "get_document_fingerprints", None)
+        if self.config.index_read_only and selected and callable(batch_fp_fn):
+            db_fingerprints = dict(
+                batch_fp_fn(tuple(source.document_id for source in selected)) or {}
+            )
         for source in selected:
             allowed_paths.append(str(source.path))
             allowed_documents.append(source.document_id)
             if self.config.index_read_only:
-                db_fp = getattr(self.index, "get_document_fingerprint", lambda d: None)(source.document_id)
+                if callable(batch_fp_fn):
+                    db_fp = db_fingerprints.get(source.document_id)
+                else:
+                    db_fp = getattr(self.index, "get_document_fingerprint", lambda d: None)(source.document_id)
                 if db_fp:
                     expected[source.document_id] = db_fp
                 elif source.path.is_file():
@@ -898,6 +909,7 @@ class RagV2DevPipeline:
                 expected[source.document_id] = _file_fingerprint(source.path)
             else:
                 expected[source.document_id] = "__source_unavailable__"
+        coverage_verify_ms = (perf_counter() - coverage_started) * 1000.0
         # Diversity limits are meaningful only across distinct source documents.
         # For a user-selected single manual, a cap of three can suppress the
         # procedure, prerequisite, and safety chunks needed to answer one
@@ -933,12 +945,14 @@ class RagV2DevPipeline:
             rerank_limit=self.config.rerank_limit,
         )
         if self.config.strict_semantic and self.config.index_read_only:
+            verify_started = perf_counter()
             coverage = self.index.verify_selected_document_coverage(
                 allowed_documents,
                 expected_document_fingerprints=expected,
                 sparse_required=self.config.retrieval_profile in _BGE_SPARSE_PROFILES,
                 multivector_required=self.config.retrieval_profile == "bge_m3_multivector",
             )
+            coverage_verify_ms += (perf_counter() - verify_started) * 1000.0
             if not coverage["valid"]:
                 raise SemanticBackendUnavailable("semantic_index_coverage_incomplete")
 
@@ -1214,6 +1228,11 @@ class RagV2DevPipeline:
                 soft_warning_codes=frozenset(evidence_config.soft_warning_codes | _OVERVIEW_SOFT_CODES),
             )
 
+        if hasattr(response, "summary") and hasattr(response.summary, "coverage_verify_ms"):
+            response = replace(
+                response,
+                summary=replace(response.summary, coverage_verify_ms=coverage_verify_ms),
+            )
         pack = build_evidence_pack(plan, response, config=evidence_config)
         synthesis_started = perf_counter()
         prioritize_body_evidence = (
@@ -1260,6 +1279,7 @@ class RagV2DevPipeline:
             degraded=bool(degraded),
             degraded_reason=degraded_reason,
             policy_version=policy_version,
+            coverage_verify_ms=coverage_verify_ms,
         )
 
 

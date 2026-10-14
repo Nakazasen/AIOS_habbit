@@ -131,6 +131,14 @@ def _serialize_query_result(result: RagV2QueryResult) -> dict[str, Any]:
             "embed_latency_ms": float(getattr(summary, "embed_latency_ms", 0.0) or 0.0),
             "dense_load_latency_ms": float(getattr(summary, "dense_load_latency_ms", 0.0) or 0.0),
             "dense_resident": bool(getattr(summary, "dense_resident", True)),
+            "coverage_verify_ms": float(
+                getattr(
+                    summary,
+                    "coverage_verify_ms",
+                    getattr(result, "coverage_verify_ms", 0.0),
+                )
+                or 0.0
+            ),
         },
         "insufficiency_reasons": list(result.evidence_pack.insufficiency_reasons),
         "items": items,
