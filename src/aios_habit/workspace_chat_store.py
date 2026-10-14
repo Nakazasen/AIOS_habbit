@@ -1097,6 +1097,7 @@ def delete_conversation(conv_id: str) -> bool:
         (TRACES_FILE, remaining_traces),
     ))
     _invalidate_store_cache(MESSAGES_FILE)
+    _invalidate_store_cache(TEMPORARY_SOURCES_FILE)
     _invalidate_store_cache(TRACES_FILE)
 
     return True
@@ -1137,47 +1138,123 @@ def save_message(msg: ChatMessage) -> None:
             for k in stale_keys:
                 _JSONL_CACHE.pop(k, None)
 
-def load_all_temporary_sources() -> List[TemporaryConversationSource]:
-    if not TEMPORARY_SOURCES_FILE.exists():
+
+def _reconcile_sources_by_id(raw_records: Iterable[Any]) -> List[Any]:
+    """Reconcile sequential append-only source records preserving in-place replacement by id."""
+    raw_list = list(raw_records)
+    if not raw_list:
         return []
-    return load_jsonl_records(TEMPORARY_SOURCES_FILE, _deserialize_temporary_source)
+
+    seen_ids: set[Any] = set()
+    has_dup = False
+    for item in raw_list:
+        item_id = getattr(item, "id", None)
+        if item_id in seen_ids:
+            has_dup = True
+            break
+        seen_ids.add(item_id)
+    if not has_dup:
+        return list(raw_list)
+
+    reconciled: List[Any] = []
+    index_by_id: dict[Any, int] = {}
+    for item in raw_list:
+        item_id = getattr(item, "id", None)
+        if item_id in index_by_id:
+            reconciled[index_by_id[item_id]] = item
+        else:
+            index_by_id[item_id] = len(reconciled)
+            reconciled.append(item)
+    return reconciled
+
+
+def _load_reconciled_source_records(target_file: Path, deserialize: Any) -> List[Any]:
+    with _STORE_LOCK:
+        if not target_file.exists():
+            return []
+
+        resolved = target_file.resolve()
+        cache_key = None
+        try:
+            stat = target_file.stat()
+            cache_key = (resolved, stat.st_mtime_ns, stat.st_size, deserialize)
+            if cache_key in _JSONL_CACHE:
+                reconciled_cached = _reconcile_sources_by_id(_JSONL_CACHE[cache_key])
+                if len(reconciled_cached) != len(_JSONL_CACHE[cache_key]):
+                    _JSONL_CACHE[cache_key] = list(reconciled_cached)
+                return list(reconciled_cached)
+        except OSError:
+            pass
+
+        raw_records = load_jsonl_records(target_file, deserialize)
+        reconciled = _reconcile_sources_by_id(raw_records)
+        if cache_key is not None:
+            stale_keys = [k for k in _JSONL_CACHE if k[0] == resolved]
+            for k in stale_keys:
+                _JSONL_CACHE.pop(k, None)
+            _JSONL_CACHE[cache_key] = list(reconciled)
+        return list(reconciled)
+
+
+def _append_and_cache_source_record(
+    target_file: Path,
+    record: Any,
+    deserialize: Any,
+) -> None:
+    with _STORE_LOCK:
+        if not target_file.exists():
+            target_file.parent.mkdir(parents=True, exist_ok=True)
+            target_file.touch()
+
+        resolved = target_file.resolve()
+        stat_before = target_file.stat()
+        cache_key_before = (resolved, stat_before.st_mtime_ns, stat_before.st_size, deserialize)
+        cached_records = _JSONL_CACHE.get(cache_key_before)
+        if cached_records is None and stat_before.st_size == 0:
+            cached_records = []
+
+        _append_jsonl_record(target_file, record)
+
+        stat_after = target_file.stat()
+        cache_key_after = (resolved, stat_after.st_mtime_ns, stat_after.st_size, deserialize)
+
+        if cached_records is not None:
+            new_records = _reconcile_sources_by_id(cached_records)
+            found = False
+            for i, item in enumerate(new_records):
+                if item.id == record.id:
+                    new_records[i] = record
+                    found = True
+                    break
+            if not found:
+                new_records.append(record)
+            stale_keys = [k for k in _JSONL_CACHE if k[0] == resolved]
+            for k in stale_keys:
+                _JSONL_CACHE.pop(k, None)
+            _JSONL_CACHE[cache_key_after] = new_records
+        else:
+            stale_keys = [k for k in _JSONL_CACHE if k[0] == resolved]
+            for k in stale_keys:
+                _JSONL_CACHE.pop(k, None)
+
+
+def load_all_temporary_sources() -> List[TemporaryConversationSource]:
+    return _load_reconciled_source_records(TEMPORARY_SOURCES_FILE, _deserialize_temporary_source)
 
 def load_temporary_sources(conv_id: str) -> List[TemporaryConversationSource]:
     return [s for s in load_all_temporary_sources() if s.conversation_id == conv_id]
 
-def save_temporary_source(src: TemporaryConversationSource):
-    sources = load_all_temporary_sources()
-    found = False
-    for i, item in enumerate(sources):
-        if item.id == src.id:
-            sources[i] = src
-            found = True
-            break
-    if not found:
-        sources.append(src)
-
-    atomic_write_jsonl(TEMPORARY_SOURCES_FILE, sources)
+def save_temporary_source(src: TemporaryConversationSource) -> None:
+    _append_and_cache_source_record(TEMPORARY_SOURCES_FILE, src, _deserialize_temporary_source)
 
 def load_all_notebook_sources() -> List[NotebookSource]:
-    if not NOTEBOOK_SOURCES_FILE.exists():
-        return []
-    return load_jsonl_records(NOTEBOOK_SOURCES_FILE, NotebookSource.from_dict)
+    return _load_reconciled_source_records(NOTEBOOK_SOURCES_FILE, NotebookSource.from_dict)
 
 def load_notebook_sources(notebook_id: str) -> List[NotebookSource]:
     return [s for s in load_all_notebook_sources() if s.notebook_id == notebook_id]
 
 def save_notebook_source(source: NotebookSource) -> NotebookSource:
-    sources = load_all_notebook_sources()
-    found = False
-    for i, item in enumerate(sources):
-        if item.id == source.id:
-            sources[i] = source
-            found = True
-            break
-    if not found:
-        sources.append(source)
-
-    atomic_write_jsonl(NOTEBOOK_SOURCES_FILE, sources)
+    _append_and_cache_source_record(NOTEBOOK_SOURCES_FILE, source, NotebookSource.from_dict)
     return source
 
 def get_notebook_source(source_id: str) -> Optional[NotebookSource]:
@@ -1252,6 +1329,8 @@ def delete_sources(scope: str, source_ids: Iterable[str]) -> dict[str, Any]:
     ]
     source_file = NOTEBOOK_SOURCES_FILE if scope == "notebook" else TEMPORARY_SOURCES_FILE
     atomic_write_jsonl_batch(((source_file, remaining_sources), (SOURCE_SELECTIONS_FILE, remaining_selections)))
+    _invalidate_store_cache(source_file)
+    _invalidate_store_cache(SOURCE_SELECTIONS_FILE)
     return snapshot
 
 
@@ -1278,6 +1357,8 @@ def restore_source_snapshot(snapshot: dict[str, Any]) -> int:
     ]
     source_file = NOTEBOOK_SOURCES_FILE if scope == "notebook" else TEMPORARY_SOURCES_FILE
     atomic_write_jsonl_batch(((source_file, [*current_sources, *restored_sources]), (SOURCE_SELECTIONS_FILE, [*current_selections, *restored_selections])))
+    _invalidate_store_cache(source_file)
+    _invalidate_store_cache(SOURCE_SELECTIONS_FILE)
     return len(restored_sources)
 
 
@@ -1457,6 +1538,8 @@ def delete_notebook_permanently(notebook_id: str) -> bool:
         LOGGER.exception("Could not delete notebook %s without losing related records", notebook_id)
         return False
     _invalidate_store_cache(MESSAGES_FILE)
+    _invalidate_store_cache(NOTEBOOK_SOURCES_FILE)
+    _invalidate_store_cache(TEMPORARY_SOURCES_FILE)
     _invalidate_store_cache(TRACES_FILE)
     return True
 
