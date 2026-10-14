@@ -46,6 +46,20 @@ def _get_pipe_session_lock(pipe_name: str) -> threading.Lock:
         return lock
 
 
+_PERSISTENT_SPAWN_INIT_LOCKS_GUARD = threading.Lock()
+_PERSISTENT_SPAWN_INIT_LOCKS: dict[str, threading.Lock] = {}
+
+
+def _get_persistent_spawn_init_lock(pipe_name: str) -> threading.Lock:
+    with _PERSISTENT_SPAWN_INIT_LOCKS_GUARD:
+        lock = _PERSISTENT_SPAWN_INIT_LOCKS.get(pipe_name)
+        if lock is None:
+            lock = threading.Lock()
+            _PERSISTENT_SPAWN_INIT_LOCKS[pipe_name] = lock
+        return lock
+
+
+
 def _is_worker_pid_alive(pid: int) -> bool:
     """Return True if OS process ``pid`` is currently alive (non-blocking)."""
     if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0:
@@ -223,6 +237,22 @@ class BgeSubprocessWorkerClient:
         self._persistent_init_lock = threading.RLock()
         self._pending_persistent_inits: dict[str, Any] = {}
         self._persistent_spawn_init_lock = threading.Lock()
+        self._persistent_spawn_init_locks_guard = threading.Lock()
+        self._persistent_spawn_init_locks: dict[str, threading.Lock] = {}
+
+    def _get_collection_spawn_init_lock(
+        self,
+        config: RagV2DevConfig,
+        pipe_name: str | None = None,
+    ) -> threading.Lock:
+        """Return the per-collection/pipe initialization lock."""
+        resolved_pipe = pipe_name or pipe_name_for_config(config)
+        with self._persistent_spawn_init_locks_guard:
+            lock = self._persistent_spawn_init_locks.get(resolved_pipe)
+            if lock is None:
+                lock = _get_persistent_spawn_init_lock(resolved_pipe)
+                self._persistent_spawn_init_locks[resolved_pipe] = lock
+            return lock
 
     def readiness(self, config: RagV2DevConfig | None = None) -> dict[str, Any]:
         """Return bounded worker health without launching or exposing private data."""
@@ -1095,8 +1125,12 @@ class BgeSubprocessWorkerClient:
                             self._last_failure_reason = ""
                             return
 
-                        with self._persistent_spawn_init_lock:
-                            # Re-check status file inside lock in case worker became ready while waiting
+                        collection_init_lock = self._get_collection_spawn_init_lock(
+                            config,
+                            pipe_name=flight_key,
+                        )
+                        with collection_init_lock:
+                            # Re-check status file inside per-collection lock in case worker became ready while waiting
                             status_inside = self._read_persistent_status_file(config)
                             if status_inside is not None and status_inside.get("ready"):
                                 flight["result"] = {
@@ -1116,28 +1150,28 @@ class BgeSubprocessWorkerClient:
                                 connect_timeout_s=min(full_init_timeout, _PERSIST_SPAWN_WAIT_SECONDS),
                                 allow_spawn=True,
                             )
-                        if response.get("status") != "ok":
-                            err_msg = str(response.get("error", "bge_worker_init_failed"))
-                            self._last_failure_reason = err_msg
-                            flight["error"] = SemanticBackendError(err_msg)
-                            return
-                        readiness = response.get("readiness")
-                        if not isinstance(readiness, dict):
-                            self._last_failure_reason = "bge_worker_init_invalid_response"
-                            flight["error"] = SemanticBackendError(self._last_failure_reason)
-                            return
-                        resp_pid = readiness.get("pid")
-                        if (
-                            isinstance(resp_pid, int)
-                            and not isinstance(resp_pid, bool)
-                            and _is_worker_pid_alive(resp_pid)
-                        ):
-                            write_worker_status_file(
-                                config,
-                                pid=resp_pid,
-                                initialized=True,
-                                readiness=readiness,
-                            )
+                            if response.get("status") != "ok":
+                                err_msg = str(response.get("error", "bge_worker_init_failed"))
+                                self._last_failure_reason = err_msg
+                                flight["error"] = SemanticBackendError(err_msg)
+                                return
+                            readiness = response.get("readiness")
+                            if not isinstance(readiness, dict):
+                                self._last_failure_reason = "bge_worker_init_invalid_response"
+                                flight["error"] = SemanticBackendError(self._last_failure_reason)
+                                return
+                            resp_pid = readiness.get("pid")
+                            if (
+                                isinstance(resp_pid, int)
+                                and not isinstance(resp_pid, bool)
+                                and _is_worker_pid_alive(resp_pid)
+                            ):
+                                write_worker_status_file(
+                                    config,
+                                    pid=resp_pid,
+                                    initialized=True,
+                                    readiness=readiness,
+                                )
                         self._last_failure_reason = ""
                         flight["result"] = {
                             "status": "ok",
@@ -1466,95 +1500,97 @@ class BgeSubprocessWorkerClient:
 
     def _spawn_persistent_worker(self, config: RagV2DevConfig, pipe_name: str) -> None:
         """Start the detached named-pipe worker; it outlives this process."""
-        logs_dir = Path(config.runtime_root) / "logs"
-        try:
-            logs_dir.mkdir(parents=True, exist_ok=True)
-        except OSError:
-            return
-        if _pipe_instance_available(pipe_name):
-            LOGGER.info("Persistent worker already listening on pipe %s; skip spawn", pipe_name)
-            return
-
-        clean_tag = pipe_name.replace("\\", "_").replace(".", "_")
-        pid_file = logs_dir / f"bge_worker_{clean_tag}.pid"
-        if pid_file.is_file():
+        with self._persistent_spawn_init_lock:
+            logs_dir = Path(config.runtime_root) / "logs"
             try:
-                old_pid = int(pid_file.read_text(encoding="utf-8").strip())
-                is_running = False
-                try:
-                    import psutil
-                    if psutil.pid_exists(old_pid):
-                        p = psutil.Process(old_pid)
-                        if p.is_running() and p.status() != psutil.STATUS_ZOMBIE:
-                            cmdline = " ".join(p.cmdline()).casefold()
-                            if "bge_subprocess_worker" in cmdline:
-                                is_running = True
-                except ImportError:
-                    if os.name == "nt":
-                        import ctypes
-                        from ctypes import wintypes
-                        kernel32 = ctypes.windll.kernel32
-                        h = kernel32.OpenProcess(0x1000, False, old_pid)
-                        if h:
-                            exit_code = wintypes.DWORD()
-                            if kernel32.GetExitCodeProcess(h, ctypes.byref(exit_code)) and exit_code.value == 259:
-                                is_running = True
-                            kernel32.CloseHandle(h)
-                if is_running:
-                    LOGGER.info(
-                        "Persistent worker already running (pid=%d) for pipe %s; skip spawn",
-                        old_pid,
-                        pipe_name,
-                    )
-                    return
-                pid_file.unlink(missing_ok=True)
-            except Exception:
-                pass
+                logs_dir.mkdir(parents=True, exist_ok=True)
+            except OSError:
+                return
+            if _pipe_instance_available(pipe_name):
+                LOGGER.info("Persistent worker already listening on pipe %s; skip spawn", pipe_name)
+                return
 
-        log_path = logs_dir / "bge_worker_daemon.stderr.log"
-        cmd = [
-            self._python_executable,
-            "-X",
-            "faulthandler",
-            "-m",
-            "aios_habit.rag_v2.bge_subprocess_worker",
-            "--serve",
-            "--pipe",
-            pipe_name,
-        ]
-        env = os.environ.copy()
-        env["PYTHONIOENCODING"] = "utf-8"
-        env["PYTHONUTF8"] = "1"
-        env["KMP_DUPLICATE_LIB_OK"] = "TRUE"
-        env["OMP_NUM_THREADS"] = "1"
-        env["MKL_NUM_THREADS"] = "1"
-        env["OPENBLAS_NUM_THREADS"] = "1"
-        creationflags = 0
-        if os.name == "nt":
-            creationflags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
-        cwd = (
-            str(Path(config.runtime_root).parent.parent.resolve())
-            if Path(config.runtime_root).is_absolute()
-            else str(Path.cwd())
-        )
-        try:
-            with log_path.open("a", encoding="utf-8") as log_handle:
-                proc = subprocess.Popen(
-                    cmd,
-                    stdin=subprocess.DEVNULL,
-                    stdout=log_handle,
-                    stderr=log_handle,
-                    env=env,
-                    cwd=cwd,
-                    creationflags=creationflags,
-                    close_fds=True,
-                )
+            clean_tag = pipe_name.replace("\\", "_").replace(".", "_")
+            pid_file = logs_dir / f"bge_worker_{clean_tag}.pid"
+            if pid_file.is_file():
                 try:
-                    pid_file.write_text(str(proc.pid), encoding="utf-8")
+                    old_pid = int(pid_file.read_text(encoding="utf-8").strip())
+                    is_running = False
+                    try:
+                        import psutil
+                        if psutil.pid_exists(old_pid):
+                            p = psutil.Process(old_pid)
+                            if p.is_running() and p.status() != psutil.STATUS_ZOMBIE:
+                                cmdline = " ".join(p.cmdline()).casefold()
+                                if "bge_subprocess_worker" in cmdline:
+                                    is_running = True
+                    except ImportError:
+                        if os.name == "nt":
+                            import ctypes
+                            from ctypes import wintypes
+                            kernel32 = ctypes.windll.kernel32
+                            h = kernel32.OpenProcess(0x1000, False, old_pid)
+                            if h:
+                                exit_code = wintypes.DWORD()
+                                if kernel32.GetExitCodeProcess(h, ctypes.byref(exit_code)) and exit_code.value == 259:
+                                    is_running = True
+                                kernel32.CloseHandle(h)
+                    if is_running:
+                        LOGGER.info(
+                            "Persistent worker already running (pid=%d) for pipe %s; skip spawn",
+                            old_pid,
+                            pipe_name,
+                        )
+                        return
+                    pid_file.unlink(missing_ok=True)
                 except Exception:
                     pass
-        except Exception as exc:
-            LOGGER.warning("Persistent BGE worker spawn failed: %s", type(exc).__name__)
+
+            log_path = logs_dir / "bge_worker_daemon.stderr.log"
+            cmd = [
+                self._python_executable,
+                "-X",
+                "faulthandler",
+                "-m",
+                "aios_habit.rag_v2.bge_subprocess_worker",
+                "--serve",
+                "--pipe",
+                pipe_name,
+            ]
+            env = os.environ.copy()
+            env["PYTHONIOENCODING"] = "utf-8"
+            env["PYTHONUTF8"] = "1"
+            env["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+            env["OMP_NUM_THREADS"] = "1"
+            env["MKL_NUM_THREADS"] = "1"
+            env["OPENBLAS_NUM_THREADS"] = "1"
+            creationflags = 0
+            if os.name == "nt":
+                creationflags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+            cwd = (
+                str(Path(config.runtime_root).parent.parent.resolve())
+                if Path(config.runtime_root).is_absolute()
+                else str(Path.cwd())
+            )
+            try:
+                with log_path.open("a", encoding="utf-8") as log_handle:
+                    proc = subprocess.Popen(
+                        cmd,
+                        stdin=subprocess.DEVNULL,
+                        stdout=log_handle,
+                        stderr=log_handle,
+                        env=env,
+                        cwd=cwd,
+                        creationflags=creationflags,
+                        close_fds=True,
+                    )
+                    try:
+                        pid_file.write_text(str(proc.pid), encoding="utf-8")
+                    except Exception:
+                        pass
+            except Exception as exc:
+                LOGGER.warning("Persistent BGE worker spawn failed: %s", type(exc).__name__)
+
 
 
 def _pipe_instance_available(pipe_name: str) -> bool:
