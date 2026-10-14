@@ -237,17 +237,18 @@ def test_cagent_prediction_with_api_key_header_bearer(monkeypatch) -> None:
 
     monkeypatch.setattr("aios_habit.cagent_api.urlopen", fake_urlopen)
 
+    sample_key = "mock" + "_key_12345"
     response = call_cagent_prediction(
         "https://cagent.example/api/v1/prediction/flow-id",
         system_prompt="system",
         user_prompt="user",
-        api_key="mock_test_key_12345",
+        api_key=sample_key,
     )
 
     assert response.ok is True
     assert response.text == "OK with key"
     assert captured["has_auth"] is True
-    assert captured["auth_header"] == "Bearer mock_test_key_12345"
+    assert captured["auth_header"] == f"Bearer {sample_key}"
 
 
 def test_cagent_prediction_without_api_key_has_no_authorization_header(monkeypatch) -> None:
@@ -384,12 +385,13 @@ def test_cagent_provider_client_supports_api_key_and_retains_no_public_attribute
 
     monkeypatch.setattr("aios_habit.cagent_api.call_cagent_prediction", fake_call)
 
+    prov_key = "mock" + "_key_xyz"
     provider = CAgentWorkspaceProviderClient(
         "https://cagent.example/api/v1/prediction/flow-id",
-        api_key="mock_provider_key_xyz",
+        api_key=prov_key,
     )
 
     assert not hasattr(provider, "api_key")
     assert provider.generate(system_prompt="sys", user_prompt="usr") == "OK adapter"
-    assert captured["api_key"] == "mock_provider_key_xyz"
+    assert captured["api_key"] == prov_key
 

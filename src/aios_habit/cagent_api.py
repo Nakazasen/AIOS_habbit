@@ -65,8 +65,8 @@ def _safe_error(value: object, key: str = "") -> str:
     return text[:180]
 
 
-def _resolve_api_key(api_key: str | None = None) -> str:
-    """Resolve C-Agent API key from argument, environment, or .env file."""
+def _resolve_api_key(api_key: str | None = None, endpoint_url: str = "") -> str:
+    """Resolve C-Agent API key from argument, environment, .env file, or user session."""
     if api_key is not None:
         return str(api_key).strip()
     try:
@@ -75,7 +75,15 @@ def _resolve_api_key(api_key: str | None = None) -> str:
         load_env_file()
     except Exception:
         pass
-    return str(os.environ.get("AIOS_CAGENT_API_KEY", "") or "").strip()
+    env_key = str(os.environ.get("AIOS_CAGENT_API_KEY", "") or "").strip()
+    if env_key:
+        return env_key
+    try:
+        from aios_habit.cagent_auth import get_valid_access_token
+
+        return get_valid_access_token(endpoint_url)
+    except Exception:
+        return ""
 
 
 def _extract_text(payload: Any) -> str:
@@ -109,7 +117,7 @@ def call_cagent_prediction(
     if parsed.scheme not in {"https", "http"} or not parsed.netloc:
         return CAgentResponse(False, error_message="C-AGENT API chưa có URL AgentFlow hợp lệ.")
 
-    resolved_api_key = _resolve_api_key(api_key)
+    resolved_api_key = _resolve_api_key(api_key, endpoint)
 
     def _make_error(msg: str) -> CAgentResponse:
         return CAgentResponse(False, error_message=_mask_secret(msg, resolved_api_key))
@@ -152,6 +160,20 @@ def call_cagent_prediction(
                 logging.getLogger(__name__).warning("C-AGENT API HTTP %s: %s", error.code, err_body[:500])
             except Exception:
                 pass
+            if error.code == 401 and attempt < total_attempts:
+                try:
+                    from aios_habit.cagent_auth import get_valid_access_token, refresh_cagent_token
+
+                    ok, _ = refresh_cagent_token(endpoint)
+                    if ok:
+                        renewed = get_valid_access_token(endpoint)
+                        if renewed and renewed != resolved_api_key:
+                            resolved_api_key = renewed
+                            headers["Authorization"] = f"Bearer {resolved_api_key}"
+                            request = Request(endpoint, data=body, method="POST", headers=headers)
+                            continue
+                except Exception:
+                    pass
             if 500 <= error.code < 600:
                 if attempt < total_attempts:
                     _sleep_before_retry(retry_backoff_seconds)
