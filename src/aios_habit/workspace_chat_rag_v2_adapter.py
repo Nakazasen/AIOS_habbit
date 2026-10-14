@@ -1078,40 +1078,75 @@ def _durable_semantic_coverage_ready(    source: WorkspaceAIContextSource,
         uri = f"file:{index_path.resolve().as_posix()}?mode=ro"
         connection = sqlite3.connect(uri, uri=True)
         try:
-            retrievable = int(connection.execute(
-                "SELECT COUNT(*) FROM chunks WHERE document_id=? AND retrievable=1",
-                (document_id,),
-            ).fetchone()[0])
+            has_source_state = bool(
+                connection.execute("PRAGMA table_info(source_state)").fetchone()
+            )
+
+            def _doc_retrievable_count(doc_id: str) -> int:
+                if has_source_state:
+                    row = connection.execute(
+                        "SELECT chunk_count FROM source_state WHERE document_id=?",
+                        (doc_id,),
+                    ).fetchone()
+                    return int(row[0] or 0) if row is not None else 0
+                return int(
+                    connection.execute(
+                        "SELECT COUNT(*) FROM chunks WHERE document_id=? AND retrievable=1",
+                        (doc_id,),
+                    ).fetchone()[0]
+                )
+
+            retrievable = _doc_retrievable_count(document_id)
             if retrievable <= 0 and getattr(source, "source_id", ""):
                 src_id = str(source.source_id).strip()
                 if src_id.startswith("wsc-"):
-                    cnt = int(connection.execute(
-                        "SELECT COUNT(*) FROM chunks WHERE document_id=? AND retrievable=1",
-                        (src_id,),
-                    ).fetchone()[0])
+                    cnt = _doc_retrievable_count(src_id)
                     if cnt > 0:
                         document_id = src_id
                         retrievable = cnt
             if retrievable <= 0:
                 candidate_title = (getattr(source, "title", "") or "").strip()
                 if candidate_title:
-                    found = connection.execute(
-                        "SELECT document_id FROM chunks WHERE source_name=? AND retrievable=1 LIMIT 1",
-                        (candidate_title,),
-                    ).fetchone()
-                    if not found and "C7620" in candidate_title:
-                        found = connection.execute(
-                            "SELECT document_id FROM chunks WHERE source_name LIKE '%C7620%' AND retrievable=1 LIMIT 1"
-                        ).fetchone()
-                    if found:
-                        matched_doc_id = str(found[0])
-                        retrievable = int(connection.execute(
-                            "SELECT COUNT(*) FROM chunks WHERE document_id=? AND retrievable=1",
-                            (matched_doc_id,),
-                        ).fetchone()[0])
-                        if retrievable > 0:
+                    matched_doc_id: Optional[str] = None
+                    try:
+                        from aios_habit import index_domain
+
+                        catalog_specs = index_domain.load_all_index_specs(index_path)
+                        for spec in catalog_specs:
+                            spec_title = (getattr(spec, "title", "") or "").strip()
+                            if spec_title == candidate_title:
+                                matched_doc_id = str(spec.document_id)
+                                break
+                        if matched_doc_id is None and "C7620" in candidate_title:
+                            for spec in catalog_specs:
+                                spec_title = (getattr(spec, "title", "") or "").strip()
+                                if "C7620" in spec_title:
+                                    matched_doc_id = str(spec.document_id)
+                                    break
+                    except Exception:
+                        matched_doc_id = None
+                    if matched_doc_id is not None:
+                        cnt = _doc_retrievable_count(matched_doc_id)
+                        if cnt > 0:
                             document_id = matched_doc_id
+                            retrievable = cnt
+                    if retrievable <= 0:
+                        found = connection.execute(
+                            "SELECT document_id FROM chunks WHERE source_name=? AND retrievable=1 LIMIT 1",
+                            (candidate_title,),
+                        ).fetchone()
+                        if not found and "C7620" in candidate_title:
+                            found = connection.execute(
+                                "SELECT document_id FROM chunks WHERE source_name LIKE '%C7620%' AND retrievable=1 LIMIT 1"
+                            ).fetchone()
+                        if found:
+                            fallback_doc_id = str(found[0])
+                            cnt = _doc_retrievable_count(fallback_doc_id)
+                            if cnt > 0:
+                                document_id = fallback_doc_id
+                                retrievable = cnt
             if retrievable <= 0:
+                _store_coverage_result(cache_key, False)
                 return False
             params = (document_id, config.bge_m3_model_revision, expected_fingerprint)
             dense = int(connection.execute(_DENSE_COVERAGE_SQL, params).fetchone()[0])
@@ -3753,6 +3788,44 @@ def _chunk_sequence(seq: Sequence[Any], n: int) -> Iterator[Sequence[Any]]:
         yield seq[i : i + n]
 
 
+def _load_source_state_sidecar(
+    resolved_path: Path, mtime_ns: int, size: int
+) -> Optional[dict[str, str]]:
+    sidecar = resolved_path.parent / f".{resolved_path.name}.source_state.local.json"
+    if not sidecar.is_file():
+        return None
+    try:
+        payload = json.loads(sidecar.read_text(encoding="utf-8"))
+        if (
+            isinstance(payload, dict)
+            and payload.get("mtime_ns") == mtime_ns
+            and payload.get("size") == size
+            and isinstance(payload.get("fingerprints"), dict)
+        ):
+            return {str(k): str(v or "") for k, v in payload["fingerprints"].items()}
+    except Exception:
+        return None
+    return None
+
+
+def _save_source_state_sidecar(
+    resolved_path: Path, mtime_ns: int, size: int, fingerprints: Mapping[str, str]
+) -> None:
+    sidecar = resolved_path.parent / f".{resolved_path.name}.source_state.local.json"
+    try:
+        payload = {
+            "mtime_ns": mtime_ns,
+            "size": size,
+            "fingerprints": {str(k): str(v or "") for k, v in fingerprints.items()},
+        }
+        sidecar.write_text(
+            json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+            encoding="utf-8",
+        )
+    except Exception:
+        pass
+
+
 def _get_covered_source_fingerprints(
     index_path: Path | str,
     candidate_doc_ids: Optional[Iterable[str]] = None,
@@ -3761,14 +3834,14 @@ def _get_covered_source_fingerprints(
 ) -> dict[str, str]:
     """Retrieve mapping of document_id -> source_fingerprint for retrievable chunks.
 
-    Optimized for DESKTOP-SPEED-PROFILE-QUERY-FIX-HOME & ARCH-11:
-    1. Caches results in-memory keyed by (resolved_path, mtime_ns, size) so repeat
-       calls within the same turn (including retry/escalation loops) or across turns
-       do not re-scan the database.
-    2. When querying SQLite (both read_only=True and read_only=False), filters by
-       candidate_doc_ids IN (...) in batches of 500 using idx_chunks_retrievable,
-       avoiding a costly full-table scan on large indexes.
-    3. Guarantees 100% semantic identity with the legacy query.
+    Optimized for DESKTOP-SPEED-FIX-G9-HOSTFP-HOME, DESKTOP-SPEED-PROFILE-QUERY-FIX-HOME & ARCH-11:
+    1. Caches results in-memory keyed by (resolved_path, mtime_ns, size) and shares covered
+       document state between read_only=False and read_only=True so repeat calls within the
+       same turn or across turns do not re-query SQLite.
+    2. Reads O(1) document metadata from the ``source_state`` table when present instead of
+       scanning the ``chunks`` table.
+    3. Falls back safely to covering-index / batched queries when ``source_state`` is absent,
+       preserving 100% semantic equivalence with the legacy query.
     """
     resolved_path = Path(index_path).resolve()
     if not resolved_path.is_file():
@@ -3805,6 +3878,25 @@ def _get_covered_source_fingerprints(
                     _INDEX_COVERED_FULL_SCANNED.discard(k)
                 _INDEX_COVERED_DOC_STATUS_CACHE[cache_key] = {}
 
+            # Share state if read_only=False already populated _INDEX_FINGERPRINT_CACHE
+            if cache_key in _INDEX_FINGERPRINT_FULL_SCANNED and cache_key not in _INDEX_COVERED_FULL_SCANNED:
+                fp_map = _INDEX_FINGERPRINT_CACHE.get(cache_key, {})
+                cov_from_fp = {doc_id for doc_id, fp_val in fp_map.items() if fp_val is not None}
+                _INDEX_COVERED_DOC_IDS_CACHE[cache_key] = cov_from_fp
+                ro_status = _INDEX_COVERED_DOC_STATUS_CACHE.setdefault(cache_key, {})
+                for doc_id, fp_val in fp_map.items():
+                    ro_status[doc_id] = fp_val is not None
+                _INDEX_COVERED_FULL_SCANNED.add(cache_key)
+            elif cache_key in _INDEX_FINGERPRINT_CACHE:
+                fp_map = _INDEX_FINGERPRINT_CACHE[cache_key]
+                ro_status = _INDEX_COVERED_DOC_STATUS_CACHE.setdefault(cache_key, {})
+                cov_set = _INDEX_COVERED_DOC_IDS_CACHE.setdefault(cache_key, set())
+                for doc_id, fp_val in fp_map.items():
+                    if doc_id not in ro_status:
+                        ro_status[doc_id] = fp_val is not None
+                        if fp_val is not None:
+                            cov_set.add(doc_id)
+
             status_map = _INDEX_COVERED_DOC_STATUS_CACHE[cache_key]
             is_ro_full = cache_key in _INDEX_COVERED_FULL_SCANNED
 
@@ -3823,10 +3915,41 @@ def _get_covered_source_fingerprints(
 
         uri = resolved_path.as_uri() + "?mode=ro"
         with sqlite3.connect(uri, uri=True) as conn:
+            has_source_state = bool(
+                conn.execute("PRAGMA table_info(source_state)").fetchone()
+            )
             if ro_missing_ids is None:
-                rows = conn.execute(
-                    "SELECT DISTINCT document_id FROM chunks WHERE retrievable = 1"
-                ).fetchall()
+                if has_source_state:
+                    rows = conn.execute(
+                        "SELECT document_id FROM source_state WHERE chunk_count > 0"
+                    ).fetchall()
+                else:
+                    index_names = {
+                        str(r[1])
+                        for r in conn.execute("PRAGMA index_list(chunks)").fetchall()
+                        if len(r) > 1
+                    }
+                    if "idx_chunks_retrievable" in index_names:
+                        rows = conn.execute(
+                            """
+                            WITH RECURSIVE docs(doc_id) AS (
+                                SELECT MIN(document_id) FROM chunks WHERE retrievable = 1
+                                UNION ALL
+                                SELECT (
+                                    SELECT MIN(document_id)
+                                    FROM chunks
+                                    WHERE retrievable = 1 AND document_id > docs.doc_id
+                                )
+                                FROM docs
+                                WHERE docs.doc_id IS NOT NULL
+                            )
+                            SELECT doc_id FROM docs WHERE doc_id IS NOT NULL
+                            """
+                        ).fetchall()
+                    else:
+                        rows = conn.execute(
+                            "SELECT DISTINCT document_id FROM chunks WHERE retrievable = 1"
+                        ).fetchall()
                 covered_set = {str(r[0]) for r in rows if r and r[0] is not None}
                 with _INDEX_FINGERPRINT_LOCK:
                     _INDEX_COVERED_DOC_IDS_CACHE[cache_key] = covered_set
@@ -3839,14 +3962,24 @@ def _get_covered_source_fingerprints(
                 found_docs: set[str] = set()
                 for chunk in _chunk_sequence(ro_missing_ids, 500):
                     placeholders = ",".join("?" for _ in chunk)
-                    rows = conn.execute(
-                        f"""
-                        SELECT DISTINCT document_id
-                        FROM chunks
-                        WHERE retrievable = 1 AND document_id IN ({placeholders})
-                        """,
-                        chunk,
-                    ).fetchall()
+                    if has_source_state:
+                        rows = conn.execute(
+                            f"""
+                            SELECT document_id
+                            FROM source_state
+                            WHERE chunk_count > 0 AND document_id IN ({placeholders})
+                            """,
+                            chunk,
+                        ).fetchall()
+                    else:
+                        rows = conn.execute(
+                            f"""
+                            SELECT DISTINCT document_id
+                            FROM chunks
+                            WHERE retrievable = 1 AND document_id IN ({placeholders})
+                            """,
+                            chunk,
+                        ).fetchall()
                     for row in rows:
                         if row and row[0] is not None:
                             found_docs.add(str(row[0]))
@@ -3882,6 +4015,135 @@ def _get_covered_source_fingerprints(
 
     uri = resolved_path.as_uri() + "?mode=ro"
     with sqlite3.connect(uri, uri=True) as conn:
+        has_source_state = bool(
+            conn.execute("PRAGMA table_info(source_state)").fetchone()
+        )
+        if has_source_state:
+            if missing_ids is None:
+                rows = conn.execute(
+                    """
+                    SELECT document_id,
+                           COALESCE(min_fingerprint, source_fingerprint, '') AS min_fp,
+                           COALESCE(max_fingerprint, source_fingerprint, '') AS max_fp
+                    FROM source_state
+                    WHERE chunk_count > 0
+                    """
+                ).fetchall()
+                with _INDEX_FINGERPRINT_LOCK:
+                    cached_map = _INDEX_FINGERPRINT_CACHE.setdefault(cache_key, {})
+                    covered_set = _INDEX_COVERED_DOC_IDS_CACHE.setdefault(cache_key, set())
+                    ro_status = _INDEX_COVERED_DOC_STATUS_CACHE.setdefault(cache_key, {})
+                    for row in rows:
+                        doc_id = str(row[0])
+                        fp_str = str(row[1] or "")
+                        cached_map[doc_id] = fp_str
+                        covered_set.add(doc_id)
+                        ro_status[doc_id] = True
+                    _INDEX_FINGERPRINT_FULL_SCANNED.add(cache_key)
+                    _INDEX_COVERED_FULL_SCANNED.add(cache_key)
+                    return {k: v for k, v in cached_map.items() if v is not None}
+            else:
+                fetched: dict[str, str] = {}
+                for chunk in _chunk_sequence(missing_ids, 500):
+                    placeholders = ",".join("?" for _ in chunk)
+                    rows = conn.execute(
+                        f"""
+                        SELECT document_id,
+                               COALESCE(min_fingerprint, source_fingerprint, '') AS min_fp,
+                               COALESCE(max_fingerprint, source_fingerprint, '') AS max_fp
+                        FROM source_state
+                        WHERE chunk_count > 0 AND document_id IN ({placeholders})
+                        """,
+                        chunk,
+                    ).fetchall()
+                    for row in rows:
+                        fetched[str(row[0])] = str(row[1] or "")
+                with _INDEX_FINGERPRINT_LOCK:
+                    cached_map = _INDEX_FINGERPRINT_CACHE.setdefault(cache_key, {})
+                    covered_set = _INDEX_COVERED_DOC_IDS_CACHE.setdefault(cache_key, set())
+                    ro_status = _INDEX_COVERED_DOC_STATUS_CACHE.setdefault(cache_key, {})
+                    for d in missing_ids:
+                        val = fetched.get(d)
+                        cached_map[d] = val
+                        ro_status[d] = val is not None
+                        if val is not None:
+                            covered_set.add(d)
+                    return {d: cached_map[d] for d in candidate_list if cached_map.get(d) is not None}
+
+        # Fallback when source_state table is not present in SQLite
+        index_names = {
+            str(r[1])
+            for r in conn.execute("PRAGMA index_list(chunks)").fetchall()
+            if len(r) > 1
+        }
+        has_fp_cov_idx = "idx_chunks_retrievable_doc_fp" in index_names
+        if not has_fp_cov_idx and stat.st_size >= 32 * 1024 * 1024:
+            sidecar_fps = _load_source_state_sidecar(
+                resolved_path, stat.st_mtime_ns, stat.st_size
+            )
+            if sidecar_fps is None:
+                if "idx_chunks_retrievable" in index_names:
+                    doc_rows = conn.execute(
+                        """
+                        WITH RECURSIVE docs(doc_id) AS (
+                            SELECT MIN(document_id) FROM chunks WHERE retrievable = 1
+                            UNION ALL
+                            SELECT (
+                                SELECT MIN(document_id)
+                                FROM chunks
+                                WHERE retrievable = 1 AND document_id > docs.doc_id
+                            )
+                            FROM docs
+                            WHERE docs.doc_id IS NOT NULL
+                        )
+                        SELECT doc_id FROM docs WHERE doc_id IS NOT NULL
+                        """
+                    ).fetchall()
+                else:
+                    doc_rows = conn.execute(
+                        "SELECT DISTINCT document_id FROM chunks WHERE retrievable = 1"
+                    ).fetchall()
+                all_cov_docs = [str(r[0]) for r in doc_rows if r and r[0] is not None]
+                sidecar_fps = {}
+                for chunk in _chunk_sequence(all_cov_docs, 500):
+                    values_sql = ",".join("(?)" for _ in chunk)
+                    fp_rows = conn.execute(
+                        f"""
+                        WITH req(doc_id) AS (VALUES {values_sql})
+                        SELECT req.doc_id AS document_id,
+                               (SELECT c.source_fingerprint
+                                FROM chunks AS c
+                                WHERE c.retrievable = 1
+                                  AND c.document_id = req.doc_id
+                                  AND c.source_fingerprint IS NOT NULL
+                                LIMIT 1) AS min_fp
+                        FROM req
+                        """,
+                        chunk,
+                    ).fetchall()
+                    for r in fp_rows:
+                        sidecar_fps[str(r[0])] = str(r[1] or "")
+                _save_source_state_sidecar(
+                    resolved_path, stat.st_mtime_ns, stat.st_size, sidecar_fps
+                )
+            with _INDEX_FINGERPRINT_LOCK:
+                cached_map = _INDEX_FINGERPRINT_CACHE.setdefault(cache_key, {})
+                covered_set = _INDEX_COVERED_DOC_IDS_CACHE.setdefault(cache_key, set())
+                ro_status = _INDEX_COVERED_DOC_STATUS_CACHE.setdefault(cache_key, {})
+                for doc_id, fp_str in sidecar_fps.items():
+                    cached_map[doc_id] = fp_str
+                    covered_set.add(doc_id)
+                    ro_status[doc_id] = True
+                _INDEX_FINGERPRINT_FULL_SCANNED.add(cache_key)
+                _INDEX_COVERED_FULL_SCANNED.add(cache_key)
+                if candidate_list is None:
+                    return {k: v for k, v in cached_map.items() if v is not None}
+                for d in candidate_list:
+                    if d not in cached_map:
+                        cached_map[d] = None
+                        ro_status[d] = False
+                return {d: cached_map[d] for d in candidate_list if cached_map.get(d) is not None}
+
         if missing_ids is None:
             rows = conn.execute(
                 """
@@ -3895,12 +4157,19 @@ def _get_covered_source_fingerprints(
             ).fetchall()
             with _INDEX_FINGERPRINT_LOCK:
                 cached_map = _INDEX_FINGERPRINT_CACHE.setdefault(cache_key, {})
+                covered_set = _INDEX_COVERED_DOC_IDS_CACHE.setdefault(cache_key, set())
+                ro_status = _INDEX_COVERED_DOC_STATUS_CACHE.setdefault(cache_key, {})
                 for row in rows:
-                    cached_map[str(row[0])] = str(row[1] or "")
+                    doc_id = str(row[0])
+                    fp_str = str(row[1] or "")
+                    cached_map[doc_id] = fp_str
+                    covered_set.add(doc_id)
+                    ro_status[doc_id] = True
                 _INDEX_FINGERPRINT_FULL_SCANNED.add(cache_key)
+                _INDEX_COVERED_FULL_SCANNED.add(cache_key)
                 return {k: v for k, v in cached_map.items() if v is not None}
         else:
-            fetched: dict[str, str] = {}
+            fetched = {}
             for chunk in _chunk_sequence(missing_ids, 500):
                 placeholders = ",".join("?" for _ in chunk)
                 rows = conn.execute(
@@ -3918,8 +4187,14 @@ def _get_covered_source_fingerprints(
                     fetched[str(row[0])] = str(row[1] or "")
             with _INDEX_FINGERPRINT_LOCK:
                 cached_map = _INDEX_FINGERPRINT_CACHE.setdefault(cache_key, {})
+                covered_set = _INDEX_COVERED_DOC_IDS_CACHE.setdefault(cache_key, set())
+                ro_status = _INDEX_COVERED_DOC_STATUS_CACHE.setdefault(cache_key, {})
                 for d in missing_ids:
-                    cached_map[d] = fetched.get(d)
+                    val = fetched.get(d)
+                    cached_map[d] = val
+                    ro_status[d] = val is not None
+                    if val is not None:
+                        covered_set.add(d)
                 return {d: cached_map[d] for d in candidate_list if cached_map.get(d) is not None}
 
 

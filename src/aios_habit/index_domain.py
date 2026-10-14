@@ -771,13 +771,7 @@ def _find_cross_domain_candidate_documents(
         uri = path.resolve().as_uri() + "?mode=ro"
         with sqlite3.connect(uri, uri=True, timeout=5.0) as con:
             con.execute("PRAGMA query_only=ON")
-            clauses = []
-            params = []
-            for tok in exact_identifiers:
-                clauses.append(
-                    "d1.document_id IN (SELECT document_id FROM chunks WHERE chunk_id IN (SELECT chunk_id FROM chunks_fts WHERE chunks_fts MATCH ?))"
-                )
-                params.append(f'"{tok}"')
+            fts_queries: list[str] = [f'"{tok}"' for tok in exact_identifiers]
 
             if question:
                 q_low = question.lower()
@@ -791,18 +785,60 @@ def _find_cross_domain_candidate_documents(
                 if "kích thước" in q_low:
                     spec_terms.append('"kích thước"')
                 if spec_terms:
-                    clauses.append(
-                        "d1.document_id IN (SELECT document_id FROM chunks WHERE chunk_id IN (SELECT chunk_id FROM chunks_fts WHERE chunks_fts MATCH ?))"
-                    )
-                    params.append(" OR ".join(spec_terms))
+                    fts_queries.append(" OR ".join(spec_terms))
 
-            sql = f"""
-                SELECT d1.document_id, MIN(COALESCE(d1.source_name, '')), COUNT(DISTINCT d1.chunk_id) as hits
-                FROM chunks d1
-                WHERE {" AND ".join(clauses)}
-                GROUP BY d1.document_id
-            """
-            raw_rows = con.execute(sql, tuple(params)).fetchall()
+            candidate_docs: Optional[set[str]] = None
+            for match_expr in fts_queries:
+                doc_rows = con.execute(
+                    """
+                    SELECT DISTINCT c.document_id
+                    FROM chunks_fts f
+                    JOIN chunks c ON c.chunk_id = f.chunk_id
+                    WHERE chunks_fts MATCH ?
+                    """,
+                    (match_expr,),
+                ).fetchall()
+                matched_set = {str(r[0]) for r in doc_rows if r and r[0] is not None}
+                if candidate_docs is None:
+                    candidate_docs = matched_set
+                else:
+                    candidate_docs &= matched_set
+                if not candidate_docs:
+                    return ()
+
+            if not candidate_docs:
+                return ()
+
+            sorted_docs = sorted(candidate_docs)
+            placeholders = ",".join("?" for _ in sorted_docs)
+            has_source_state = bool(
+                con.execute("PRAGMA table_info(source_state)").fetchone()
+            )
+            if has_source_state:
+                raw_rows = con.execute(
+                    f"""
+                    SELECT s.document_id,
+                           COALESCE(
+                               (SELECT c.source_name FROM chunks c WHERE c.document_id = s.document_id LIMIT 1),
+                               ''
+                           ) AS s_name,
+                           s.chunk_count AS hits
+                    FROM source_state s
+                    WHERE s.document_id IN ({placeholders})
+                    ORDER BY s.document_id
+                    """,
+                    tuple(sorted_docs),
+                ).fetchall()
+            else:
+                raw_rows = con.execute(
+                    f"""
+                    SELECT d1.document_id, MIN(COALESCE(d1.source_name, '')), COUNT(DISTINCT d1.chunk_id) as hits
+                    FROM chunks d1
+                    WHERE d1.document_id IN ({placeholders})
+                    GROUP BY d1.document_id
+                    """,
+                    tuple(sorted_docs),
+                ).fetchall()
             if not raw_rows:
                 return ()
 
@@ -850,8 +886,10 @@ def get_specs_for_domain(
         return tuple(all_specs)
 
     allowed_set = set(allowed_ids)
+    has_unallowed_specs = any(s.document_id not in allowed_set for s in all_specs)
     if (
-        question
+        has_unallowed_specs
+        and question
         and cross_domain_exact_identifier_enabled()
         and db_path is not None
     ):

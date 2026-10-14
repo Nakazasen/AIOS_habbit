@@ -1105,6 +1105,211 @@ def fuse_ranked_channels(
     return SearchResponse(results=tuple(final_results), summary=summary)
 
 
+SOURCE_STATE_TABLE_NAME = "source_state"
+
+_SOURCE_STATE_SCHEMA_AND_TRIGGERS_SQL = """
+CREATE TABLE IF NOT EXISTS source_state (
+    document_id TEXT PRIMARY KEY,
+    source_fingerprint TEXT NOT NULL DEFAULT '',
+    min_fingerprint TEXT,
+    max_fingerprint TEXT,
+    chunk_count INTEGER NOT NULL DEFAULT 0
+);
+DROP TRIGGER IF EXISTS chunks_source_state_insert;
+DROP TRIGGER IF EXISTS chunks_source_state_delete;
+DROP TRIGGER IF EXISTS chunks_source_state_update;
+CREATE TRIGGER chunks_source_state_insert AFTER INSERT ON chunks
+WHEN new.retrievable = 1 BEGIN
+    INSERT INTO source_state (
+        document_id, source_fingerprint, min_fingerprint, max_fingerprint, chunk_count
+    )
+    VALUES (
+        new.document_id,
+        COALESCE(new.source_fingerprint, ''),
+        new.source_fingerprint,
+        new.source_fingerprint,
+        1
+    )
+    ON CONFLICT(document_id) DO UPDATE SET
+        min_fingerprint = CASE
+            WHEN source_state.min_fingerprint IS NULL THEN excluded.min_fingerprint
+            WHEN excluded.min_fingerprint IS NULL THEN source_state.min_fingerprint
+            ELSE MIN(source_state.min_fingerprint, excluded.min_fingerprint)
+        END,
+        max_fingerprint = CASE
+            WHEN source_state.max_fingerprint IS NULL THEN excluded.max_fingerprint
+            WHEN excluded.max_fingerprint IS NULL THEN source_state.max_fingerprint
+            ELSE MAX(source_state.max_fingerprint, excluded.max_fingerprint)
+        END,
+        source_fingerprint = CASE
+            WHEN (
+                CASE
+                    WHEN source_state.min_fingerprint IS NULL THEN excluded.min_fingerprint
+                    WHEN excluded.min_fingerprint IS NULL THEN source_state.min_fingerprint
+                    ELSE MIN(source_state.min_fingerprint, excluded.min_fingerprint)
+                END
+            ) IS NOT NULL
+            AND (
+                CASE
+                    WHEN source_state.min_fingerprint IS NULL THEN excluded.min_fingerprint
+                    WHEN excluded.min_fingerprint IS NULL THEN source_state.min_fingerprint
+                    ELSE MIN(source_state.min_fingerprint, excluded.min_fingerprint)
+                END
+            ) = (
+                CASE
+                    WHEN source_state.max_fingerprint IS NULL THEN excluded.max_fingerprint
+                    WHEN excluded.max_fingerprint IS NULL THEN source_state.max_fingerprint
+                    ELSE MAX(source_state.max_fingerprint, excluded.max_fingerprint)
+                END
+            )
+            THEN (
+                CASE
+                    WHEN source_state.min_fingerprint IS NULL THEN excluded.min_fingerprint
+                    WHEN excluded.min_fingerprint IS NULL THEN source_state.min_fingerprint
+                    ELSE MIN(source_state.min_fingerprint, excluded.min_fingerprint)
+                END
+            )
+            ELSE ''
+        END,
+        chunk_count = source_state.chunk_count + 1;
+END;
+CREATE TRIGGER chunks_source_state_delete AFTER DELETE ON chunks
+WHEN old.retrievable = 1 BEGIN
+    DELETE FROM source_state WHERE document_id = old.document_id;
+    INSERT INTO source_state (
+        document_id, source_fingerprint, min_fingerprint, max_fingerprint, chunk_count
+    )
+    SELECT document_id,
+           CASE
+               WHEN MIN(source_fingerprint) IS NOT NULL
+                AND MIN(source_fingerprint) = MAX(source_fingerprint)
+               THEN MIN(source_fingerprint)
+               ELSE ''
+           END,
+           MIN(source_fingerprint),
+           MAX(source_fingerprint),
+           COUNT(*)
+    FROM chunks
+    WHERE document_id = old.document_id AND retrievable = 1
+    GROUP BY document_id;
+END;
+CREATE TRIGGER chunks_source_state_update AFTER UPDATE OF document_id, source_fingerprint, retrievable ON chunks
+BEGIN
+    DELETE FROM source_state WHERE document_id IN (old.document_id, new.document_id);
+    INSERT INTO source_state (
+        document_id, source_fingerprint, min_fingerprint, max_fingerprint, chunk_count
+    )
+    SELECT document_id,
+           CASE
+               WHEN MIN(source_fingerprint) IS NOT NULL
+                AND MIN(source_fingerprint) = MAX(source_fingerprint)
+               THEN MIN(source_fingerprint)
+               ELSE ''
+           END,
+           MIN(source_fingerprint),
+           MAX(source_fingerprint),
+           COUNT(*)
+    FROM chunks
+    WHERE document_id IN (old.document_id, new.document_id) AND retrievable = 1
+    GROUP BY document_id;
+END;
+"""
+
+
+def _backfill_source_state_on_connection(conn: sqlite3.Connection) -> None:
+    """Ensure source_state table, triggers, and rows are synchronized with chunks."""
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_chunks_retrievable_doc_fp "
+        "ON chunks(retrievable, document_id, source_fingerprint)"
+    )
+    conn.executescript(_SOURCE_STATE_SCHEMA_AND_TRIGGERS_SQL)
+    expected_chunks = int(
+        conn.execute("SELECT COUNT(*) FROM chunks WHERE retrievable = 1").fetchone()[0]
+    )
+    state_row = conn.execute(
+        "SELECT COALESCE(SUM(chunk_count), 0), COUNT(*) FROM source_state"
+    ).fetchone()
+    actual_state_chunks = int(state_row[0] or 0) if state_row else 0
+    if actual_state_chunks != expected_chunks:
+        conn.execute("DELETE FROM source_state")
+        if expected_chunks > 0:
+            conn.execute(
+                """
+                INSERT INTO source_state (
+                    document_id, source_fingerprint, min_fingerprint, max_fingerprint, chunk_count
+                )
+                SELECT document_id,
+                       CASE
+                           WHEN MIN(source_fingerprint) IS NOT NULL
+                            AND MIN(source_fingerprint) = MAX(source_fingerprint)
+                           THEN MIN(source_fingerprint)
+                           ELSE ''
+                       END,
+                       MIN(source_fingerprint),
+                       MAX(source_fingerprint),
+                       COUNT(*)
+                FROM chunks
+                WHERE retrievable = 1
+                GROUP BY document_id
+                """
+            )
+
+
+def ensure_index_source_state(db_path: str | Path) -> bool:
+    """Ensure ``source_state`` and ``idx_chunks_retrievable_doc_fp`` exist on an index SQLite file.
+
+    Returns True when ``source_state`` is present and synchronized, or False if the
+    database does not exist, lacks a ``chunks`` table, or cannot be written.
+    """
+    path = Path(db_path)
+    if not path.is_file():
+        return False
+    try:
+        uri = path.resolve().as_uri() + "?mode=ro"
+        with sqlite3.connect(uri, uri=True, timeout=2.0) as ro_conn:
+            has_chunks = bool(
+                ro_conn.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'chunks'"
+                ).fetchone()
+            )
+            if not has_chunks:
+                return False
+            has_state = bool(
+                ro_conn.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'source_state'"
+                ).fetchone()
+            )
+            has_fp_idx = bool(
+                ro_conn.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = 'idx_chunks_retrievable_doc_fp'"
+                ).fetchone()
+            )
+            has_trig = bool(
+                ro_conn.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type = 'trigger' AND name = 'chunks_source_state_insert'"
+                ).fetchone()
+            )
+            if has_state and has_fp_idx and has_trig:
+                expected_chunks = int(
+                    ro_conn.execute("SELECT COUNT(*) FROM chunks WHERE retrievable = 1").fetchone()[0]
+                )
+                actual_chunks = int(
+                    ro_conn.execute("SELECT COALESCE(SUM(chunk_count), 0) FROM source_state").fetchone()[0]
+                )
+                if expected_chunks == actual_chunks:
+                    return True
+    except sqlite3.Error:
+        return False
+
+    try:
+        with sqlite3.connect(str(path), timeout=5.0) as rw_conn:
+            _backfill_source_state_on_connection(rw_conn)
+            rw_conn.commit()
+        return True
+    except sqlite3.Error:
+        return False
+
+
 class LocalChunkIndex:
     def __init__(
         self,
@@ -1212,6 +1417,11 @@ class LocalChunkIndex:
                 "SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = 'idx_chunks_retrievable_doc_fp'"
             ).fetchone()
         )
+        self._has_source_state_table = bool(
+            self._conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'source_state'"
+            ).fetchone()
+        )
 
     @property
     def retrieval_backend(self) -> str:
@@ -1255,6 +1465,7 @@ class LocalChunkIndex:
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_chunks_retrievable_doc_fp ON chunks(retrievable, document_id, source_fingerprint)"
         )
+        _backfill_source_state_on_connection(self._conn)
         self._conn.executescript(
             """
             CREATE TABLE IF NOT EXISTS chunk_embeddings (
@@ -1584,6 +1795,33 @@ class LocalChunkIndex:
 
     def document_state(self, document_id: str) -> Dict[str, Any]:
         """Return safe incremental-index state without returning source text."""
+        if self._has_source_state_table:
+            state_row = self._conn.execute(
+                """
+                SELECT chunk_count,
+                       min_fingerprint,
+                       max_fingerprint
+                FROM source_state WHERE document_id = ?
+                """,
+                (document_id,),
+            ).fetchone()
+            if state_row is None:
+                return {
+                    "document_id": document_id,
+                    "chunk_count": 0,
+                    "source_fingerprint": None,
+                }
+            count = int(state_row["chunk_count"] or 0)
+            fingerprint = (
+                state_row["min_fingerprint"]
+                if count and state_row["min_fingerprint"] == state_row["max_fingerprint"]
+                else None
+            )
+            return {
+                "document_id": document_id,
+                "chunk_count": count,
+                "source_fingerprint": fingerprint,
+            }
         row = self._conn.execute(
             """
             SELECT COUNT(*) AS chunk_count,
@@ -2149,7 +2387,19 @@ class LocalChunkIndex:
             if missing:
                 for start in range(0, len(missing), 500):
                     batch = missing[start : start + 500]
-                    if self._has_retrievable_doc_fp_index:
+                    if self._has_source_state_table:
+                        placeholders = ",".join("?" for _ in batch)
+                        rows = self._conn.execute(
+                            f"""
+                            SELECT document_id, min_fingerprint AS fp
+                            FROM source_state
+                            WHERE chunk_count > 0
+                              AND document_id IN ({placeholders})
+                              AND min_fingerprint IS NOT NULL
+                            """,
+                            batch,
+                        ).fetchall()
+                    elif self._has_retrievable_doc_fp_index:
                         placeholders = ",".join("?" for _ in batch)
                         rows = self._conn.execute(
                             f"""
@@ -2274,7 +2524,36 @@ class LocalChunkIndex:
             ]
             if missing_meta_docs:
                 fetched_meta: dict[str, tuple[Optional[str], int]] = {}
-                if self._has_retrievable_doc_fp_index or not self._read_only:
+                if self._has_source_state_table:
+                    for start in range(0, len(missing_meta_docs), 500):
+                        batch = missing_meta_docs[start : start + 500]
+                        placeholders = ",".join("?" for _ in batch)
+                        rows = self._conn.execute(
+                            f"""
+                            SELECT document_id,
+                                   min_fingerprint,
+                                   max_fingerprint,
+                                   chunk_count
+                            FROM source_state
+                            WHERE chunk_count > 0 AND document_id IN ({placeholders})
+                            """,
+                            batch,
+                        ).fetchall()
+                        for row in rows:
+                            doc_id = str(row["document_id"])
+                            cnt = int(row["chunk_count"])
+                            fp = (
+                                str(row["min_fingerprint"])
+                                if row["min_fingerprint"] is not None
+                                and row["min_fingerprint"] == row["max_fingerprint"]
+                                else ""
+                            )
+                            fetched_meta[doc_id] = (fp, cnt)
+                            if doc_id not in self._doc_fingerprint_cache:
+                                self._doc_fingerprint_cache[doc_id] = (
+                                    fp.strip() if fp and fp.strip() else None
+                                )
+                elif self._has_retrievable_doc_fp_index or not self._read_only:
                     for start in range(0, len(missing_meta_docs), 500):
                         batch = missing_meta_docs[start : start + 500]
                         placeholders = ",".join("?" for _ in batch)
