@@ -4088,6 +4088,20 @@ def _run_profile(
         json.dumps(mapped["rag_v2_canary"], sort_keys=True),
     )
     summary_dict = query_res_dict.get("summary", {}) if isinstance(query_res_dict, dict) else {}
+    pipe_wait_ms = float(
+        summary_dict.get(
+            "pipe_wait_ms",
+            summary_dict.get(
+                "pipe_connect_ms",
+                (
+                    query_res_dict.get("pipe_wait_ms", query_res_dict.get("pipe_connect_ms", 0.0))
+                    if isinstance(query_res_dict, dict)
+                    else 0.0
+                ),
+            ),
+        )
+        or 0.0
+    )
     embed_ms = float(summary_dict.get("embed_latency_ms", 0.0) or 0.0)
     embed_wait_ms = float(summary_dict.get("embed_wait_ms", 0.0) or 0.0)
     embed_compute_ms = float(summary_dict.get("embed_compute_ms", embed_ms) or embed_ms)
@@ -4099,9 +4113,12 @@ def _run_profile(
     target_collection = str(domain_collection_id or getattr(pipe_config, "collection_id", "") or "default")
     resident_str = "thuong_tru" if dense_resident else "nap_trong_lan_goi"
     timestamp = format_marker_timestamp()
+    if isinstance(mapped.get("rag_v2_canary"), dict):
+        mapped["rag_v2_canary"]["pipe_wait_ms"] = round(pipe_wait_ms, 2)
 
     marker_msg = (
         f"[RETRIEVAL_MICRO_TIMING] collection={target_collection} "
+        f"pipe_wait_ms={pipe_wait_ms:.2f} "
         f"embed_ms={embed_ms:.2f} embed_wait_ms={embed_wait_ms:.2f} embed_compute_ms={embed_compute_ms:.2f} "
         f"dense_ms={dense_ms:.2f} sparse_ms={sparse_ms:.2f} fuse_ms={fuse_ms:.2f} "
         f"dense_resident={dense_resident} dense_state={resident_str} "
@@ -4745,6 +4762,7 @@ def retrieve_workspace_chat_evidence(
         timestamp = format_marker_timestamp()
         marker_msg = (
             f"[RETRIEVAL_MICRO_TIMING] collection={target_coll} "
+            f"pipe_wait_ms=0.00 "
             f"embed_ms=0.00 embed_wait_ms=0.00 embed_compute_ms=0.00 "
             f"dense_ms=0.00 sparse_ms=0.00 fuse_ms=0.00 "
             f"dense_resident=True dense_state=thuong_tru dense_load_ms=0.00 timestamp={timestamp}"

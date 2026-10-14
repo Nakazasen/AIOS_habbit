@@ -20,8 +20,12 @@ from typing import Any, Mapping, Optional, Sequence
 from aios_habit.rag_v2.pipeline import RagV2DevConfig, SourceSpec
 from aios_habit.rag_v2.bge_worker_protocol import (
     authkey_for_worker,
+    config_fingerprint_for_worker,
     persistent_worker_enabled,
     pipe_name_for_config,
+    remove_worker_status_file,
+    status_file_for_config,
+    write_worker_status_file,
 )
 from aios_habit.rag_v2.semantic import SemanticBackendError
 from aios_habit.rag_v2.adaptive_retrieval import (
@@ -29,6 +33,56 @@ from aios_habit.rag_v2.adaptive_retrieval import (
 )
 
 LOGGER = logging.getLogger(__name__)
+_PIPE_SESSION_LOCKS_GUARD = threading.Lock()
+_PIPE_SESSION_LOCKS: dict[str, threading.Lock] = {}
+
+
+def _get_pipe_session_lock(pipe_name: str) -> threading.Lock:
+    with _PIPE_SESSION_LOCKS_GUARD:
+        lock = _PIPE_SESSION_LOCKS.get(pipe_name)
+        if lock is None:
+            lock = threading.Lock()
+            _PIPE_SESSION_LOCKS[pipe_name] = lock
+        return lock
+
+
+def _is_worker_pid_alive(pid: int) -> bool:
+    """Return True if OS process ``pid`` is currently alive (non-blocking)."""
+    if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0:
+        return False
+    if pid == os.getpid():
+        return True
+    if os.name == "nt":
+        try:
+            import ctypes
+            from ctypes import wintypes
+
+            kernel32 = ctypes.windll.kernel32
+            handle = kernel32.OpenProcess(0x1000, False, pid)
+            if not handle:
+                return False
+            try:
+                exit_code = wintypes.DWORD()
+                if kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code)):
+                    return int(exit_code.value) == 259
+                return False
+            finally:
+                kernel32.CloseHandle(handle)
+        except Exception:
+            pass
+    try:
+        import psutil
+
+        if not psutil.pid_exists(pid):
+            return False
+        proc = psutil.Process(pid)
+        return proc.is_running() and proc.status() != psutil.STATUS_ZOMBIE
+    except Exception:
+        try:
+            os.kill(pid, 0)
+            return True
+        except OSError:
+            return False
 
 # Model-tree verification and local model loading are a bounded startup
 # operation, distinct from the per-document preparation SLA. CPU cold starts can
@@ -865,6 +919,61 @@ class BgeSubprocessWorkerClient:
             and os.name == "nt"
         )
 
+    def _read_persistent_status_file(self, config: RagV2DevConfig) -> dict[str, Any] | None:
+        """Non-blocking status/heartbeat file check (ARCH-13).
+
+        Returns a readiness dict if the status file exists and corresponds to a
+        live worker process; returns ``None`` when the status file is absent,
+        corrupted, or belongs to a dead process so the caller can fall back to
+        the legacy pipe health probe.
+        """
+        status_path = status_file_for_config(config)
+        try:
+            if not status_path.is_file():
+                return None
+            raw = status_path.read_text(encoding="utf-8")
+            data = json.loads(raw)
+        except Exception:
+            return None
+        if not isinstance(data, dict):
+            return None
+        raw_pid = data.get("pid")
+        if not isinstance(raw_pid, int) or isinstance(raw_pid, bool) or raw_pid <= 0:
+            return None
+        if not _is_worker_pid_alive(raw_pid):
+            try:
+                status_path.unlink(missing_ok=True)
+            except Exception:
+                pass
+            return None
+        raw_ts = data.get("timestamp")
+        if not isinstance(raw_ts, (int, float)) or isinstance(raw_ts, bool) or float(raw_ts) <= 0.0:
+            return None
+        actual_fp = str(data.get("config_fingerprint") or data.get("config_fp") or "").strip()
+        if not actual_fp:
+            return None
+        initialized = bool(data.get("initialized"))
+        if not initialized:
+            return None
+        expected_fp = config_fingerprint_for_worker(config)
+        matches = bool(initialized and actual_fp == expected_fp)
+        ready = bool(initialized and matches)
+        return {
+            "ready": ready,
+            "alive": True,
+            "configuration_matches": matches,
+            "reason": (
+                ""
+                if ready
+                else (
+                    "worker_not_initialized"
+                    if not initialized
+                    else "bge_worker_configuration_mismatch"
+                )
+            ),
+            "pid": raw_pid,
+        }
+
     def _persistent_readiness(self, config: RagV2DevConfig) -> dict[str, Any]:
         flight_key = pipe_name_for_config(config)
         with self._persistent_init_lock:
@@ -876,6 +985,11 @@ class BgeSubprocessWorkerClient:
                     "reason": "bge_worker_init_pending",
                     "pid": None,
                 }
+        # ARCH-13: Fast non-blocking status/heartbeat file read so readiness/is_ready
+        # never contends on the single-session Named Pipe when the worker is busy.
+        status_probe = self._read_persistent_status_file(config)
+        if status_probe is not None:
+            return status_probe
         try:
             response = self._persistent_exchange(
                 config,
@@ -895,6 +1009,19 @@ class BgeSubprocessWorkerClient:
         initialized = bool(response.get("initialized"))
         matches = bool(response.get("configuration_matches"))
         ready = initialized and matches
+        resp_pid = response.get("pid")
+        if (
+            ready
+            and isinstance(resp_pid, int)
+            and not isinstance(resp_pid, bool)
+            and _is_worker_pid_alive(resp_pid)
+        ):
+            write_worker_status_file(
+                config,
+                pid=resp_pid,
+                initialized=True,
+                readiness=response.get("readiness") if isinstance(response.get("readiness"), Mapping) else None,
+            )
         return {
             "ready": ready,
             "alive": True,
@@ -908,7 +1035,7 @@ class BgeSubprocessWorkerClient:
                     else "bge_worker_configuration_mismatch"
                 )
             ),
-            "pid": response.get("pid"),
+            "pid": resp_pid,
         }
 
     def _initialize_worker_persistent(
@@ -920,17 +1047,18 @@ class BgeSubprocessWorkerClient:
         timeout = default_init_timeout_seconds() if timeout_s is None else float(timeout_s)
         started = time.perf_counter()
 
-        # Step 1: If persistent worker is ALREADY initialized and matching config,
-        # return reused=True immediately without sending redundant init command.
+        # Step 1: Fast non-blocking status-file check (ARCH-13).
+        # If persistent worker is ALREADY initialized and matching config,
+        # return reused=True immediately without touching the Named Pipe.
         try:
-            probe = self._persistent_readiness(config)
-            if probe.get("ready"):
+            status_probe = self._read_persistent_status_file(config)
+            if status_probe is not None and status_probe.get("ready"):
                 self._last_failure_reason = ""
                 return {
                     "status": "ok",
                     "reused": True,
                     "init_latency_ms": round((time.perf_counter() - started) * 1000.0, 3),
-                    "readiness": probe,
+                    "readiness": status_probe,
                 }
         except Exception:
             pass
@@ -955,50 +1083,30 @@ class BgeSubprocessWorkerClient:
 
                 def _run_flight() -> None:
                     try:
-                        # Check health directly in case worker was already ready before exchange
-                        try:
-                            resp_health = self._persistent_exchange(
-                                config,
-                                {"command": "health", "config": _config_to_dict(config)},
-                                timeout_s=_PERSIST_PROBE_TIMEOUT_SECONDS,
-                                connect_timeout_s=_PERSIST_PROBE_TIMEOUT_SECONDS,
-                                allow_spawn=False,
-                            )
-                            if resp_health.get("initialized") and resp_health.get("configuration_matches"):
-                                res = {
+                        # Non-blocking status check before acquiring spawn lock
+                        status_before = self._read_persistent_status_file(config)
+                        if status_before is not None and status_before.get("ready"):
+                            flight["result"] = {
+                                "status": "ok",
+                                "reused": True,
+                                "init_latency_ms": round((time.perf_counter() - flight["started"]) * 1000.0, 3),
+                                "readiness": status_before,
+                            }
+                            self._last_failure_reason = ""
+                            return
+
+                        with self._persistent_spawn_init_lock:
+                            # Re-check status file inside lock in case worker became ready while waiting
+                            status_inside = self._read_persistent_status_file(config)
+                            if status_inside is not None and status_inside.get("ready"):
+                                flight["result"] = {
                                     "status": "ok",
                                     "reused": True,
                                     "init_latency_ms": round((time.perf_counter() - flight["started"]) * 1000.0, 3),
-                                    "readiness": resp_health,
+                                    "readiness": status_inside,
                                 }
-                                flight["result"] = res
                                 self._last_failure_reason = ""
                                 return
-                        except Exception:
-                            pass
-
-                        with self._persistent_spawn_init_lock:
-                            # Re-check health inside lock in case worker became ready while waiting
-                            try:
-                                resp_health = self._persistent_exchange(
-                                    config,
-                                    {"command": "health", "config": _config_to_dict(config)},
-                                    timeout_s=_PERSIST_PROBE_TIMEOUT_SECONDS,
-                                    connect_timeout_s=_PERSIST_PROBE_TIMEOUT_SECONDS,
-                                    allow_spawn=False,
-                                )
-                                if resp_health.get("initialized") and resp_health.get("configuration_matches"):
-                                    res = {
-                                        "status": "ok",
-                                        "reused": True,
-                                        "init_latency_ms": round((time.perf_counter() - flight["started"]) * 1000.0, 3),
-                                        "readiness": resp_health,
-                                    }
-                                    flight["result"] = res
-                                    self._last_failure_reason = ""
-                                    return
-                            except Exception:
-                                pass
 
                             full_init_timeout = float(default_init_timeout_seconds())
                             response = self._persistent_exchange(
@@ -1018,6 +1126,18 @@ class BgeSubprocessWorkerClient:
                             self._last_failure_reason = "bge_worker_init_invalid_response"
                             flight["error"] = SemanticBackendError(self._last_failure_reason)
                             return
+                        resp_pid = readiness.get("pid")
+                        if (
+                            isinstance(resp_pid, int)
+                            and not isinstance(resp_pid, bool)
+                            and _is_worker_pid_alive(resp_pid)
+                        ):
+                            write_worker_status_file(
+                                config,
+                                pid=resp_pid,
+                                initialized=True,
+                                readiness=readiness,
+                            )
                         self._last_failure_reason = ""
                         flight["result"] = {
                             "status": "ok",
@@ -1111,12 +1231,27 @@ class BgeSubprocessWorkerClient:
         query_result = response.get("query_result")
         if not isinstance(query_result, dict):
             raise RuntimeError("invalid_worker_response_schema")
+        pipe_connect_ms = float(
+            response.get("pipe_connect_ms", response.get("pipe_wait_ms", 0.0)) or 0.0
+        )
+        pipe_exec_ms = float(response.get("pipe_exec_ms", 0.0) or 0.0)
+        query_result = dict(query_result)
+        query_result["pipe_connect_ms"] = pipe_connect_ms
+        query_result["pipe_wait_ms"] = pipe_connect_ms
+        query_result["pipe_exec_ms"] = pipe_exec_ms
+        if isinstance(query_result.get("summary"), dict):
+            summary_copy = dict(query_result["summary"])
+            summary_copy["pipe_connect_ms"] = pipe_connect_ms
+            summary_copy["pipe_wait_ms"] = pipe_connect_ms
+            summary_copy["pipe_exec_ms"] = pipe_exec_ms
+            query_result["summary"] = summary_copy
         return query_result
 
     def shutdown_persistent_worker(self, config: RagV2DevConfig) -> bool:
         """Ask the persistent worker to exit (test/maintenance helper)."""
         if not self._persistent_applies(config):
             return False
+        remove_worker_status_file(config)
         try:
             response = self._persistent_exchange(
                 config,
@@ -1126,7 +1261,9 @@ class BgeSubprocessWorkerClient:
                 allow_spawn=False,
             )
         except Exception:
+            remove_worker_status_file(config)
             return False
+        remove_worker_status_file(config)
         return response.get("status") == "ok"
 
     def _persistent_exchange(
@@ -1137,6 +1274,7 @@ class BgeSubprocessWorkerClient:
         timeout_s: float,
         connect_timeout_s: float,
         allow_spawn: bool,
+        cancel_event: threading.Event | None = None,
     ) -> dict[str, Any]:
         """One request/response over the config-bound named pipe.
 
@@ -1144,55 +1282,178 @@ class BgeSubprocessWorkerClient:
         runs in a helper thread joined with ``timeout_s``; waiting never holds
         the client lock, so concurrent callers can queue behind one loading
         worker instead of failing with ``worker_busy``.
+
+        ARCH-05: ``abort_event`` is set immediately when ``timeout_s`` expires
+        so the background ``_session`` thread aborts its connect loop and never
+        calls ``conn.send(payload)`` after the caller has given up.
+        ARCH-08: Periodic logging when pipe connection wait exceeds 1.0 s and
+        recording of ``pipe_connect_ms`` / ``pipe_wait_ms`` / ``pipe_exec_ms``.
         """
         pipe_name = pipe_name_for_config(config)
         authkey = authkey_for_worker()
         result: list[tuple[str, Any]] = []
+        abort_event = threading.Event()
+        abort_lock = threading.Lock()
+        connect_done_event = threading.Event()
+        cmd_name = str(payload.get("command", "unknown"))
+        pipe_lock = _get_pipe_session_lock(pipe_name)
+        connect_started = time.perf_counter()
+        wait_log_state: dict[str, float | int] = {
+            "last_log_at": connect_started,
+            "attempts": 0,
+        }
+        wait_log_lock = threading.Lock()
+
+        def _is_aborted() -> bool:
+            return abort_event.is_set() or (
+                cancel_event is not None and cancel_event.is_set()
+            )
+
+        def _maybe_log_pipe_wait(now_perf: float) -> None:
+            with wait_log_lock:
+                wait_elapsed_s = now_perf - connect_started
+                if (
+                    wait_elapsed_s >= 1.0
+                    and (now_perf - float(wait_log_state["last_log_at"])) >= 1.0
+                ):
+                    wait_log_state["last_log_at"] = now_perf
+                    LOGGER.warning(
+                        "[PIPE_CONNECT_WAIT] pipe=%s command=%s wait_ms=%.1f attempts=%d",
+                        pipe_name,
+                        cmd_name,
+                        wait_elapsed_s * 1000.0,
+                        int(wait_log_state["attempts"]),
+                    )
 
         def _session() -> None:
+            pipe_lock_acquired = False
             try:
                 import multiprocessing.connection as mpc
 
-                if not allow_spawn and not _pipe_instance_available(pipe_name):
+                if _is_aborted():
+                    raise SemanticBackendError("bge_worker_persist_aborted")
+
+                is_real_mpc_client = (
+                    getattr(mpc.Client, "__module__", "") == "multiprocessing.connection"
+                )
+                if (
+                    not allow_spawn
+                    and is_real_mpc_client
+                    and not pipe_lock.locked()
+                    and not _pipe_instance_available(pipe_name)
+                ):
                     raise SemanticBackendError("bge_worker_persist_unavailable")
 
                 spawned = False
                 connect_deadline = time.monotonic() + max(float(connect_timeout_s), 0.5)
+                conn = None
                 while True:
+                    if _is_aborted():
+                        raise SemanticBackendError("bge_worker_persist_aborted")
+                    with wait_log_lock:
+                        wait_log_state["attempts"] = int(wait_log_state["attempts"]) + 1
                     try:
+                        if not pipe_lock.acquire(blocking=False):
+                            raise OSError(231, "All pipe instances are busy")
+                        pipe_lock_acquired = True
+                        if _is_aborted():
+                            raise SemanticBackendError("bge_worker_persist_aborted")
                         conn = mpc.Client(pipe_name, family="AF_PIPE", authkey=authkey)
                         break
                     except OSError as exc:
+                        if pipe_lock_acquired:
+                            pipe_lock_acquired = False
+                            try:
+                                pipe_lock.release()
+                            except RuntimeError:
+                                pass
+                        if _is_aborted():
+                            raise SemanticBackendError("bge_worker_persist_aborted") from exc
                         if (
                             allow_spawn
                             and not spawned
+                            and not _is_aborted()
                             and not _pipe_instance_available(pipe_name)
                         ):
                             self._spawn_persistent_worker(config, pipe_name)
                             spawned = True
+                        _maybe_log_pipe_wait(time.perf_counter())
                         if time.monotonic() >= connect_deadline:
                             raise SemanticBackendError(
                                 "bge_worker_persist_unavailable"
                             ) from exc
-                        time.sleep(0.25)
+                        if abort_event.wait(timeout=0.05) or _is_aborted():
+                            raise SemanticBackendError("bge_worker_persist_aborted") from exc
+
+                connect_done_event.set()
+                pipe_connect_ms = round((time.perf_counter() - connect_started) * 1000.0, 2)
+                if pipe_connect_ms >= 1000.0:
+                    with wait_log_lock:
+                        attempts_count = int(wait_log_state["attempts"])
+                    LOGGER.info(
+                        "[PIPE_CONNECT_ACQUIRED] pipe=%s command=%s pipe_connect_ms=%.2f attempts=%d",
+                        pipe_name,
+                        cmd_name,
+                        pipe_connect_ms,
+                        attempts_count,
+                    )
                 try:
-                    conn.send(dict(payload))
+                    with abort_lock:
+                        if _is_aborted():
+                            raise SemanticBackendError("bge_worker_persist_aborted")
+                        exec_started = time.perf_counter()
+                        conn.send(dict(payload))
                     response = conn.recv()
+                    pipe_exec_ms = round((time.perf_counter() - exec_started) * 1000.0, 2)
                 finally:
                     try:
                         conn.close()
                     except Exception:
                         pass
+                if _is_aborted():
+                    raise SemanticBackendError("bge_worker_persist_aborted")
+                if isinstance(response, dict):
+                    response = dict(response)
+                    response["pipe_connect_ms"] = pipe_connect_ms
+                    response["pipe_wait_ms"] = pipe_connect_ms
+                    response["pipe_exec_ms"] = pipe_exec_ms
                 result.append(("ok", response))
             except Exception as exc:
                 result.append(("error", exc))
+            finally:
+                connect_done_event.set()
+                if pipe_lock_acquired:
+                    try:
+                        pipe_lock.release()
+                    except RuntimeError:
+                        pass
 
         thread = threading.Thread(target=_session, name="bge-worker-pipe", daemon=True)
         thread.start()
-        thread.join(timeout=max(0.0, float(timeout_s)))
-        if thread.is_alive():
-            raise SemanticBackendError("bge_worker_persist_timeout")
+        effective_timeout = max(0.0, float(timeout_s))
+        if effective_timeout <= 0.0:
+            thread.join(timeout=0.0)
+        else:
+            join_deadline = time.perf_counter() + effective_timeout
+            while True:
+                remaining = join_deadline - time.perf_counter()
+                if remaining <= 0.0:
+                    break
+                thread.join(timeout=min(remaining, 0.25))
+                if not thread.is_alive():
+                    break
+                if not connect_done_event.is_set():
+                    _maybe_log_pipe_wait(time.perf_counter())
+                if cancel_event is not None and cancel_event.is_set():
+                    abort_event.set()
+                    break
+
+        with abort_lock:
+            if thread.is_alive():
+                abort_event.set()
+                raise SemanticBackendError("bge_worker_persist_timeout")
         if not result:
+            abort_event.set()
             raise SemanticBackendError("bge_worker_persist_no_response")
         kind, value = result[0]
         if kind == "error":

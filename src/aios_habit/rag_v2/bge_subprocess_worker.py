@@ -239,17 +239,54 @@ def _configure_worker_logging() -> None:
     )
 
 
+from aios_habit.rag_v2.bge_worker_protocol import (
+    remove_worker_status_file,
+    write_worker_status_file,
+)
+
+
 class _WorkerSession:
     """Holds pipeline/staged state for one worker process (stdio or serve)."""
 
-    def __init__(self, *, mode: str) -> None:
+    def __init__(self, *, mode: str, pipe_name: str | None = None) -> None:
         self.mode = mode
+        self.pipe_name = pipe_name
         self.pipeline: RagV2DevPipeline | None = None
         self.staged: dict[str, dict[str, Any]] = {}
         self.busy = False
         self.last_activity = time.monotonic()
+        self._status_file_path: Path | None = None
+
+    def _write_status_file(
+        self,
+        config: RagV2DevConfig,
+        readiness: Mapping[str, Any] | None = None,
+    ) -> None:
+        if self.mode != "serve":
+            return
+        written = write_worker_status_file(
+            config,
+            pid=os.getpid(),
+            initialized=True,
+            readiness=readiness,
+            pipe_name=self.pipe_name,
+        )
+        if written is not None:
+            self._status_file_path = written
+
+    def _remove_status_file(self, config: RagV2DevConfig | None = None) -> None:
+        target_cfg = config or (self.pipeline.config if self.pipeline is not None else None)
+        if target_cfg is not None:
+            remove_worker_status_file(target_cfg, pipe_name=self.pipe_name)
+        if self._status_file_path is not None:
+            try:
+                self._status_file_path.unlink(missing_ok=True)
+            except Exception:
+                pass
+            self._status_file_path = None
 
     def close_pipeline(self) -> None:
+        self._remove_status_file()
         if self.pipeline is not None:
             try:
                 self.pipeline.close()
@@ -278,10 +315,12 @@ class _WorkerSession:
                     if requested is not None and requested == pipeline.config:
                         self.pipeline = pipeline
                         self.staged = staged
+                        readiness_payload = {**_safe_readiness(pipeline), "reused": True}
+                        self._write_status_file(pipeline.config, readiness_payload)
                         return (
                             {
                                 "status": "ok",
-                                "readiness": {**_safe_readiness(pipeline), "reused": True},
+                                "readiness": readiness_payload,
                             },
                             "continue",
                         )
@@ -369,6 +408,7 @@ class _WorkerSession:
                 except Exception:
                     traceback.print_exc(file=sys.stderr)
                     sys.stderr.flush()
+                    self._remove_status_file()
                     pipeline = None
                     response = {
                         "status": "error",
@@ -377,16 +417,18 @@ class _WorkerSession:
                         "phases_ms": dict(phases_ms),
                     }
                 else:
+                    readiness_payload = {
+                        **_safe_readiness(pipeline),
+                        "bge_backend": backend_name,
+                        "init_latency_ms": round(
+                            (time.perf_counter() - started) * 1000.0, 3
+                        ),
+                        "phases_ms": dict(phases_ms),
+                    }
+                    self._write_status_file(config, readiness_payload)
                     response = {
                         "status": "ok",
-                        "readiness": {
-                            **_safe_readiness(pipeline),
-                            "bge_backend": backend_name,
-                            "init_latency_ms": round(
-                                (time.perf_counter() - started) * 1000.0, 3
-                            ),
-                            "phases_ms": dict(phases_ms),
-                        },
+                        "readiness": readiness_payload,
                     }
                     print(
                         "bge_worker_stage "
@@ -418,9 +460,12 @@ class _WorkerSession:
                         and requested is not None
                         and requested == pipeline.config
                     )
+                    readiness_payload = _safe_readiness(pipeline) if pipeline is not None else {}
+                    if pipeline is not None:
+                        self._write_status_file(pipeline.config, readiness_payload)
                     response = {
                         "status": "ok",
-                        "readiness": _safe_readiness(pipeline) if pipeline is not None else {},
+                        "readiness": readiness_payload,
                         "initialized": pipeline is not None,
                         "configuration_matches": matches,
                         "pid": os.getpid(),
@@ -652,6 +697,7 @@ class _WorkerSession:
 
 
             elif command == "close":
+                self._remove_status_file()
                 if pipeline is not None:
                     pipeline.close()
                     pipeline = None
@@ -661,6 +707,7 @@ class _WorkerSession:
                 return response, "close"
 
             elif command == "shutdown":
+                self._remove_status_file()
                 self.pipeline = pipeline
                 self.staged = staged
                 return {"status": "ok"}, "shutdown"
@@ -742,7 +789,7 @@ def serve_main(pipe_name: str) -> None:
         )
         return
 
-    session = _WorkerSession(mode="serve")
+    session = _WorkerSession(mode="serve", pipe_name=pipe_name)
     listener = mpc.Listener(pipe_name, family="AF_PIPE", authkey=authkey_for_worker())
     print(
         "bge_worker_serve "
