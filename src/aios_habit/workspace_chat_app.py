@@ -1349,7 +1349,7 @@ def _check_worker_progress(prev: Mapping[str, Any], curr: Mapping[str, Any]) -> 
         return True
     if not curr.get("alive", False):
         return False
-    if curr.get("pending", False):
+    if not prev.get("pending", False) and curr.get("pending", False):
         return True
     # Worker process just spawned
     if not prev.get("alive", False) and curr.get("alive", False):
@@ -1469,8 +1469,8 @@ def wait_for_workspace_chat_worker(
             break
 
         loop_idx += 1
-        remaining_no_progress = max(0.5, no_progress_timeout - time_since_progress)
-        remaining_absolute = max(0.5, absolute_timeout - total_elapsed)
+        remaining_no_progress = max(0.01, no_progress_timeout - time_since_progress)
+        remaining_absolute = max(0.01, absolute_timeout - total_elapsed)
         current_step_timeout = min(step_timeout, remaining_no_progress, remaining_absolute)
 
         t_warm_start = time.monotonic()
@@ -1647,12 +1647,19 @@ def _run_chat_turn_async(
         active_domain = forced_domain if (forced_domain and forced_domain != "auto") else None
         if not active_domain:
             try:
-                from aios_habit.index_domain import detect_domain_from_question
+                from aios_habit.index_domain import (
+                    detect_domain_from_question,
+                    CONFIDENCE_LOW_THRESHOLD,
+                )
                 cls_dom = detect_domain_from_question(q_text)
-                if cls_dom and cls_dom.domain:
+                if cls_dom and cls_dom.domain and getattr(cls_dom, "confidence", 0.0) >= CONFIDENCE_LOW_THRESHOLD:
                     active_domain = cls_dom.domain
+                else:
+                    active_domain = "tri_thuc"
             except Exception:
-                active_domain = None
+                active_domain = "tri_thuc"
+        elif str(active_domain).strip().lower() in ("tri_thuc", "default"):
+            active_domain = "tri_thuc"
         from aios_habit.workspace_chat_rag_v2_adapter import (
             set_user_retrieval_active,
             set_user_retrieval_finished,
@@ -1685,12 +1692,16 @@ def _run_chat_turn_async(
                         try:
                             from aios_habit.workspace_chat_rag_v2_adapter import (
                                 _pipeline_config,
+                                _warmup_pipeline_config,
                                 WorkspaceChatRagV2CanaryConfig,
                             )
                             c_canary = WorkspaceChatRagV2CanaryConfig.from_env()
-                            target_warm_pipe_cfg = _pipeline_config(
-                                c_canary, c_canary.requested_profile, read_only=True, collection_id=target_col_for_warm
-                            )
+                            if str(target_col_for_warm).strip().lower() in ("tri_thuc", "default"):
+                                target_warm_pipe_cfg = _warmup_pipeline_config(c_canary)
+                            else:
+                                target_warm_pipe_cfg = _pipeline_config(
+                                    c_canary, c_canary.requested_profile, read_only=True, collection_id=target_col_for_warm
+                                )
                         except Exception:
                             target_warm_pipe_cfg = None
 
@@ -1712,6 +1723,8 @@ def _run_chat_turn_async(
                         current_ui_locale=current_ui_locale,
                         warming_fn=_targeted_warming,
                         progress_fn=_targeted_progress,
+                        step_timeout=1.5,
+                        poll_interval=0.2,
                     )
                     worker_wait_s += max(0.0, time.time() - t_wait_worker_start)
                     if early_exit is not None:

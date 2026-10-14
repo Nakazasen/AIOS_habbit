@@ -217,3 +217,73 @@ def test_background_warm_yields_for_unrelated_collection():
     # Once scope exits, background worker must resume and complete
     th.join(timeout=2.0)
     assert len(yield_completed) == 1
+
+
+def test_warm_priority_scope_tri_thuc_and_default_equivalence():
+    """Verify that tri_thuc and default are treated as aliases for the unified knowledge block."""
+    # 1. Scoping with default activates both default and tri_thuc
+    with adapter.user_retrieval_priority_scope("default"):
+        assert "default" in adapter._ACTIVE_USER_RETRIEVAL_COLLECTIONS
+        assert "tri_thuc" in adapter._ACTIVE_USER_RETRIEVAL_COLLECTIONS
+
+        # Checking tri_thuc must proceed immediately without yielding
+        t0 = time.monotonic()
+        adapter._check_and_yield_background_warming("tri_thuc", None, max_yield_timeout_s=5.0)
+        assert (time.monotonic() - t0) < 0.5
+
+        # Checking default must proceed immediately without yielding
+        t0 = time.monotonic()
+        adapter._check_and_yield_background_warming("default", None, max_yield_timeout_s=5.0)
+        assert (time.monotonic() - t0) < 0.5
+
+    # 2. Scoping with tri_thuc activates both default and tri_thuc
+    with adapter.user_retrieval_priority_scope("tri_thuc"):
+        assert "default" in adapter._ACTIVE_USER_RETRIEVAL_COLLECTIONS
+        assert "tri_thuc" in adapter._ACTIVE_USER_RETRIEVAL_COLLECTIONS
+
+        t0 = time.monotonic()
+        adapter._check_and_yield_background_warming("default", None, max_yield_timeout_s=5.0)
+        assert (time.monotonic() - t0) < 0.5
+
+
+def test_background_warm_does_not_timeout_while_user_active():
+    """Verify that unrelated collection does NOT timeout after 60s while user retrieval is active."""
+    import threading
+
+    yield_completed = []
+
+    def warm_worker():
+        # Even with max_yield_timeout_s=1.0, worker must NOT exit while user retrieval is active
+        adapter._check_and_yield_background_warming("dieu_tra_loi", None, max_yield_timeout_s=1.0)
+        yield_completed.append(True)
+
+    with adapter.user_retrieval_priority_scope("tri_thuc"):
+        th = threading.Thread(target=warm_worker, daemon=True)
+        th.start()
+        # Wait 2.0s (longer than 1.0s timeout)
+        time.sleep(2.0)
+        # Background worker must still be yielding (NOT timed out)
+        assert len(yield_completed) == 0
+
+    # Once user scope finishes, worker resumes and completes
+    th.join(timeout=2.0)
+    assert len(yield_completed) == 1
+
+
+def test_select_domain_route_skips_fallback_when_confidence_low():
+    """When question has no domain keyword signals (confidence < 0.4), domain routing does NOT force dieu_tra_loi."""
+    from aios_habit.index_domain import Classification, DOMAIN_DIEU_TRA_LOI, CONFIDENCE_LOW_THRESHOLD
+
+    cfg = adapter.WorkspaceChatRagV2CanaryConfig(
+        enabled=True,
+        requested_profile="bge_m3_hybrid",
+    )
+    # Question about general regulations/knowledge base
+    q = "Theo tài liệu trong kho tri thức hợp nhất, quy định chung và các văn bản nghiệp vụ hướng dẫn vận hành hệ thống là gì?"
+    route = adapter._select_domain_route(q, (), cfg, forced_domain="auto")
+    # Must NOT force route to dieu_tra_loi
+    if route is not None:
+        assert route.applied is False or route.domain != DOMAIN_DIEU_TRA_LOI or (
+            route.detected is not None and route.detected.confidence >= CONFIDENCE_LOW_THRESHOLD
+        )
+

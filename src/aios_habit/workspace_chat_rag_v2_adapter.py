@@ -1356,6 +1356,7 @@ _WARMUP_LOCK = threading.Lock()
 _WARMUP_LAST_ATTEMPT_MONO = 0.0
 _WARMUP_TTL_SECONDS = 90.0
 _WARMUP_ATTEMPTS: dict[str, float] = {}
+_WARMUP_IN_QUEUE: set[str] = set()
 
 
 _LAST_WARMUP_PIPE_CONFIG: Optional[RagV2DevConfig] = None
@@ -1497,6 +1498,34 @@ _USER_RETRIEVAL_PRIORITY_CONDITION = threading.Condition(_USER_RETRIEVAL_PRIORIT
 _ACTIVE_USER_RETRIEVAL_COLLECTIONS: set[str] = set()
 _ACTIVE_USER_RETRIEVAL_COLLECTION_COUNTS: dict[str, int] = {}
 _ACTIVE_USER_RETRIEVAL_COUNT: int = 0
+_PROCEEDED_WARM_COLLECTIONS: set[str] = set()
+
+
+def normalize_knowledge_collection(collection_id: str | None) -> str | None:
+    """Normalize collection alias: tri_thuc, default, legacy all refer to tri_thuc."""
+    if not collection_id:
+        return None
+    c = str(collection_id).strip().lower()
+    if c in ("default", "tri_thuc", "legacy"):
+        return "tri_thuc"
+    return c
+
+
+def _collection_matches_active(target_col: str | None, active_collections: set[str]) -> bool:
+    """Check if target collection matches any currently active user retrieval collection."""
+    if not target_col or not active_collections:
+        return False
+    t_clean = target_col.strip().lower()
+    t_canon = normalize_knowledge_collection(t_clean)
+    for a in active_collections:
+        a_clean = a.strip().lower()
+        if t_clean == a_clean:
+            return True
+        if t_canon and t_canon == normalize_knowledge_collection(a_clean):
+            return True
+        if t_clean in ("default", "tri_thuc") and a_clean in ("default", "tri_thuc"):
+            return True
+    return False
 
 
 def set_user_retrieval_active(collection_id: str | None = None) -> None:
@@ -1508,17 +1537,29 @@ def set_user_retrieval_active(collection_id: str | None = None) -> None:
     global _ACTIVE_USER_RETRIEVAL_COUNT
     with _USER_RETRIEVAL_PRIORITY_LOCK:
         _ACTIVE_USER_RETRIEVAL_COUNT += 1
+        if _ACTIVE_USER_RETRIEVAL_COUNT == 1:
+            _PROCEEDED_WARM_COLLECTIONS.clear()
+        cols_to_add: set[str] = set()
         if collection_id:
             col_clean = str(collection_id).strip().lower()
-            _ACTIVE_USER_RETRIEVAL_COLLECTION_COUNTS[col_clean] = (
-                _ACTIVE_USER_RETRIEVAL_COLLECTION_COUNTS.get(col_clean, 0) + 1
+            cols_to_add.add(col_clean)
+            canon = normalize_knowledge_collection(col_clean)
+            if canon:
+                cols_to_add.add(canon)
+            if col_clean in ("default", "tri_thuc"):
+                cols_to_add.add("default")
+                cols_to_add.add("tri_thuc")
+        for c in cols_to_add:
+            _ACTIVE_USER_RETRIEVAL_COLLECTION_COUNTS[c] = (
+                _ACTIVE_USER_RETRIEVAL_COLLECTION_COUNTS.get(c, 0) + 1
             )
-            _ACTIVE_USER_RETRIEVAL_COLLECTIONS.add(col_clean)
+            _ACTIVE_USER_RETRIEVAL_COLLECTIONS.add(c)
         LOGGER.info(
             "[WARM_PRIORITY] User retrieval active: count=%d collections=%s",
             _ACTIVE_USER_RETRIEVAL_COUNT,
             sorted(_ACTIVE_USER_RETRIEVAL_COLLECTIONS),
         )
+        _USER_RETRIEVAL_PRIORITY_CONDITION.notify_all()
 
 
 def set_user_retrieval_finished(collection_id: str | None = None) -> None:
@@ -1527,18 +1568,28 @@ def set_user_retrieval_finished(collection_id: str | None = None) -> None:
     with _USER_RETRIEVAL_PRIORITY_LOCK:
         if _ACTIVE_USER_RETRIEVAL_COUNT > 0:
             _ACTIVE_USER_RETRIEVAL_COUNT -= 1
+        cols_to_remove: set[str] = set()
         if collection_id:
             col_clean = str(collection_id).strip().lower()
-            if col_clean in _ACTIVE_USER_RETRIEVAL_COLLECTION_COUNTS:
-                _ACTIVE_USER_RETRIEVAL_COLLECTION_COUNTS[col_clean] -= 1
-                if _ACTIVE_USER_RETRIEVAL_COLLECTION_COUNTS[col_clean] <= 0:
-                    _ACTIVE_USER_RETRIEVAL_COLLECTION_COUNTS.pop(col_clean, None)
-                    _ACTIVE_USER_RETRIEVAL_COLLECTIONS.discard(col_clean)
+            cols_to_remove.add(col_clean)
+            canon = normalize_knowledge_collection(col_clean)
+            if canon:
+                cols_to_remove.add(canon)
+            if col_clean in ("default", "tri_thuc"):
+                cols_to_remove.add("default")
+                cols_to_remove.add("tri_thuc")
+        for c in cols_to_remove:
+            if c in _ACTIVE_USER_RETRIEVAL_COLLECTION_COUNTS:
+                _ACTIVE_USER_RETRIEVAL_COLLECTION_COUNTS[c] -= 1
+                if _ACTIVE_USER_RETRIEVAL_COLLECTION_COUNTS[c] <= 0:
+                    _ACTIVE_USER_RETRIEVAL_COLLECTION_COUNTS.pop(c, None)
+                    _ACTIVE_USER_RETRIEVAL_COLLECTIONS.discard(c)
             else:
-                _ACTIVE_USER_RETRIEVAL_COLLECTIONS.discard(col_clean)
+                _ACTIVE_USER_RETRIEVAL_COLLECTIONS.discard(c)
         if _ACTIVE_USER_RETRIEVAL_COUNT == 0:
             _ACTIVE_USER_RETRIEVAL_COLLECTION_COUNTS.clear()
             _ACTIVE_USER_RETRIEVAL_COLLECTIONS.clear()
+            _PROCEEDED_WARM_COLLECTIONS.clear()
         LOGGER.info(
             "[WARM_PRIORITY] User retrieval finished: count=%d remaining=%s",
             _ACTIVE_USER_RETRIEVAL_COUNT,
@@ -1552,11 +1603,19 @@ def update_user_retrieval_collection(collection_id: str | None) -> None:
     if not collection_id:
         return
     col_clean = str(collection_id).strip().lower()
+    cols_to_add: set[str] = {col_clean}
+    canon = normalize_knowledge_collection(col_clean)
+    if canon:
+        cols_to_add.add(canon)
+    if col_clean in ("default", "tri_thuc"):
+        cols_to_add.add("default")
+        cols_to_add.add("tri_thuc")
     with _USER_RETRIEVAL_PRIORITY_LOCK:
-        _ACTIVE_USER_RETRIEVAL_COLLECTION_COUNTS[col_clean] = (
-            _ACTIVE_USER_RETRIEVAL_COLLECTION_COUNTS.get(col_clean, 0) + 1
-        )
-        _ACTIVE_USER_RETRIEVAL_COLLECTIONS.add(col_clean)
+        for c in cols_to_add:
+            _ACTIVE_USER_RETRIEVAL_COLLECTION_COUNTS[c] = (
+                _ACTIVE_USER_RETRIEVAL_COLLECTION_COUNTS.get(c, 0) + 1
+            )
+            _ACTIVE_USER_RETRIEVAL_COLLECTIONS.add(c)
         _USER_RETRIEVAL_PRIORITY_CONDITION.notify_all()
 
 
@@ -1576,19 +1635,24 @@ def _collection_id_from_pipe_config(pipe_config: RagV2DevConfig | None) -> str |
         return None
     col = getattr(pipe_config, "collection_id", None)
     if col:
-        return str(col).strip().lower()
+        c_str = str(col).strip().lower()
+        if c_str in ("default", "tri_thuc"):
+            return "tri_thuc"
+        return c_str
     runtime_root = getattr(pipe_config, "runtime_root", None)
     if runtime_root:
         p = Path(runtime_root)
-        if p.name.lower() in ("lsu", "dieu_tra_loi", "tong_hop", "tri_thuc"):
-            return p.name.lower()
+        name_lower = p.name.lower()
+        if name_lower in ("lsu", "dieu_tra_loi", "tong_hop", "tri_thuc", "default"):
+            return "tri_thuc" if name_lower in ("tri_thuc", "default") else name_lower
         if p.parent.name.lower() == "collections":
-            return p.name.lower()
+            return "tri_thuc" if name_lower in ("tri_thuc", "default") else name_lower
     index_path = getattr(pipe_config, "index_path", None)
     if index_path:
         p = Path(index_path)
-        if p.parent.name.lower() in ("lsu", "dieu_tra_loi", "tong_hop", "tri_thuc"):
-            return p.parent.name.lower()
+        parent_lower = p.parent.name.lower()
+        if parent_lower in ("lsu", "dieu_tra_loi", "tong_hop", "tri_thuc", "default"):
+            return "tri_thuc" if parent_lower in ("tri_thuc", "default") else parent_lower
     return None
 
 
@@ -1598,8 +1662,8 @@ def _check_and_yield_background_warming(
     max_yield_timeout_s: float = 60.0,
 ) -> None:
     """Yield background warming if a user query is currently waiting for retrieval on another collection."""
-    deadline = time.monotonic() + max_yield_timeout_s
     yielded = False
+    last_yield_log_mono = 0.0
     while True:
         with _USER_RETRIEVAL_PRIORITY_LOCK:
             if _ACTIVE_USER_RETRIEVAL_COUNT <= 0:
@@ -1613,37 +1677,38 @@ def _check_and_yield_background_warming(
                     _safe_print_streaming_marker(resume_msg)
                 return
 
-            if target_col and target_col in _ACTIVE_USER_RETRIEVAL_COLLECTIONS:
-                proceed_msg = (
-                    f"[WARM_PRIORITY_PROCEED] Khoi '{target_col}' trung voi luot nguoi dung dang cho truy hoi, "
-                    f"tien hanh lam am ngay timestamp={format_marker_timestamp()}"
-                )
-                LOGGER.info(proceed_msg)
-                _safe_print_streaming_marker(proceed_msg)
+            if _collection_matches_active(target_col, _ACTIVE_USER_RETRIEVAL_COLLECTIONS):
+                col_name = target_col or "unknown"
+                if col_name not in _PROCEEDED_WARM_COLLECTIONS:
+                    _PROCEEDED_WARM_COLLECTIONS.add(col_name)
+                    proceed_msg = (
+                        f"[WARM_PRIORITY_PROCEED] Khoi '{col_name}' trung voi luot nguoi dung dang cho truy hoi, "
+                        f"tien hanh lam am ngay timestamp={format_marker_timestamp()}"
+                    )
+                    LOGGER.info(proceed_msg)
+                    _safe_print_streaming_marker(proceed_msg)
                 return
 
+            # Nhường quyền cho lượt người dùng:
+            # Cơ chế chọn (DESKTOP-SPEED-PRIORITY-SCOPE-FIX-HOME):
+            # Bỏ cơ chế hết hạn cưỡng bức trong lúc lượt người dùng còn đang chờ truy hồi.
+            # Trong lúc _ACTIVE_USER_RETRIEVAL_COUNT > 0, các khối không liên quan tiếp tục nhường quyền,
+            # KHÔNG tự khởi động lại chỉ vì hết timeout 60s để tránh tranh chấp CPU và I/O.
             col_name = target_col or "unknown"
             active_cols = sorted(_ACTIVE_USER_RETRIEVAL_COLLECTIONS)
-            now_str = format_marker_timestamp()
-            yield_msg = (
-                f"[WARM_PRIORITY_YIELD] Khoi '{col_name}' nhuong cho luot nguoi dung dang cho truy hoi "
-                f"(active_collections={active_cols}) timestamp={now_str}"
-            )
-            LOGGER.info(yield_msg)
-            _safe_print_streaming_marker(yield_msg)
-            yielded = True
-
-            remaining = max(0.1, deadline - time.monotonic())
-            _USER_RETRIEVAL_PRIORITY_CONDITION.wait(timeout=min(remaining, 1.0))
-
-            if time.monotonic() >= deadline:
-                timeout_msg = (
-                    f"[WARM_PRIORITY_TIMEOUT] Khoi '{col_name}' het thoi gian cho nhuong ({max_yield_timeout_s}s), "
-                    f"tiep tuc lam am nen..."
+            now_mono = time.monotonic()
+            if not yielded or (now_mono - last_yield_log_mono >= 10.0):
+                now_str = format_marker_timestamp()
+                yield_msg = (
+                    f"[WARM_PRIORITY_YIELD] Khoi '{col_name}' nhuong cho luot nguoi dung dang cho truy hoi "
+                    f"(active_collections={active_cols}) timestamp={now_str}"
                 )
-                LOGGER.warning(timeout_msg)
-                _safe_print_streaming_marker(timeout_msg)
-                return
+                LOGGER.info(yield_msg)
+                _safe_print_streaming_marker(yield_msg)
+                last_yield_log_mono = now_mono
+                yielded = True
+
+            _USER_RETRIEVAL_PRIORITY_CONDITION.wait(timeout=1.0)
 
 
 def _get_background_warm_executor() -> concurrent.futures.ThreadPoolExecutor:
@@ -1693,6 +1758,8 @@ def ensure_workspace_chat_worker_warming(
             warmup_key = str(getattr(pipe_config, "collection_id", None) or "custom")
 
     with _WARMUP_LOCK:
+        if not blocking and warmup_key in _WARMUP_IN_QUEUE:
+            return True
         if _WARMUP_LAST_ATTEMPT_MONO == 0.0 and warmup_key == "__default__":
             _WARMUP_ATTEMPTS.pop(warmup_key, None)
         last_attempt = _WARMUP_ATTEMPTS.get(warmup_key, 0.0)
@@ -1701,7 +1768,7 @@ def ensure_workspace_chat_worker_warming(
         if not blocking and (now - last_attempt) < _WARMUP_TTL_SECONDS:
             pipe_present = (
                 _pipe_instance_available(warmup_key)
-                if (warmup_key != "__default__" and warmup_key.startswith(r"\\.\pipe\\"))
+                if (warmup_key != "__default__" and warmup_key.startswith("\\\\.\\pipe\\"))
                 else False
             )
             if warmup_key == "__default__" or pipe_present:
@@ -1727,14 +1794,26 @@ def ensure_workspace_chat_worker_warming(
                     target_pipe_config = None
             actual_timeout = timeout_s if blocking else (timeout_s or default_init_timeout_seconds())
 
-            if not blocking:
-                target_col = _collection_id_from_pipe_config(target_pipe_config)
-                is_already_ready = (
-                    target_pipe_config is not None
-                    and _SUBPROCESS_CLIENT._persistent_applies(target_pipe_config)
-                    and _SUBPROCESS_CLIENT.is_ready(target_pipe_config)
-                )
-                if not is_already_ready:
+            target_col = _collection_id_from_pipe_config(target_pipe_config)
+            is_already_ready = (
+                target_pipe_config is not None
+                and _SUBPROCESS_CLIENT._persistent_applies(target_pipe_config)
+                and _SUBPROCESS_CLIENT.is_ready(target_pipe_config)
+            )
+            if not is_already_ready:
+                if blocking:
+                    with _USER_RETRIEVAL_PRIORITY_LOCK:
+                        if _collection_matches_active(target_col, _ACTIVE_USER_RETRIEVAL_COLLECTIONS):
+                            col_name = target_col or "tri_thuc"
+                            if col_name not in _PROCEEDED_WARM_COLLECTIONS:
+                                _PROCEEDED_WARM_COLLECTIONS.add(col_name)
+                                proceed_msg = (
+                                    f"[WARM_PRIORITY_PROCEED] Khoi '{col_name}' trung voi luot nguoi dung dang cho truy hoi, "
+                                    f"tien hanh lam am ngay timestamp={format_marker_timestamp()}"
+                                )
+                                LOGGER.info(proceed_msg)
+                                _safe_print_streaming_marker(proceed_msg)
+                else:
                     _check_and_yield_background_warming(target_col, target_pipe_config)
 
             initialize_workspace_chat_rag_v2_worker(
@@ -1742,6 +1821,25 @@ def ensure_workspace_chat_worker_warming(
                 timeout_s=actual_timeout,
                 pipe_config=target_pipe_config,
             )
+            if (
+                not blocking
+                and target_pipe_config is not None
+                and getattr(target_pipe_config, "index_path", None)
+                and Path(target_pipe_config.index_path).is_file()
+            ):
+                with _USER_RETRIEVAL_PRIORITY_LOCK:
+                    no_active_user = _ACTIVE_USER_RETRIEVAL_COUNT <= 0
+                if no_active_user:
+                    try:
+                        from aios_habit import index_domain
+
+                        index_domain.load_all_index_specs(target_pipe_config.index_path)
+                        _get_covered_source_fingerprints(
+                            target_pipe_config.index_path,
+                            read_only=True,
+                        )
+                    except Exception:
+                        pass
             if verify_probe:
                 coll_name = getattr(target_pipe_config, "collection_id", None) or (Path(target_pipe_config.runtime_root).name if target_pipe_config else None)
                 probe_res = probe_workspace_chat_worker(
@@ -1754,9 +1852,17 @@ def ensure_workspace_chat_worker_warming(
         except Exception:
             LOGGER.debug("Workspace Chat BGE worker warm-up failed", exc_info=True)
             return False
+        finally:
+            if not blocking:
+                with _WARMUP_LOCK:
+                    _WARMUP_IN_QUEUE.discard(warmup_key)
 
     if blocking:
         return _warm()
+    with _WARMUP_LOCK:
+        if warmup_key in _WARMUP_IN_QUEUE:
+            return True
+        _WARMUP_IN_QUEUE.add(warmup_key)
     executor = _get_background_warm_executor()
     executor.submit(_warm)
     return True
@@ -3391,6 +3497,9 @@ def _map_serialized_query_result(
 
 _INDEX_FINGERPRINT_CACHE: dict[tuple[str, int, int], dict[str, Optional[str]]] = {}
 _INDEX_FINGERPRINT_FULL_SCANNED: set[tuple[str, int, int]] = set()
+_INDEX_COVERED_DOC_IDS_CACHE: dict[tuple[str, int, int], set[str]] = {}
+_DOMAIN_SPECS_QUERY_CACHE: dict[tuple[str, str, int, int, str], tuple[Any, ...]] = {}
+_PREWARMING_DOMAIN_SPECS_KEYS: set[tuple[str, str, str]] = set()
 _INDEX_FINGERPRINT_LOCK = threading.Lock()
 
 
@@ -3399,6 +3508,89 @@ def clear_covered_source_fingerprints_cache() -> None:
     with _INDEX_FINGERPRINT_LOCK:
         _INDEX_FINGERPRINT_CACHE.clear()
         _INDEX_FINGERPRINT_FULL_SCANNED.clear()
+        _INDEX_COVERED_DOC_IDS_CACHE.clear()
+        _DOMAIN_SPECS_QUERY_CACHE.clear()
+        _PREWARMING_DOMAIN_SPECS_KEYS.clear()
+
+
+def _get_cached_specs_for_domain(
+    target_domain: Optional[str],
+    spec_index_path: Path | str,
+    question: Optional[str] = None,
+) -> tuple[Any, ...]:
+    """Return domain SourceSpecs with an in-memory cache keyed by index file stat and question."""
+    from aios_habit import index_domain
+
+    resolved_path = Path(spec_index_path).resolve()
+    if not resolved_path.is_file():
+        return tuple(index_domain.get_specs_for_domain(target_domain, spec_index_path, question=question))
+    try:
+        stat = resolved_path.stat()
+    except OSError:
+        return tuple(index_domain.get_specs_for_domain(target_domain, spec_index_path, question=question))
+
+    cache_key = (
+        str(target_domain or "").strip().lower(),
+        str(resolved_path),
+        stat.st_mtime_ns,
+        stat.st_size,
+        str(question or ""),
+    )
+    with _INDEX_FINGERPRINT_LOCK:
+        cached = _DOMAIN_SPECS_QUERY_CACHE.get(cache_key)
+        if cached is not None:
+            return cached
+
+    specs = tuple(
+        index_domain.get_specs_for_domain(
+            target_domain,
+            resolved_path,
+            question=question,
+        )
+    )
+    with _INDEX_FINGERPRINT_LOCK:
+        _DOMAIN_SPECS_QUERY_CACHE[cache_key] = specs
+    return specs
+
+
+def _prewarm_domain_specs_async(
+    target_domain: Optional[str],
+    spec_index_path: Path | str,
+    question: Optional[str] = None,
+) -> None:
+    """Pre-warm domain specs and read-only covered doc_ids in background while worker is initializing."""
+    try:
+        resolved_path = Path(spec_index_path).resolve()
+        if not resolved_path.is_file():
+            return
+    except Exception:
+        return
+
+    dedup_key = (
+        str(target_domain or "").strip().lower(),
+        str(resolved_path),
+        str(question or ""),
+    )
+    with _INDEX_FINGERPRINT_LOCK:
+        if dedup_key in _PREWARMING_DOMAIN_SPECS_KEYS:
+            return
+        _PREWARMING_DOMAIN_SPECS_KEYS.add(dedup_key)
+
+    def _run_prewarm() -> None:
+        try:
+            _get_cached_specs_for_domain(target_domain, resolved_path, question=question)
+            _get_covered_source_fingerprints(resolved_path, read_only=True)
+        except Exception:
+            pass
+        finally:
+            with _INDEX_FINGERPRINT_LOCK:
+                _PREWARMING_DOMAIN_SPECS_KEYS.discard(dedup_key)
+
+    threading.Thread(
+        target=_run_prewarm,
+        name="wsc_prewarm_domain_specs",
+        daemon=True,
+    ).start()
 
 
 def _chunk_sequence(seq: Sequence[Any], n: int) -> Iterator[Sequence[Any]]:
@@ -3409,6 +3601,8 @@ def _chunk_sequence(seq: Sequence[Any], n: int) -> Iterator[Sequence[Any]]:
 def _get_covered_source_fingerprints(
     index_path: Path | str,
     candidate_doc_ids: Optional[Iterable[str]] = None,
+    *,
+    read_only: bool = False,
 ) -> dict[str, str]:
     """Retrieve mapping of document_id -> source_fingerprint for retrievable chunks.
 
@@ -3435,6 +3629,25 @@ def _get_covered_source_fingerprints(
         if candidate_doc_ids is not None
         else None
     )
+
+    if read_only:
+        with _INDEX_FINGERPRINT_LOCK:
+            covered_set = _INDEX_COVERED_DOC_IDS_CACHE.get(cache_key)
+        if covered_set is None:
+            uri = resolved_path.as_uri() + "?mode=ro"
+            with sqlite3.connect(uri, uri=True) as conn:
+                rows = conn.execute(
+                    "SELECT DISTINCT document_id FROM chunks WHERE retrievable = 1"
+                ).fetchall()
+            covered_set = {str(r[0]) for r in rows if r and r[0] is not None}
+            with _INDEX_FINGERPRINT_LOCK:
+                stale_keys = [k for k in _INDEX_COVERED_DOC_IDS_CACHE if k[0] == cache_key[0]]
+                for k in stale_keys:
+                    _INDEX_COVERED_DOC_IDS_CACHE.pop(k, None)
+                _INDEX_COVERED_DOC_IDS_CACHE[cache_key] = covered_set
+        if candidate_list is None:
+            return {d: "" for d in covered_set}
+        return {d: "" for d in candidate_list if d in covered_set}
 
     with _INDEX_FINGERPRINT_LOCK:
         if cache_key not in _INDEX_FINGERPRINT_CACHE:
@@ -3572,38 +3785,6 @@ def _run_profile(
     if not specs:
         raise ValueError("no_non_empty_sources")
 
-    if pipe_config.index_path.is_file():
-        try:
-            from aios_habit.rag_v2.pipeline import _file_fingerprint
-
-            candidate_doc_ids = [s.document_id for s in specs if getattr(s, "document_id", None)]
-            covered = _get_covered_source_fingerprints(
-                pipe_config.index_path,
-                candidate_doc_ids=candidate_doc_ids,
-            )
-            indexed_specs = []
-            for spec in specs:
-                stored = covered.get(spec.document_id)
-                if stored is None:
-                    continue
-                if pipe_config.index_read_only:
-                    indexed_specs.append(spec)
-                elif Path(spec.path).is_file():
-                    try:
-                        actual = _file_fingerprint(Path(spec.path))
-                        if not stored or actual == stored:
-                            indexed_specs.append(spec)
-                    except OSError:
-                        pass
-            if domain_collection_id:
-                specs = tuple(indexed_specs) if indexed_specs else specs
-            elif indexed_specs:
-                specs = tuple(indexed_specs)
-        except Exception:
-            pass
-    if not specs:
-        raise ValueError("no_non_empty_sources")
-
     if not pipe_config.index_read_only:
         sem_state, sem_reason = _semantic_readiness(sources, config)
         if sem_state != _PREPARATION_READY_STATE:
@@ -3632,6 +3813,40 @@ def _run_profile(
                 timeout_s=default_init_timeout_seconds(),
                 pipe_config=pipe_config,
             )
+
+    if pipe_config.index_path.is_file():
+        try:
+            from aios_habit.rag_v2.pipeline import _file_fingerprint
+
+            candidate_doc_ids = [s.document_id for s in specs if getattr(s, "document_id", None)]
+            covered = _get_covered_source_fingerprints(
+                pipe_config.index_path,
+                candidate_doc_ids=candidate_doc_ids,
+                read_only=bool(pipe_config.index_read_only),
+            )
+            indexed_specs = []
+            for spec in specs:
+                stored = covered.get(spec.document_id)
+                if stored is None:
+                    continue
+                if pipe_config.index_read_only:
+                    indexed_specs.append(spec)
+                elif Path(spec.path).is_file():
+                    try:
+                        actual = _file_fingerprint(Path(spec.path))
+                        if not stored or actual == stored:
+                            indexed_specs.append(spec)
+                    except OSError:
+                        pass
+            if domain_collection_id:
+                specs = tuple(indexed_specs) if indexed_specs else specs
+            elif indexed_specs:
+                specs = tuple(indexed_specs)
+        except Exception:
+            pass
+    if not specs:
+        raise ValueError("no_non_empty_sources")
+
     query_res_dict = _SUBPROCESS_CLIENT.query_ready(
         question,
         specs,
@@ -4113,7 +4328,13 @@ def _select_domain_route(
         route = index_domain.select_domain_collection(
             detected, base_collection_id, collection_exists=_collection_exists
         )
-        if route is not None and not route.applied and _domain_index_ready(config, base_collection_id):
+        if (
+            route is not None
+            and not route.applied
+            and detected is not None
+            and getattr(detected, "confidence", 0.0) >= index_domain.CONFIDENCE_LOW_THRESHOLD
+            and _domain_index_ready(config, base_collection_id)
+        ):
             # Kho hop nhat library.sqlite chua toan bo cac khoi tri thuc.
             # Loc pham vi qua truong document_id trong library.sqlite thay vi tach roi file DB.
             return index_domain.DomainRoute(
@@ -4230,13 +4451,63 @@ def retrieve_workspace_chat_evidence(
         if has_forced_domain
         else (domain_route.domain if domain_route and getattr(domain_route, "applied", False) else None)
     )
-    active_retrieval_col = target_domain or domain_collection_id
+    active_retrieval_col = target_domain or domain_collection_id or "tri_thuc"
     if active_retrieval_col:
         update_user_retrieval_collection(active_retrieval_col)
 
-    if use_prod_domain_specs and prod_pipe_cfg:
-        domain_specs = index_domain.get_specs_for_domain(
-            target_domain, prod_pipe_cfg.index_path, question=question
+    target_pipe_cfg = None
+    try:
+        target_pipe_cfg = _pipeline_config(
+            resolved,
+            "bge_m3_hybrid",
+            read_only=True,
+            collection_id=domain_collection_id or DEFAULT_COLLECTION_ID,
+        )
+    except Exception:
+        target_pipe_cfg = prod_pipe_cfg
+
+    spec_index_path = (
+        target_pipe_cfg.index_path
+        if (
+            target_pipe_cfg is not None
+            and getattr(target_pipe_cfg, "index_path", None)
+            and target_pipe_cfg.index_path.is_file()
+        )
+        else (prod_pipe_cfg.index_path if prod_pipe_cfg is not None else None)
+    )
+
+    if (
+        use_prod_domain_specs
+        and pipeline_factory is RagV2DevPipeline
+        and target_pipe_cfg is not None
+        and not query_might_be_structured_excel(question)
+        and str(search_preference or "auto").casefold() != "deep"
+        and _SUBPROCESS_CLIENT._persistent_applies(target_pipe_cfg)
+        and not _SUBPROCESS_CLIENT.is_ready(target_pipe_cfg)
+    ):
+        with user_retrieval_priority_scope(active_retrieval_col):
+            try:
+                ensure_workspace_chat_worker_warming(
+                    config=resolved,
+                    blocking=False,
+                    pipe_config=target_pipe_cfg,
+                )
+            except Exception:
+                pass
+        if spec_index_path is not None:
+            try:
+                flight_key = pipe_name_for_config(target_pipe_cfg)
+                with _SUBPROCESS_CLIENT._persistent_init_lock:
+                    target_pending = flight_key in _SUBPROCESS_CLIENT._pending_persistent_inits
+                if target_pending or bool(_SUBPROCESS_CLIENT.readiness(target_pipe_cfg).get("alive")):
+                    _prewarm_domain_specs_async(target_domain, spec_index_path, question=question)
+            except Exception:
+                pass
+        return _finish(_quality_search_unavailable("bge_worker_warming_in_progress"))
+
+    if use_prod_domain_specs and prod_pipe_cfg and spec_index_path is not None:
+        domain_specs = _get_cached_specs_for_domain(
+            target_domain, spec_index_path, question=question
         )
         temp_sources = tuple(s for s in sources if getattr(s, "source_scope", "") == SOURCE_SCOPE_TEMPORARY)
         semantic_sources = tuple(domain_specs) + temp_sources
@@ -4410,6 +4681,8 @@ def retrieve_workspace_chat_evidence(
 def close_workspace_chat_rag_v2_runtimes(*, timeout_s: float | None = 10.0) -> None:
     """Close and evict cached in-process and background preparation runtimes."""
     global _PREPARATION_EXECUTOR, _DRAIN_IS_RUNNING, _BACKGROUND_WARM_EXECUTOR
+    with _WARMUP_LOCK:
+        _WARMUP_IN_QUEUE.clear()
     with _BACKGROUND_WARM_LOCK:
         if _BACKGROUND_WARM_EXECUTOR is not None:
             try:
