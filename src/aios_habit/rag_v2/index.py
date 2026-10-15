@@ -60,6 +60,8 @@ _EXACT_IDENTIFIER_RE = re.compile(
 )
 _SPECIAL_ENTITY_RES = (
     re.compile(r"(?<![A-Za-z0-9])C\d{2,5}(?![A-Za-z0-9])", re.IGNORECASE),
+    re.compile(r"(?<![A-Za-z0-9])(?:JIG\s*|LINE\s*)?C\d{2,3}(?:[/\-–]\d{2,3}|[/\-–]C\d{2,3})", re.IGNORECASE),
+    re.compile(r"(?<![A-Za-z0-9])[A-Za-z]\s*距離", re.IGNORECASE),
     re.compile(r"(?<!\w)[0-9][A-Z0-9]{5,}(?!\w)", re.IGNORECASE),
     re.compile(r"\b(?:Sirius(?:\s*2)?|OKNGUNIT|Camera(?:\s*140)?|MOUNT(?:\s*LD)?\s*BLOCK|NanoScan|Bow_Skew)\b", re.IGNORECASE),
     re.compile(r"\b(?:SIM(?:\s*tape)?|LSU(?:\s*Line)?|COVER\s*GLASS)\b", re.IGNORECASE),
@@ -92,6 +94,27 @@ def _extract_query_entities(query: str) -> tuple[str, ...]:
             if key not in seen and len(val) >= 2:
                 seen.add(key)
                 entities.append(val)
+    # Synthesize paired line/jig entities if multiple C{num} are present (e.g. C23 and C24 -> C23/24, C23/C24)
+    c_entities = [e for e in entities if re.fullmatch(r"C\d{2,3}", e, re.IGNORECASE)]
+    if len(c_entities) >= 2:
+        for i in range(len(c_entities)):
+            for j in range(i + 1, len(c_entities)):
+                e1, e2 = c_entities[i], c_entities[j]
+                num2 = e2[1:]
+                paired1 = f"{e1}/{num2}"
+                paired2 = f"{e1}/{e2}"
+                for p in (paired1, paired2):
+                    if p.lower() not in seen:
+                        seen.add(p.lower())
+                        entities.append(p)
+    # Synthesize paired letter-distance entities (e.g. B距離 <-> B 距離)
+    dist_entities = [e for e in entities if re.fullmatch(r"[A-Za-z]\s*距離", e, re.IGNORECASE)]
+    for e in dist_entities:
+        letter = e[0].upper()
+        for variant in (f"{letter}距離", f"{letter} 距離"):
+            if variant.lower() not in seen:
+                seen.add(variant.lower())
+                entities.append(variant)
     return tuple(entities)
 
 
@@ -124,6 +147,12 @@ def _compute_entity_boost(
         ):
             doc_boost += 0.12
             continue
+        # Support CJK letter-distance spacing e.g. 'b 距離' vs 'b距離'
+        if re.search(r"^[a-z]\s*距離$", ent_lower):
+            letter = ent_lower[0]
+            if re.search(rf"(?<!\w){letter}\s*距離", text_lower):
+                boost += 0.040
+                continue
         if (
             ent_lower in source_name_lower
             or ent_lower in source_path_lower
@@ -136,6 +165,7 @@ def _compute_entity_boost(
         elif re.search(rf"(?<!\w){re.escape(ent_lower)}(?!\w)", text_lower):
             boost += 0.018
     return min(boost, MAX_ENTITY_BOOST) + min(doc_boost, 0.15)
+
 
 
 def _query_carries_exact_values(query: str) -> bool:
@@ -5736,7 +5766,8 @@ class LocalChunkIndex:
         if not cjk_prefilter_enabled():
             return None
         entities = _extract_query_entities(" ".join(terms))
-        generic_stop = {"data", "file", "sheet", "line", "view", "part", "this", "from", "unit"}
+        from .query_planning import CJK_GRAMMAR_STOPWORDS
+        generic_stop = {"data", "file", "sheet", "line", "view", "part", "this", "from", "unit"} | set(CJK_GRAMMAR_STOPWORDS)
         filtered = [
             term for term in terms
             if term and term.lower() not in generic_stop and (len(term) <= 6 or not _CJK_RE.search(term))
@@ -5754,14 +5785,15 @@ class LocalChunkIndex:
             sorted(
                 content_candidates,
                 key=lambda term: (
-                    not bool(_CJK_RE.search(term)),
                     term not in entity_set,
+                    not bool(_CJK_RE.search(term)),
                     -len(term),
                     term,
                 ),
             )[:2]
             + sorted(doc_id_candidates, key=lambda term: (-len(term), term))[:1]
         )
+
         if not usable_terms or not eligible_ids:
             return None
         if lex_cache is None:
@@ -5773,17 +5805,26 @@ class LocalChunkIndex:
             if matched_ids is None:
                 lower_terms = tuple(term.lower() for term in usable_terms)
                 matched_list: list[str] = []
+                def _matches_term(t: str, s: str) -> bool:
+                    if t in s:
+                        return True
+                    if len(t) == 3 and t[0].isascii() and f"{t[0]} {t[1:]}" in s:
+                        return True
+                    if len(t) == 4 and t[0].isascii() and t[1] == " " and f"{t[0]}{t[2:]}" in s:
+                        return True
+                    return False
+
                 if len(lower_terms) == 1:
                     t0 = lower_terms[0]
                     for cid, text_val in zip(lex_cache.chunk_ids, lex_cache.cjk_search_texts):
-                        if t0 in text_val:
+                        if _matches_term(t0, text_val):
                             matched_list.append(cid)
                             if len(matched_list) >= 500:
                                 break
                 elif len(lower_terms) == 2:
                     t0, t1 = lower_terms[0], lower_terms[1]
                     for cid, text_val in zip(lex_cache.chunk_ids, lex_cache.cjk_search_texts):
-                        if t0 in text_val or t1 in text_val:
+                        if _matches_term(t0, text_val) or _matches_term(t1, text_val):
                             matched_list.append(cid)
                             if len(matched_list) >= 500:
                                 break
@@ -5792,9 +5833,9 @@ class LocalChunkIndex:
                     doc_lower = lower_terms[-1]
                     content_count = 0
                     for cid, text_val in zip(lex_cache.chunk_ids, lex_cache.cjk_search_texts):
-                        if doc_lower in text_val:
+                        if _matches_term(doc_lower, text_val):
                             matched_list.append(cid)
-                        elif content_count < 500 and any(t in text_val for t in content_lower):
+                        elif content_count < 500 and any(_matches_term(t, text_val) for t in content_lower):
                             matched_list.append(cid)
                             content_count += 1
                 matched_ids = frozenset(matched_list)
@@ -5815,6 +5856,14 @@ class LocalChunkIndex:
         for term in usable_terms:
             clauses.append("((" + search_expression + ") LIKE ? ESCAPE '\\')")
             parameters.append("%" + self._escape_like_term(term) + "%")
+            if len(term) == 3 and term[0].isascii() and _CJK_RE.search(term[1:]):
+                spaced_term = f"{term[0]} {term[1:]}"
+                clauses.append("((" + search_expression + ") LIKE ? ESCAPE '\\')")
+                parameters.append("%" + self._escape_like_term(spaced_term) + "%")
+            elif len(term) == 4 and term[0].isascii() and term[1] == " " and _CJK_RE.search(term[2:]):
+                unspaced_term = f"{term[0]}{term[2:]}"
+                clauses.append("((" + search_expression + ") LIKE ? ESCAPE '\\')")
+                parameters.append("%" + self._escape_like_term(unspaced_term) + "%")
         start = perf_counter()
         try:
             matched_ids_sql = {
@@ -6506,7 +6555,19 @@ class LocalChunkIndex:
             ),
             "normalized_text": text.lower(),
             "cjk_compact_text": (
-                re.sub(r"(?<=[\u3040-\u30ff\u4e00-\u9fff])[ \t]+(?=[\u3040-\u30ff\u4e00-\u9fff])", "", text.lower())
+                re.sub(
+                    r"([a-z0-9])[ \t]+([\u3040-\u9fff])",
+                    r"\1\2",
+                    re.sub(
+                        r"([\u3040-\u9fff])[ \t]+([a-z0-9])",
+                        r"\1\2",
+                        re.sub(
+                            r"(?<=[\u3040-\u30ff\u4e00-\u9fff])[ \t]+(?=[\u3040-\u30ff\u4e00-\u9fff])",
+                            "",
+                            text.lower(),
+                        ),
+                    ),
+                )
                 if _CJK_RE.search(text)
                 else text.lower()
             ),

@@ -465,7 +465,8 @@ def call_antigravity_bridge(
             method="POST",
         )
         with urllib.request.urlopen(req, timeout=timeout_seconds) as response:
-            if payload.get("stream"):
+            content_type = response.headers.get_content_type()
+            if payload.get("stream") and "text/event-stream" in content_type:
                 full_chunks: list[str] = []
                 used_model = model
                 for line_bytes in response:
@@ -494,6 +495,13 @@ def call_antigravity_bridge(
                 answer_text = "".join(full_chunks).strip()
                 latency_ms = (time.time() - start_time) * 1000
                 tokens = len(answer_text) // 4
+                if not answer_text:
+                    return AntigravityBridgeResponse(
+                        ok=False,
+                        answer_text="",
+                        error_message="Empty answer received from Antigravity Bridge stream",
+                        latency_ms=latency_ms,
+                    )
                 return AntigravityBridgeResponse(
                     ok=True,
                     answer_text=answer_text,
@@ -510,8 +518,20 @@ def call_antigravity_bridge(
             if choices and isinstance(choices, list):
                 msg = choices[0].get("message", {})
                 answer_text = msg.get("content", "").strip()
+                if on_chunk and answer_text:
+                    try:
+                        on_chunk(answer_text)
+                    except Exception:
+                        pass
                 usage = result_json.get("usage", {})
                 tokens = usage.get("total_tokens", len(answer_text) // 4)
+                if not answer_text:
+                    return AntigravityBridgeResponse(
+                        ok=False,
+                        answer_text="",
+                        error_message="Empty content in Antigravity Bridge choices",
+                        latency_ms=latency_ms,
+                    )
                 return AntigravityBridgeResponse(
                     ok=True,
                     answer_text=answer_text,
@@ -1774,8 +1794,14 @@ def route_workspace_chat_submission(
                 direct_context_text = f"{direct_context_text}\n\n{memory_block}"
 
         try:
+            system_policy = (
+                "Bạn là chuyên gia phân tích tài liệu kỹ thuật AIOS WorkLens. "
+                "Dựa trên các tài liệu và ngữ cảnh đính kèm, hãy trả lời chính xác, trung thực và đầy đủ các dữ kiện, "
+                "liệt kê chi tiết mọi trạng thái, nguyên nhân hoặc điều kiện được mô tả trong tài liệu, không bỏ sót trường hợp nào."
+            )
             call_kwargs = {
                 "question": question,
+                "system_prompt": system_policy,
                 "context_text": direct_context_text,
                 "chat_history": chat_history,
                 "privacy_mode": PRIVACY_MODE_CLOUD_ALLOWED,

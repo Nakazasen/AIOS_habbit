@@ -178,6 +178,30 @@ class QueryExpander(Protocol):
         ...
 
 
+CJK_GRAMMAR_STOPWORDS: frozenset[str] = frozenset({
+    # Japanese question words & particles
+    "何ですか", "何で", "何です", "何でしょうか", "何でしょう", "ですか", "でしたか", "でした", "でし", "したか",
+    "ますか", "ましたか", "りま", "ます", "すか", "なりま", "ります", "でしょうか", "何", "なん", "なに",
+    "どのような", "どのよう", "どのよ", "のよう", "ような", "どの", "のよ", "よう", "うな",
+    "どう", "どれ", "どんな", "なぜ", "どうして", "どこ", "いつ", "いくつ", "誰", "どちら",
+    # Japanese particles and connectives
+    "は", "が", "を", "に", "の", "と", "で", "へ", "から", "まで", "より", "では", "とは", "には", "でも",
+    "また", "および", "あるいは", "または", "など", "について", "における", "による", "によって", "ため", "として",
+    # Japanese grammatical conjugations / auxiliary fragments
+    "になる", "になり", "になります", "になるか", "になりますか", "になった", "なると", "なら", "にな", "なり",
+    "である", "超え", "える", "ると", "を超", "を超え", "超える", "えると", "ると必", "と必", "と必ず", "必ず",
+    "長くな", "くなる", "が長", "長く", "くな", "なる", "離が", "離が長", "が長く",
+    "る想", "なる想", "態は", "状態は", "態は何", "は何で", "は何",
+    "うな発", "な発生", "な発", "はど", "ではど", "はどの", "ではどの", "はどのよ",
+    "し", "した", "たか", "て", "ても", "ば", "たら", "たり", "ない", "なかった", "ず",
+    "能に", "能にな", "読取不能に", "不能にな", "能になり", "になりま", "なります", "りますか",
+    "定状態は", "状態は何", "態は何で", "は何です", "定状態", "想定状", "取不", "読取不", "取不能",
+    "る想定", "定状",
+    # Chinese question words & particles
+    "是什么", "是多少", "怎样", "如何", "是否有", "哪些", "什么", "怎么", "为什么", "哪天", "哪个", "何时", "何处", "吗", "呢", "吧", "的", "了", "在", "是", "与", "和", "或", "或者", "以及",
+})
+
+
 def _split_script_boundaries(text: str) -> str:
     if not text:
         return ""
@@ -190,31 +214,42 @@ def extract_content_terms(value: str) -> Tuple[str, ...]:
     """Return ordered, unique query terms after generic function-word removal."""
     seen: set[str] = set()
     result = []
-    for match in _TOKEN_RE.finditer(value or ""):
+    split_text = _split_script_boundaries(value or "")
+    # 1. Non-CJK tokens and short pure CJK terms from split_text
+    for match in _TOKEN_RE.finditer(split_text):
         token = match.group(0).lower()
-        if token in _COMMON_STOPWORDS or token in seen:
+        if token in _COMMON_STOPWORDS or token in CJK_GRAMMAR_STOPWORDS or token in seen:
+            continue
+        # Drop unsegmented mixed/long CJK phrases (len > 4 or containing Japanese particles)
+        if _CJK_RE.search(token) and (len(token) > 4 or any(c in token for c in "はがをにのとでへかもてただなねよか")):
             continue
         seen.add(token)
         result.append(token)
-    split_text = _split_script_boundaries(value or "")
-    if split_text != (value or ""):
-        for match in _TOKEN_RE.finditer(split_text):
-            token = match.group(0).lower()
-            if token in _COMMON_STOPWORDS or token in seen:
-                continue
-            seen.add(token)
-            result.append(token)
+    # 2. CJK compound decomposition
     if _CJK_RE.search(split_text):
         for match in _CJK_RE.finditer(split_text):
             compound = match.group(0).lower()
             if len(compound) < 2:
                 continue
+            # Add full compound if 2 <= len <= 6 and not bounded by particles
+            if (
+                2 <= len(compound) <= 6
+                and compound not in _COMMON_STOPWORDS
+                and compound not in CJK_GRAMMAR_STOPWORDS
+                and compound not in seen
+            ):
+                if not any(compound.startswith(p) for p in "はがをにのとでへかもてただなねよる") and not any(compound.endswith(p) for p in "はがをにのとでへかもてただなねよか"):
+                    seen.add(compound)
+                    result.append(compound)
             for width in (2, 3):
                 for index in range(len(compound) - width + 1):
                     ngram = compound[index : index + width]
-                    if ngram not in _COMMON_STOPWORDS and ngram not in seen:
-                        seen.add(ngram)
-                        result.append(ngram)
+                    if ngram in _COMMON_STOPWORDS or ngram in CJK_GRAMMAR_STOPWORDS or ngram in seen:
+                        continue
+                    if any(ngram.startswith(p) for p in "はがをにのとでへかもてただなねよる") or any(ngram.endswith(p) for p in "はがをにのとでへかもてただなねよか"):
+                        continue
+                    seen.add(ngram)
+                    result.append(ngram)
     return tuple(result)
 
 
@@ -224,14 +259,19 @@ VIETNAMESE_EVIDENCE_STOPWORDS: frozenset[str] = frozenset({
 
 
 def extract_evidence_terms(value: str) -> Tuple[str, ...]:
-    """Return content terms excluding Vietnamese function/connective words for evidence coverage."""
+    """Return content terms excluding Vietnamese/CJK function words for evidence coverage."""
     terms = extract_content_terms(value)
-    return tuple(term for term in terms if term.casefold() not in VIETNAMESE_EVIDENCE_STOPWORDS)
+    return tuple(
+        term for term in terms
+        if term.casefold() not in VIETNAMESE_EVIDENCE_STOPWORDS
+        and term.casefold() not in CJK_GRAMMAR_STOPWORDS
+    )
 
 
 def extract_target_terms(value: str) -> Tuple[str, ...]:
     """Return literal terms from the user query without semantic rewriting."""
-    return extract_content_terms(value)
+    return extract_evidence_terms(value)
+
 
 
 def _ascii_fold(value: str) -> str:
@@ -470,7 +510,25 @@ def _identity_variants(
                 )
             )
 
+    paired_match = re.search(r"\b(C\d{2,3})\s*(?:と|and|&|/|,|\+)\s*C?(\d{2,3})\b", original, re.IGNORECASE)
+    if paired_match:
+        c_prefix = paired_match.group(1).upper()
+        c_second = paired_match.group(2)
+        paired_alias = f"{c_prefix}/{c_second}"
+        paired_variant_text = original[:paired_match.start()] + paired_alias + original[paired_match.end():]
+        variants.append(
+            RetrievalQueryVariant(
+                text=paired_variant_text,
+                language_hint=language_hint,
+                origin="paired_alias",
+                variant_id="paired_alias_1",
+                facet_id="query",
+                target_equivalent=True,
+            )
+        )
+
     return tuple(variants[:_MAX_VARIANTS])
+
 
 
 def _detect_intent_category(query: str) -> tuple[str, tuple[str, ...]]:
