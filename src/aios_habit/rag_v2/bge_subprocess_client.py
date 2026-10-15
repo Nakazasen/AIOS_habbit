@@ -1394,7 +1394,7 @@ class BgeSubprocessWorkerClient:
                             raise SemanticBackendError("bge_worker_persist_aborted")
                         conn = mpc.Client(pipe_name, family="AF_PIPE", authkey=authkey)
                         break
-                    except OSError as exc:
+                    except (OSError, EOFError) as exc:
                         if pipe_lock_acquired:
                             pipe_lock_acquired = False
                             try:

@@ -1454,6 +1454,26 @@ def is_workspace_chat_worker_warmed(
     except (SemanticBackendUnavailable, ValueError, OSError):
         return False
     try:
+        if (
+            target_pipe_config is not None
+            and _SUBPROCESS_CLIENT._persistent_applies(target_pipe_config)
+        ):
+            flight_key = pipe_name_for_config(target_pipe_config)
+            status_probe = _SUBPROCESS_CLIENT._read_persistent_status_file(target_pipe_config)
+            if status_probe is not None:
+                return bool(status_probe.get("ready", False))
+            with _WARMUP_LOCK:
+                warming_active = (
+                    flight_key in _WARMUP_RUNNING_KEYS
+                    or flight_key in _WARMUP_IN_QUEUE
+                )
+            if warming_active:
+                return False
+            with _SUBPROCESS_CLIENT._persistent_init_lock:
+                if flight_key in _SUBPROCESS_CLIENT._pending_persistent_inits:
+                    return False
+            if not _pipe_instance_available(flight_key):
+                return False
         return bool(_SUBPROCESS_CLIENT.is_ready(target_pipe_config))
     except Exception:
         return False
@@ -1484,13 +1504,37 @@ def get_workspace_chat_worker_progress(
 
     try:
         if target_pipe_config is not None and _SUBPROCESS_CLIENT._persistent_applies(target_pipe_config):
+            flight_key = pipe_name_for_config(target_pipe_config)
             with _SUBPROCESS_CLIENT._persistent_init_lock:
-                flight_key = pipe_name_for_config(target_pipe_config)
                 flight = _SUBPROCESS_CLIENT._pending_persistent_inits.get(flight_key)
                 pending = flight is not None
                 flight_started = flight.get("started", 0.0) if flight else 0.0
+            with _WARMUP_LOCK:
+                warmup_queued_or_running = (
+                    flight_key in _WARMUP_RUNNING_KEYS
+                    or flight_key in _WARMUP_IN_QUEUE
+                )
+            pending = bool(pending or warmup_queued_or_running)
 
-            p_ready = _SUBPROCESS_CLIENT.readiness(target_pipe_config)
+            status_probe = _SUBPROCESS_CLIENT._read_persistent_status_file(target_pipe_config)
+            if status_probe is not None:
+                p_ready = status_probe
+            elif pending:
+                p_ready = {
+                    "ready": False,
+                    "alive": True,
+                    "pid": None,
+                    "reason": "bge_worker_init_pending",
+                }
+            elif not _pipe_instance_available(flight_key):
+                p_ready = {
+                    "ready": False,
+                    "alive": False,
+                    "pid": None,
+                    "reason": "bge_worker_persist_unavailable",
+                }
+            else:
+                p_ready = _SUBPROCESS_CLIENT.readiness(target_pipe_config)
             ready = bool(p_ready.get("ready", False))
             alive = bool(p_ready.get("alive", False)) or pending
             pid = p_ready.get("pid")
@@ -1970,11 +2014,15 @@ def ensure_workspace_chat_worker_warming(
                 _collection_id_from_pipe_config(target_pipe_config)
                 or normalize_knowledge_collection(collection_id)
             )
-            is_already_ready = (
-                target_pipe_config is not None
-                and _SUBPROCESS_CLIENT._persistent_applies(target_pipe_config)
-                and _SUBPROCESS_CLIENT.is_ready(target_pipe_config)
+            status_probe = (
+                _SUBPROCESS_CLIENT._read_persistent_status_file(target_pipe_config)
+                if (
+                    target_pipe_config is not None
+                    and _SUBPROCESS_CLIENT._persistent_applies(target_pipe_config)
+                )
+                else None
             )
+            is_already_ready = bool(status_probe and status_probe.get("ready"))
             if not is_already_ready:
                 if blocking:
                     with _USER_RETRIEVAL_PRIORITY_LOCK:
@@ -2028,6 +2076,8 @@ def ensure_workspace_chat_worker_warming(
                 return bool(probe_res.get("ready", False))
             return True
         except Exception:
+            with _WARMUP_LOCK:
+                _WARMUP_ATTEMPTS.pop(warmup_key, None)
             LOGGER.debug("Workspace Chat BGE worker warm-up failed", exc_info=True)
             return False
         finally:
@@ -2053,16 +2103,85 @@ def ensure_workspace_chat_worker_warming(
     return True
 
 
+def _infer_notebook_domain_collection(nb: Any, default_col: str) -> str:
+    """Resolve a notebook's effective collection ID, inferring split domain from title/description when collection_id is default tri_thuc."""
+    nb_col = str(getattr(nb, "collection_id", "") or "").strip().lower()
+    norm_col = normalize_knowledge_collection(nb_col) if (nb_col and nb_col != "auto") else default_col
+    if norm_col and norm_col != default_col:
+        return norm_col
+    try:
+        from aios_habit import index_domain
+
+        title_desc = f"{getattr(nb, 'title', '') or ''} {getattr(nb, 'description', '') or ''}".strip()
+        if title_desc:
+            detected = index_domain.detect_domain_from_question(title_desc)
+            if (
+                detected is not None
+                and getattr(detected, "confidence", 0.0) >= index_domain.CONFIDENCE_LOW_THRESHOLD
+                and detected.domain in ("lsu", "dieu_tra_loi", "tong_hop")
+            ):
+                return detected.domain
+    except Exception:
+        pass
+    return norm_col or default_col
+
+
+def resolve_active_notebook_collection_id(
+    *,
+    active_notebook_id: Optional[str] = None,
+    active_collection_id: Optional[str] = None,
+) -> str:
+    """Resolve the single target collection ID to warm on startup or notebook open.
+
+    Requirements (DESKTOP-SPEED-LAZY-WARM-HOME):
+    - Only warm the collection of the currently opened/default notebook on startup.
+    - Never eagerly warm all 4 collections at once.
+    """
+    from aios_habit.workspace_chat_models import DEFAULT_COLLECTION_ID
+
+    raw_col = str(active_collection_id or "").strip().lower()
+    norm_explicit = normalize_knowledge_collection(raw_col) if (raw_col and raw_col != "auto") else None
+    if norm_explicit and norm_explicit != DEFAULT_COLLECTION_ID:
+        return norm_explicit
+
+    try:
+        from aios_habit.workspace_chat_store import load_active_notebooks, load_notebook
+
+        nb_id = str(active_notebook_id or "").strip()
+        if nb_id:
+            nb = load_notebook(nb_id)
+            if nb is None:
+                nb = next((n for n in load_active_notebooks() if n.id == nb_id), None)
+            if nb is not None:
+                return _infer_notebook_domain_collection(nb, DEFAULT_COLLECTION_ID)
+
+        if norm_explicit:
+            return norm_explicit
+
+        notebooks = load_active_notebooks()
+        if notebooks:
+            return _infer_notebook_domain_collection(notebooks[0], DEFAULT_COLLECTION_ID)
+    except Exception:
+        pass
+
+    return norm_explicit or DEFAULT_COLLECTION_ID
+
+
 def ensure_workspace_chat_startup_warming(
     *,
     config: Optional[WorkspaceChatRagV2CanaryConfig] = None,
-    collections: Sequence[str] = ("lsu", "dieu_tra_loi", "tong_hop"),
+    collections: Optional[Sequence[str]] = None,
+    active_notebook_id: Optional[str] = None,
+    active_collection_id: Optional[str] = None,
 ) -> dict[str, bool]:
-    """Trigger background non-blocking warming for startup collections.
+    """Trigger background non-blocking warming for startup collection(s).
 
-    Requirements (DESKTOP-SPEED-WARM-ALIGNMENT-FIX-HOME):
-    - Warms main knowledge collections (tong_hop, lsu, dieu_tra_loi) in background (blocking=False).
-    - Preserves default tri_thuc warming behavior.
+    Requirements (DESKTOP-SPEED-LAZY-WARM-HOME):
+    - By default (collections=None), ONLY warm the collection of the active/default
+      notebook (active_notebook_id / active_collection_id), and DO NOT warm the
+      remaining 3 collections on startup.
+    - When ``collections`` is explicitly passed (legacy multi-collection tests),
+      warms the requested collections in background (blocking=False).
     - An error warming one collection must NOT crash the app or block others.
     """
     results: dict[str, bool] = {}
@@ -2077,7 +2196,57 @@ def ensure_workspace_chat_startup_warming(
         return results
 
     profile = resolved.requested_profile
-    for col_id in collections:
+
+    if collections is None:
+        target_col = resolve_active_notebook_collection_id(
+            active_notebook_id=active_notebook_id,
+            active_collection_id=active_collection_id,
+        )
+        if target_col in ("tri_thuc", "default"):
+            try:
+                tri_thuc_pipe_cfg = _warmup_pipeline_config(resolved)
+                results["tri_thuc"] = ensure_workspace_chat_worker_warming(
+                    config=resolved,
+                    blocking=False,
+                    pipe_config=tri_thuc_pipe_cfg,
+                    collection_id="tri_thuc",
+                )
+            except Exception as exc:
+                LOGGER.warning("Startup warming failed for tri_thuc: %s", exc)
+                results["tri_thuc"] = False
+        else:
+            try:
+                p_cfg = _pipeline_config(
+                    resolved,
+                    profile,
+                    read_only=True,
+                    collection_id=target_col,
+                )
+                if getattr(p_cfg, "index_path", None) and p_cfg.index_path.is_file():
+                    started = ensure_workspace_chat_worker_warming(
+                        config=resolved,
+                        blocking=False,
+                        pipe_config=p_cfg,
+                        collection_id=target_col,
+                    )
+                    results[target_col] = started
+                else:
+                    LOGGER.info("Startup warming skipped for '%s': index file not found", target_col)
+                    results[target_col] = False
+            except Exception as exc:
+                LOGGER.warning("Startup warming failed for collection '%s': %s", target_col, exc)
+                results[target_col] = False
+        return results
+
+    explicit_cols = [str(c).strip() for c in collections if str(c).strip()]
+    include_tri_thuc = (
+        "tri_thuc" in explicit_cols
+        or "default" in explicit_cols
+        or set(explicit_cols) == {"tong_hop", "lsu", "dieu_tra_loi"}
+    )
+    for col_id in explicit_cols:
+        if col_id in ("tri_thuc", "default"):
+            continue
         try:
             p_cfg = _pipeline_config(
                 resolved,
@@ -2100,18 +2269,18 @@ def ensure_workspace_chat_startup_warming(
             LOGGER.warning("Startup warming failed for collection '%s': %s", col_id, exc)
             results[col_id] = False
 
-    # Giữ nguyên hành vi làm ấm tri_thuc mặc định với pipe_config tường minh
-    try:
-        tri_thuc_pipe_cfg = _warmup_pipeline_config(resolved)
-        results["tri_thuc"] = ensure_workspace_chat_worker_warming(
-            config=resolved,
-            blocking=False,
-            pipe_config=tri_thuc_pipe_cfg,
-            collection_id="tri_thuc",
-        )
-    except Exception as exc:
-        LOGGER.warning("Startup warming failed for tri_thuc: %s", exc)
-        results["tri_thuc"] = False
+    if include_tri_thuc:
+        try:
+            tri_thuc_pipe_cfg = _warmup_pipeline_config(resolved)
+            results["tri_thuc"] = ensure_workspace_chat_worker_warming(
+                config=resolved,
+                blocking=False,
+                pipe_config=tri_thuc_pipe_cfg,
+                collection_id="tri_thuc",
+            )
+        except Exception as exc:
+            LOGGER.warning("Startup warming failed for tri_thuc: %s", exc)
+            results["tri_thuc"] = False
 
     return results
 
@@ -4820,6 +4989,9 @@ def _select_domain_route(
         from aios_habit import index_domain
 
         base_collection_id = _collection_id_for_sources(sources)
+        effective_base = base_collection_id or (
+            DEFAULT_COLLECTION_ID if not sources else None
+        )
         forced = str(forced_domain or "").strip().lower()
         if forced and forced != "auto":
             if forced not in index_domain.KNOWLEDGE_BLOCKS:
@@ -4833,18 +5005,18 @@ def _select_domain_route(
             if target is None:
                 return None
             if not _domain_index_ready(config, target):
-                if _domain_index_ready(config, base_collection_id):
+                if _domain_index_ready(config, effective_base):
                     # Kho hợp nhất library.sqlite chứa toàn bộ các khối tri thức.
                     # Lọc phạm vi qua trường document_id trong library.sqlite thay vì tách rời file DB.
                     return index_domain.DomainRoute(
-                        base_collection_id,
+                        effective_base,
                         forced,
                         True,
                         "người dùng chọn khối %s (lọc qua chỉ mục)" % index_domain.DOMAIN_DISPLAY.get(forced, forced),
                         detected,
                     )
                 return index_domain.DomainRoute(
-                    base_collection_id,
+                    effective_base,
                     forced,
                     False,
                     "khối được chọn chưa có kho trên máy này",
@@ -4854,27 +5026,68 @@ def _select_domain_route(
                 target, forced, True, "người dùng chọn khối", detected
             )
 
-        if not index_domain.domain_routing_enabled():
+        if forced != "auto" and not index_domain.domain_routing_enabled():
             return None
         detected = index_domain.detect_domain_from_question(question)
+        if (
+            detected is None
+            or getattr(detected, "confidence", 0.0) < index_domain.CONFIDENCE_LOW_THRESHOLD
+        ):
+            return index_domain.DomainRoute(
+                effective_base,
+                detected.domain if detected is not None else index_domain.FALLBACK_DOMAIN,
+                False,
+                "câu hỏi không rõ lĩnh vực: giữ nguyên kho hiện tại",
+                detected,
+            )
 
         def _collection_exists(collection_id: str) -> bool:
             return _domain_index_ready(config, collection_id)
 
+        if forced == "auto" and not index_domain.domain_routing_enabled():
+            if effective_base != index_domain.LEGACY_COLLECTION_ID:
+                return index_domain.DomainRoute(
+                    effective_base,
+                    detected.domain,
+                    False,
+                    "không phải kho tri_thuc: giữ nguyên kho hiện tại",
+                    detected,
+                )
+            target = index_domain.DOMAIN_COLLECTION_IDS.get(detected.domain)
+            if target is not None and _collection_exists(target):
+                return index_domain.DomainRoute(
+                    target, detected.domain, True, "chọn kho lĩnh vực", detected
+                )
+            if _domain_index_ready(config, effective_base):
+                return index_domain.DomainRoute(
+                    effective_base,
+                    detected.domain,
+                    True,
+                    "tu dong chon khoi %s (loc qua chi muc)" % index_domain.DOMAIN_DISPLAY.get(detected.domain, detected.domain),
+                    detected,
+                )
+            return index_domain.DomainRoute(
+                effective_base,
+                detected.domain,
+                False,
+                "kho lĩnh vực chưa tồn tại: dùng kho tri_thuc cũ",
+                detected,
+            )
+
         route = index_domain.select_domain_collection(
-            detected, base_collection_id, collection_exists=_collection_exists
+            detected, effective_base, collection_exists=_collection_exists
         )
         if (
             route is not None
             and not route.applied
             and detected is not None
             and getattr(detected, "confidence", 0.0) >= index_domain.CONFIDENCE_LOW_THRESHOLD
-            and _domain_index_ready(config, base_collection_id)
+            and _domain_index_ready(config, effective_base)
         ):
             # Kho hop nhat library.sqlite chua toan bo cac khoi tri thuc.
             # Loc pham vi qua truong document_id trong library.sqlite thay vi tach roi file DB.
             return index_domain.DomainRoute(
-                base_collection_id,
+                effective_base,
                 route.domain,
                 True,
                 "tu dong chon khoi %s (loc qua chi muc)" % index_domain.DOMAIN_DISPLAY.get(route.domain, route.domain),
@@ -4987,7 +5200,10 @@ def retrieve_workspace_chat_evidence(
         if has_forced_domain
         else (domain_route.domain if domain_route and getattr(domain_route, "applied", False) else None)
     )
-    active_retrieval_col = target_domain or domain_collection_id or "tri_thuc"
+    effective_domain_collection_id = (
+        domain_collection_id or (DEFAULT_COLLECTION_ID if use_prod_domain_specs else None)
+    )
+    active_retrieval_col = domain_collection_id or target_domain or "tri_thuc"
     if active_retrieval_col:
         update_user_retrieval_collection(active_retrieval_col)
 
@@ -5138,7 +5354,7 @@ def retrieve_workspace_chat_evidence(
                 policy_version=resolved.policy_version,
                 search_preference=pref_str,
                 pre_decision=pre_dec.classification.value if pre_dec else "fast",
-                domain_collection_id=domain_collection_id,
+                domain_collection_id=effective_domain_collection_id,
             )
 
         if init_routing is not None and init_routing.degraded:
@@ -5202,7 +5418,7 @@ def retrieve_workspace_chat_evidence(
                     pre_reason_codes=pre_dec.reason_codes if pre_dec else ("pre_fast",),
                     post_decision=post_dec.classification.value,
                     post_reason_codes=post_dec.reason_codes,
-                    domain_collection_id=domain_collection_id,
+                    domain_collection_id=effective_domain_collection_id,
                 )
                 return _finish(escalated_result)
 

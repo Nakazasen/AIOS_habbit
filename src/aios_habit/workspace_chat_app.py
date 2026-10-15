@@ -1029,30 +1029,6 @@ def _running_under_streamlit() -> bool:
         return False
 
 
-# Làm nóng bộ đọc tài liệu nền ngay khi mở app; có chặn chạy trùng theo thời
-# gian nên các lần Streamlit rerun không tốn thêm chi phí. Không bao giờ chặn
-# giao diện và không làm lộ lỗi kỹ thuật ra ngoài. Chỉ chạy khi đúng là
-# Streamlit server, không chạy lúc pytest import module. Lần chạy deploy
-# trước đây không set STREAMLIT_SERVER_PORT nên nhánh này bị bỏ qua — kiểm tra
-# thêm runtime.exists() để bộ đọc luôn được làm nóng đúng collection.
-if _running_under_streamlit():
-    try:
-        from aios_habit.workspace_chat_rag_v2_adapter import (
-            ensure_workspace_chat_startup_warming,
-            ensure_workspace_chat_worker_warming,
-        )
-        ensure_workspace_chat_startup_warming()
-    except Exception:
-        try:
-            ensure_workspace_chat_worker_warming(collection_id="tri_thuc")
-        except Exception:
-            pass
-    try:
-        from aios_habit.production_prediction.rt_app_wire import ensure_rt_alert_pipeline
-        ensure_rt_alert_pipeline()
-    except Exception:
-        pass
-
 def get_query_param(key: str) -> Optional[str]:
     """Retrieve query parameter across Streamlit versions."""
     try:
@@ -1100,6 +1076,112 @@ def set_query_params(**kwargs):
             pass
 
 
+_COLLECTION_WARM_DISPLAY_NAMES = {
+    "vi": {
+        "lsu": "LSU",
+        "dieu_tra_loi": "Điều tra lỗi",
+        "tong_hop": "Tổng hợp",
+        "mom": "MOM",
+        "tri_thuc": "Tri thức chung",
+    },
+    "ja": {
+        "lsu": "LSU",
+        "dieu_tra_loi": "エラー調査",
+        "tong_hop": "総合",
+        "mom": "MOM",
+        "tri_thuc": "共通知識",
+    },
+    "zh-CN": {
+        "lsu": "LSU",
+        "dieu_tra_loi": "故障调查",
+        "tong_hop": "综合",
+        "mom": "MOM",
+        "tri_thuc": "通用知识",
+    },
+}
+
+
+def format_worker_warming_status_line(
+    collection_id: Optional[str] = None,
+    progress: Optional[Mapping[str, Any]] = None,
+    *,
+    locale: str = "vi",
+) -> str:
+    """Return a clear owner-facing status string with step info when a collection worker is warming."""
+    from aios_habit.workspace_chat_rag_v2_adapter import (
+        get_workspace_chat_worker_progress,
+        normalize_knowledge_collection,
+    )
+
+    norm_col = normalize_knowledge_collection(collection_id) or "tri_thuc"
+    if norm_col == "auto":
+        norm_col = "tri_thuc"
+    loc_map = _COLLECTION_WARM_DISPLAY_NAMES.get(locale, _COLLECTION_WARM_DISPLAY_NAMES["vi"])
+    display_name = loc_map.get(norm_col, norm_col)
+
+    if progress is None:
+        try:
+            progress = get_workspace_chat_worker_progress(collection_id=norm_col)
+        except Exception:
+            progress = {}
+
+    if bool(progress.get("ready", False)):
+        return ""
+
+    is_pending_or_alive = bool(
+        progress.get("pending", False)
+        or progress.get("alive", False)
+        or str(progress.get("reason", "")).strip() == "bge_worker_init_pending"
+    )
+    pid = progress.get("pid")
+    if locale == "ja":
+        step_text = (
+            f"ステップ 2/2: BGE-M3モデルと索引を読み込み中{' (PID ' + str(pid) + ')' if pid else ''}"
+            if is_pending_or_alive
+            else "ステップ 1/2: 読取プロセスを起動中"
+        )
+        return f"⏳ {display_name} 知識庫の読取エンジンを準備しています... ({step_text})"
+    if locale == "zh-CN":
+        step_text = (
+            f"步骤 2/2: 正在加载 BGE-M3 模型与索引{' (PID ' + str(pid) + ')' if pid else ''}"
+            if is_pending_or_alive
+            else "步骤 1/2: 正在启动读取进程"
+        )
+        return f"⏳ 正在加载 {display_name} 知识库读取引擎... ({step_text})"
+
+    step_text = (
+        f"Bước 2/2: đang nạp mô hình BGE-M3 & chỉ mục{' (PID ' + str(pid) + ')' if pid else ''}"
+        if is_pending_or_alive
+        else "Bước 1/2: đang khởi tạo tiến trình đọc"
+    )
+    return f"⏳ Đang nạp bộ đọc cho kho {display_name}... ({step_text})"
+
+
+def trigger_collection_warming_on_demand(
+    collection_id: Optional[str] = None,
+    *,
+    notebook_id: Optional[str] = None,
+) -> str:
+    """Trigger non-blocking worker warming for the target collection on demand (DESKTOP-SPEED-LAZY-WARM-HOME)."""
+    try:
+        from aios_habit.workspace_chat_rag_v2_adapter import (
+            ensure_workspace_chat_worker_warming,
+            resolve_active_notebook_collection_id,
+        )
+
+        target_col = resolve_active_notebook_collection_id(
+            active_notebook_id=notebook_id,
+            active_collection_id=collection_id,
+        )
+        ensure_workspace_chat_worker_warming(
+            blocking=False,
+            collection_id=target_col,
+        )
+        return target_col
+    except Exception:
+        return str(collection_id or "tri_thuc")
+
+
 # Khởi tạo trạng thái phiên làm việc riêng (được đồng bộ với URL để F5/Refresh không bao giờ bị văng ra ngoài)
 query_nb = get_query_param("nb")
 query_conv = get_query_param("conv")
@@ -1113,6 +1195,31 @@ if "wsc_active_conversation_id" not in st.session_state:
     st.session_state.wsc_active_conversation_id = query_conv
 elif query_conv and st.session_state.wsc_active_conversation_id != query_conv:
     st.session_state.wsc_active_conversation_id = query_conv
+
+# Làm nóng bộ đọc tài liệu nền ngay khi mở app (DESKTOP-SPEED-LAZY-WARM-HOME):
+# Chỉ làm nóng duy nhất 1 collection của sổ đang mở/mặc định, không nạp trước 3 collection còn lại.
+if _running_under_streamlit():
+    if not st.session_state.get("wsc_startup_warming_triggered"):
+        st.session_state["wsc_startup_warming_triggered"] = True
+        try:
+            from aios_habit.workspace_chat_rag_v2_adapter import (
+                ensure_workspace_chat_startup_warming,
+                ensure_workspace_chat_worker_warming,
+            )
+            ensure_workspace_chat_startup_warming(
+                active_notebook_id=st.session_state.get("wsc_active_notebook_id"),
+                active_collection_id=get_query_param("block"),
+            )
+        except Exception:
+            try:
+                ensure_workspace_chat_worker_warming(collection_id="tri_thuc")
+            except Exception:
+                pass
+    try:
+        from aios_habit.production_prediction.rt_app_wire import ensure_rt_alert_pipeline
+        ensure_rt_alert_pipeline()
+    except Exception:
+        pass
 
 if "wsc_show_save_placeholder" not in st.session_state:
     # Kept inert for backward-compatible session restoration; no UI reads it.
@@ -1582,6 +1689,7 @@ def _run_chat_turn_async(
     on_chunk: Optional[Callable[[str], None]] = None,
     ai_mode: str = "grounded",
     anchored_context: Optional[str] = None,
+    stream_state: Optional[dict[str, Any]] = None,
 ) -> tuple[bool, str, dict[str, Any] | None, str | None]:
     """Execute evidence retrieval and model answer routing inside background thread pool."""
     from aios_habit.antigravity_bridge import route_workspace_chat_submission
@@ -1663,6 +1771,7 @@ def _run_chat_turn_async(
         from aios_habit.workspace_chat_rag_v2_adapter import (
             set_user_retrieval_active,
             set_user_retrieval_finished,
+            update_user_retrieval_collection,
         )
         set_user_retrieval_active(active_domain)
         try:
@@ -1684,10 +1793,31 @@ def _run_chat_turn_async(
                 if unavailable_reason != "deep_search_unavailable" and not has_attached_facts and (
                     _is_worker_startup_reason(unavailable_reason) or not unready_sources
                 ):
-                    # UI-SPEED-WARMLOOP-FIX-HOME: Cho worker khoi dong voi fail-fast va tran cho khong-tien-trien
+                    # UI-SPEED-WARMLOOP-FIX-HOME & DESKTOP-SPEED-LAZY-WARM-HOME:
+                    # Căn chỉnh collection mục tiêu theo kết quả định tuyến domain_routing thực tế
                     t_wait_worker_start = time.time()
                     target_warm_pipe_cfg = None
-                    target_col_for_warm = forced_domain if (forced_domain and forced_domain != "auto") else active_domain
+                    dom_rt = ret_res.get("domain_routing")
+                    routed_col = (
+                        str(dom_rt.get("collection_id")).strip()
+                        if isinstance(dom_rt, dict) and dom_rt.get("applied") and dom_rt.get("collection_id")
+                        else None
+                    )
+                    target_col_for_warm = (
+                        routed_col
+                        or (forced_domain if (forced_domain and forced_domain != "auto") else None)
+                        or active_domain
+                        or "tri_thuc"
+                    )
+                    if target_col_for_warm:
+                        update_user_retrieval_collection(target_col_for_warm)
+                    if isinstance(stream_state, dict):
+                        lock = stream_state.get("lock")
+                        if lock is not None:
+                            with lock:
+                                stream_state["warming_collection"] = target_col_for_warm
+                        else:
+                            stream_state["warming_collection"] = target_col_for_warm
                     if target_col_for_warm and target_col_for_warm != "auto":
                         try:
                             from aios_habit.workspace_chat_rag_v2_adapter import (
@@ -1732,6 +1862,13 @@ def _run_chat_turn_async(
                         step_timeout=1.5,
                         poll_interval=0.2,
                     )
+                    if isinstance(stream_state, dict):
+                        lock = stream_state.get("lock")
+                        if lock is not None:
+                            with lock:
+                                stream_state["warming_collection"] = None
+                        else:
+                            stream_state["warming_collection"] = None
                     worker_wait_s += max(0.0, time.time() - t_wait_worker_start)
                     if early_exit is not None:
                         return early_exit
@@ -2523,6 +2660,10 @@ def open_notebook_callback(notebook_id: str):
     set_query_params(nb=notebook_id, conv=None)
     st.session_state.wsc_show_save_placeholder = False
     st.session_state.wsc_show_explain_placeholder = False
+    trigger_collection_warming_on_demand(
+        getattr(notebook, "collection_id", None),
+        notebook_id=notebook_id,
+    )
     safe_rerun()
 
 
@@ -3345,9 +3486,24 @@ else:
 
     _nb_libraries = load_collections()
     _nb_lib_labels = {c.id: (c.title or c.id) for c in _nb_libraries}
-    _nb_current_lib = getattr(notebook, "collection_id", "") or DEFAULT_COLLECTION_ID
+    _nb_raw_col = str(getattr(notebook, "collection_id", "") or DEFAULT_COLLECTION_ID).strip()
+    _nb_current_lib = _nb_raw_col
     if _nb_current_lib not in _nb_lib_labels and _nb_libraries:
         _nb_current_lib = _nb_libraries[0].id
+    _query_block_param = str(get_query_param("block") or "").strip().lower()
+    _conv_block_state = (
+        str(st.session_state.get(f"wsc_knowledge_block_{active_conv_id}", "") or "").strip().lower()
+        if active_conv_id else ""
+    )
+    if _query_block_param and _query_block_param != "auto":
+        _nb_warm_target_col = _query_block_param
+    elif _conv_block_state and _conv_block_state != "auto":
+        _nb_warm_target_col = _conv_block_state
+    else:
+        _nb_warm_target_col = _nb_raw_col
+    if st.session_state.get("wsc_last_warmed_notebook_col") != (active_nb_id, _nb_warm_target_col):
+        st.session_state["wsc_last_warmed_notebook_col"] = (active_nb_id, _nb_warm_target_col)
+        trigger_collection_warming_on_demand(_nb_warm_target_col, notebook_id=active_nb_id)
     st.sidebar.caption(
         t("notebook_library_using", locale=current_ui_locale, name=_nb_lib_labels.get(_nb_current_lib, _nb_current_lib))
     )
@@ -3378,6 +3534,14 @@ else:
         if _nb_picked != _nb_current_lib:
             notebook.collection_id = str(_nb_picked)
             save_notebook(notebook)
+            trigger_collection_warming_on_demand(str(_nb_picked), notebook_id=active_nb_id)
+            if active_conversation is not None:
+                _picked_lower = str(_nb_picked).strip().lower()
+                st.session_state[f"wsc_knowledge_block_{active_conversation.id}"] = (
+                    _picked_lower
+                    if _picked_lower in ("lsu", "dieu_tra_loi", "mom", "tong_hop")
+                    else "auto"
+                )
             st.session_state.wsc_action_message = t(
                 "notebook_library_changed", locale=current_ui_locale
             )
@@ -4683,20 +4847,47 @@ else:
                             locale=current_ui_locale,
                         )
 
-                # Dòng trạng thái chỉ mục trong khung chat (INDEX-STATUS-LINE-PC0575)
+                # Dòng trạng thái chỉ mục trong khung chat (INDEX-STATUS-LINE-PC0575 & DESKTOP-SPEED-LAZY-WARM-HOME)
                 from aios_habit.index_status import (
                     get_cached_index_status_line,
                     resolve_active_index_db_path,
                 )
 
+                _selected_block_col = str(
+                    st.session_state.get(f"wsc_knowledge_block_{active_conversation.id}", "")
+                    or ""
+                ).strip().lower()
+                _active_view_col = (
+                    _selected_block_col
+                    if (_selected_block_col and _selected_block_col != "auto")
+                    else (
+                        getattr(notebook, "collection_id", None)
+                        or getattr(active_conversation, "collection_id", None)
+                        or "tri_thuc"
+                    )
+                )
                 _active_idx_path = resolve_active_index_db_path(
-                    getattr(active_conversation, "collection_id", None)
+                    getattr(active_conversation, "collection_id", None) or _active_view_col
                 )
                 _idx_status_text, _idx_is_err = get_cached_index_status_line(
                     _active_idx_path,
                     session_state=st.session_state,
                 )
                 st.caption(_idx_status_text)
+                try:
+                    if not is_workspace_chat_worker_warmed(collection_id=_active_view_col):
+                        trigger_collection_warming_on_demand(
+                            _active_view_col,
+                            notebook_id=active_nb_id,
+                        )
+                        _warm_status_line = format_worker_warming_status_line(
+                            _active_view_col,
+                            locale=current_ui_locale,
+                        )
+                        if _warm_status_line:
+                            st.caption(_warm_status_line)
+                except Exception:
+                    pass
 
                 try:
                     from aios_habit.production_prediction.rt_app_wire import set_active_rt_conversation
@@ -4746,9 +4937,11 @@ else:
                         @st.fragment(run_every=0.25)
                         def _render_streaming_assistant_box() -> None:
                             curr_text = ""
+                            warming_col_live = None
                             if stream_state and "lock" in stream_state:
                                 with stream_state["lock"]:
                                     curr_text = str(stream_state.get("text", "") or "")
+                                    warming_col_live = stream_state.get("warming_collection")
 
                             with st.chat_message("assistant"):
                                 _is_stream_ext = bool(
@@ -4770,25 +4963,40 @@ else:
                                         locale=current_ui_locale,
                                     )
                                     try:
+                                        _forced_req_col = (
+                                            active_ai_request.get("forced_domain")
+                                            if isinstance(active_ai_request, dict)
+                                            else None
+                                        )
                                         _target_warm_col = str(
-                                            (
-                                                active_ai_request.get("forced_domain")
-                                                if isinstance(active_ai_request, dict)
+                                            warming_col_live
+                                            or (
+                                                _forced_req_col
+                                                if (_forced_req_col and _forced_req_col != "auto")
                                                 else None
                                             )
                                             or st.session_state.get(
                                                 f"wsc_knowledge_block_{active_conversation.id}",
                                                 "auto",
                                             )
+                                            or getattr(notebook, "collection_id", None)
                                             or "tri_thuc"
                                         )
                                         _worker_warmed = is_workspace_chat_worker_warmed(
                                             collection_id=_target_warm_col
                                         )
                                     except Exception:
+                                        _target_warm_col = "tri_thuc"
                                         _worker_warmed = True
                                     if not _worker_warmed:
-                                        st.caption(t("worker_warming_background", locale=current_ui_locale))
+                                        _stream_warm_line = format_worker_warming_status_line(
+                                            _target_warm_col,
+                                            locale=current_ui_locale,
+                                        )
+                                        st.caption(
+                                            _stream_warm_line
+                                            or t("worker_warming_background", locale=current_ui_locale)
+                                        )
 
                             if request_future is not None and request_future.done():
                                 try:
@@ -5189,6 +5397,10 @@ else:
                         query_block = str(get_query_param("block") or "").strip().lower()
                         if query_block in block_choices:
                             st.session_state[knowledge_block_key] = query_block
+                        else:
+                            _nb_col_default = str(getattr(notebook, "collection_id", "") or "").strip().lower()
+                            if _nb_col_default in block_choices and _nb_col_default != "auto":
+                                st.session_state[knowledge_block_key] = _nb_col_default
                     knowledge_block_value = str(
                         st.session_state.get(knowledge_block_key, "auto") or "auto"
                     )
@@ -5297,6 +5509,11 @@ else:
                                         ),
                                     ):
                                         st.session_state[knowledge_block_key] = _block_value
+                                        if _block_value != "auto":
+                                            trigger_collection_warming_on_demand(
+                                                _block_value,
+                                                notebook_id=active_nb_id,
+                                            )
                                         safe_rerun()
 
                     with toolbar_pref_col:
@@ -6134,6 +6351,7 @@ else:
                                     "text": "",
                                     "first_token_time": None,
                                     "started_at": time.time(),
+                                    "warming_collection": None,
                                     "lock": Lock(),
                                 }
 
@@ -6186,6 +6404,7 @@ else:
                                     on_chunk=_on_chunk,
                                     ai_mode=getattr(active_conversation, "ai_mode", "grounded"),
                                     anchored_context=anchored_context,
+                                    stream_state=stream_state,
                                 )
                                 st.session_state[ai_request_key] = {
                                     "future": request_future,
