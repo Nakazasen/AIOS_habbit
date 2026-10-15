@@ -153,6 +153,11 @@ def _compute_entity_boost(
             if re.search(rf"(?<!\w){letter}\s*距離", text_lower):
                 boost += 0.040
                 continue
+        # Support paired LINE/JIG pattern e.g. 'c23/24' or 'c23/c24'
+        if re.search(r"^c\d{2,3}/(?:c?\d{2,3})$", ent_lower):
+            if ent_lower in text_lower:
+                boost += 0.040
+                continue
         if (
             ent_lower in source_name_lower
             or ent_lower in source_path_lower

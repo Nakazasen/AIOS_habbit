@@ -214,6 +214,15 @@ def extract_content_terms(value: str) -> Tuple[str, ...]:
     """Return ordered, unique query terms after generic function-word removal."""
     seen: set[str] = set()
     result = []
+    # Extract paired C-line/jig aliases (e.g. C23とC24 -> c23/24, c23/c24)
+    paired_c = re.search(r"(?<![A-Za-z0-9])(C\d{2,3})\s*(?:と|and|&|/|,|\+)\s*C?(\d{2,3})(?![A-Za-z0-9])", value or "", re.IGNORECASE)
+    if paired_c:
+        c1 = paired_c.group(1).lower()
+        c2 = paired_c.group(2).lower()
+        for p in (f"{c1}/{c2}", f"{c1}/c{c2}"):
+            if p not in seen:
+                seen.add(p)
+                result.append(p)
     split_text = _split_script_boundaries(value or "")
     # 1. Non-CJK tokens and short pure CJK terms from split_text
     for match in _TOKEN_RE.finditer(split_text):
@@ -510,7 +519,7 @@ def _identity_variants(
                 )
             )
 
-    paired_match = re.search(r"\b(C\d{2,3})\s*(?:と|and|&|/|,|\+)\s*C?(\d{2,3})\b", original, re.IGNORECASE)
+    paired_match = re.search(r"(?<![A-Za-z0-9])(C\d{2,3})\s*(?:と|and|&|/|,|\+)\s*C?(\d{2,3})(?![A-Za-z0-9])", original, re.IGNORECASE)
     if paired_match:
         c_prefix = paired_match.group(1).upper()
         c_second = paired_match.group(2)

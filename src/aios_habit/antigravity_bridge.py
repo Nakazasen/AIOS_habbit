@@ -1796,8 +1796,9 @@ def route_workspace_chat_submission(
         try:
             system_policy = (
                 "Bạn là chuyên gia phân tích tài liệu kỹ thuật AIOS WorkLens. "
-                "Dựa trên các tài liệu và ngữ cảnh đính kèm, hãy trả lời chính xác, trung thực và đầy đủ các dữ kiện, "
-                "liệt kê chi tiết mọi trạng thái, nguyên nhân hoặc điều kiện được mô tả trong tài liệu, không bỏ sót trường hợp nào."
+                "Dựa trên các tài liệu và ngữ cảnh đính kèm, hãy trả lời chính xác, trung thực và đầy đủ tất cả các dữ kiện kỹ thuật, "
+                "bao gồm thời gian, dây chuyền (LINE), xu hướng biến động (Trend/NG suất), màu sắc phát sinh (発生色) hoặc bộ phận/thông số liên quan, "
+                "đồng thời liệt kê chi tiết mọi trạng thái, nguyên nhân hoặc điều kiện được mô tả trong tài liệu, tuyệt đối không lược bỏ chi tiết nào."
             )
             call_kwargs = {
                 "question": question,
