@@ -2476,10 +2476,16 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
         van_ban = ket_qua.assistant_text or ""
         if ket_qua.chart_png:
             try:
+                if hasattr(st, "session_state"):
+                    st.session_state["wsc_last_chart_png"] = ket_qua.chart_png
+                    if ket_qua.chart_meta:
+                        st.session_state["wsc_last_chart_meta"] = ket_qua.chart_meta
                 import base64
 
                 ma_hoa = base64.b64encode(ket_qua.chart_png).decode("ascii")
-                van_ban += "\n\n![biểu đồ](data:image/png;base64,{})".format(ma_hoa)
+                chart_md = "\n\n![biểu đồ](data:image/png;base64,{})".format(ma_hoa)
+                if chart_md not in van_ban and f"data:image/png;base64,{ma_hoa}" not in van_ban:
+                    van_ban += chart_md
             except Exception:
                 pass
         return van_ban or None
@@ -5054,7 +5060,6 @@ else:
                             provider_name=badge_data.get("provider", "Command Code") or badge_data.get("provider_name", "Command Code"),
                             locale=current_ui_locale,
                         )
-                        st.caption(t("ai_disclaimer", locale=current_ui_locale))
                     elif badge_data.get("type") == "ai_answered":
                         render_ai_answer_header(
                             badge_data.get("source_count", 0),
@@ -5068,7 +5073,6 @@ else:
 
                         if badge_data.get("retrieval_summary"):
                             st.info(badge_data["retrieval_summary"])
-                        st.caption(t("ai_disclaimer", locale=current_ui_locale))
                         if "evidence_items" in badge_data and badge_data["evidence_items"]:
                             render_grouped_evidence_items(badge_data["evidence_items"], active_conversation.id, locale=current_ui_locale)
                             try:

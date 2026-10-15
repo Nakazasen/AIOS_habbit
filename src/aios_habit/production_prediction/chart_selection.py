@@ -492,7 +492,7 @@ def hieu_lenh_ve_bieu_do(
             loai = ma_loai
             break
     ma_jig_tim = ""
-    for jig in danh_sach_jig:
+    for jig in sorted(danh_sach_jig, key=lambda s: len(str(s)), reverse=True):
         if jig and str(jig).strip().lower() in text:
             ma_jig_tim = str(jig).strip()
             break
@@ -501,7 +501,7 @@ def hieu_lenh_ve_bieu_do(
         if hop:
             ma_jig_tim = hop.group(1).strip().upper().replace(" ", "")
     chi_so_tim = ""
-    for chi_so in danh_sach_chi_so:
+    for chi_so in sorted(danh_sach_chi_so, key=lambda s: len(str(s)), reverse=True):
         if chi_so and str(chi_so).strip().lower() in text:
             chi_so_tim = str(chi_so).strip()
             break
