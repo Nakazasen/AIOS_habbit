@@ -798,13 +798,68 @@ def close_workspace_chat_rag_v2_runtimes() -> None:
         _WARMUP_LAST_ATTEMPT_MONO = 0.0
 
 
-@functools.lru_cache(maxsize=4096)
-def _document_id(source: Any) -> str:
-    """Identify a library document by extracted text, not per-machine source id.
+def _safe_source_text(source: Any) -> str:
+    """Extract source text safely across WorkspaceAIContextSource, NotebookSource, or duck-typed objects."""
+    text = getattr(source, "text", None)
+    if text is not None:
+        return str(text)
+    content_text = getattr(source, "content_text", None)
+    if content_text is not None and str(content_text).strip():
+        return str(content_text)
+    content_preview = getattr(source, "content_preview", None)
+    if content_preview is not None:
+        return str(content_preview)
+    return ""
 
-    Empty text cannot be matched across machines, so it stays local to
-    ``source_scope:source_id``. Filename is never part of the identity.
-    """
+
+def _safe_source_scope(source: Any) -> str:
+    """Extract source scope safely across models."""
+    scope = getattr(source, "source_scope", None)
+    if scope:
+        return str(scope)
+    if hasattr(source, "notebook_id"):
+        return SOURCE_SCOPE_NOTEBOOK
+    return SOURCE_SCOPE_TEMPORARY
+
+
+def _safe_source_id(source: Any) -> str:
+    """Extract source id safely across models."""
+    sid = getattr(source, "source_id", None)
+    if sid:
+        return str(sid)
+    sid = getattr(source, "id", None)
+    if sid:
+        return str(sid)
+    return ""
+
+
+def _coerce_context_source(source: Any) -> WorkspaceAIContextSource:
+    """Ensure a source is a WorkspaceAIContextSource with all expected attributes."""
+    if isinstance(source, WorkspaceAIContextSource):
+        return source
+    text = _safe_source_text(source)
+    source_id = _safe_source_id(source)
+    source_scope = _safe_source_scope(source)
+    title = str(getattr(source, "title", "") or source_id or "Untitled")
+    source_type = str(getattr(source, "source_type", "") or "plain_text")
+    privacy_label = str(getattr(source, "privacy_label", "") or "local_only")
+    managed_path = str(getattr(source, "managed_path", "") or "")
+    truncated = bool(getattr(source, "truncated", False))
+    return WorkspaceAIContextSource(
+        source_id=source_id,
+        source_scope=source_scope,
+        source_type=source_type,
+        title=title,
+        privacy_label=privacy_label,
+        text=text,
+        included_chars=len(text),
+        truncated=truncated,
+        managed_path=managed_path,
+    )
+
+
+@functools.lru_cache(maxsize=4096)
+def _document_id_cached(source: WorkspaceAIContextSource) -> str:
     if getattr(source, "document_id", ""):
         return str(source.document_id).strip()
     if getattr(source, "source_id", "") and str(source.source_id).startswith("wsc-"):
@@ -814,6 +869,19 @@ def _document_id(source: Any) -> str:
         return f"wsc-{hashlib.sha256(text_bytes).hexdigest()[:24]}"
     identity = f"{getattr(source, 'source_scope', '')}:{getattr(source, 'source_id', '')}".encode("utf-8")
     return f"wsc-{hashlib.sha256(identity).hexdigest()[:24]}"
+
+
+def _document_id(source: Any) -> str:
+    """Identify a library document by extracted text, not per-machine source id.
+
+    Empty text cannot be matched across machines, so it stays local to
+    ``source_scope:source_id``. Filename is never part of the identity.
+    """
+    coerced = _coerce_context_source(source)
+    return _document_id_cached(coerced)
+
+
+_document_id.cache_clear = _document_id_cached.cache_clear
 
 
 def _privacy_labels(source: WorkspaceAIContextSource) -> Tuple[str, ...]:
@@ -828,12 +896,20 @@ def _privacy_labels(source: WorkspaceAIContextSource) -> Tuple[str, ...]:
 
 
 @functools.lru_cache(maxsize=4096)
-def _source_fingerprint(source: WorkspaceAIContextSource) -> str:
+def _source_fingerprint_cached(source: WorkspaceAIContextSource) -> str:
     doc_id = _document_id(source)
     text_bytes = (source.text or "").strip().encode("utf-8")
     content_hash = hashlib.sha256(text_bytes).hexdigest()[:16]
     privacy = (source.privacy_label or "").strip().casefold()
     return f"{doc_id}:{content_hash}:{privacy}"
+
+
+def _source_fingerprint(source: Any) -> str:
+    coerced = _coerce_context_source(source)
+    return _source_fingerprint_cached(coerced)
+
+
+_source_fingerprint.cache_clear = _source_fingerprint_cached.cache_clear
 
 
 def _fold_semantic_terms(value: str) -> tuple[str, ...]:
@@ -874,7 +950,8 @@ def _select_semantic_candidate_sources(
     manual_requested = "manual" in unique_terms
     matecon_requested = "matecon" in unique_terms
     ranked: list[tuple[int, int, WorkspaceAIContextSource]] = []
-    for ordinal, source in enumerate(sources):
+    for ordinal, raw_source in enumerate(sources):
+        source = _coerce_context_source(raw_source)
         haystack = set(_fold_semantic_terms(f"{source.title}\n{source.text}"))
         matched = sum(term in haystack for term in unique_terms)
         if matched >= 2:
@@ -928,7 +1005,7 @@ def _maybe_expand_latin_query_for_cjk_corpus(
     if os.environ.get("AIOS_AI_BACKEND", "").strip().lower() == "local":
         return None
     corpus_texts = tuple(
-        f"{source.title}\n{(source.text or '')[:160]}" for source in sources[:80]
+        f"{getattr(source, 'title', '')}\n{(_safe_source_text(source) or '')[:160]}" for source in sources[:80]
     )
     if not corpus_needs_cjk_query_expansion(question, corpus_texts):
         return None
@@ -963,7 +1040,7 @@ def _retrieval_source_window(
         return sources
     if short_latin_codes(question) and len(sources) > 3:
         return sources
-    corpus_texts = tuple(f"{source.title}\n{(source.text or '')[:800]}" for source in sources)
+    corpus_texts = tuple(f"{getattr(source, 'title', '')}\n{(_safe_source_text(source) or '')[:800]}" for source in sources)
     if len(sources) > 3 and query_corpus_script_mismatch(question, corpus_texts):
         return sources
     return _select_semantic_candidate_sources(question, sources)
@@ -2408,7 +2485,8 @@ def _collection_id_for_sources(context_sources: Iterable[WorkspaceAIContextSourc
         resolve_collection_id_from_notebook_source_id,
     )
 
-    for source in context_sources:
+    for raw_source in context_sources:
+        source = _coerce_context_source(raw_source)
         if getattr(source, "source_scope", "") != SOURCE_SCOPE_NOTEBOOK:
             continue
         return resolve_collection_id_from_notebook_source_id(source.source_id)
@@ -2435,7 +2513,8 @@ def prepare_workspace_chat_sources(
     committed, never while source text is being materialized or embedded.
     """
     resolved = config or WorkspaceChatRagV2CanaryConfig.from_env()
-    sources = tuple(s for s in context_sources if (s.text or "").strip())
+    coerced_context_sources = tuple(_coerce_context_source(s) for s in context_sources)
+    sources = tuple(s for s in coerced_context_sources if (s.text or "").strip())
     if not sources:
         return {"status": "ok", "prepared_count": 0, "latency_ms": 0.0}
     if source_timeout_s is not None and float(source_timeout_s) <= 0:
@@ -2922,12 +3001,13 @@ def get_workspace_chat_preparation_summary(
     except Exception:
         resolved = None
 
-    sources = tuple(s for s in context_sources if (s.text or "").strip())
+    coerced_context_sources = tuple(_coerce_context_source(s) for s in context_sources)
+    sources = tuple(s for s in coerced_context_sources if (s.text or "").strip())
     total_count = len(sources)
     if resolved is None or not resolved.enabled:
         statuses = {
             f"{s.source_scope}:{s.source_id}": "unavailable"
-            for s in context_sources
+            for s in coerced_context_sources
         }
         return {
             "total": total_count,
@@ -3077,7 +3157,8 @@ def reconcile_and_enqueue_workspace_chat_sources(
     if not resolved.enabled:
         return 0
 
-    sources = tuple(s for s in context_sources if (s.text or "").strip())
+    coerced_context_sources = tuple(_coerce_context_source(s) for s in context_sources)
+    sources = tuple(s for s in coerced_context_sources if (s.text or "").strip())
     if not sources:
         return 0
 
@@ -3496,7 +3577,7 @@ def retry_workspace_chat_source_preparation(
         resolved = config or WorkspaceChatRagV2CanaryConfig.from_env()
     except Exception:
         return
-    sources = tuple(context_sources)
+    sources = tuple(_coerce_context_source(s) for s in context_sources)
     if not sources:
         return
     db_path = _get_ledger_db_path(resolved)
@@ -3533,7 +3614,8 @@ def resume_workspace_chat_source_preparation(
         resolved = config or WorkspaceChatRagV2CanaryConfig.from_env()
     except Exception:
         return
-    sources = tuple(source for source in context_sources if (source.text or "").strip())
+    coerced_context_sources = tuple(_coerce_context_source(s) for s in context_sources)
+    sources = tuple(source for source in coerced_context_sources if (source.text or "").strip())
     if sources:
         with _SOURCE_CACHE_LOCK:
             for source in sources:
@@ -3552,7 +3634,7 @@ def forget_workspace_chat_sources(
     fail-closed at the application layer because the source record and its
     selection are removed before a future query can be built.
     """
-    sources = tuple(context_sources)
+    sources = tuple(_coerce_context_source(s) for s in context_sources)
     if not sources:
         return 0
     document_ids = {_document_id(source) for source in sources}
@@ -3620,7 +3702,8 @@ def seed_workspace_chat_source_preparation(
     a read-only query process to use an already prepared runtime.
     """
     expected = frozenset(str(value) for value in expected_source_fingerprints)
-    actual_sources = tuple(source for source in context_sources if (source.text or "").strip())
+    coerced_context_sources = tuple(_coerce_context_source(source) for source in context_sources)
+    actual_sources = tuple(source for source in coerced_context_sources if (source.text or "").strip())
     actual = frozenset(_source_fingerprint(source) for source in actual_sources)
     if actual != expected:
         raise RuntimeError("prepared_source_fingerprint_mismatch")
@@ -3652,7 +3735,8 @@ def _materialize_sources(
     specs = []
     originals = {}
     source_root = runtime_root / "materialized_sources"
-    for source in sources:
+    for raw_source in sources:
+        source = _coerce_context_source(raw_source)
         text = (source.text or "").strip()
         if not text:
             continue
@@ -4406,7 +4490,7 @@ def _run_profile(
         ready_subset = tuple(
             s for s in sources
             if isinstance(s, SourceSpec)
-            or statuses.get(f"{s.source_scope}:{s.source_id}") == _PREPARATION_READY_STATE
+            or statuses.get(f"{_safe_source_scope(s)}:{_safe_source_id(s)}") == _PREPARATION_READY_STATE
         )
         if ready_subset:
             sources = ready_subset
@@ -5159,7 +5243,7 @@ def retrieve_workspace_chat_evidence(
     statuses = get_workspace_chat_source_preparation_status(sources, config=resolved)
     ready_subset = tuple(
         s for s in sources
-        if statuses.get(f"{s.source_scope}:{s.source_id}") == _PREPARATION_READY_STATE
+        if statuses.get(f"{_safe_source_scope(s)}:{_safe_source_id(s)}") == _PREPARATION_READY_STATE
     )
     if ready_subset:
         sources = ready_subset
