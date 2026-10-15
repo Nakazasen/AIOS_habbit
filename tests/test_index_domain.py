@@ -481,3 +481,13 @@ def test_classify_mirror_to_lsu():
     result = classify_document("MIRROR cũ.png", "", "")
     assert result.domain == DOMAIN_LSU
     assert result.confidence >= 0.8
+
+
+def test_detect_domain_ktd_cxxxx_connector_error_routes_to_dieu_tra_loi():
+    question = (
+        "Trong báo cáo điều tra lỗi C7620 (KTD-2026-02-0244) của cụm LSU Iris2024, "
+        "kết quả kiểm tra cho thấy giắc cắm nào bị tuột/lỏng dẫn đến mất tín hiệu?"
+    )
+    result = detect_domain_from_question(question)
+    assert result.domain == DOMAIN_DIEU_TRA_LOI
+    assert result.confidence >= 0.75

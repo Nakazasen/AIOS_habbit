@@ -104,7 +104,7 @@ _KEYWORD_RULES: Mapping[str, Sequence[tuple[str, float, str]]] = {
     DOMAIN_DIEU_TRA_LOI: (
         (r"\bkdtps\b", 2.0, "KDTPS"),
         (r"ktd[-_]", 3.0, "KTD-"),  # error-case list filename prefix
-        (r"(?<!wsc)[_\-]c\d{4}", 2.5, "mã Cxxxx"),  # _C0650 style (no leading \b: hex names)
+        (r"(?<!wsc)(?:^|[\s(_\-])c\d{4}(?=$|[\s)_.,;:?!\-])", 2.5, "mã Cxxxx"),  # C7620 / _C0650 style (excludes wsc-hex)
         (r"jam\d*", 2.5, "JAM"),  # paper jam codes: JAM4709, Jam0501...
         (r"error\d*", 2.0, "error"),  # Error56, Error80, ERROR 0801...
         ("エラー", 2.5, "エラー"),
@@ -135,6 +135,8 @@ _KEYWORD_RULES: Mapping[str, Sequence[tuple[str, float, str]]] = {
         (r"pwb", 1.0, "PWB"),  # printed wiring board
         ("出荷検査", 1.5, "出荷検査"),  # shipping inspection (QA hold)
         (r"\bf\d{3}\b", 2.0, "mã Fxxx"),
+        (r"báo\s*cáo\s*điều\s*tra", 2.5, "báo cáo điều tra"),
+        (r"giắc\s*cắm|\bffc\b|mất\s*tín\s*hiệu", 1.5, "giắc cắm/tín hiệu"),
         (r"hiện tượng", 1.5, "hiện tượng"),
         (r"nguyên nhân", 1.5, "nguyên nhân"),
         (r"đối sách", 1.5, "đối sách"),

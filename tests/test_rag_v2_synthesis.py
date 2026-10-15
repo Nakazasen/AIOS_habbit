@@ -1855,3 +1855,43 @@ def test_citation_first_fallback_diagnosis_with_section_match_preserves_existing
     assert detect_citation(result.answer) is True
 
 
+def test_pptx_drawingml_cleanup_and_short_code_coalescing_preserves_db_and_project_codes():
+    query = (
+        "Trong tài liệu 通函 管理 システム ・基本機能一覧 (wsc-045417eda8a424bb68259105.txt), "
+        "hệ quản trị cơ sở dữ liệu nào được sử dụng để đăng ký thùng mới (新規通函)?"
+    )
+    slide_chunk = (
+        'Slide text: <p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
+        'xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"> '
+        "通函 管理 システム ・基本機能一覧 © KYOCERA Document Solutions Inc.\n"
+        "MySQL\n"
+        "登録\n"
+        "新 規通函\n"
+        "3DA"
+    )
+    results = [
+        SearchResult(
+            chunk_id="c-slide",
+            score=18.0,
+            text=slide_chunk,
+            document_id="wsc-045417eda8a424bb68259105",
+            source_path="/docs/wsc-045417eda8a424bb68259105.txt",
+            source_name="wsc-045417eda8a424bb68259105.txt",
+            file_type="txt",
+            metadata={},
+            privacy_labels=("internal",),
+            matched_terms=("通函", "新規通函", "基本機能一覧"),
+            term_coverage=0.8,
+        ),
+    ]
+    pack = build_evidence_pack(query, _make_response(results))
+    result = synthesize_evidence(pack, answer_shape="grounded_summary", max_claims=5)
+
+    assert result.abstained is False
+    assert result.grounded is True
+    assert "xmlns:" not in result.answer
+    assert "KYOCERA Document Solutions Inc." not in result.answer
+    assert "MySQL" in result.answer
+    assert "通函" in result.answer
+    assert "新規通函" in result.answer
+    assert "[1]" in result.citation_ids

@@ -100,24 +100,42 @@ def _compute_entity_boost(
     source_name: str,
     source_path: str,
     text: str,
+    document_id: str = "",
 ) -> float:
     if not entities:
         return 0.0
     boost = 0.0
+    doc_boost = 0.0
     source_name_lower = (source_name or "").lower()
     source_path_lower = (source_path or "").lower()
+    doc_id_lower = (document_id or "").lower()
     prefix_text_lower = (text or "")[:500].lower()
     text_lower = (text or "").lower()
     for entity in entities:
         ent_lower = entity.lower()
         ent_stem = ent_lower.replace(" tape", "").replace(" line", "").strip()
-        if ent_lower in source_name_lower or ent_lower in source_path_lower or (len(ent_stem) >= 3 and ent_stem in source_name_lower):
+        if (
+            ent_lower.startswith("wsc-")
+            and (
+                ent_lower == doc_id_lower
+                or ent_lower in source_name_lower
+                or ent_lower in source_path_lower
+            )
+        ):
+            doc_boost += 0.12
+            continue
+        if (
+            ent_lower in source_name_lower
+            or ent_lower in source_path_lower
+            or (doc_id_lower and ent_lower == doc_id_lower)
+            or (len(ent_stem) >= 3 and ent_stem in source_name_lower)
+        ):
             boost += 0.015
         elif ent_lower in prefix_text_lower or (len(ent_stem) >= 3 and ent_stem in prefix_text_lower):
             boost += 0.008
         elif re.search(rf"(?<!\w){re.escape(ent_lower)}(?!\w)", text_lower):
             boost += 0.018
-    return min(boost, MAX_ENTITY_BOOST)
+    return min(boost, MAX_ENTITY_BOOST) + min(doc_boost, 0.15)
 
 
 def _query_carries_exact_values(query: str) -> bool:
@@ -1009,6 +1027,7 @@ def fuse_ranked_channels(
             result.source_name,
             result.source_path,
             result.text,
+            result.document_id,
         )
         signals = dict(result.ranking_signals)
         signals.update({
@@ -5249,7 +5268,15 @@ class LocalChunkIndex:
                 score_calls += 1
                 if candidate is not None:
                     identifier_priority = _identifier_match_priority(
-                        str(row["normalized_text"] or ""),
+                        " ".join(
+                            part
+                            for part in (
+                                str(row["normalized_text"] or ""),
+                                str(row["source_name"] or ""),
+                                str(row["document_id"] or ""),
+                            )
+                            if part
+                        ),
                         rescue_patterns,
                     )
                     ranked.append((candidate_position, candidate, identifier_priority))
@@ -5456,16 +5483,34 @@ class LocalChunkIndex:
         returned_candidates: List[Dict[str, Any]] = []
         document_counts: Counter[str] = Counter()
         diversity_limited = 0
+        has_explicit_file_ref = bool(
+            re.search(
+                r"(?:wsc-[0-9a-f]{12,}|\.(?:txt|xlsx|pptx|docx|pdf|csv)\b)",
+                query_text,
+                re.IGNORECASE,
+            )
+        )
         for candidate in candidates:
 
             row = candidate["row"]
             document_key = row["document_id"] or row["source_path"]
-            if document_counts[document_key] >= effective_per_doc_limit:
+            cand_signals = candidate["signals"]
+            doc_limit = (
+                max(effective_per_doc_limit, 3)
+                if (
+                    has_explicit_file_ref
+                    and effective_per_doc_limit >= 2
+                    and cand_signals.get("entity_title_match", 0.0) >= 3.0
+                    and cand_signals.get("source_metadata_match", 0.0) >= 4.0
+                )
+                else effective_per_doc_limit
+            )
+            if document_counts[document_key] >= doc_limit:
                 LOGGER.info(
                     "rag_v2.diversity_cap_triggered document_id=%s source=%s limit=%d chunk_id=%s",
                     row["document_id"],
                     row["source_name"],
-                    effective_per_doc_limit,
+                    doc_limit,
                     row["chunk_id"],
                 )
                 diversity_limited += 1
@@ -5678,11 +5723,25 @@ class LocalChunkIndex:
         ]
         # Entities are candidates, not the whole filter: a narrow entity
         # such as a lone short code must not hide the longest content terms.
-        candidates = {term for term in filtered if term} | set(entities)
-        usable_terms = sorted(
-            candidates,
-            key=lambda term: (-len(term), term),
-        )[:2]
+        entity_set = set(entities)
+        candidates = {term for term in filtered if term} | entity_set
+        doc_id_candidates = {
+            term for term in candidates
+            if re.fullmatch(r"(?:wsc-[0-9a-f]{12,}|[0-9a-f]{20,})", term, re.IGNORECASE)
+        }
+        content_candidates = candidates - doc_id_candidates
+        usable_terms = (
+            sorted(
+                content_candidates,
+                key=lambda term: (
+                    not bool(_CJK_RE.search(term)),
+                    term not in entity_set,
+                    -len(term),
+                    term,
+                ),
+            )[:2]
+            + sorted(doc_id_candidates, key=lambda term: (-len(term), term))[:1]
+        )
         if not usable_terms or not eligible_ids:
             return None
         if lex_cache is None:
@@ -5701,13 +5760,23 @@ class LocalChunkIndex:
                             matched_list.append(cid)
                             if len(matched_list) >= 500:
                                 break
-                else:
+                elif len(lower_terms) == 2:
                     t0, t1 = lower_terms[0], lower_terms[1]
                     for cid, text_val in zip(lex_cache.chunk_ids, lex_cache.cjk_search_texts):
                         if t0 in text_val or t1 in text_val:
                             matched_list.append(cid)
                             if len(matched_list) >= 500:
                                 break
+                else:
+                    content_lower = lower_terms[:-1]
+                    doc_lower = lower_terms[-1]
+                    content_count = 0
+                    for cid, text_val in zip(lex_cache.chunk_ids, lex_cache.cjk_search_texts):
+                        if doc_lower in text_val:
+                            matched_list.append(cid)
+                        elif content_count < 500 and any(t in text_val for t in content_lower):
+                            matched_list.append(cid)
+                            content_count += 1
                 matched_ids = frozenset(matched_list)
                 lex_cache.cjk_like_cache[cache_key] = matched_ids
             if timings is not None:
@@ -6042,9 +6111,16 @@ class LocalChunkIndex:
             return None
         if table is None:
             return None
-        usable_terms = sorted(
-            {term for term in terms if term}, key=lambda term: (-len(term), term)
-        )[:2]
+        non_empty_terms = {term for term in terms if term}
+        doc_id_terms = {
+            term for term in non_empty_terms
+            if re.fullmatch(r"(?:wsc-[0-9a-f]{12,}|[0-9a-f]{20,})", term, re.IGNORECASE)
+        }
+        content_terms = non_empty_terms - doc_id_terms
+        usable_terms = (
+            sorted(content_terms, key=lambda term: (-len(term), term))[:2]
+            + sorted(doc_id_terms, key=lambda term: (-len(term), term))[:1]
+        )
         if not usable_terms or not eligible_ids:
             return None
         match_query = " OR ".join(
@@ -6316,7 +6392,15 @@ class LocalChunkIndex:
         exact_matches = []
         for r in rescue_cand_rows:
             match_priority = _identifier_match_priority(
-                str(r["normalized_text"] or ""),
+                " ".join(
+                    part
+                    for part in (
+                        str(r["normalized_text"] or ""),
+                        str(r["source_name"] or ""),
+                        str(r["document_id"] or ""),
+                    )
+                    if part
+                ),
                 identifier_patterns,
             )
             if not match_priority[1]:
@@ -6364,6 +6448,7 @@ class LocalChunkIndex:
         text = row["normalized_text"]
         source_name = row["source_name"]
         source_path = row["source_path"]
+        doc_id = str(row["document_id"] or "").lower()
         section_text = " ".join(_text_values(metadata.get("section_path")))
         sheet_text = " ".join(_text_values(metadata.get("sheet_names")))
         element_types = tuple(
@@ -6371,8 +6456,10 @@ class LocalChunkIndex:
         )
         all_tokens = _tokens(text)
         text_counts = Counter(all_tokens)
-        title_tokens = set(_tokens(source_name))
-        path_tokens = set(_tokens(source_path))
+        title_tokens = set(_tokens(source_name)) | set(extract_content_terms(source_name or ""))
+        if doc_id:
+            title_tokens.add(doc_id)
+        path_tokens = set(_tokens(source_path)) | set(extract_content_terms(source_path or ""))
         section_tokens = set(_tokens(section_text))
         sheet_tokens = set(_tokens(sheet_text))
         return {
@@ -6398,6 +6485,11 @@ class LocalChunkIndex:
                 | sheet_tokens
             ),
             "normalized_text": text.lower(),
+            "cjk_compact_text": (
+                re.sub(r"(?<=[\u3040-\u30ff\u4e00-\u9fff])[ \t]+(?=[\u3040-\u30ff\u4e00-\u9fff])", "", text.lower())
+                if _CJK_RE.search(text)
+                else text.lower()
+            ),
         }
 
     @staticmethod
@@ -6552,11 +6644,12 @@ class LocalChunkIndex:
         sheet_tokens = b["sheet_tokens"]
         searchable_tokens = b["searchable_tokens"]
         normalized_text = b["normalized_text"]
+        cjk_compact_text = b.get("cjk_compact_text", normalized_text)
         matched_terms = tuple(
             term
             for term in terms
             if term in searchable_tokens
-            or (_CJK_RE.search(term) is not None and term in normalized_text)
+            or (_CJK_RE.search(term) is not None and (term in normalized_text or term in cjk_compact_text))
         )
         if not matched_terms:
             return None
@@ -6575,7 +6668,7 @@ class LocalChunkIndex:
         raw_lexical_count = float(sum(
             text_counts[term]
             if term in text_counts
-            else normalized_text.count(term)
+            else (normalized_text.count(term) or cjk_compact_text.count(term))
             if _CJK_RE.search(term) is not None
             else 0
             for term in terms

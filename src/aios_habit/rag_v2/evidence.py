@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import re
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -461,12 +462,28 @@ def _final_evidence_relevance(
     }
     # Target support must come from the original query vocabulary. Structural
     # expansion aliases remain useful for recall, but cannot prove an answer.
+    cjk_target_terms = {
+        term for term in target_terms
+        if re.search(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]", term)
+    }
     for item in items:
+        combined_item_text = " ".join(
+            part for part in (item.text, item.source_name, item.document_id) if part
+        )
         item_text_tokens = {
             token.casefold()
-            for token in extract_evidence_terms(item.text)
+            for token in extract_evidence_terms(combined_item_text)
         }
         matched_terms.update(target_terms & item_text_tokens)
+        if cjk_target_terms and item.text:
+            compact_cjk = re.sub(
+                r"(?<=[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff])[ \t]+(?=[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff])",
+                "",
+                item.text.casefold(),
+            )
+            for cjk_term in cjk_target_terms:
+                if cjk_term not in matched_terms and cjk_term in compact_cjk:
+                    matched_terms.add(cjk_term)
 
     # Mechanical engineering sheet term equivalences:
     # 'nominal' corresponds to 'kích thước' / 'kích thước đo'

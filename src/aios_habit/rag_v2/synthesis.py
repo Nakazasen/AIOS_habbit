@@ -172,7 +172,7 @@ _ANSWER_SHAPE_MARKERS = {
     "state_transition": ("STATUS_TRACKING:", "INBOUND_LIFECYCLE:", "OUTBOUND_LIFECYCLE:"),
 }
 _FRAGMENT_SPLIT_RE = re.compile(
-    r"(?:\r?\n+|\s*\|\s*|(?<=[.!?。！？])\s+|[•●▪]+)",
+    r"(?:\r?\n+|\s*\|\s*|(?<=[.!?])\s+|(?<=[。！？])\s*|[•●▪]+)",
     re.UNICODE,
 )
 _MARKDOWN_NOISE_RE = re.compile(r"^(?:[-:]+|#+\s*|\*{1,2})$")
@@ -1263,21 +1263,87 @@ def synthesize_evidence(
     )
 
 
+_XML_BROKEN_HEAD_RE = re.compile(
+    r"^(?:[^<>]{0,320}?(?:xmlns(?::[\w.-]+)?\s*=\s*\"[^\"]*\"|schemas\.openxmlformats\.org[^\s>]*|"
+    r"\b(?:wrap|lIns|tIns|rIns|bIns|rtlCol|anchor|anchorCtr|algn|defTabSz|eaLnBrk|latinLnBrk|"
+    r"hangingPunct|kumimoji|lang|altLang|sz|b|i|u|dirty|noProof|smtClean|spcFirstLastPara|rot|vert|horz)"
+    r"\s*=\s*\"[^\"]*\")[^<>]*>\s*)+",
+    re.IGNORECASE,
+)
+_XML_BROKEN_TAIL_RE = re.compile(
+    r"\s*<(?:/?[A-Za-z_][\w:.-]*(?:\s+[^<>]*)?)?$",
+    re.DOTALL,
+)
+_XML_LOOSE_ATTR_RE = re.compile(
+    r"\b(?:wrap|lIns|tIns|rIns|bIns|rtlCol|anchor|anchorCtr|algn|defTabSz|eaLnBrk|latinLnBrk|"
+    r"hangingPunct|kumimoji|lang|altLang|sz|b|i|u|dirty|noProof|smtClean|spcFirstLastPara|rot|vert|horz)"
+    r"\s*=\s*(?:\"[^\"]*\"|'[^']*')",
+    re.IGNORECASE,
+)
+_LIST_MARKER_PAREN_RE = re.compile(
+    r"(?:^|\s)(?:\d{1,2}|[A-Za-z]|[一二三四五六七八九十]|例|注)[)）](?=\s|$)"
+)
+
+
+_TRAILING_INLINE_COPYRIGHT_RE = re.compile(
+    r"(?<=\S)[ \t]+(?:©|\(c\))\s*(?:\d{4}(?:\s*[-–]\s*\d{4})?\s*)?"
+    r"[A-Za-z][A-Za-z0-9 \t,\.&-]{1,60}?"
+    r"(?:Inc\.?|Ltd\.?|Corp\.?|Corporation|Company|All\s+Rights\s+Reserved\.?)"
+    r"(?:[ \t]+All\s+Rights\s+Reserved\.?)?",
+    re.IGNORECASE,
+)
+_SINGLE_KANJI_LEFT_SPACE_RE = re.compile(
+    r"(?<![\u3040-\u30ff\u4e00-\u9fff])([\u4e00-\u9fff])[ \t]+(?=[\u4e00-\u9fff])"
+)
+_SINGLE_KANJI_RIGHT_SPACE_RE = re.compile(
+    r"(?<=[\u4e00-\u9fff])[ \t]+([\u4e00-\u9fff])(?![\u3040-\u30ff\u4e00-\u9fff])"
+)
+
+
+def _normalize_slide_line_artifacts(text: str) -> str:
+    """Remove trailing inline slide copyright footers and rejoin single-Kanji run splits."""
+    if not text:
+        return ""
+    cleaned = _TRAILING_INLINE_COPYRIGHT_RE.sub("", text)
+    cleaned = _SINGLE_KANJI_LEFT_SPACE_RE.sub(r"\1", cleaned)
+    cleaned = _SINGLE_KANJI_RIGHT_SPACE_RE.sub(r"\1", cleaned)
+    return cleaned
+
+
 def _clean_raw_fragment_markup(text: str) -> str:
     """Strip XML/HTML markup, namespace declarations, and decode entities from chunk text."""
     if not text:
         return ""
-    if "<" not in text and "&" not in text and "xmlns" not in text.lower():
-        return text
+    if (
+        "<" not in text
+        and ">" not in text
+        and "&" not in text
+        and "xmlns" not in text.lower()
+        and "schemas.openxmlformats" not in text.lower()
+    ):
+        return _normalize_slide_line_artifacts(text)
     decoded = html.unescape(text)
+    # Strip broken opening tag tails at chunk start and broken tag heads at chunk end
+    decoded = _XML_BROKEN_HEAD_RE.sub(" ", decoded)
+    decoded = _XML_BROKEN_TAIL_RE.sub(" ", decoded)
     # Remove XML processing instructions, comments, doctypes, and tags
     no_tags = re.sub(r"<\?[^>]*\?>|<!--.*?-->|<!\[CDATA\[.*?\]\]>|<![^>]*>|<[^>]+>", " ", decoded, flags=re.DOTALL)
+    # Strip any remaining broken head before '>' if a tag was split at the start of a line/chunk
+    no_tags = re.sub(
+        r"(?:^|\n)\s*[^<>\n]{0,240}?(?:=\"[^\"]*\"|schemas\.openxmlformats\.org[^\s>]*)[^<>\n]*>\s*",
+        "\n",
+        no_tags,
+        flags=re.IGNORECASE,
+    )
     # Remove dangling namespace declarations or attributes if tag delimiters were split
     no_namespaces = re.sub(r"\bxmlns(?::[\w.-]+)?\s*=\s*(?:\"[^\"]*\"|'[^']*'|\S+)", " ", no_tags, flags=re.IGNORECASE)
-    # Remove XML attribute remnants like a:t="..." or p:sld
+    # Remove XML attribute remnants like a:t="..." or p:sld or DrawingML attributes
     no_attrs = re.sub(r"\b[A-Za-z_][\w.-]*:[A-Za-z_][\w.-]*\s*=\s*(?:\"[^\"]*\"|'[^']*'|\S+)", " ", no_namespaces)
+    no_attrs = _XML_LOOSE_ATTR_RE.sub(" ", no_attrs)
     no_noise = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]+", " ", no_attrs)
-    return " ".join(no_noise.split())
+    lines = [" ".join(line.split()) for line in no_noise.splitlines()]
+    joined = "\n".join(line for line in lines if line)
+    return _normalize_slide_line_artifacts(joined)
 
 
 def _is_fragment_noise(fragment: str) -> bool:
@@ -1291,51 +1357,56 @@ def _is_fragment_noise(fragment: str) -> bool:
         return True
     if re.search(r"<\w+[:\s]|xmlns[:=]|schemas\.openxmlformats|http://schemas\.", normalized, re.IGNORECASE):
         return True
-    # A split window can cut through a sentence and leave a shard with an
-    # unbalanced bracket (for example "ABV(Step1..." cut at "|"). Real claims
-    # are balanced, so reject unbalanced shards regardless of language.
-    _BRACKET_PAIRS = (("(", ")"), ("[", "]"), ("{", "}"), ("\u3008", "\u3009"),
-                      ("\u300a", "\u300b"), ("\u300c", "\u300d"), ("\u300e", "\u300f"),
-                      ("\u3010", "\u3011"), ("\u3016", "\u3017"), ("\uff08", "\uff09"),
-                      ("\uff3b", "\uff3d"), ("\uff5b", "\uff5d"))
-    for opener, closer in _BRACKET_PAIRS:
-        if normalized.count(opener) != normalized.count(closer):
+    # Strip benign numbered/lettered list markers like "1)" or "例）" before checking bracket balance.
+    bracket_probe = _LIST_MARKER_PAREN_RE.sub(" ", normalized)
+    _STRICT_BRACKET_PAIRS = (
+        ("[", "]"), ("{", "}"), ("\u3008", "\u3009"),
+        ("\u300a", "\u300b"), ("\u300c", "\u300d"), ("\u300e", "\u300f"),
+        ("\u3010", "\u3011"), ("\u3016", "\u3017"), ("\uff3b", "\uff3d"), ("\uff5b", "\uff5d"),
+    )
+    for opener, closer in _STRICT_BRACKET_PAIRS:
+        if bracket_probe.count(opener) != bracket_probe.count(closer):
+            return True
+    # For round parentheses, chunk boundaries in long technical lines can cut a trailing
+    # parenthetical note; only reject short unbalanced shards.
+    for opener, closer in (("(", ")"), ("\uff08", "\uff09")):
+        if bracket_probe.count(opener) != bracket_probe.count(closer) and len(normalized) < 28:
             return True
     # OCR/table extraction can produce repeated words and decorative glyph runs.
-    # These fragments often score highly on lexical overlap while carrying no
-    # coherent claim, so reject them before facet selection.  Keep the rule
-    # narrow: single-character labels are allowed, while repeated words or a
-    # strongly repetitive token distribution are not.
     if _DECORATIVE_RUN_RE.search(normalized):
         return True
+    raw_tokens = normalized.split()
     tokens = [
         token.casefold()
         for token in (
             re.sub(r"^[^\w]+|[^\w]+$", "", raw, flags=re.UNICODE)
-            for raw in normalized.split()
+            for raw in raw_tokens
         )
         if token
     ]
-    adjacent_repeats = sum(
-        left == right and len(left) >= 2
-        for left, right in zip(tokens, tokens[1:])
-    )
+    # Only count adjacent repeats when the raw token does not end with sentence punctuation
+    # (e.g. "BOP. BOP" across a sentence boundary is legitimate prose, not OCR stutter).
+    adjacent_repeats = 0
+    for idx in range(len(raw_tokens) - 1):
+        left_raw = raw_tokens[idx]
+        right_raw = raw_tokens[idx + 1]
+        if left_raw and left_raw[-1] in ".:;!?。！？":
+            continue
+        left_clean = re.sub(r"^[^\w]+|[^\w]+$", "", left_raw, flags=re.UNICODE).casefold()
+        right_clean = re.sub(r"^[^\w]+|[^\w]+$", "", right_raw, flags=re.UNICODE).casefold()
+        if left_clean and left_clean == right_clean and len(left_clean) >= 2:
+            adjacent_repeats += 1
     if adjacent_repeats >= 1:
         return True
     if len(tokens) >= 6:
         pair_counts = {}
         for pair in zip(tokens, tokens[1:]):
             pair_counts[pair] = pair_counts.get(pair, 0) + 1
-        # Longer procedures naturally repeat domain phrases across enumerated
-        # steps.  Treat repetition as OCR noise only in compact fragments.
         if len(normalized) <= 300 and max(pair_counts.values(), default=0) >= 3:
             return True
     if len(tokens) >= 8:
         counts = {token: tokens.count(token) for token in set(tokens)}
         most_repeated = max(counts.values(), default=0)
-        # Repeated labels in a long, coherent multilingual procedure can be
-        # meaningful. Reserve this rule for short OCR/table fragments where one
-        # token dominates the excerpt.
         if (
             len(normalized) <= 300
             and most_repeated >= 4
@@ -1369,23 +1440,72 @@ def _bounded_fragment_windows(fragment: str) -> Tuple[str, ...]:
     return tuple(windows)
 
 
+def _extract_fragments_from_raw_text(raw_text: str) -> list[str]:
+    if not raw_text:
+        return []
+    # Strip leading/trailing ellipsis added by _make_snippet truncation before cleaning
+    trimmed = re.sub(r"^\.{3}\s*|\s*\.{3}$", "", raw_text.strip())
+    text = _clean_raw_fragment_markup(trimmed)
+    if not text:
+        return []
+    cleaned_units: list[tuple[str, bool]] = []
+    for raw in _FRAGMENT_SPLIT_RE.split(text):
+        is_md_heading = raw.lstrip().startswith("#")
+        unit = " ".join(raw.strip(" \t\r\n-*#:").split())
+        if not unit or _MARKDOWN_NOISE_RE.fullmatch(unit):
+            continue
+        unit = _CELL_REFERENCE_RE.sub("", unit).strip()
+        if unit:
+            cleaned_units.append((unit, is_md_heading))
+
+    # PPTX slides and compact tables often split short headers/codes (e.g. "3DA",
+    # "MySQL", "部品箱", "PRIMARY FEED P ASSY") onto their own lines. Coalesce
+    # consecutive short non-heading units with their neighboring context so short
+    # technical identifiers are preserved in a self-contained claim fragment.
+    candidate_inputs: list[str] = [unit for unit, _ in cleaned_units]
+    if len(cleaned_units) >= 2:
+        idx = 0
+        while idx < len(cleaned_units):
+            unit, is_heading = cleaned_units[idx]
+            if not is_heading and (len(unit) < 40 or len(set(extract_content_terms(unit))) < 3):
+                group = [unit]
+                total_len = len(unit)
+                next_idx = idx + 1
+                while next_idx < len(cleaned_units) and total_len + 3 + len(cleaned_units[next_idx][0]) <= _MAX_CLAIM_CHARS:
+                    nxt, nxt_is_heading = cleaned_units[next_idx]
+                    if nxt_is_heading:
+                        break
+                    group.append(nxt)
+                    total_len += 3 + len(nxt)
+                    next_idx += 1
+                    # Stop once we have a substantive combined fragment (>= 3 terms and >= 24 chars)
+                    # unless the next unit is also a short label/code (< 32 chars).
+                    combined_probe = " — ".join(group)
+                    if (
+                        len(combined_probe) >= 24
+                        and len(set(extract_content_terms(combined_probe))) >= 3
+                        and (next_idx >= len(cleaned_units) or len(cleaned_units[next_idx][0]) >= 32)
+                    ):
+                        break
+                if len(group) > 1:
+                    candidate_inputs.append(" — ".join(group))
+            idx += 1
+    return candidate_inputs
+
+
 def _candidate_fragments(item: EvidenceItem) -> Tuple[str, ...]:
     """Split an excerpt into bounded human-reviewable fragments, never raw sheets."""
-    raw_text = (item.snippet or item.text or "").strip()
-    if not raw_text:
+    snippet_raw = (item.snippet or "").strip()
+    full_raw = (item.text or "").strip()
+    candidate_inputs = _extract_fragments_from_raw_text(snippet_raw)
+    if full_raw and full_raw != snippet_raw:
+        candidate_inputs.extend(_extract_fragments_from_raw_text(full_raw))
+    if not candidate_inputs:
         return ()
-    text = _clean_raw_fragment_markup(raw_text)
-    if not text:
-        return ()
+
     fragments = []
     seen = set()
-    for raw in _FRAGMENT_SPLIT_RE.split(text):
-        fragment = " ".join(raw.strip(" \t\r\n-*#:").split())
-        if not fragment or _MARKDOWN_NOISE_RE.fullmatch(fragment):
-            continue
-        # Cell addresses are provenance noise in prose answers. Preserve the cell
-        # value but remove repeated A12=/BC7= prefixes that make dumps unreadable.
-        fragment = _CELL_REFERENCE_RE.sub("", fragment).strip()
+    for fragment in candidate_inputs:
         if len(fragment) < 12 or _is_fragment_noise(fragment):
             continue
         for window in _bounded_fragment_windows(fragment):
@@ -1541,19 +1661,59 @@ def _file_identifier_overlap(text: str, file_identifiers: Tuple[str, ...]) -> in
     return hits
 
 
+_DOC_ID_TOKEN_RE = re.compile(r"^wsc-[0-9a-f]{12,}(?:\.[a-z0-9]+)?$", re.IGNORECASE)
+
+
+def _is_document_identifier_token(token: str) -> bool:
+    return bool(_DOC_ID_TOKEN_RE.match((token or "").strip()))
+
+
+def _is_exact_value_term(term: str) -> bool:
+    if not term or _is_document_identifier_token(term):
+        return False
+    return any(character.isdigit() for character in term) or "_" in term or "-" in term
+
+
 def _synthesis_query_terms(query: str, *, prioritize_literals: bool) -> set[str]:
     terms = set(extract_content_terms(query))
     if prioritize_literals:
         terms.update(
             match.group(0).casefold()
             for match in _EXACT_IDENTIFIER_RE.finditer(query or "")
+            if not _is_document_identifier_token(match.group(0))
         )
     return terms
 
+
 def _query_has_exact_values(query_terms: set[str]) -> bool:
-    return any(
-        any(character.isdigit() for character in term) or "_" in term or "-" in term
-        for term in query_terms
+    return any(_is_exact_value_term(term) for term in query_terms)
+
+
+def _item_matches_query_source(item: EvidenceItem, query: str) -> int:
+    """Return count of explicit document/source identifiers in query matching item."""
+    if not query:
+        return 0
+    identifiers = tuple(
+        match.group(0).casefold()
+        for match in _EXACT_IDENTIFIER_RE.finditer(query)
+    )
+    if not identifiers:
+        return 0
+    haystack = " ".join(
+        part.casefold()
+        for part in (
+            item.document_id or "",
+            item.source_name or "",
+            item.citation_label or "",
+            item.source_path or "",
+        )
+        if part
+    )
+    if not haystack:
+        return 0
+    return sum(
+        bool(re.search(rf"(?<!\w){re.escape(identifier)}(?!\w)", haystack))
+        for identifier in identifiers
     )
 
 
@@ -1563,6 +1723,11 @@ def query_requests_exact_values(query: str) -> bool:
     Used to default ``prioritize_body_evidence`` on for lookup-style questions
     without requiring every caller to compute synthesis query terms first.
     """
+    if any(
+        _is_document_identifier_token(match.group(0))
+        for match in _EXACT_IDENTIFIER_RE.finditer(query or "")
+    ):
+        return True
     return _query_has_exact_values(
         _synthesis_query_terms(query or "", prioritize_literals=True)
     )
@@ -1586,7 +1751,7 @@ def _query_literal_overlap(text: str, query_terms: set[str]) -> int:
     return sum(
         bool(re.search(rf"(?<!\w){re.escape(term)}(?!\w)", normalized))
         for term in query_terms
-        if any(character.isdigit() for character in term) or "_" in term or "-" in term
+        if _is_exact_value_term(term)
     )
 
 
@@ -1594,6 +1759,7 @@ def _query_identifier_overlap(text: str, query: str) -> tuple[int, int]:
     identifiers = tuple(
         match.group(0).casefold()
         for match in _EXACT_IDENTIFIER_RE.finditer(query or "")
+        if not _is_document_identifier_token(match.group(0))
     )
     if not identifiers:
         return 0, 0
@@ -1720,9 +1886,11 @@ def _combine_answer_value_fragments(
     first_fragment: str,
     *,
     query_terms: set[str],
+    query: str = "",
 ) -> str:
     known_values = _answer_value_literals(first_fragment, query_terms)
-    if not known_values:
+    is_named_source = _item_matches_query_source(item, query) > 0
+    if not known_values and not is_named_source:
         return first_fragment
 
     candidates = sorted(
@@ -1737,18 +1905,28 @@ def _combine_answer_value_fragments(
     )
     combined = [first_fragment]
     combined_size = len(first_fragment)
+    known_terms = set(extract_content_terms(first_fragment))
     for fragment in candidates:
         if fragment.casefold() == first_fragment.casefold():
             continue
-        new_values = _answer_value_literals(fragment, query_terms) - known_values
-        if not new_values or not set(extract_content_terms(fragment)) & query_terms:
+        if fragment.casefold() in " ".join(combined).casefold():
             continue
-        if combined_size + 1 + len(fragment) > _MAX_CLAIM_CHARS:
+        frag_terms = set(extract_content_terms(fragment))
+        if is_named_source:
+            new_terms = frag_terms - known_terms
+            if len(new_terms) < 2:
+                continue
+        else:
+            new_values = _answer_value_literals(fragment, query_terms) - known_values
+            if not new_values or not (frag_terms & query_terms):
+                continue
+            known_values.update(new_values)
+        if combined_size + 3 + len(fragment) > _MAX_CLAIM_CHARS:
             continue
         combined.append(fragment)
-        combined_size += 1 + len(fragment)
-        known_values.update(new_values)
-        if len(known_values) >= _MAX_LOCAL_CLAIMS:
+        combined_size += 3 + len(fragment)
+        known_terms.update(frag_terms)
+        if not is_named_source and len(known_values) >= _MAX_LOCAL_CLAIMS:
             break
     return " ".join(combined)
 
@@ -1979,11 +2157,13 @@ def _ordered_synthesis_items(
     if not prioritize_body_evidence:
         return evidence_items
 
-    def priority(item: EvidenceItem) -> tuple[bool, int, int, int, int, int, int]:
-        text = item.snippet or item.text
+    def priority(item: EvidenceItem) -> tuple[bool, int, int, int, int, int, int, int]:
+        text = _clean_raw_fragment_markup(item.text or item.snippet or "")
         identifier_priority = _query_identifier_overlap(text, query)
+        source_match = _item_matches_query_source(item, query)
         return (
             _is_summary_evidence(item),
+            -source_match,
             -identifier_priority[0],
             -identifier_priority[1],
             -_typed_answer_value_count(text, query_terms),
@@ -2003,7 +2183,7 @@ def _claim_value_score(
     *,
     field_codes: Tuple[str, ...] = (),
     file_identifiers: Tuple[str, ...] = (),
-) -> tuple[int, int, int, int, int, int, int]:
+) -> tuple[int, int, int, int, int, int, int, int, int]:
     """Score a claim candidate by evidence value, not retrieval rank.
 
     Field codes (HOUSE_METHOD) and file identifiers (YY2-Z151.exe) named in the
@@ -2015,6 +2195,7 @@ def _claim_value_score(
     """
     terms = set(extract_content_terms(fragment))
     return (
+        _item_matches_query_source(item, query),
         _token_overlap_count(fragment, field_codes),
         _definition_shaped_field_overlap(fragment, field_codes),
         _file_identifier_overlap(fragment, file_identifiers),
@@ -2081,11 +2262,12 @@ def _compose_grounded_claims(
         )
         if not fragment:
             return False
-        if prioritize_body_evidence:
+        if prioritize_body_evidence or _item_matches_query_source(item, pack.query) > 0:
             fragment = _combine_answer_value_fragments(
                 item,
                 fragment,
                 query_terms=query_terms,
+                query=pack.query,
             )
         claims.append(GroundedClaim(
             text=fragment,
@@ -2253,22 +2435,24 @@ def _compose_grounded_claims(
     scored_candidates.sort(key=lambda scored: (scored[0], -scored[1]), reverse=True)
     ordered_candidates = tuple(item for _, _, item in scored_candidates)
 
-    used_documents = {
-        item.document_id
-        for claim in claims
-        for item in pack.items
-        if item.evidence_id in claim.evidence_ids
-    }
+    doc_claim_counts: dict[str, int] = {}
+    for claim in claims:
+        for item in pack.items:
+            if item.evidence_id in claim.evidence_ids:
+                doc_claim_counts[item.document_id] = doc_claim_counts.get(item.document_id, 0) + 1
     for prefer_new_document in (True, False):
         for item in ordered_candidates:
             if len(claims) >= max_claims:
                 break
             if any(item.evidence_id in claim.evidence_ids for claim in claims):
                 continue
-            if prefer_new_document != (item.document_id not in used_documents):
+            current_doc_count = doc_claim_counts.get(item.document_id, 0)
+            max_initial_per_doc = 3 if _item_matches_query_source(item, pack.query) > 0 else 1
+            is_eligible_initial = current_doc_count < max_initial_per_doc
+            if prefer_new_document != is_eligible_initial:
                 continue
             if add(item):
-                used_documents.add(item.document_id)
+                doc_claim_counts[item.document_id] = current_doc_count + 1
     return tuple(claims)
 
 
