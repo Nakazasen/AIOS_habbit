@@ -37,8 +37,16 @@ from aios_habit.rag_v2.index import (
 from aios_habit.rag_v2.semantic import DeterministicEmbeddingBackend
 import aios_habit.workspace_chat_rag_v2_adapter as adapter
 
-PRODUCTION_COLLECTIONS_ROOT = Path(
+_HOME_COLLECTIONS_ROOT = Path(
     r"C:\AIOS_workspace_chat_rag_v2_production\bge_m3_hybrid\collections"
+)
+_LOCAL_COLLECTIONS_ROOT = Path(
+    r"local_runs\workspace_chat_rag_v2_production\bge_m3_hybrid\collections"
+)
+PRODUCTION_COLLECTIONS_ROOT = (
+    _HOME_COLLECTIONS_ROOT
+    if _HOME_COLLECTIONS_ROOT.is_dir()
+    else _LOCAL_COLLECTIONS_ROOT
 )
 REAL_COLLECTION_IDS: tuple[str, ...] = ("tong_hop", "lsu", "dieu_tra_loi", "tri_thuc")
 
