@@ -631,6 +631,16 @@ def build_evidence_pack(
         effective_max_items = config.max_items
         effective_per_doc_limit = config.per_document_limit
 
+    has_named_doc = bool(
+        re.search(
+            r'(?:wsc-[0-9a-f]{12,}|\b[\w-]+\.(?:txt|xlsx|pptx|docx|pdf|csv)\b)',
+            query_text or '',
+            re.IGNORECASE,
+        )
+    )
+    if has_named_doc:
+        effective_max_items = max(effective_max_items, 15)
+
     # Maximize usable answer coverage within the bounded evidence budget.  The
     # selector is deterministic: total new coverage wins, then obligation gain,
     # facet gain, and finally the original retrieval rank.
@@ -642,12 +652,20 @@ def build_evidence_pack(
         if result.chunk_id in selected_chunk_ids:
             return False
         doc_count = doc_counts.get(result.document_id, 0)
-        if doc_count >= effective_per_doc_limit:
+        is_named = bool(
+            query_text
+            and (
+                (result.source_name and result.source_name.lower() in query_text.lower())
+                or (result.document_id and result.document_id.lower() in query_text.lower())
+            )
+        )
+        doc_limit = max(effective_per_doc_limit, 5) if is_named else effective_per_doc_limit
+        if doc_count >= doc_limit:
             LOGGER.info(
                 "rag_v2.diversity_cap_triggered document_id=%s source=%s limit=%d chunk_id=%s",
                 result.document_id,
                 result.source_name,
-                effective_per_doc_limit,
+                doc_limit,
                 result.chunk_id,
             )
             return False

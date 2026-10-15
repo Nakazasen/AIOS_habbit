@@ -7,6 +7,7 @@ import hashlib
 import json
 import logging
 from pathlib import Path
+import re
 from time import perf_counter
 from typing import Any, Iterable, Mapping, Optional, Tuple
 
@@ -1216,6 +1217,20 @@ class RagV2DevPipeline:
                     evidence_config.per_document_limit,
                     self.config.retrieval_limit,
                 ),
+            )
+
+        has_named_doc = bool(
+            re.search(
+                r'(?:wsc-[0-9a-f]{12,}|\b[\w-]+\.(?:txt|xlsx|pptx|docx|pdf|csv)\b)',
+                plan.original_query or "",
+                re.IGNORECASE,
+            )
+        )
+        if has_named_doc:
+            evidence_config = replace(
+                evidence_config,
+                max_items=max(evidence_config.max_items, 15),
+                per_document_limit=max(evidence_config.per_document_limit, 5),
             )
 
         if summary_first and plan.retrieval_mode == "overview":

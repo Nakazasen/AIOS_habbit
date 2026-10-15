@@ -2447,7 +2447,7 @@ def _compose_grounded_claims(
             if any(item.evidence_id in claim.evidence_ids for claim in claims):
                 continue
             current_doc_count = doc_claim_counts.get(item.document_id, 0)
-            max_initial_per_doc = 3 if _item_matches_query_source(item, pack.query) > 0 else 1
+            max_initial_per_doc = 5 if _item_matches_query_source(item, pack.query) > 0 else 1
             is_eligible_initial = current_doc_count < max_initial_per_doc
             if prefer_new_document != is_eligible_initial:
                 continue

@@ -866,15 +866,24 @@ def _select_hybrid_results(
         if result.chunk_id in selected_ids or result.chunk_id in rejected_ids:
             return False
         document_key = result.document_id or result.source_path
-        if document_counts[document_key] >= per_document_limit or _is_near_duplicate(
+        query_str = getattr(plan, "original_query", None) if plan is not None else None
+        is_named_doc = bool(
+            query_str
+            and (
+                (result.source_name and result.source_name.lower() in query_str.lower())
+                or (result.document_id and result.document_id.lower() in query_str.lower())
+            )
+        )
+        effective_doc_limit = max(per_document_limit, 5) if is_named_doc else per_document_limit
+        if document_counts[document_key] >= effective_doc_limit or _is_near_duplicate(
             result, selected, near_duplicate_threshold
         ):
-            if document_counts[document_key] >= per_document_limit:
+            if document_counts[document_key] >= effective_doc_limit:
                 LOGGER.info(
                     "rag_v2.diversity_cap_triggered document_id=%s source=%s limit=%d chunk_id=%s",
                     result.document_id,
                     result.source_name,
-                    per_document_limit,
+                    effective_doc_limit,
                     result.chunk_id,
                 )
             rejected_ids.add(result.chunk_id)
@@ -4340,9 +4349,20 @@ class LocalChunkIndex:
             (options.allowed_document_ids and len(options.allowed_document_ids) == 1)
             or (options.allowed_source_paths and len(options.allowed_source_paths) == 1)
         )
+        has_named_doc = bool(
+            re.search(
+                r'(?:wsc-[0-9a-f]{12,}|\b[\w-]+\.(?:txt|xlsx|pptx|docx|pdf|csv)\b)',
+                getattr(plan, "original_query", "") or "",
+                re.IGNORECASE,
+            )
+        )
         fuse_options = replace(
             options,
-            per_document_limit=options.per_document_limit if is_single_doc else min(options.per_document_limit, 3),
+            per_document_limit=(
+                max(options.per_document_limit, 5)
+                if (is_single_doc or has_named_doc)
+                else min(options.per_document_limit, 3)
+            ),
         )
         response = fuse_ranked_channels(
             query,
