@@ -672,4 +672,21 @@ def test_structured_table_lane_clean_machine_simulation(monkeypatch, tmp_path):
     assert "20 record" in res["local_synthesis"]["answer"]
 
 
+def test_try_structured_table_evidence_named_doc_non_hijack():
+    """Named PDF or missing doc must never be hijacked by structured table lane."""
+    from aios_habit.rag_v2.structured_query import try_structured_table_evidence
+
+    q_named_pdf = (
+        "Theo tài liệu Tab led cam ung.pdf (Touch Panel Specification), "
+        "điều kiện nhiệt độ và độ ẩm tiêu chuẩn để bảo quản (Storage) touch panel là bao nhiêu?"
+    )
+    assert try_structured_table_evidence(q_named_pdf, forced_domain="auto") is None
+    assert try_structured_table_evidence(q_named_pdf, forced_domain=None) is None
+
+    q_missing = "Theo tài liệu khong_ton_tai_123.pdf, nhiệt độ bảo quản là bao nhiêu?"
+    assert try_structured_table_evidence(q_missing, forced_domain="auto") is None
+    assert try_structured_table_evidence(q_missing, forced_domain=None) is None
+
+
+
 

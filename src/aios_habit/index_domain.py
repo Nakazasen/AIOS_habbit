@@ -276,14 +276,148 @@ def classify_document(
     return result
 
 
-def detect_domain_from_question(question: str) -> Classification:
+def clean_named_doc_token(name: str) -> str:
+    """Strip surrounding quotes and leading Vietnamese/English document cue prefixes."""
+    cleaned = (name or "").strip(' \t\n\r"\'\u201c\u201d\u2018\u2019')
+    while True:
+        m = re.match(
+            r"^(?:tài\s*liệu|file|tệp|báo\s*cáo|văn\s*bản|theo|sheet|bảng)\s+",
+            cleaned,
+            re.IGNORECASE,
+        )
+        if m:
+            cleaned = cleaned[m.end():].strip(' \t\n\r"\'\u201c\u201d\u2018\u2019')
+        else:
+            break
+    return cleaned
+
+
+def extract_named_document_candidates(question: str) -> list[str]:
+    """Extract candidate document filenames mentioned in the question."""
+    if not question:
+        return []
+    candidates: list[str] = []
+
+    # 1. Quoted filenames: "..." or '...' or “...” or ‘...’
+    quoted_pattern = re.compile(
+        r'[\"\'\u201c\u2018]([^\n\r\"\'\u201d\u2019]+?\.(?:pdf|xlsx?|csv|docx?|pptx?|txt|msg))[\"\'\u201d\u2019]',
+        re.IGNORECASE,
+    )
+    for m in quoted_pattern.finditer(question):
+        val = clean_named_doc_token(m.group(1))
+        if val and val not in candidates:
+            candidates.append(val)
+
+    # 2. Cued filenames: (tài liệu | file | tệp | báo cáo | văn bản | theo) [optional quotes] filename.ext
+    cue_pattern = re.compile(
+        r'(?:tài\s*liệu|file|tệp|báo\s*cáo|văn\s*bản|theo)\s+[\"\'\u201c\u2018]?([a-zA-Z0-9_\u00C0-\u024F\u1EA0-\u1EF9][a-zA-Z0-9_\u00C0-\u024F\u1EA0-\u1EF9\s\.\-]{0,80}?\.(?:pdf|xlsx?|csv|docx?|pptx?|txt|msg))[\"\'\u201d\u2019]?(?=[,\s\(\)\?!;:]|$)',
+        re.IGNORECASE,
+    )
+    for m in cue_pattern.finditer(question):
+        val = clean_named_doc_token(m.group(1))
+        if val and val not in candidates:
+            candidates.append(val)
+
+    # 3. Uncued bare single-token filenames: e.g. khong_ton_tai_123.pdf, test.docx
+    bare_pattern = re.compile(
+        r'\b([a-zA-Z0-9_\.\-]+\.(?:pdf|xlsx?|csv|docx?|pptx?|txt|msg))\b',
+        re.IGNORECASE,
+    )
+    for m in bare_pattern.finditer(question):
+        val = clean_named_doc_token(m.group(1))
+        if val and val not in candidates:
+            if not any(val.lower() == c.lower() or val.lower() in c.lower() for c in candidates):
+                candidates.append(val)
+
+    return candidates
+
+
+def match_named_documents(
+    question: str,
+    db_path: Path | str | None = None,
+    sources: Optional[Sequence[Any]] = None,
+) -> tuple[tuple[Any, ...], tuple[str, ...]]:
+    """Match documents mentioned in question against library specs and sources.
+
+    Returns:
+        (matched_specs, explicit_missing_doc_names)
+    """
+    if not question:
+        return (), ()
+
+    all_specs = list(load_all_index_specs(db_path))
+    if sources:
+        for s in sources:
+            if s not in all_specs:
+                all_specs.append(s)
+
+    q_lower = question.lower()
+
+    # 1. Match known spec filenames in question
+    matched_specs: list[Any] = []
+    matched_names: set[str] = set()
+    for s in sorted(
+        all_specs,
+        key=lambda x: len(getattr(x, "path", Path(getattr(x, "source_name", ""))).name),
+        reverse=True,
+    ):
+        fname = getattr(s, "path", None)
+        fname_str = fname.name if fname else str(getattr(s, "source_name", ""))
+        if not fname_str or len(fname_str) < 4:
+            continue
+        if fname_str.lower() in q_lower:
+            matched_specs.append(s)
+            matched_names.add(fname_str.lower())
+
+    # 2. Check candidates extracted from question for missing named documents
+    candidates = extract_named_document_candidates(question)
+    missing: list[str] = []
+    for cand in candidates:
+        cand_lower = cand.lower()
+        if any(cand_lower in m or m in cand_lower for m in matched_names):
+            continue
+        missing.append(cand)
+
+    return tuple(matched_specs), tuple(missing)
+
+
+def detect_domain_from_question(
+    question: str,
+    db_path: Path | str | None = None,
+    sources: Optional[Sequence[Any]] = None,
+) -> Classification:
     """Detect the knowledge domain a user question belongs to.
 
-    Always returns a domain (never ``None``): a question with no signal is
-    assigned the most plausible block with low confidence and a reason saying
-    so, so the UI can state which block was chosen instead of searching
-    silently.
+    If the question explicitly names a document existing in the index,
+    it anchors directly to that document's domain with confidence 1.0.
+    If the question explicitly names a document that does not exist in the index,
+    it returns a refusal classification with confidence 0.0.
+    Otherwise, keyword scoring is used to determine the most plausible domain.
     """
+    matched_specs, missing_names = match_named_documents(question, db_path=db_path, sources=sources)
+    if matched_specs:
+        doc_map = load_domain_document_map()
+        first_spec = matched_specs[0]
+        doc_id = getattr(first_spec, "document_id", "")
+        doc_name = getattr(first_spec, "path", Path(getattr(first_spec, "source_name", ""))).name
+        dom = doc_map.get(doc_id)
+        if not dom or dom not in KNOWLEDGE_BLOCKS:
+            doc_path = getattr(first_spec, "path", "")
+            dom = classify_document(doc_name, str(doc_path), "").domain
+        return Classification(
+            dom,
+            1.0,
+            f"câu hỏi nêu đích danh tài liệu '{doc_name}' thuộc khối {DOMAIN_DISPLAY.get(dom, dom)}",
+        )
+
+    if missing_names:
+        missing_doc = missing_names[0]
+        return Classification(
+            FALLBACK_DOMAIN,
+            0.0,
+            f"câu hỏi nêu đích danh tài liệu '{missing_doc}' nhưng không tồn tại trong kho tri thức",
+        )
+
     scores, hits = _score_text(question or "", TEXT_WEIGHT)
     return _build_classification(
         scores,
@@ -884,6 +1018,13 @@ def get_specs_for_domain(
         return ()
 
     allowed_ids = get_domain_document_ids(domain)
+    if question:
+        matched_specs, _ = match_named_documents(question, db_path=db_path)
+        if matched_specs:
+            matched_ids = {s.document_id for s in matched_specs}
+            if allowed_ids is None or any(m_id in allowed_ids for m_id in matched_ids):
+                return tuple(s for s in all_specs if s.document_id in matched_ids)
+
     if allowed_ids is None:
         return tuple(all_specs)
 

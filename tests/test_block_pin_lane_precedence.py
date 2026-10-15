@@ -116,17 +116,22 @@ def test_structured_table_lane_yields_when_file_not_in_pinned_domain():
 
 
 def test_structured_table_lane_preserved_in_auto_and_lsu_modes():
-    """In auto mode or when pinned to lsu, 2026_08_Spec.csv table lookup functions normally."""
-    q = "Theo tài liệu Tab led cam ung.pdf (Touch Panel Specification), điều kiện nhiệt độ và độ ẩm tiêu chuẩn để bảo quản (Storage) touch panel là bao nhiêu?"
+    """In auto mode or lsu, genuine table queries function normally; named non-table doc yields None."""
+    q_named_doc = "Theo tài liệu Tab led cam ung.pdf (Touch Panel Specification), điều kiện nhiệt độ và độ ẩm tiêu chuẩn để bảo quản (Storage) touch panel là bao nhiêu?"
+    # Named PDF doc must NOT trigger structured table lane in auto or lsu
+    assert try_structured_table_evidence(q_named_doc, forced_domain="auto") is None
+    assert try_structured_table_evidence(q_named_doc, forced_domain="lsu") is None
+    assert try_structured_table_evidence(q_named_doc, forced_domain=None) is None
+
+    # Genuine LSU table query functions normally in auto and lsu
+    q_table = "Cặp giới hạn Current phổ biến nhất là bao nhiêu?"
     staging_file = Path(r"D:/Sandbox/AIOS_habbit/local_runs/structured_staging/2026_08_Spec.csv")
     if staging_file.is_file():
-        # In auto mode -> returns table calculation
-        res_auto = try_structured_table_evidence(q, forced_domain="auto")
+        res_auto = try_structured_table_evidence(q_table, forced_domain="auto")
         assert res_auto is not None
         assert res_auto.get("evidence_items")[0]["title"] == "2026_08_Spec.csv"
 
-        # In lsu mode -> returns table calculation because Spec.csv belongs to LSU
-        res_lsu = try_structured_table_evidence(q, forced_domain="lsu")
+        res_lsu = try_structured_table_evidence(q_table, forced_domain="lsu")
         assert res_lsu is not None
         assert res_lsu.get("evidence_items")[0]["title"] == "2026_08_Spec.csv"
 
@@ -148,15 +153,21 @@ def test_is_structured_file_in_domain_logic():
 
 
 def test_adapter_try_structured_excel_evidence_respects_forced_domain():
-    """Test that adapter helper _try_structured_excel_evidence passes forced_domain."""
-    q = "Theo tài liệu Tab led cam ung.pdf (Touch Panel Specification), điều kiện nhiệt độ và độ ẩm tiêu chuẩn để bảo quản (Storage) touch panel là bao nhiêu?"
+    """Test that adapter helper _try_structured_excel_evidence passes forced_domain and does not hijack named docs."""
+    q_named_doc = "Theo tài liệu Tab led cam ung.pdf (Touch Panel Specification), điều kiện nhiệt độ và độ ẩm tiêu chuẩn để bảo quản (Storage) touch panel là bao nhiêu?"
     
     # In tong_hop, must return None
-    res = _try_structured_excel_evidence(q, sources=(), forced_domain="tong_hop")
+    res = _try_structured_excel_evidence(q_named_doc, sources=(), forced_domain="tong_hop")
     assert res is None
 
-    # In auto, returns table evidence if staging file exists
+    # In auto mode, named non-tabular doc must also return None
+    res_auto_named = _try_structured_excel_evidence(q_named_doc, sources=(), forced_domain="auto")
+    assert res_auto_named is None
+
+    # For genuine LSU table question, auto returns table evidence if staging file exists
+    q_table = "Cặp giới hạn Current phổ biến nhất là bao nhiêu?"
     staging_file = Path(r"D:/Sandbox/AIOS_habbit/local_runs/structured_staging/2026_08_Spec.csv")
     if staging_file.is_file():
-        res_auto = _try_structured_excel_evidence(q, sources=(), forced_domain="auto")
+        res_auto = _try_structured_excel_evidence(q_table, sources=(), forced_domain="auto")
         assert res_auto is not None
+        assert res_auto.get("evidence_items")[0]["title"] == "2026_08_Spec.csv"

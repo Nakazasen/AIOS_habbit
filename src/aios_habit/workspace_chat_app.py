@@ -1759,7 +1759,7 @@ def _run_chat_turn_async(
                     detect_domain_from_question,
                     CONFIDENCE_LOW_THRESHOLD,
                 )
-                cls_dom = detect_domain_from_question(q_text)
+                cls_dom = detect_domain_from_question(q_text, sources=query_relevant_sources)
                 if cls_dom and cls_dom.domain and getattr(cls_dom, "confidence", 0.0) >= CONFIDENCE_LOW_THRESHOLD:
                     active_domain = cls_dom.domain
                 else:
@@ -1783,6 +1783,18 @@ def _run_chat_turn_async(
                 "[Dữ kiện trích từ tệp đính kèm" in q_text
                 or "[Nội dung chữ đọc được từ ảnh đính kèm" in q_text
             )
+
+            if ret_res.get("status") == "named_document_not_found":
+                answer = (
+                    ret_res.get("local_synthesis", {}).get("answer")
+                    or ret_res.get("safe_owner_message", "")
+                )
+                badge = {
+                    "provider": "local_truthful_refusal",
+                    "ai_source": "system_guard",
+                    "document_missing": True,
+                }
+                return (True, answer, badge, None)
 
             if ret_res.get("status") == "quality_search_unavailable":
                 unavailable_reason = str(

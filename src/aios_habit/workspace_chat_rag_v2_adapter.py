@@ -5026,9 +5026,11 @@ def _select_domain_route(
                 target, forced, True, "người dùng chọn khối", detected
             )
 
-        if forced != "auto" and not index_domain.domain_routing_enabled():
+        detected = index_domain.detect_domain_from_question(question, sources=sources)
+        is_named_doc = bool(detected and getattr(detected, "confidence", 0.0) == 1.0)
+
+        if not is_named_doc and forced != "auto" and not index_domain.domain_routing_enabled():
             return None
-        detected = index_domain.detect_domain_from_question(question)
         if (
             detected is None
             or getattr(detected, "confidence", 0.0) < index_domain.CONFIDENCE_LOW_THRESHOLD
@@ -5044,7 +5046,7 @@ def _select_domain_route(
         def _collection_exists(collection_id: str) -> bool:
             return _domain_index_ready(config, collection_id)
 
-        if forced == "auto" and not index_domain.domain_routing_enabled():
+        if (forced == "auto" or is_named_doc) and not index_domain.domain_routing_enabled():
             if effective_base != index_domain.LEGACY_COLLECTION_ID:
                 return index_domain.DomainRoute(
                     effective_base,
@@ -5163,6 +5165,32 @@ def retrieve_workspace_chat_evidence(
         sources = ready_subset
         collection_id = _collection_id_for_sources(sources)
 
+    # Honest refusal if the question explicitly names a document not found in the index
+    try:
+        from aios_habit import index_domain
+        matched_specs, missing_names = index_domain.match_named_documents(question, sources=sources)
+        if missing_names and not matched_specs:
+            missing_doc = missing_names[0]
+            refusal_msg = (
+                f"Chưa đủ bằng chứng trong kho tri thức: Không tìm thấy tài liệu \"{missing_doc}\" "
+                f"được nêu đích danh trong câu hỏi để tra cứu."
+            )
+            return _finish({
+                "status": "named_document_not_found",
+                "summary_count": 1,
+                "evidence_items": [],
+                "retrieved_context_sources": (),
+                "safe_owner_message": refusal_msg,
+                "local_synthesis": {
+                    "answer": refusal_msg,
+                    "abstained": False,
+                    "named_document_missing": True,
+                    "missing_document": missing_doc,
+                },
+            })
+    except Exception:
+        pass
+
     # Domain routing (feature-flagged): detect the question's knowledge domain
     # and search that domain's collection instead of the legacy mixed one.
     # A block explicitly chosen in the composer (forced_domain) overrides
@@ -5277,7 +5305,7 @@ def retrieve_workspace_chat_evidence(
     structured_result = _try_structured_excel_evidence(
         question,
         semantic_sources,
-        forced_domain=target_domain if has_forced_domain else None,
+        forced_domain=target_domain,
     )
     if structured_result is not None:
         target_coll = str(target_domain or domain_collection_id or "structured")

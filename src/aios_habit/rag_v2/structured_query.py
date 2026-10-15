@@ -1629,6 +1629,24 @@ def try_structured_table_evidence(
     q_norm = _canonical_text(question)
     q_raw = question.casefold()
 
+    # If the question explicitly names a document (e.g. *.pdf, *.docx, *.msg)
+    # that is NOT a tabular file, or names a document that does not exist in the library,
+    # the structured table lane must NOT hijack the question.
+    if custom_source_path is None:
+        try:
+            from aios_habit.index_domain import match_named_documents
+            matched_specs, missing_names = match_named_documents(question, sources=sources)
+            if matched_specs:
+                matched_exts = [getattr(s, "path", Path(getattr(s, "source_name", ""))).suffix.lower() for s in matched_specs]
+                matched_titles = [getattr(s, "path", Path(getattr(s, "source_name", ""))).name.lower() for s in matched_specs]
+                has_tabular = any(ext in (".csv", ".xlsx", ".xls") or name in LSU_STRUCTURED_FILENAMES for ext, name in zip(matched_exts, matched_titles))
+                if not has_tabular:
+                    return None
+            elif missing_names:
+                return None
+        except Exception:
+            pass
+
     # 1. Tra cứu theo Serial & So sánh đa ngày
     serial_match = re.search(r"\b([0-9A-Z]{12})\b", question)
     if serial_match:
@@ -1703,7 +1721,10 @@ def try_structured_table_evidence(
             doc_title = "2026_08_Error_BowOverAdjust.csv"
         elif "error" in q_norm or "2026_08_error" in q_norm:
             doc_title = "2026_08_Error.csv"
-        elif "spec" in q_norm:
+        elif (
+            re.search(r"\b2026_08_spec\b|\bspec\.csv\b|\bspecs?\b", q_norm)
+            and not re.search(r"\bspecification\b", q_norm)
+        ):
             doc_title = "2026_08_Spec.csv"
         elif "unittest" in q_norm:
             doc_title = "2026_08_UnitTest.csv"

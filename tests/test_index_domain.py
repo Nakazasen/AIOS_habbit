@@ -491,3 +491,46 @@ def test_detect_domain_ktd_cxxxx_connector_error_routes_to_dieu_tra_loi():
     result = detect_domain_from_question(question)
     assert result.domain == DOMAIN_DIEU_TRA_LOI
     assert result.confidence >= 0.75
+
+
+def test_detect_domain_named_document_anchors_to_tong_hop():
+    question = (
+        "Theo tài liệu Tab led cam ung.pdf (Touch Panel Specification), "
+        "điều kiện nhiệt độ và độ ẩm tiêu chuẩn để bảo quản (Storage) touch panel là bao nhiêu?"
+    )
+    result = detect_domain_from_question(question)
+    assert result.domain == "tong_hop"
+    assert result.confidence == 1.0
+    assert "Tab led cam ung.pdf" in result.reason
+    assert "Tổng hợp" in result.reason
+
+
+def test_detect_domain_nonexistent_named_document_refuses():
+    question = "Theo tài liệu khong_ton_tai_123.pdf, nhiệt độ bảo quản là bao nhiêu?"
+    result = detect_domain_from_question(question)
+    assert result.confidence == 0.0
+    assert "khong_ton_tai_123.pdf" in result.reason
+
+
+def test_match_named_documents_existing_and_missing():
+    from aios_habit.index_domain import match_named_documents
+    q_existing = "Theo tài liệu Tab led cam ung.pdf, nội dung là gì?"
+    matched, missing = match_named_documents(q_existing)
+    assert len(matched) >= 1
+    assert any("Tab led cam ung.pdf" in getattr(s, "path", s).name for s in matched)
+    assert len(missing) == 0
+
+    q_missing = "Kiểm tra file non_existent_doc_456.docx xem sao"
+    matched_m, missing_m = match_named_documents(q_missing)
+    assert len(matched_m) == 0
+    assert "non_existent_doc_456.docx" in missing_m
+
+
+def test_get_specs_for_domain_anchors_to_named_doc():
+    from aios_habit.index_domain import get_specs_for_domain
+    question = "Theo tài liệu Tab led cam ung.pdf, kiểm tra thông số"
+    specs = get_specs_for_domain("auto", question=question)
+    assert len(specs) >= 1
+    for s in specs:
+        assert "Tab led cam ung.pdf" in getattr(s, "path", s).name
+
