@@ -14,15 +14,17 @@ os.environ["OPENBLAS_NUM_THREADS"] = "1"
 os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
 os.environ["NUMEXPR_NUM_THREADS"] = "1"
 
+from contextlib import contextmanager
 from dataclasses import asdict
 import json
 import logging
 from pathlib import Path
 import sys
+import tempfile
 import threading
 import time
 import traceback
-from typing import Any, Mapping, Sequence
+from typing import Any, Iterator, Mapping, Sequence
 
 from aios_habit.rag_v2.pipeline import (
     RagV2DevConfig,
@@ -42,6 +44,71 @@ from aios_habit.rag_v2_synthesis_provider import create_synthesis_provider
 def _elapsed_ms(started: float) -> float:
     """Return elapsed milliseconds since ``started`` rounded to 0.1 ms."""
     return round((time.perf_counter() - started) * 1000.0, 1)
+
+
+@contextmanager
+def _serialized_index_preload_context(index_path: Path | None) -> Iterator[None]:
+    """Serialize large SQLite index preloads across worker processes and sequentially warm OS cache.
+
+    Prevents multiple persistent workers on mechanical HDDs / 16GB RAM hosts from
+    simultaneously performing random B-tree seeks across multi-GB ``library.sqlite``
+    files and evicting each other's OS Standby Cache pages during cold startup.
+    Small indexes (< 8 MB, e.g. unit tests) bypass the lock and sequential scan.
+    """
+    if index_path is None:
+        yield
+        return
+    try:
+        db_file = Path(index_path)
+        if not db_file.is_file() or db_file.stat().st_size < 8 * 1024 * 1024:
+            yield
+            return
+    except OSError:
+        yield
+        return
+
+    lock_path = Path(tempfile.gettempdir()) / "aios_bge_worker_cache_preload.lock"
+    lock_fh = None
+    locked = False
+    try:
+        lock_fh = open(lock_path, "a+b")
+        lock_fh.seek(0)
+        if lock_fh.tell() == 0:
+            lock_fh.write(b"\0")
+            lock_fh.flush()
+        if os.name == "nt":
+            import msvcrt
+
+            deadline = time.monotonic() + 360.0
+            while time.monotonic() < deadline:
+                try:
+                    lock_fh.seek(0)
+                    msvcrt.locking(lock_fh.fileno(), msvcrt.LK_NBLCK, 1)
+                    locked = True
+                    break
+                except OSError:
+                    time.sleep(0.2)
+        try:
+            with open(db_file, "rb") as warm_fh:
+                while warm_fh.read(32 * 1024 * 1024):
+                    pass
+        except OSError:
+            pass
+        yield
+    finally:
+        if locked and lock_fh is not None and os.name == "nt":
+            try:
+                import msvcrt
+
+                lock_fh.seek(0)
+                msvcrt.locking(lock_fh.fileno(), msvcrt.LK_UNLCK, 1)
+            except OSError:
+                pass
+        if lock_fh is not None:
+            try:
+                lock_fh.close()
+            except OSError:
+                pass
 
 
 def _config_from_dict(payload: Mapping[str, Any]) -> RagV2DevConfig:
@@ -125,6 +192,8 @@ def _serialize_query_result(result: RagV2QueryResult) -> dict[str, Any]:
                 getattr(summary, "multivector_maxsim_latency_ms", 0.0)
             ),
             "rerank_latency_ms": summary.rerank_latency_ms,
+            "lexical_latency_ms": float(getattr(summary, "lexical_latency_ms", 0.0) or 0.0),
+            "context_expansion_latency_ms": float(getattr(summary, "context_expansion_latency_ms", 0.0) or 0.0),
             "dense_latency_ms": float(getattr(summary, "dense_latency_ms", 0.0) or 0.0),
             "sparse_latency_ms": float(getattr(summary, "sparse_latency_ms", 0.0) or 0.0),
             "fusion_latency_ms": float(getattr(summary, "fusion_latency_ms", 0.0) or 0.0),
@@ -379,40 +448,47 @@ class _WorkerSession:
                         synthesis_provider=synthesis_provider,
                     )
                     phases_ms["model_load"] = _elapsed_ms(phase_started)
-                    phase_started = time.perf_counter()
-                    init_phase = "index_open"
-                    # Force a harmless schema read now so index failures are
-                    # attributed during readiness rather than the first query.
-                    pipeline.index.embedding_status()
-                    phases_ms["index_open"] = _elapsed_ms(phase_started)
-                    phase_started = time.perf_counter()
-                    # OPT-RAGV2-PYLOOPS V2-A: warm the numpy dense matrix cache
-                    # now so the first ("cold") query does not pay the ~90s
-                    # first-load inside its query timeout. A preload failure
-                    # never fails init: the lazy query-time load still applies.
-                    init_phase = "cache_preload"
-                    try:
-                        dense_chunks, dense_ms = (
-                            pipeline.index.preload_dense_matrix_cache()
-                        )
-                        sparse_chunks, sparse_ms = (
-                            pipeline.index.preload_sparse_vector_cache()
-                        )
-                        phases_ms["dense_preload"] = round(dense_ms, 1)
-                        phases_ms["sparse_preload"] = round(sparse_ms, 1)
-                        print(
-                            "bge_worker_stage "
-                            f"dense_preload_chunks={dense_chunks} "
-                            f"dense_preload_ms={dense_ms:.1f} "
-                            f"sparse_preload_chunks={sparse_chunks} "
-                            f"sparse_preload_ms={sparse_ms:.1f}",
-                            file=sys.stderr,
-                            flush=True,
-                        )
-                    except Exception:
-                        traceback.print_exc(file=sys.stderr)
-                        sys.stderr.flush()
-                    phases_ms["cache_preload"] = _elapsed_ms(phase_started)
+                    with _serialized_index_preload_context(getattr(config, "index_path", None)):
+                        phase_started = time.perf_counter()
+                        init_phase = "index_open"
+                        # Force a harmless schema read now so index failures are
+                        # attributed during readiness rather than the first query.
+                        pipeline.index.embedding_status()
+                        phases_ms["index_open"] = _elapsed_ms(phase_started)
+                        phase_started = time.perf_counter()
+                        # OPT-RAGV2-PYLOOPS V2-A: warm the numpy dense matrix cache
+                        # now so the first ("cold") query does not pay the ~90s
+                        # first-load inside its query timeout. A preload failure
+                        # never fails init: the lazy query-time load still applies.
+                        init_phase = "cache_preload"
+                        try:
+                            dense_chunks, dense_ms = (
+                                pipeline.index.preload_dense_matrix_cache()
+                            )
+                            sparse_chunks, sparse_ms = (
+                                pipeline.index.preload_sparse_vector_cache()
+                            )
+                            lexical_chunks, lexical_ms = (
+                                pipeline.index.preload_lexical_structures()
+                            )
+                            phases_ms["dense_preload"] = round(dense_ms, 1)
+                            phases_ms["sparse_preload"] = round(sparse_ms, 1)
+                            phases_ms["lexical_preload"] = round(lexical_ms, 1)
+                            print(
+                                "bge_worker_stage "
+                                f"dense_preload_chunks={dense_chunks} "
+                                f"dense_preload_ms={dense_ms:.1f} "
+                                f"sparse_preload_chunks={sparse_chunks} "
+                                f"sparse_preload_ms={sparse_ms:.1f} "
+                                f"lexical_preload_chunks={lexical_chunks} "
+                                f"lexical_preload_ms={lexical_ms:.1f}",
+                                file=sys.stderr,
+                                flush=True,
+                            )
+                        except Exception:
+                            traceback.print_exc(file=sys.stderr)
+                            sys.stderr.flush()
+                        phases_ms["cache_preload"] = _elapsed_ms(phase_started)
                 except Exception:
                     traceback.print_exc(file=sys.stderr)
                     sys.stderr.flush()

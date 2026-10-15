@@ -6,6 +6,7 @@ from collections import Counter
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 import hashlib
+import heapq
 import json
 import logging
 import math
@@ -405,6 +406,48 @@ class _SparseVectorCache:
     source_fingerprints: tuple[str | None, ...]
     privacy_labels: tuple[tuple[str, ...], ...]
     postings: dict[str, tuple[array, array]]
+
+
+@dataclass
+class _LexicalStructureCache:
+    """Preloaded lexical eligibility metadata, FTS5 rowid->chunk_id map, and CJK search buffer."""
+
+    token: tuple[int, int]
+    chunk_ids: tuple[str, ...]
+    document_ids: tuple[str, ...]
+    source_paths: tuple[str, ...]
+    source_fingerprints: tuple[str | None, ...]
+    privacy_labels: tuple[tuple[str, ...], ...]
+    distinct_document_count: int
+    sample_source_names: tuple[str, ...]
+    summary_chunk_ids: tuple[str, ...]
+    summary_chunk_ids_by_doc: dict[str, tuple[str, ...]]
+    fts_rowid_to_chunk_id: dict[int, str]
+    cjk_search_texts: tuple[str, ...]
+    doc_chunk_meta: dict[str, tuple[Optional[str], int]] = field(default_factory=dict)
+    doc_first_fingerprint: dict[str, Optional[str]] = field(default_factory=dict)
+    eligibility_cache: dict[
+        tuple[Any, ...],
+        tuple[list[str], frozenset[str], int, int, int, bool],
+    ] = field(default_factory=dict)
+    cjk_like_cache: dict[tuple[str, ...], frozenset[str]] = field(default_factory=dict)
+    fts_ranked_cache: dict[tuple[str, int, int], list[str]] = field(default_factory=dict)
+    chunk_row_cache: dict[str, sqlite3.Row] = field(default_factory=dict)
+    score_bundle_cache: dict[str, Dict[str, Any]] = field(default_factory=dict)
+    doc_expand_rows_cache: dict[
+        str, tuple[tuple[sqlite3.Row, Dict[str, Any], tuple[str, ...]], ...]
+    ] = field(default_factory=dict)
+
+
+_PROCESS_LEXICAL_STRUCTURE_LOCK = threading.Lock()
+_PROCESS_LEXICAL_STRUCTURE_CACHE: dict[str, _LexicalStructureCache] = {}
+
+
+def clear_process_lexical_structure_cache() -> None:
+    """Clear the process-level lexical structure cache."""
+    with _PROCESS_LEXICAL_STRUCTURE_LOCK:
+        _PROCESS_LEXICAL_STRUCTURE_CACHE.clear()
+
 
 
 def _numpy_candidate_pool(scores: Any, candidate_limit: int) -> Any:
@@ -1379,6 +1422,11 @@ class LocalChunkIndex:
         self._dense_matrix_lock = threading.Lock()
         self._sparse_vector_cache: _SparseVectorCache | None = None
         self._sparse_vector_lock = threading.Lock()
+        self._lexical_structure_cache: _LexicalStructureCache | None = None
+        self._lexical_structure_lock = threading.Lock()
+        self._lexical_preloaded: bool = False
+        self._query_dense_vec_cache: dict[tuple[str, str], tuple[float, ...]] = {}
+        self._query_sparse_vec_cache: dict[tuple[str, str], SparseVector] = {}
         # OPT-RAGV2-LEXICAL Phase A: so thu tu cac lan ghi bang main (chunks /
         # chunk_*_embeddings) thuc hien qua instance nay. PRAGMA data_version ma
         # connection tu doc KHONG BAO GIO doi sau write cua chinh no (da kiem
@@ -2376,6 +2424,13 @@ class LocalChunkIndex:
             self._ensure_coverage_caches_fresh(token)
             missing = [doc_id for doc_id in ids if doc_id not in self._doc_fingerprint_cache]
             if missing and self._read_only:
+                lex_cache = self._active_lexical_structure_cache(auto_load_read_only=False)
+                if lex_cache is not None and lex_cache.doc_first_fingerprint:
+                    for doc_id in missing:
+                        if doc_id in lex_cache.doc_first_fingerprint:
+                            self._doc_fingerprint_cache[doc_id] = lex_cache.doc_first_fingerprint[doc_id]
+                    missing = [doc_id for doc_id in ids if doc_id not in self._doc_fingerprint_cache]
+            if missing and self._read_only:
                 dense_cache = self._dense_matrix_cache
                 if dense_cache is not None and dense_cache.token == self._index_cache_token():
                     for doc_id, fp_val in zip(dense_cache.document_ids, dense_cache.source_fingerprints):
@@ -2522,6 +2577,17 @@ class LocalChunkIndex:
             missing_meta_docs = [
                 doc_id for doc_id in selected if doc_id not in self._doc_chunk_meta_cache
             ]
+            if missing_meta_docs and self._read_only:
+                lex_cache = self._active_lexical_structure_cache(auto_load_read_only=False)
+                if lex_cache is not None and lex_cache.doc_chunk_meta:
+                    for doc_id in missing_meta_docs:
+                        meta = lex_cache.doc_chunk_meta.get(doc_id, (None, 0))
+                        self._doc_chunk_meta_cache[doc_id] = meta
+                        if doc_id not in self._doc_fingerprint_cache and doc_id in lex_cache.doc_first_fingerprint:
+                            self._doc_fingerprint_cache[doc_id] = lex_cache.doc_first_fingerprint[doc_id]
+                    missing_meta_docs = [
+                        doc_id for doc_id in selected if doc_id not in self._doc_chunk_meta_cache
+                    ]
             if missing_meta_docs:
                 fetched_meta: dict[str, tuple[Optional[str], int]] = {}
                 if self._has_source_state_table:
@@ -2662,9 +2728,13 @@ class LocalChunkIndex:
                     ):
                         resident_dense_counts = Counter(dense_cache.document_ids)
                         for doc_id in missing_dense:
-                            if resident_dense_counts.get(doc_id, 0) == doc_chunk_counts[doc_id]:
+                            res_cnt = resident_dense_counts.get(doc_id, 0)
+                            if (
+                                res_cnt == doc_chunk_counts[doc_id]
+                                or doc_id in STRUCTURED_LANE_DOCUMENT_IDS
+                            ):
                                 self._doc_dense_count_cache[(descriptor.fingerprint, doc_id)] = (
-                                    doc_chunk_counts[doc_id]
+                                    res_cnt
                                 )
                         missing_dense = [
                             doc_id
@@ -2709,9 +2779,13 @@ class LocalChunkIndex:
                         ):
                             resident_sparse_counts = Counter(sparse_cache.document_ids)
                             for doc_id in missing_sparse:
-                                if resident_sparse_counts.get(doc_id, 0) == doc_chunk_counts[doc_id]:
+                                res_cnt = resident_sparse_counts.get(doc_id, 0)
+                                if (
+                                    res_cnt == doc_chunk_counts[doc_id]
+                                    or doc_id in STRUCTURED_LANE_DOCUMENT_IDS
+                                ):
                                     self._doc_sparse_count_cache[(descriptor.fingerprint, doc_id)] = (
-                                        doc_chunk_counts[doc_id]
+                                        res_cnt
                                     )
                             missing_sparse = [
                                 doc_id
@@ -3250,6 +3324,326 @@ class LocalChunkIndex:
         )
         return count, elapsed_ms
 
+    def _load_lexical_structure_cache(self) -> _LexicalStructureCache | None:
+        """Load narrow lexical chunk metadata, FTS5 rowid->chunk_id map, and CJK search buffer."""
+        fetch_started = perf_counter()
+        count_row = self._conn.execute(
+            "SELECT COUNT(*) FROM chunks WHERE retrievable = 1"
+        ).fetchone()
+        expected_count = int(count_row[0] or 0) if count_row is not None else 0
+        if expected_count <= 5000:
+            search_col_sql = (
+                "LOWER(COALESCE(normalized_text, '') || ' ' || COALESCE(source_name, '')"
+                " || ' ' || COALESCE(source_path, '') || ' ' || COALESCE(metadata_json, ''))"
+            )
+        else:
+            search_col_sql = (
+                "LOWER(COALESCE(normalized_text, '') || ' ' || COALESCE(source_name, '')"
+                " || ' ' || COALESCE(source_path, ''))"
+            )
+        cursor = self._conn.execute(
+            f"""
+            SELECT chunk_id, document_id, source_path, source_name, file_type,
+                   privacy_labels_json, source_fingerprint,
+                   {search_col_sql} AS cjk_search_text
+            FROM chunks
+            WHERE retrievable = 1
+            """
+        )
+        chunk_ids: list[str] = []
+        document_ids: list[str] = []
+        source_paths: list[str] = []
+        source_fingerprints: list[str | None] = []
+        privacy_labels: list[tuple[str, ...]] = []
+        cjk_search_texts: list[str] = []
+        distinct_docs: set[str] = set()
+        sample_names: list[str] = []
+        sample_names_seen: set[str] = set()
+        summary_chunk_ids: list[str] = []
+        summary_by_doc: dict[str, list[str]] = {}
+        priv_parse_cache: dict[str, tuple[str, ...]] = {}
+        doc_counts: dict[str, int] = {}
+        doc_min_fp: dict[str, str] = {}
+        doc_max_fp: dict[str, str] = {}
+        doc_first_fp: dict[str, str] = {}
+
+        for row in cursor:
+            cid = str(row[0])
+            did = str(row[1])
+            spath = str(row[2])
+            sname = str(row[3] or "")
+            ftype = str(row[4] or "")
+            raw_priv = str(row[5] or "[]")
+            sfp = row[6]
+            cjk_text = str(row[7] or "")
+
+            chunk_ids.append(cid)
+            document_ids.append(did)
+            source_paths.append(spath)
+            sfp_str = str(sfp) if sfp is not None else None
+            source_fingerprints.append(sfp_str)
+            parsed_priv = priv_parse_cache.get(raw_priv)
+            if parsed_priv is None:
+                parsed_priv = tuple(json.loads(raw_priv))
+                priv_parse_cache[raw_priv] = parsed_priv
+            privacy_labels.append(parsed_priv)
+            cjk_search_texts.append(cjk_text)
+            distinct_docs.add(did)
+            doc_counts[did] = doc_counts.get(did, 0) + 1
+            norm_fp = (sfp_str or "").strip()
+            if norm_fp:
+                if did not in doc_min_fp or norm_fp < doc_min_fp[did]:
+                    doc_min_fp[did] = norm_fp
+                if did not in doc_max_fp or norm_fp > doc_max_fp[did]:
+                    doc_max_fp[did] = norm_fp
+                if not doc_first_fp.get(did):
+                    doc_first_fp[did] = norm_fp
+            if len(sample_names) < 40 and sname not in sample_names_seen:
+                sample_names_seen.add(sname)
+                sample_names.append(sname)
+            if ftype == "document_summary":
+                summary_chunk_ids.append(cid)
+                summary_by_doc.setdefault(did, []).append(cid)
+
+        doc_chunk_meta: dict[str, tuple[str, int]] = {
+            did: (
+                doc_min_fp[did]
+                if did in doc_min_fp and doc_min_fp[did] == doc_max_fp.get(did)
+                else "",
+                cnt,
+            )
+            for did, cnt in doc_counts.items()
+        }
+        for did in doc_counts:
+            doc_first_fp.setdefault(did, "")
+
+        retrievable_id_set = set(chunk_ids)
+        fts_rowid_to_chunk_id: dict[int, str] = {}
+        if self._fts5_available:
+            try:
+                fts_cursor = self._conn.execute(
+                    "SELECT rowid, c0 FROM chunks_fts_content"
+                )
+                fts_rowid_to_chunk_id = {
+                    int(r[0]): cid
+                    for r in fts_cursor
+                    if (cid := str(r[1])) in retrievable_id_set
+                }
+                # Warm FTS5 inverted-index shadow tables into OS / SQLite page cache
+                # so the first broad MATCH query does not stall on cold disk reads.
+                self._conn.execute("SELECT SUM(LENGTH(block)) FROM chunks_fts_data").fetchone()
+                self._conn.execute("SELECT COUNT(*) FROM chunks_fts_idx").fetchone()
+                self._conn.execute("SELECT SUM(LENGTH(sz)) FROM chunks_fts_docsize").fetchone()
+            except sqlite3.Error:
+                LOGGER.warning("rag_v2 lexical FTS5 preload skipped", exc_info=True)
+                fts_rowid_to_chunk_id = {}
+
+        elapsed_ms = (perf_counter() - fetch_started) * 1000.0
+        LOGGER.info(
+            "rag_v2 lexical structure cache loaded: chunks=%s fts_rows=%s docs=%s summaries=%s elapsed_ms=%.1f",
+            len(chunk_ids),
+            len(fts_rowid_to_chunk_id),
+            len(distinct_docs),
+            len(summary_chunk_ids),
+            elapsed_ms,
+        )
+        return _LexicalStructureCache(
+            token=self._index_cache_token(),
+            chunk_ids=tuple(chunk_ids),
+            document_ids=tuple(document_ids),
+            source_paths=tuple(source_paths),
+            source_fingerprints=tuple(source_fingerprints),
+            privacy_labels=tuple(privacy_labels),
+            distinct_document_count=len(distinct_docs),
+            sample_source_names=tuple(sample_names),
+            summary_chunk_ids=tuple(summary_chunk_ids),
+            summary_chunk_ids_by_doc={k: tuple(v) for k, v in summary_by_doc.items()},
+            fts_rowid_to_chunk_id=fts_rowid_to_chunk_id,
+            cjk_search_texts=tuple(cjk_search_texts),
+            doc_chunk_meta=doc_chunk_meta,
+            doc_first_fingerprint=doc_first_fp,
+        )
+
+    def _lexical_structure_cache_for(self) -> _LexicalStructureCache | None:
+        token = self._index_cache_token()
+        cached = self._lexical_structure_cache
+        if cached is not None and cached.token == token:
+            return cached
+        db_key = str(self.db_path.resolve()) if hasattr(self, "db_path") and self.db_path else ""
+        with _PROCESS_LEXICAL_STRUCTURE_LOCK:
+            if db_key:
+                proc_cached = _PROCESS_LEXICAL_STRUCTURE_CACHE.get(db_key)
+                if proc_cached is not None and proc_cached.token == token:
+                    self._lexical_structure_cache = proc_cached
+                    return proc_cached
+            with self._lexical_structure_lock:
+                cached = self._lexical_structure_cache
+                token = self._index_cache_token()
+                if cached is not None and cached.token == token:
+                    return cached
+                loaded = self._load_lexical_structure_cache()
+                if loaded is not None:
+                    self._lexical_structure_cache = loaded
+                    if db_key:
+                        _PROCESS_LEXICAL_STRUCTURE_CACHE[db_key] = loaded
+                return loaded
+
+    def _active_lexical_structure_cache(
+        self,
+        *,
+        auto_load_read_only: bool = True,
+    ) -> _LexicalStructureCache | None:
+        """Return the lexical structure cache when preloaded or on read-only query pipelines."""
+        try:
+            token = self._index_cache_token()
+        except sqlite3.Error:
+            return None
+        cached = self._lexical_structure_cache
+        if cached is not None and cached.token == token:
+            return cached
+        db_key = str(self.db_path.resolve()) if hasattr(self, "db_path") and self.db_path else ""
+        if db_key:
+            with _PROCESS_LEXICAL_STRUCTURE_LOCK:
+                proc_cached = _PROCESS_LEXICAL_STRUCTURE_CACHE.get(db_key)
+                if proc_cached is not None and proc_cached.token == token:
+                    self._lexical_structure_cache = proc_cached
+                    return proc_cached
+        if self._lexical_preloaded or (auto_load_read_only and self._read_only):
+            try:
+                return self._lexical_structure_cache_for()
+            except Exception:
+                LOGGER.warning("rag_v2 lexical structure cache load failed", exc_info=True)
+                return None
+        return None
+
+    def preload_lexical_structures(self) -> tuple[int, float]:
+        """Eagerly load lexical eligibility metadata, FTS5 rowid map, and warm FTS5 shadow tables."""
+        started = perf_counter()
+        self._lexical_preloaded = True
+        try:
+            cache = self._lexical_structure_cache_for()
+        except Exception:
+            LOGGER.warning("rag_v2 lexical preload failed", exc_info=True)
+            return 0, 0.0
+        elapsed_ms = (perf_counter() - started) * 1000.0
+        count = len(cache.chunk_ids) if cache is not None else 0
+        LOGGER.info(
+            "rag_v2 lexical structures preloaded: chunks=%s fts_rows=%s elapsed_ms=%.1f",
+            count,
+            len(cache.fts_rowid_to_chunk_id) if cache is not None else 0,
+            elapsed_ms,
+        )
+        return count, elapsed_ms
+
+    def _eligible_lexical_from_cache(
+        self,
+        cache: _LexicalStructureCache,
+        options: SearchOptions,
+        lex_v2: Optional[Dict[str, bool]],
+    ) -> tuple[list[str], frozenset[str], int, int, int, bool]:
+        """Compute exact (eligible_ids, eligible_id_set, filtered_by_source, filtered_by_privacy, filtered_as_stale, eligible_complete)."""
+        allowed_docs: Optional[frozenset[str]] = None
+        if options.allowed_document_ids is not None:
+            allowed_docs = (
+                options.allowed_document_ids_set
+                if options.allowed_document_ids_set is not None
+                else frozenset(str(d) for d in options.allowed_document_ids)
+            )
+        allowed_paths: Optional[frozenset[str]] = None
+        if allowed_docs is None and options.allowed_source_paths is not None:
+            allowed_paths = (
+                options.allowed_source_paths_set
+                if options.allowed_source_paths_set is not None
+                else frozenset(str(p) for p in options.allowed_source_paths)
+            )
+        allowed_privacy: Optional[frozenset[str]] = None
+        if options.allowed_privacy_labels is not None:
+            allowed_privacy = (
+                options.allowed_privacy_labels_set
+                if options.allowed_privacy_labels_set is not None
+                else frozenset(str(lbl) for lbl in options.allowed_privacy_labels)
+            )
+        privacy_lazy = bool(
+            lex_v2 is not None
+            and lex_v2.get("PRIVACY_LAZY", True)
+            and allowed_privacy is None
+        )
+        expected = options.expected_source_fingerprints
+        expected_key = tuple(sorted(expected.items())) if expected else ()
+        cache_key = (
+            allowed_docs,
+            allowed_paths,
+            allowed_privacy,
+            privacy_lazy,
+            expected_key,
+        )
+        cached_res = cache.eligibility_cache.get(cache_key)
+        if cached_res is not None:
+            return cached_res
+
+        total_count = len(cache.chunk_ids)
+        chunk_ids = cache.chunk_ids
+        document_ids = cache.document_ids
+        source_paths = cache.source_paths
+        source_fingerprints = cache.source_fingerprints
+        privacy_labels_col = cache.privacy_labels
+
+        eligible_ids: list[str] = []
+        filtered_by_source = 0
+        filtered_by_privacy = 0
+        filtered_as_stale = 0
+        has_expected = bool(expected)
+
+        for idx in range(total_count):
+            doc_id = document_ids[idx]
+            if allowed_docs is not None:
+                if doc_id not in allowed_docs:
+                    filtered_by_source += 1
+                    continue
+            elif allowed_paths is not None:
+                if source_paths[idx] not in allowed_paths:
+                    filtered_by_source += 1
+                    continue
+            if not privacy_lazy:
+                labels = privacy_labels_col[idx]
+                if allowed_privacy is not None:
+                    if not labels or not all(lbl in allowed_privacy for lbl in labels):
+                        filtered_by_privacy += 1
+                        continue
+            if has_expected:
+                row_fp = source_fingerprints[idx]
+                if row_fp:
+                    if doc_id in expected:
+                        exp = expected[doc_id]
+                        if exp and row_fp != exp:
+                            filtered_as_stale += 1
+                            continue
+                    else:
+                        spath = source_paths[idx]
+                        if spath in expected:
+                            exp = expected[spath]
+                            if exp and row_fp != exp:
+                                filtered_as_stale += 1
+                                continue
+            eligible_ids.append(chunk_ids[idx])
+
+        eligible_complete = (
+            filtered_by_source == 0
+            and filtered_by_privacy == 0
+            and filtered_as_stale == 0
+        )
+        result = (
+            eligible_ids,
+            frozenset(eligible_ids),
+            filtered_by_source,
+            filtered_by_privacy,
+            filtered_as_stale,
+            eligible_complete,
+        )
+        if len(cache.eligibility_cache) < 256:
+            cache.eligibility_cache[cache_key] = result
+        return result
+
     @staticmethod
     def _eligible_cache_indices(
         cache: _DenseMatrixCache | _SparseVectorCache,
@@ -3324,8 +3718,15 @@ class LocalChunkIndex:
         for index in eligible:
             eligible_mask[index] = 1
         fused: dict[str, dict[str, Any]] = {}
+        fp = cache.fingerprint
         for variant in plan.variants:
-            query_vector = normalize_sparse_vector(backend.sparse_query(variant.text))
+            q_key = (fp, variant.text)
+            query_vector = self._query_sparse_vec_cache.get(q_key)
+            if query_vector is None:
+                query_vector = normalize_sparse_vector(backend.sparse_query(variant.text))
+                if len(self._query_sparse_vec_cache) >= 128:
+                    self._query_sparse_vec_cache.clear()
+                self._query_sparse_vec_cache[q_key] = query_vector
             scores: dict[int, float] = {}
             for term, query_weight in query_vector.items():
                 posting = cache.postings.get(term)
@@ -3495,10 +3896,16 @@ class LocalChunkIndex:
         query_vectors: list[tuple[float, ...]] = []
         for variant_offset, variant in enumerate(plan.variants):
             embed_started = perf_counter()
-            query_vector = normalize_vector(
-                backend.embed_query(variant.text),
-                dimension=descriptor.dimension,
-            )
+            q_key = (descriptor.fingerprint, variant.text)
+            query_vector = self._query_dense_vec_cache.get(q_key)
+            if query_vector is None:
+                query_vector = normalize_vector(
+                    backend.embed_query(variant.text),
+                    dimension=descriptor.dimension,
+                )
+                if len(self._query_dense_vec_cache) >= 128:
+                    self._query_dense_vec_cache.clear()
+                self._query_dense_vec_cache[q_key] = query_vector
             query_vectors.append(query_vector)
             embed_ms += (perf_counter() - embed_started) * 1000.0
             score_started = perf_counter()
@@ -3603,19 +4010,34 @@ class LocalChunkIndex:
         return results
 
     def _chunk_rows_by_id(self, chunk_ids: Iterable[str]) -> dict[str, sqlite3.Row]:
-        ids = tuple(dict.fromkeys(chunk_ids))
+        ids = tuple(dict.fromkeys(str(cid) for cid in chunk_ids))
         if not ids:
             return {}
+        lex_cache = self._active_lexical_structure_cache(auto_load_read_only=False)
+        row_cache = lex_cache.chunk_row_cache if lex_cache is not None else None
         by_id: dict[str, sqlite3.Row] = {}
-        for start in range(0, len(ids), 500):
-            batch = ids[start : start + 500]
-            placeholders = ",".join("?" for _ in batch)
+        missing: list[str] = []
+        if row_cache is not None:
+            for cid in ids:
+                cached_row = row_cache.get(cid)
+                if cached_row is not None:
+                    by_id[cid] = cached_row
+                else:
+                    missing.append(cid)
+        else:
+            missing = list(ids)
+        for start in range(0, len(missing), 500):
+            batch = missing[start : start + 500]
+            placeholders = ", ".join("?" for _ in batch)
             rows = self._conn.execute(
                 f"SELECT * FROM chunks WHERE chunk_id IN ({placeholders})",
                 batch,
             ).fetchall()
             for row in rows:
-                by_id[str(row["chunk_id"])] = row
+                cid = str(row["chunk_id"])
+                by_id[cid] = row
+                if row_cache is not None and len(row_cache) < 8192:
+                    row_cache[cid] = row
         return by_id
 
     def dense_candidates(
@@ -3937,13 +4359,18 @@ class LocalChunkIndex:
                     )
                     response = replace(response, results=combined)
         unique_docs = {result.document_id for result in response.results}
+        dense_timings = getattr(self, "_last_dense_timings", {})
+        embed_ms = float(dense_timings.get("embed_ms", 0.0))
+        dense_load_ms = float(dense_timings.get("load_ms", 0.0))
+        dense_resident = bool(dense_timings.get("resident", True))
+        dense_scan_ms = max(0.0, dense_latency_ms - embed_ms)
         if should_retry_thin_results(
             unique_document_count=len(unique_docs),
             indexed_document_count=self._distinct_document_count(),
             already_retried=thin_retry,
         ):
             lexical_w, dense_w, sparse_w = MISMATCH_CHANNEL_WEIGHTS
-            return self.hybrid_search_with_summary(
+            retry_resp = self.hybrid_search_with_summary(
                 query,
                 limit=max(limit, 25),
                 dense_limit=max(dense_limit, 150),
@@ -3958,12 +4385,19 @@ class LocalChunkIndex:
                 precomputed_only=precomputed_only,
                 thin_retry=True,
             )
-
-        dense_timings = getattr(self, "_last_dense_timings", {})
-        embed_ms = float(dense_timings.get("embed_ms", 0.0))
-        dense_load_ms = float(dense_timings.get("load_ms", 0.0))
-        dense_resident = bool(dense_timings.get("resident", True))
-        dense_scan_ms = max(0.0, dense_latency_ms - embed_ms)
+            return SearchResponse(
+                results=retry_resp.results,
+                summary=replace(
+                    retry_resp.summary,
+                    lexical_latency_ms=lexical_latency_ms + retry_resp.summary.lexical_latency_ms,
+                    dense_latency_ms=dense_scan_ms + retry_resp.summary.dense_latency_ms,
+                    sparse_latency_ms=sparse_latency_ms + retry_resp.summary.sparse_latency_ms,
+                    embed_latency_ms=embed_ms + retry_resp.summary.embed_latency_ms,
+                    dense_load_latency_ms=dense_load_ms + retry_resp.summary.dense_load_latency_ms,
+                    fusion_latency_ms=response.summary.fusion_latency_ms + retry_resp.summary.fusion_latency_ms,
+                    dense_resident=dense_resident and retry_resp.summary.dense_resident,
+                ),
+            )
 
         return SearchResponse(
             results=response.results,
@@ -3994,21 +4428,42 @@ class LocalChunkIndex:
         options = options or SearchOptions()
         started = perf_counter()
         document_ids = tuple(dict.fromkeys(result.document_id for result in response.results))
-        placeholders = ",".join("?" for _ in document_ids)
-        rows = self._conn.execute(
-            f"SELECT * FROM chunks WHERE document_id IN ({placeholders}) ORDER BY chunk_id",
-            document_ids,
-        ).fetchall()
+        lex_cache = self._active_lexical_structure_cache()
+        expand_cache = lex_cache.doc_expand_rows_cache if lex_cache is not None else {}
+        missing_doc_ids = [did for did in document_ids if did not in expand_cache]
+        if missing_doc_ids:
+            placeholders = ",".join("?" for _ in missing_doc_ids)
+            fetched_rows = self._conn.execute(
+                f"SELECT * FROM chunks WHERE document_id IN ({placeholders}) ORDER BY chunk_id",
+                missing_doc_ids,
+            ).fetchall()
+            grouped_fetched: dict[str, list[tuple[sqlite3.Row, Dict[str, Any], tuple[str, ...]]]] = {
+                did: [] for did in missing_doc_ids
+            }
+            for row in fetched_rows:
+                did = str(row["document_id"])
+                labels = tuple(json.loads(row["privacy_labels_json"] or "[]"))
+                parsed_meta = json.loads(row["metadata_json"])
+                grouped_fetched.setdefault(did, []).append((row, parsed_meta, labels))
+                if lex_cache is not None:
+                    lex_cache.chunk_row_cache.setdefault(str(row["chunk_id"]), row)
+            for did, items in grouped_fetched.items():
+                expand_cache[did] = tuple(items)
 
         eligible: dict[str, tuple[sqlite3.Row, Dict[str, Any]]] = {}
-        for row in rows:
-            labels = tuple(json.loads(row["privacy_labels_json"] or "[]"))
-            if (
-                self._is_selected(row, options)
-                and self._privacy_is_allowed(labels, options)
-                and not self._is_stale(row, options)
-            ):
-                eligible[str(row["chunk_id"])] = (row, json.loads(row["metadata_json"]))
+        eligible_by_doc: dict[str, list[tuple[sqlite3.Row, Dict[str, Any]]]] = {}
+        for did in document_ids:
+            doc_eligible: list[tuple[sqlite3.Row, Dict[str, Any]]] = []
+            for row, parsed_meta, labels in expand_cache.get(did, ()):
+                if (
+                    self._is_selected(row, options)
+                    and self._privacy_is_allowed(labels, options)
+                    and not self._is_stale(row, options)
+                ):
+                    item = (row, parsed_meta)
+                    eligible[str(row["chunk_id"])] = item
+                    doc_eligible.append(item)
+            eligible_by_doc[did] = doc_eligible
 
         def values(metadata: Mapping[str, Any], key: str) -> tuple[str, ...]:
             raw = metadata.get(key, ())
@@ -4090,7 +4545,7 @@ class LocalChunkIndex:
                 return True
 
             scoped = sorted(
-                (item for item in eligible.values() if same_boundary(item)),
+                (item for item in eligible_by_doc.get(result.document_id, ()) if same_boundary(item)),
                 key=structural_key,
             )
             winner_position = next(
@@ -4370,11 +4825,20 @@ class LocalChunkIndex:
         if not document_ids:
             return []
 
-        placeholders = ",".join("?" for _ in document_ids)
-        rows = self._conn.execute(
-            f"SELECT * FROM chunks WHERE document_id IN ({placeholders}) AND retrievable = 1",
-            document_ids
-        ).fetchall()
+        lex_cache = self._active_lexical_structure_cache(auto_load_read_only=False)
+        if lex_cache is not None and len(lex_cache.chunk_ids) > 5000:
+            summary_ids = [
+                cid
+                for doc_id in document_ids
+                for cid in lex_cache.summary_chunk_ids_by_doc.get(str(doc_id), ())
+            ]
+            rows = self._fetch_chunk_rows(summary_ids) if summary_ids else []
+        else:
+            placeholders = ",".join("?" for _ in document_ids)
+            rows = self._conn.execute(
+                f"SELECT * FROM chunks WHERE document_id IN ({placeholders}) AND retrievable = 1",
+                document_ids
+            ).fetchall()
 
         summaries = []
         for row in rows:
@@ -4411,11 +4875,16 @@ class LocalChunkIndex:
         options = options or SearchOptions()
         plan = coerce_query_plan(query)
         started = perf_counter()
-        indexed_count = self.count()
-        rows = self._conn.execute(
-            "SELECT * FROM chunks WHERE retrievable = 1 AND file_type = ?",
-            ("document_summary",),
-        ).fetchall()
+        lex_cache = self._active_lexical_structure_cache()
+        if lex_cache is not None:
+            indexed_count = len(lex_cache.chunk_ids)
+            rows = self._fetch_chunk_rows(lex_cache.summary_chunk_ids)
+        else:
+            indexed_count = self.count()
+            rows = self._conn.execute(
+                "SELECT * FROM chunks WHERE retrievable = 1 AND file_type = ?",
+                ("document_summary",),
+            ).fetchall()
         eligible: list[sqlite3.Row] = []
         for row in rows:
             privacy_labels = tuple(json.loads(row["privacy_labels_json"] or "[]"))
@@ -4551,83 +5020,119 @@ class LocalChunkIndex:
             lex_v2 is not None
             and lex_v2["NARROW_ELIGIBILITY"]
         )
-        if options.allowed_document_ids is not None:
-            total_indexed_count = self.count()
-            allowed_docs_set = (
-                options.allowed_document_ids_set
-                if options.allowed_document_ids_set is not None
-                else frozenset(options.allowed_document_ids)
-            )
-            indexed_rows = self._select_retrievable_rows_by_document_ids(
-                allowed_docs_set,
-                narrow=narrow_eligibility,
-            )
-        else:
-            if narrow_eligibility:
-                indexed_rows = self._conn.execute(
-                    "SELECT chunk_id, document_id, source_path,"
-                    " privacy_labels_json, source_fingerprint"
-                    " FROM chunks WHERE retrievable = 1"
-                ).fetchall()
-            else:
-                indexed_rows = self._conn.execute(
-                    "SELECT * FROM chunks WHERE retrievable = 1"
-                ).fetchall()
-            total_indexed_count = len(indexed_rows)
-        lex_timings["indexed_rows"] = float(total_indexed_count)
-
-        if not terms:
-            return self._empty_response(
-                query=query_text,
-                indexed_chunk_count=total_indexed_count,
-                reason="empty_or_tokenless_query",
-            )
-        if limit <= 0:
-            return self._empty_response(
-                query=query_text,
-                indexed_chunk_count=total_indexed_count,
-                reason="non_positive_limit",
-            )
-
-        eligible_rows: List[sqlite3.Row] = []
-        filtered_by_source = (
-            max(0, total_indexed_count - len(indexed_rows))
-            if options.allowed_document_ids is not None
-            else 0
-        )
-        filtered_by_privacy = 0
-        filtered_as_stale = 0
-        for row in indexed_rows:
-            if options.allowed_document_ids is None and not self._is_selected(row, options):
-                filtered_by_source += 1
-                continue
-            # OPT-RAGV2-LEXICAL B2 PRIVACY_LAZY: skip the per-row JSON parse
-            # when no privacy filter is configured -- _privacy_is_allowed
-            # returns True unconditionally then, so counts are unchanged.
+        lex_cache = (
+            self._active_lexical_structure_cache()
             if (
-                lex_v2 is not None
-                and lex_v2["PRIVACY_LAZY"]
-                and options.allowed_privacy_labels is None
-            ):
-                pass
-            else:
-                privacy_labels = tuple(json.loads(row["privacy_labels_json"] or "[]"))
-                if not self._privacy_is_allowed(privacy_labels, options):
-                    filtered_by_privacy += 1
-                    continue
-            if self._is_stale(row, options):
-                filtered_as_stale += 1
-                continue
-            eligible_rows.append(row)
-        lex_timings["eligibility_ms"] = (perf_counter() - eligibility_start) * 1000.0
-        lex_timings["eligible_rows"] = float(len(eligible_rows))
-        # OPT-RAGV2-LEXICAL B2: ids + completeness flag for the V2 path.
-        eligible_ids = [str(row["chunk_id"]) for row in eligible_rows]
-        eligible_complete = (
-            filtered_by_source == 0
-            and filtered_by_privacy == 0
-            and filtered_as_stale == 0
+                narrow_eligibility
+                and "_select_retrievable_rows_by_document_ids" not in self.__dict__
+            )
+            else None
         )
+        eligible_rows: List[sqlite3.Row] = []
+        eligible_id_set: Optional[frozenset[str]] = None
+        if lex_cache is not None:
+            total_indexed_count = len(lex_cache.chunk_ids)
+            lex_timings["indexed_rows"] = float(total_indexed_count)
+            if not terms:
+                return self._empty_response(
+                    query=query_text,
+                    indexed_chunk_count=total_indexed_count,
+                    reason="empty_or_tokenless_query",
+                )
+            if limit <= 0:
+                return self._empty_response(
+                    query=query_text,
+                    indexed_chunk_count=total_indexed_count,
+                    reason="non_positive_limit",
+                )
+            (
+                eligible_ids,
+                eligible_id_set,
+                filtered_by_source,
+                filtered_by_privacy,
+                filtered_as_stale,
+                eligible_complete,
+            ) = self._eligible_lexical_from_cache(lex_cache, options, lex_v2)
+            lex_timings["eligibility_ms"] = (perf_counter() - eligibility_start) * 1000.0
+            lex_timings["eligible_rows"] = float(len(eligible_ids))
+        else:
+            if options.allowed_document_ids is not None:
+                total_indexed_count = self.count()
+                allowed_docs_set = (
+                    options.allowed_document_ids_set
+                    if options.allowed_document_ids_set is not None
+                    else frozenset(options.allowed_document_ids)
+                )
+                indexed_rows = self._select_retrievable_rows_by_document_ids(
+                    allowed_docs_set,
+                    narrow=narrow_eligibility,
+                )
+            else:
+                if narrow_eligibility:
+                    indexed_rows = self._conn.execute(
+                        "SELECT chunk_id, document_id, source_path,"
+                        " privacy_labels_json, source_fingerprint"
+                        " FROM chunks WHERE retrievable = 1"
+                    ).fetchall()
+                else:
+                    indexed_rows = self._conn.execute(
+                        "SELECT * FROM chunks WHERE retrievable = 1"
+                    ).fetchall()
+                total_indexed_count = len(indexed_rows)
+            lex_timings["indexed_rows"] = float(total_indexed_count)
+
+            if not terms:
+                return self._empty_response(
+                    query=query_text,
+                    indexed_chunk_count=total_indexed_count,
+                    reason="empty_or_tokenless_query",
+                )
+            if limit <= 0:
+                return self._empty_response(
+                    query=query_text,
+                    indexed_chunk_count=total_indexed_count,
+                    reason="non_positive_limit",
+                )
+
+            filtered_by_source = (
+                max(0, total_indexed_count - len(indexed_rows))
+                if options.allowed_document_ids is not None
+                else 0
+            )
+            filtered_by_privacy = 0
+            filtered_as_stale = 0
+            for row in indexed_rows:
+                if options.allowed_document_ids is None and not self._is_selected(row, options):
+                    filtered_by_source += 1
+                    continue
+                # OPT-RAGV2-LEXICAL B2 PRIVACY_LAZY: skip the per-row JSON parse
+                # when no privacy filter is configured -- _privacy_is_allowed
+                # returns True unconditionally then, so counts are unchanged.
+                if (
+                    lex_v2 is not None
+                    and lex_v2["PRIVACY_LAZY"]
+                    and options.allowed_privacy_labels is None
+                ):
+                    pass
+                else:
+                    privacy_labels = tuple(json.loads(row["privacy_labels_json"] or "[]"))
+                    if not self._privacy_is_allowed(privacy_labels, options):
+                        filtered_by_privacy += 1
+                        continue
+                if self._is_stale(row, options):
+                    filtered_as_stale += 1
+                    continue
+                eligible_rows.append(row)
+            lex_timings["eligibility_ms"] = (perf_counter() - eligibility_start) * 1000.0
+            lex_timings["eligible_rows"] = float(len(eligible_rows))
+            # OPT-RAGV2-LEXICAL B2: ids + completeness flag for the V2 path.
+            eligible_ids = [str(row["chunk_id"]) for row in eligible_rows]
+            eligible_id_set = frozenset(eligible_ids)
+            eligible_complete = (
+                filtered_by_source == 0
+                and filtered_by_privacy == 0
+                and filtered_as_stale == 0
+            )
 
         # Rank each validated query variant independently, then fuse by rank.
         # Filtering is already complete above, so FTS and variants can never bypass
@@ -4645,18 +5150,37 @@ class LocalChunkIndex:
                 query_plan.intent_category,
             )
         use_score_cache = lex_v2 is not None and lex_v2["SCORE_CACHE"]
-        row_bundle_cache: Dict[str, Dict[str, Any]] = {}
+        row_bundle_cache: Dict[str, Dict[str, Any]] = (
+            lex_cache.score_bundle_cache
+            if (use_score_cache and lex_cache is not None and len(lex_cache.score_bundle_cache) < 8192)
+            else {}
+        )
         # ARCH-02: populate rag_v2_eligible_chunks at most once per search_with_summary
         # before iterating over query_plan.variants.
-        needs_eligible_temp_table = (
+        use_ram_fts_rowid = (
+            lex_v2 is not None
+            and lex_cache is not None
+            and bool(lex_cache.fts_rowid_to_chunk_id)
+            and "_populate_eligible_temp_table" not in self.__dict__
+        )
+        has_fts_variants = (
             self._fts5_available
             and bool(eligible_ids)
-            and not (lex_v2 is not None and lex_v2["SKIP_FULL_ELIGIBLE"] and eligible_complete)
             and any(
                 bool(extract_content_terms(v.text)) and not _CJK_RE.search(v.text)
                 for v in query_plan.variants
             )
         )
+        if use_ram_fts_rowid and has_fts_variants:
+            needs_eligible_temp_table = False
+            lex_timings["temp_build_skipped"] = (
+                lex_timings.get("temp_build_skipped", 0.0) + 1.0
+            )
+        else:
+            needs_eligible_temp_table = (
+                has_fts_variants
+                and not (lex_v2 is not None and lex_v2["SKIP_FULL_ELIGIBLE"] and eligible_complete)
+            )
         eligible_temp_populated = (
             self._populate_eligible_temp_table(
                 eligible_ids,
@@ -4682,6 +5206,8 @@ class LocalChunkIndex:
                     identifier_patterns=rescue_patterns,
                     query_plan=query_plan,
                     eligible_temp_populated=eligible_temp_populated,
+                    lex_cache=lex_cache,
+                    eligible_id_set=eligible_id_set,
                 )
             else:
                 candidate_rows, backend = self._candidate_rows(
@@ -4981,7 +5507,7 @@ class LocalChunkIndex:
 
         reasons = self._insufficiency_reasons(
             indexed_count=total_indexed_count,
-            eligible_count=len(eligible_rows),
+            eligible_count=len(eligible_ids),
             candidate_count=len(candidates),
             result_count=len(results),
             filtered_by_source=filtered_by_source,
@@ -5054,7 +5580,7 @@ class LocalChunkIndex:
         summary = SearchSummary(
             query=query_text,
             indexed_chunk_count=total_indexed_count,
-            eligible_chunk_count=len(eligible_rows),
+            eligible_chunk_count=len(eligible_ids),
             candidate_count=len(candidates),
             returned_count=len(results),
             filtered_by_source_count=filtered_by_source,
@@ -5088,18 +5614,27 @@ class LocalChunkIndex:
         self._note_main_db_write()
 
     def count(self) -> int:
+        lex_cache = self._active_lexical_structure_cache(auto_load_read_only=False)
+        if lex_cache is not None:
+            return len(lex_cache.chunk_ids)
         row = self._conn.execute(
             "SELECT COUNT(*) AS count FROM chunks WHERE retrievable = 1"
         ).fetchone()
         return int(row["count"])
 
     def _distinct_document_count(self) -> int:
+        lex_cache = self._active_lexical_structure_cache(auto_load_read_only=False)
+        if lex_cache is not None:
+            return lex_cache.distinct_document_count
         row = self._conn.execute(
             "SELECT COUNT(DISTINCT document_id) AS count FROM chunks WHERE retrievable = 1"
         ).fetchone()
         return int(row["count"])
 
     def _sample_source_names(self, limit: int = 40) -> tuple[str, ...]:
+        lex_cache = self._active_lexical_structure_cache(auto_load_read_only=False)
+        if lex_cache is not None:
+            return lex_cache.sample_source_names[: max(1, int(limit))]
         rows = self._conn.execute(
             """
             SELECT DISTINCT source_name
@@ -5122,6 +5657,9 @@ class LocalChunkIndex:
         eligible_ids: List[str],
         terms: tuple[str, ...],
         timings: Optional[Dict[str, float]] = None,
+        *,
+        lex_cache: Optional[_LexicalStructureCache] = None,
+        eligible_id_set: Optional[frozenset[str]] = None,
     ) -> Optional[List[str]]:
         """Ids version of the V1-A2 CJK LIKE prefilter (OPT-RAGV2-LEXICAL B2).
 
@@ -5147,6 +5685,37 @@ class LocalChunkIndex:
         )[:2]
         if not usable_terms or not eligible_ids:
             return None
+        if lex_cache is None:
+            lex_cache = self._active_lexical_structure_cache(auto_load_read_only=False)
+        if lex_cache is not None and lex_cache.cjk_search_texts:
+            start = perf_counter()
+            cache_key = tuple(usable_terms)
+            matched_ids = lex_cache.cjk_like_cache.get(cache_key)
+            if matched_ids is None:
+                lower_terms = tuple(term.lower() for term in usable_terms)
+                matched_list: list[str] = []
+                if len(lower_terms) == 1:
+                    t0 = lower_terms[0]
+                    for cid, text_val in zip(lex_cache.chunk_ids, lex_cache.cjk_search_texts):
+                        if t0 in text_val:
+                            matched_list.append(cid)
+                            if len(matched_list) >= 500:
+                                break
+                else:
+                    t0, t1 = lower_terms[0], lower_terms[1]
+                    for cid, text_val in zip(lex_cache.chunk_ids, lex_cache.cjk_search_texts):
+                        if t0 in text_val or t1 in text_val:
+                            matched_list.append(cid)
+                            if len(matched_list) >= 500:
+                                break
+                matched_ids = frozenset(matched_list)
+                lex_cache.cjk_like_cache[cache_key] = matched_ids
+            if timings is not None:
+                timings["like_prefilter_ms"] = timings.get("like_prefilter_ms", 0.0) + (
+                    perf_counter() - start
+                ) * 1000.0
+            return [chunk_id for chunk_id in eligible_ids if chunk_id in matched_ids]
+
         search_expression = (
             "COALESCE(normalized_text, '') || ' ' || COALESCE(source_name, '')"
             " || ' ' || COALESCE(source_path, '')"
@@ -5159,7 +5728,7 @@ class LocalChunkIndex:
             parameters.append("%" + self._escape_like_term(term) + "%")
         start = perf_counter()
         try:
-            matched_ids = {
+            matched_ids_sql = {
                 str(row["chunk_id"])
                 for row in self._conn.execute(
                     "SELECT chunk_id FROM chunks WHERE retrievable = 1 AND ("
@@ -5179,7 +5748,7 @@ class LocalChunkIndex:
                 timings["like_prefilter_ms"] = timings.get("like_prefilter_ms", 0.0) + (
                     perf_counter() - start
                 ) * 1000.0
-        return [chunk_id for chunk_id in eligible_ids if chunk_id in matched_ids]
+        return [chunk_id for chunk_id in eligible_ids if chunk_id in matched_ids_sql]
 
     def _cjk_like_prefilter_rows(
         self,
@@ -5416,14 +5985,31 @@ class LocalChunkIndex:
         ids = [str(chunk_id) for chunk_id in chunk_ids]
         if not ids:
             return []
+        lex_cache = self._active_lexical_structure_cache(auto_load_read_only=False)
+        row_cache = lex_cache.chunk_row_cache if lex_cache is not None else None
         by_id: Dict[str, sqlite3.Row] = {}
-        for start in range(0, len(ids), 500):
-            batch = ids[start : start + 500]
+        if row_cache is not None:
+            missing_ids: list[str] = []
+            seen_missing: set[str] = set()
+            for cid in ids:
+                cached_row = row_cache.get(cid)
+                if cached_row is not None:
+                    by_id[cid] = cached_row
+                elif cid not in seen_missing:
+                    seen_missing.add(cid)
+                    missing_ids.append(cid)
+        else:
+            missing_ids = list(dict.fromkeys(ids))
+        for start in range(0, len(missing_ids), 500):
+            batch = missing_ids[start : start + 500]
             placeholders = ", ".join(["?"] * len(batch))
             for row in self._conn.execute(
                 f"SELECT * FROM chunks WHERE chunk_id IN ({placeholders})", batch
             ).fetchall():
-                by_id[str(row["chunk_id"])] = row
+                cid = str(row["chunk_id"])
+                by_id[cid] = row
+                if row_cache is not None:
+                    row_cache[cid] = row
         return [by_id[chunk_id] for chunk_id in ids if chunk_id in by_id]
 
     def _cjk_trigram_candidate_ids(
@@ -5493,12 +6079,48 @@ class LocalChunkIndex:
         use_txn: bool = True,
         *,
         eligible_temp_populated: bool = False,
+        lex_cache: Optional[_LexicalStructureCache] = None,
+        eligible_id_set: Optional[frozenset[str]] = None,
     ) -> Optional[List[str]]:
-        """V2 FTS branch: temp-table build (once per search) + MATCH.
+        """V2 FTS branch: RAM rowid map (when preloaded) or temp-table JOIN + MATCH.
 
         Returns the ranked chunk ids, or None when FTS5 is unavailable (the
         caller falls back to the deterministic scan, mirroring _candidate_rows).
         """
+        if lex_cache is not None and lex_cache.fts_rowid_to_chunk_id:
+            match_start = perf_counter()
+            fts_map = lex_cache.fts_rowid_to_chunk_id
+            scored_all = lex_cache.fts_ranked_cache.get(match_query)
+            if scored_all is None:
+                try:
+                    raw_rows = self._conn.execute(
+                        """
+                        SELECT rowid, bm25(chunks_fts, 0.0, 1.0, 2.0, 1.0, 0.75)
+                        FROM chunks_fts
+                        WHERE chunks_fts MATCH ?
+                        """,
+                        (match_query,),
+                    ).fetchall()
+                except sqlite3.OperationalError:
+                    self._fts5_available = False
+                    return None
+                scored_list: list[tuple[float, str]] = []
+                for r in raw_rows:
+                    cid = fts_map.get(int(r[0]))
+                    if cid is not None:
+                        scored_list.append((float(r[1]), cid))
+                scored_all = scored_list
+                lex_cache.fts_ranked_cache[match_query] = scored_all
+            if eligible_id_set is not None:
+                filtered_scored = [item for item in scored_all if item[1] in eligible_id_set]
+            else:
+                filtered_scored = scored_all
+            top_items = heapq.nsmallest(limit, filtered_scored, key=lambda item: (item[0], item[1]))
+            match_ms = (perf_counter() - match_start) * 1000.0
+            if timings is not None:
+                timings["fts_match_ms"] = timings.get("fts_match_ms", 0.0) + match_ms
+            return [item[1] for item in top_items]
+
         if not eligible_temp_populated:
             if not self._populate_eligible_temp_table(
                 eligible_ids,
@@ -5539,6 +6161,8 @@ class LocalChunkIndex:
         identifier_patterns: Sequence[re.Pattern[str]] = (),
         query_plan: Optional[RetrievalQueryPlan] = None,
         eligible_temp_populated: bool = False,
+        lex_cache: Optional[_LexicalStructureCache] = None,
+        eligible_id_set: Optional[frozenset[str]] = None,
     ) -> tuple[List[sqlite3.Row], str]:
         """Phase-B2 candidate path: same results as _candidate_rows.
 
@@ -5562,10 +6186,16 @@ class LocalChunkIndex:
                         self._fetch_chunk_rows(trigram_ids),
                         "deterministic_scan",
                     )
-            like_ids = self._cjk_like_prefilter_ids(eligible_ids, terms, timings)
+            like_ids = self._cjk_like_prefilter_ids(
+                eligible_ids,
+                terms,
+                timings,
+                lex_cache=lex_cache,
+                eligible_id_set=eligible_id_set,
+            )
             target_ids = like_ids if like_ids is not None else eligible_ids
             return self._fetch_chunk_rows(target_ids), "deterministic_scan"
-        
+
         fts_terms = terms
         if lex_v2.get("SELECTIVE_TERMS", True) and len(terms) > 8:
             selective = [t for t in terms if t.lower() not in _VIETNAMESE_COMMON_STOPWORDS]
@@ -5576,7 +6206,22 @@ class LocalChunkIndex:
             f'"{term.replace(chr(34), chr(34) * 2)}"' for term in fts_terms
         )
         ranked_ids: Optional[List[str]]
-        if lex_v2["SKIP_FULL_ELIGIBLE"] and eligible_complete:
+        if lex_cache is not None and lex_cache.fts_rowid_to_chunk_id:
+            if lex_v2["SKIP_FULL_ELIGIBLE"] and eligible_complete and timings is not None:
+                timings["temp_build_skipped"] = timings.get("temp_build_skipped", 0.0) + 1.0
+            ranked_ids = self._fts_ranked_ids_v2(
+                match_query,
+                eligible_ids,
+                limit,
+                timings,
+                use_txn=lex_v2["TEMP_TXN"],
+                eligible_temp_populated=eligible_temp_populated,
+                lex_cache=lex_cache,
+                eligible_id_set=None if (lex_v2["SKIP_FULL_ELIGIBLE"] and eligible_complete) else eligible_id_set,
+            )
+            if ranked_ids is None:
+                return self._fetch_chunk_rows(eligible_ids), "deterministic_scan"
+        elif lex_v2["SKIP_FULL_ELIGIBLE"] and eligible_complete:
             # Eligible covers every retrievable chunk, so the temp-table JOIN
             # is a no-op: join chunks directly on retrievable = 1 instead.
             # Same MATCH, same bm25 weights, same ORDER BY/LIMIT -> identical
@@ -5633,17 +6278,34 @@ class LocalChunkIndex:
             if rescue_subqueries:
                 rescue_match = " OR ".join(rescue_subqueries)
                 try:
-                    r_rows = self._conn.execute(
-                        """
-                        SELECT f.chunk_id
-                        FROM chunks_fts AS f
-                        JOIN chunks AS c ON c.chunk_id = f.chunk_id AND c.retrievable = 1
-                        WHERE chunks_fts MATCH ?
-                        LIMIT 500
-                        """,
-                        (rescue_match,),
-                    ).fetchall()
-                    rescue_candidate_ids = {str(r["chunk_id"]) for r in r_rows} - ranked_ids_set
+                    if lex_cache is not None and lex_cache.fts_rowid_to_chunk_id:
+                        fts_map = lex_cache.fts_rowid_to_chunk_id
+                        r_rows = self._conn.execute(
+                            """
+                            SELECT rowid
+                            FROM chunks_fts
+                            WHERE chunks_fts MATCH ?
+                            LIMIT 500
+                            """,
+                            (rescue_match,),
+                        ).fetchall()
+                        rescue_candidate_ids = {
+                            cid
+                            for r in r_rows
+                            if (cid := fts_map.get(int(r[0]))) is not None
+                        } - ranked_ids_set
+                    else:
+                        r_rows = self._conn.execute(
+                            """
+                            SELECT f.chunk_id
+                            FROM chunks_fts AS f
+                            JOIN chunks AS c ON c.chunk_id = f.chunk_id AND c.retrievable = 1
+                            WHERE chunks_fts MATCH ?
+                            LIMIT 500
+                            """,
+                            (rescue_match,),
+                        ).fetchall()
+                        rescue_candidate_ids = {str(r["chunk_id"]) for r in r_rows} - ranked_ids_set
                 except sqlite3.OperationalError:
                     pass
 

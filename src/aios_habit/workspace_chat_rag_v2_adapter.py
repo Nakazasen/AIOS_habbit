@@ -916,21 +916,31 @@ def _select_semantic_candidate_sources(
     return tuple(item[2] for item in ranked if item[0] == best_score)[:limit]
 
 
+_BRIDGE_UNAVAILABLE_UNTIL: float = 0.0
+
+
 def _maybe_expand_latin_query_for_cjk_corpus(
     question: str,
     sources: Tuple[WorkspaceAIContextSource, ...],
 ) -> Optional[Mapping[str, Any]]:
     """Question-only CJK expansion. Skips when Gemini Web is not already up."""
+    global _BRIDGE_UNAVAILABLE_UNTIL
+    if os.environ.get("AIOS_AI_BACKEND", "").strip().lower() == "local":
+        return None
     corpus_texts = tuple(
         f"{source.title}\n{(source.text or '')[:160]}" for source in sources[:80]
     )
     if not corpus_needs_cjk_query_expansion(question, corpus_texts):
+        return None
+    now = time.monotonic()
+    if now < _BRIDGE_UNAVAILABLE_UNTIL:
         return None
     try:
         from aios_habit.antigravity_bridge import get_antigravity_bridge_health
 
         health = get_antigravity_bridge_health()
         if not health.is_direct_ready:
+            _BRIDGE_UNAVAILABLE_UNTIL = time.monotonic() + 10.0
             return None
         return expand_question_for_corpus_script(
             question,
@@ -938,6 +948,7 @@ def _maybe_expand_latin_query_for_cjk_corpus(
             gemini_ready=True,
         )
     except Exception:
+        _BRIDGE_UNAVAILABLE_UNTIL = time.monotonic() + 10.0
         LOGGER.debug("CJK query expansion skipped", exc_info=True)
         return None
 
@@ -1012,14 +1023,10 @@ _SPARSE_COVERAGE_SQL = """SELECT COUNT(DISTINCT c.chunk_id)
      AND d.model_id = 'BAAI/bge-m3' AND d.model_revision = ?
      AND d.model_fingerprint = ?"""
 
-# Short-lived cache for the expensive per-source coverage check. One user
-# question re-enters this gate several times (status scan + readiness check
-# + pre-query check); without caching each pass re-runs the SQLite queries.
-# TTL 60 s: short enough that a source becoming ready (or unready) is picked
-# up by the next question, long enough to collapse repeated calls within one
-# question. Fail-closed: only successful lookups are cached; exceptions are
-# never cached and still return False.
-_COVERAGE_CACHE_TTL_SECONDS = 60.0
+# Session-scoped cache for the per-source coverage check, invalidated whenever
+# the SQLite index file's (mtime_ns, size) changes on disk. Fail-closed: only
+# successful lookups are cached; exceptions are never cached and still return False.
+_COVERAGE_CACHE_TTL_SECONDS = 3600.0
 _COVERAGE_CACHE: dict[tuple[str, str, str, str], tuple[float, bool]] = {}
 _COVERAGE_CACHE_LOCK = threading.Lock()
 
@@ -1065,8 +1072,13 @@ def _durable_semantic_coverage_ready(    source: WorkspaceAIContextSource,
     if not expected_fingerprint:
         return False
     document_id = _document_id(source)
+    try:
+        st = index_path.stat()
+        index_cache_id = f"{index_path.resolve().as_posix()}@{st.st_mtime_ns}:{st.st_size}"
+    except OSError:
+        index_cache_id = index_path.resolve().as_posix()
     cache_key = (
-        index_path.resolve().as_posix(),
+        index_cache_id,
         document_id,
         config.bge_m3_model_revision,
         expected_fingerprint,
@@ -1985,14 +1997,13 @@ def ensure_workspace_chat_worker_warming(
                 pipe_config=target_pipe_config,
             )
             if (
-                not blocking
-                and target_pipe_config is not None
+                target_pipe_config is not None
                 and getattr(target_pipe_config, "index_path", None)
                 and Path(target_pipe_config.index_path).is_file()
             ):
                 with _USER_RETRIEVAL_PRIORITY_LOCK:
                     no_active_user = _ACTIVE_USER_RETRIEVAL_COUNT <= 0
-                if no_active_user:
+                if no_active_user or blocking:
                     try:
                         from aios_habit import index_domain
 
@@ -3624,6 +3635,8 @@ def _map_serialized_query_result(
         "degraded": degraded,
         "degraded_reason": degraded_reason,
         "rerank_latency_ms": float(summary_dict.get("rerank_latency_ms", 0.0) or routing.get("rerank_latency_ms", 0.0) or 0.0),
+        "lexical_latency_ms": float(summary_dict.get("lexical_latency_ms", 0.0) or 0.0),
+        "context_expansion_latency_ms": float(summary_dict.get("context_expansion_latency_ms", 0.0) or 0.0),
         "dense_latency_ms": float(summary_dict.get("dense_latency_ms", 0.0) or 0.0),
         "sparse_latency_ms": float(summary_dict.get("sparse_latency_ms", 0.0) or 0.0),
         "fusion_latency_ms": float(summary_dict.get("fusion_latency_ms", 0.0) or 0.0),
@@ -4218,13 +4231,16 @@ def _run_profile(
     domain_collection_id: str | None = None,
 ) -> dict[str, Any]:
     started = time.perf_counter()
-    statuses = get_workspace_chat_source_preparation_status(tuple(sources), config=config)
-    ready_subset = tuple(
-        s for s in sources
-        if statuses.get(f"{s.source_scope}:{s.source_id}") == _PREPARATION_READY_STATE
-    )
-    if ready_subset:
-        sources = ready_subset
+    from aios_habit.rag_v2.pipeline import SourceSpec
+    if any(not isinstance(s, SourceSpec) for s in sources):
+        statuses = get_workspace_chat_source_preparation_status(tuple(sources), config=config)
+        ready_subset = tuple(
+            s for s in sources
+            if isinstance(s, SourceSpec)
+            or statuses.get(f"{s.source_scope}:{s.source_id}") == _PREPARATION_READY_STATE
+        )
+        if ready_subset:
+            sources = ready_subset
 
     pipe_config = _pipeline_config(
         config,
@@ -4239,7 +4255,6 @@ def _run_profile(
         # source-based collection resolution applies.
         collection_id=domain_collection_id or _collection_id_for_sources(sources),
     )
-    from aios_habit.rag_v2.pipeline import SourceSpec
     rag_specs = []
     rag_originals = {}
     regular_sources = []
@@ -4381,6 +4396,8 @@ def _run_profile(
     embed_ms = float(summary_dict.get("embed_latency_ms", 0.0) or 0.0)
     embed_wait_ms = float(summary_dict.get("embed_wait_ms", 0.0) or 0.0)
     embed_compute_ms = float(summary_dict.get("embed_compute_ms", embed_ms) or embed_ms)
+    lexical_ms = float(summary_dict.get("lexical_latency_ms", 0.0) or 0.0)
+    context_expand_ms = float(summary_dict.get("context_expansion_latency_ms", 0.0) or 0.0)
     dense_ms = float(summary_dict.get("dense_latency_ms", 0.0) or 0.0)
     sparse_ms = float(summary_dict.get("sparse_latency_ms", 0.0) or 0.0)
     fuse_ms = float(summary_dict.get("fusion_latency_ms", 0.0) or 0.0)
@@ -4393,13 +4410,17 @@ def _run_profile(
     if isinstance(mapped.get("rag_v2_canary"), dict):
         mapped["rag_v2_canary"]["pipe_wait_ms"] = round(pipe_wait_ms, 2)
         mapped["rag_v2_canary"]["coverage_verify_ms"] = round(coverage_verify_ms, 2)
+        mapped["rag_v2_canary"]["lexical_latency_ms"] = round(lexical_ms, 2)
+        mapped["rag_v2_canary"]["context_expansion_latency_ms"] = round(context_expand_ms, 2)
 
     marker_msg = (
         f"[RETRIEVAL_MICRO_TIMING] collection={target_collection} "
         f"pipe_wait_ms={pipe_wait_ms:.2f} "
         f"coverage_verify_ms={coverage_verify_ms:.2f} "
+        f"lexical_ms={lexical_ms:.2f} "
         f"embed_ms={embed_ms:.2f} embed_wait_ms={embed_wait_ms:.2f} embed_compute_ms={embed_compute_ms:.2f} "
         f"dense_ms={dense_ms:.2f} sparse_ms={sparse_ms:.2f} fuse_ms={fuse_ms:.2f} "
+        f"context_expand_ms={context_expand_ms:.2f} "
         f"dense_resident={dense_resident} dense_state={resident_str} "
         f"dense_load_ms={dense_load_ms:.2f} timestamp={timestamp}"
     )
@@ -4537,7 +4558,13 @@ def _try_structured_excel_evidence(
 
     if not query_might_be_structured_excel(question):
         return None
-    for source in sources:
+    excel_sources = tuple(s for s in sources if _managed_workbook_path(s) is not None)
+    if len(excel_sources) > 3:
+        scope = select_workspace_chat_preparation_scope(question, excel_sources, limit=3)
+        if not scope.bounded or not scope.sources:
+            return None
+        excel_sources = scope.sources
+    for source in excel_sources:
         path = _managed_workbook_path(source)
         if path is None:
             continue
@@ -5217,13 +5244,17 @@ def close_workspace_chat_rag_v2_runtimes(*, timeout_s: float | None = 10.0) -> N
             _BACKGROUND_WARM_EXECUTOR = None
 
     with _PREPARATION_LOCK:
-        if _PREPARATION_EXECUTOR is not None:
-            try:
-                _PREPARATION_EXECUTOR.shutdown(wait=True)
-            except Exception:
-                pass
-            _PREPARATION_EXECUTOR = None
+        prep_executor = _PREPARATION_EXECUTOR
+        _PREPARATION_EXECUTOR = None
+    if prep_executor is not None:
+        try:
+            prep_executor.shutdown(wait=True)
+        except Exception:
+            pass
+    with _PREPARATION_LOCK:
         _PREPARATION_REGISTRY.clear()
+    with _COVERAGE_CACHE_LOCK:
+        _COVERAGE_CACHE.clear()
 
     with _DRAIN_RUNNING_LOCK:
         _DRAIN_IS_RUNNING = False
@@ -5231,10 +5262,20 @@ def close_workspace_chat_rag_v2_runtimes(*, timeout_s: float | None = 10.0) -> N
     with _SOURCE_CACHE_LOCK:
         _SOURCE_CACHE.clear()
 
+    try:
+        _SUBPROCESS_CLIENT.close()
+    except Exception:
+        pass
+
     with _RUNTIME_CACHE_LOCK:
-        for entry in _RUNTIME_CACHE.values():
-            try:
-                entry.pipeline.close()
-            except Exception:
-                pass
+        entries = tuple(_RUNTIME_CACHE.values())
         _RUNTIME_CACHE.clear()
+    for entry in entries:
+        try:
+            with entry.lock:
+                entry.pipeline.close()
+        except Exception:
+            pass
+    _document_id.cache_clear()
+    _source_fingerprint.cache_clear()
+
