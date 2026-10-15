@@ -170,9 +170,32 @@ def calculate_source_set_hash(sources: Tuple[GatewaySource, ...]) -> str:
     content = "|".join(parts)
     return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
+_DATE_REDACT_GUARD_PATTERN = re.compile(
+    r'(?<![\w/\\])'
+    r'(?:'
+    r'\d{4}[/-]\d{1,2}[/-]\d{1,2}'
+    r'|'
+    r'\d{1,2}[/-]\d{1,2}[/-]\d{2,4}'
+    r')'
+    r'(?![\w/\\])'
+)
+
+
 def sanitize_text(text: str) -> str:
     if not text:
         return ""
+
+    # DESKTOP-EVIDENCE-DATE-REDACT-FIX-HOME:
+    # Bảo vệ các chuỗi ngày (yyyy/mm/dd, yyyy-mm-dd, dd/mm/yyyy) không bị nhận nhầm
+    # thành đường dẫn nội bộ (trước đây regex Unix path ăn nhầm phần đuôi /mm/dd).
+    preserved_dates: list[str] = []
+
+    def _preserve_date(match: re.Match[str]) -> str:
+        preserved_dates.append(match.group(0))
+        return f"__AIOS_PRESERVED_DATE_{len(preserved_dates) - 1}__"
+
+    text = _DATE_REDACT_GUARD_PATTERN.sub(_preserve_date, text)
+
     # Redact Windows paths (bao gồm cả dấu gạch chéo xuôi/ngược và khoảng trắng)
     # Ví dụ: D:\Sandbox Folder\secret.txt, C:\Users\Admin\My Documents\a.txt
     text = re.sub(r'(?i)[a-z]:\\(?:[^\\:\"\'<>\|\?\*]+(?:\\|/))*[^\\:\"\'<>\|\?\*\s]+(?:\.[a-zA-Z0-9]{2,4})?', '[REDACTED_LOCAL_PATH]', text)
@@ -180,14 +203,24 @@ def sanitize_text(text: str) -> str:
     # Tiếp tục quét các Windows path dạng C:\path\to\file nếu còn sót
     text = re.sub(r'[a-zA-Z]:\\[^\s\)\(\"\']+', '[REDACTED_LOCAL_PATH]', text)
     text = re.sub(r'[a-zA-Z]:/[^\s\)\(\"\']+', '[REDACTED_LOCAL_PATH]', text)
-    
-    # Redact Unix paths
-    text = re.sub(r'/(?:[a-zA-Z0-9_\.\-]+/)+[^\s\)\(\"\']+', '[REDACTED_LOCAL_PATH]', text)
-    
+
+    # Redact UNC paths (\\\\server\\share hoặc //server/share)
+    text = re.sub(r'(?<![\w/\\])(?:\\\\|//)[a-zA-Z0-9_\.\-]+(?:[\\/][^\s\)\(\"\'<>\|\?\*]+)+', '[REDACTED_LOCAL_PATH]', text)
+
+    # Redact User home paths (~/...)
+    text = re.sub(r'(?<![\w/\\])~[\\/][^\s\)\(\"\'<>\|\?\*]+', '[REDACTED_LOCAL_PATH]', text)
+
+    # Redact Unix paths (chặn ăn nhầm chuỗi không bắt đầu ở đầu đường dẫn)
+    text = re.sub(r'(?<![\w/\\])/(?:[a-zA-Z0-9_\.\-]+/)+[^\s\)\(\"\'<>\|\?\*]+', '[REDACTED_LOCAL_PATH]', text)
+
+    # Khôi phục các chuỗi ngày đã được bảo vệ
+    for idx, original_date in enumerate(preserved_dates):
+        text = text.replace(f"__AIOS_PRESERVED_DATE_{idx}__", original_date)
+
     # Redact API Keys / secrets (e.g. sk-..., AIza...)
     text = re.sub(r'(sk-[a-zA-Z0-9]{8,})', '[REDACTED_API_KEY]', text)
     text = re.sub(r'(AIza[a-zA-Z0-9_\-]{8,})', '[REDACTED_API_KEY]', text)
-    
+
     # Redact secret-like patterns (case-insensitive)
     text = re.sub(r'(?i)(secret|token|api_key|password|private_key|api-key|apikey)\s*[:=]\s*["\']?[a-zA-Z0-9_\-\.\+@]{8,}["\']?', r'\1=[REDACTED_SECRET]', text)
     return text
