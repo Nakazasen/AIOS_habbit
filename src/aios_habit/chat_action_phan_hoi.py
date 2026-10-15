@@ -342,6 +342,9 @@ class _ReportAction(ChatAction):
                 "thong ke danh gia",
                 "ti le danh gia",
                 "ti le goi y",
+                "xem phan hoi",
+                "xem lai phan hoi",
+                "tom tat phan hoi",
             )
         )
 
@@ -351,13 +354,26 @@ def _pct(value: float) -> str:
 
 
 def _report_handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
+    q = _squash(request.question or "")
+    if q.startswith(("xem phan hoi", "xem lai phan hoi", "tom tat phan hoi")):
+        from aios_habit.feedback_review_home import format_feedback_review_summary
+
+        summary = format_feedback_review_summary()
+        return _message(REPORT_ACTION_NAME, REPORT_TITLE, summary)
+
     db_path = resolve_db_path(request)
     if db_path is None:
-        return None
+        from aios_habit.feedback_review_home import format_feedback_review_summary
+
+        summary = format_feedback_review_summary()
+        return _message(REPORT_ACTION_NAME, REPORT_TITLE, summary)
     try:
         conn = _open_ro(db_path)
     except Exception:
-        return None
+        from aios_habit.feedback_review_home import format_feedback_review_summary
+
+        summary = format_feedback_review_summary()
+        return _message(REPORT_ACTION_NAME, REPORT_TITLE, summary)
     try:
         has = conn.execute(
             "SELECT 1 FROM sqlite_master WHERE type='table' "
@@ -451,11 +467,17 @@ def register() -> None:
         _ReportAction(
             name=REPORT_ACTION_NAME,
             title=REPORT_TITLE,
-            hints=("bao cao phan hoi",),
+            hints=(
+                "bao cao phan hoi",
+                "thong ke phan hoi",
+                "xem phan hoi",
+                "xem lai phan hoi",
+                "tom tat phan hoi",
+            ),
             handler=_report_handler,
             description=(
                 "Báo cáo vòng phản hồi: % lượt gợi ý có đánh giá (mục tiêu ≥ 80%) "
-                "và tỉ lệ đúng/một phần theo quý."
+                "và tỉ lệ đúng/một phần theo quý; tóm tắt phản hồi cục bộ và xu hướng SMA(20)."
             ),
         )
     )

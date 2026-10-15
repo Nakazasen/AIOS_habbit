@@ -478,6 +478,115 @@ def run_periodic_review(
     }
 
 
+def format_feedback_review_summary(
+    records: Sequence[Dict] | None = None,
+    *,
+    window: int = DEFAULT_WINDOW,
+    k: float = DEFAULT_K,
+    recent_limit: int = 5,
+) -> str:
+    """Tóm tắt xem lại phản hồi cho lệnh chat (DESKTOP-FEEDBACK-REVIEW-CHATCMD-HOME).
+
+    Trả về văn bản Markdown hiển thị ngay trong khung chat:
+    - Số phản hồi gần đây kèm lý do chê
+    - Tỷ lệ đạt / chê
+    - Các lý do lặp lại nhiều nhất
+    - Mức cảnh báo xu hướng theo đúng cơ chế SMA(20) đã có
+    - Đọc từ kho phản hồi cục bộ thật, nếu trống thì trả lời trung thực.
+    """
+    from aios_habit import answer_feedback
+
+    items = list(records) if records is not None else answer_feedback.iter_recent(limit=10000)
+    if not items:
+        return (
+            "### 📊 Tóm tắt phản hồi đáp án (Vòng lặp cải thiện liên tục)\n\n"
+            "Chưa có phản hồi nào trong kho lưu cục bộ."
+        )
+
+    total = len(items)
+    good = sum(1 for r in items if r.get("rating") == answer_feedback.RATING_HUU_ICH)
+    bad = sum(1 for r in items if r.get("rating") == answer_feedback.RATING_CHUA_HUU_ICH)
+    rate_good = round(good / total * 100, 1) if total else 0.0
+    rate_bad = round(bad / total * 100, 1) if total else 0.0
+
+    reasons: Dict[str, int] = {}
+    for r in items:
+        if r.get("rating") == answer_feedback.RATING_CHUA_HUU_ICH:
+            reason = str(r.get("reason", "") or "").strip()
+            if reason:
+                reasons[reason] = reasons.get(reason, 0) + 1
+    top_reasons = sorted(reasons.items(), key=lambda x: x[1], reverse=True)[:5]
+
+    daily = build_daily_rates(items)
+    span = max(1, int(window or 0))
+    factor = float(k)
+
+    cau_alerts: List[Tuple[str, Dict[str, object]]] = []
+    for key, rows in daily.get("theo_cau", {}).items():
+        rates = [float(r.get("ti_le_che", 0.0) or 0.0) for r in rows]
+        res = analyze_series(rates, span, factor)
+        if res.get("canh_bao_xu_huong"):
+            cau_alerts.append((key, res))
+
+    chu_de_alerts: List[Tuple[str, Dict[str, object]]] = []
+    for topic, rows in daily.get("theo_chu_de", {}).items():
+        rates = [float(r.get("ti_le_che", 0.0) or 0.0) for r in rows]
+        res = analyze_series(rates, span, factor)
+        if res.get("canh_bao_xu_huong"):
+            chu_de_alerts.append((topic, res))
+
+    lines: List[str] = [
+        "### 📊 Tóm tắt phản hồi đáp án (Vòng lặp cải thiện liên tục)",
+        "",
+        f"- **Tổng số phản hồi:** {total} lượt ({good} đạt / {bad} chê)",
+        f"- **Tỷ lệ đạt / chê:** {rate_good}% đạt · {rate_bad}% chê",
+        "",
+        "#### 🔍 Các lý do chê lặp lại nhiều nhất",
+    ]
+
+    if top_reasons:
+        for reason, count in top_reasons:
+            lines.append(f"- **{reason}**: {count} lần")
+    else:
+        lines.append("- _Chưa có phản hồi chê nào._")
+
+    lines.append("")
+    lines.append("#### 📈 Mức cảnh báo xu hướng SMA(20)")
+    if cau_alerts or chu_de_alerts:
+        for key, res in cau_alerts:
+            q_name = str(daily.get("ten_cau_hoi", {}).get(key, key))[:80]
+            lines.append(
+                f"- ⚠️ Cảnh báo câu: `{q_name}` (SMA={float(res.get('sma', 0.0)):.3f}, sigma={float(res.get('sigma', 0.0)):.3f})"
+            )
+        for topic, res in chu_de_alerts:
+            lines.append(
+                f"- ⚠️ Cảnh báo chủ đề: `{topic}` (SMA={float(res.get('sma', 0.0)):.3f}, sigma={float(res.get('sigma', 0.0)):.3f})"
+            )
+    else:
+        lines.append(
+            "- ✅ **Ổn định:** Không có cảnh báo xu hướng bất thường theo cơ chế SMA(20) "
+            "(các điểm chê đơn lẻ không kích hoạt cảnh báo)."
+        )
+
+    do_dai_max = max((len(r) for r in daily.get("theo_cau", {}).values()), default=0)
+    if do_dai_max < span:
+        lines.append(
+            f"- _Ghi chú dữ liệu:_ Chuỗi dài nhất hiện tại {do_dai_max} ngày "
+            f"(sơ bộ, chưa đủ cửa sổ {span} ngày)."
+        )
+
+    lines.append("")
+    lines.append("#### 🕒 Phản hồi gần đây")
+    limit_show = min(len(items), max(1, recent_limit))
+    for idx, r in enumerate(reversed(items[-limit_show:]), start=1):
+        danh_gia = "✅ Đạt" if r.get("rating") == answer_feedback.RATING_HUU_ICH else "⚠️ Chê"
+        q = str(r.get("question", "")).replace("\n", " ").strip()[:60]
+        ly_do = f" — Lý do: *{r.get('reason')}*" if r.get("reason") else ""
+        lines.append(f"{idx}. [{danh_gia}] `{q}`{ly_do}")
+
+    return "\n".join(lines)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Chay vong xem lai dinh ky SMA(20) (chi khi duoc goi).",

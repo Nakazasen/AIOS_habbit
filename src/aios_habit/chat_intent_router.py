@@ -17,6 +17,7 @@ from typing import Dict, Optional, Tuple
 # Recognized intents. "hoi_tai_lieu" is the default fallback.
 CANH_BAO_NGUONG = "canh_bao_nguong"      # threshold alert request
 XU_HUONG_LOG_TINH = "xu_huong_log_tinh"  # static log SMA trend analysis request
+XEM_PHAN_HOI = "xem_phan_hoi"            # feedback review summary request (DESKTOP-FEEDBACK-REVIEW-CHATCMD-HOME)
 VE_BIEU_DO = "ve_bieu_do"                # chart request (runs the JIG chart branch)
 XEM_TIEN_DO_VU = "xem_tien_do_vu"        # view progress of active case
 LAP_CAY_4M_VU = "lap_cay_4m_vu"          # build 4M + Why-Why tree for active case
@@ -32,6 +33,7 @@ DU_LIEU_DAN = "du_lieu_dan"              # pasted CSV/log block in the message
 TAT_CA_Y_DINH = (
     CANH_BAO_NGUONG,
     XU_HUONG_LOG_TINH,
+    XEM_PHAN_HOI,
     VE_BIEU_DO,
     XEM_TIEN_DO_VU,
     LAP_CAY_4M_VU,
@@ -54,8 +56,60 @@ def _khong_dau(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+def _la_lenh_xem_phan_hoi(clean: str, norm: str) -> bool:
+    """Kiểm tra câu chat có phải là lệnh xem phản hồi hay không.
+
+    Quy tắc (DESKTOP-FEEDBACK-REVIEW-CHATCMD-HOME Yêu cầu chất lượng (1)):
+    Lệnh không phá đường hỏi đáp thông thường - câu hỏi bình thường chứa từ khóa
+    của lệnh vẫn đi đường RAG như cũ.
+    """
+    if norm.startswith(("/xemphanhoi", "/feedback", "/phanhoi", "lenh: xem phan hoi", "cmd: feedback")):
+        return True
+    # Chứa mã lỗi máy (VD: C7620, JAM4709, F000) -> câu hỏi tra cứu, không phải lệnh
+    if re.search(r"\b(?:[cfj]\s*-?\d{3,4}|jam\s*-?\d{3,4})\b", norm, re.IGNORECASE):
+        return False
+    # Từ ngữ máy móc, kỹ thuật, nghiệp vụ RAG
+    tu_ngu_rag = (
+        "sensor", "cam bien", "nhiet do", "ap suat", "ket giay", "muc", "may in",
+        "khach hang", "ban hang", "san pham", "line", "chuyen", "tin hieu",
+        "bo mach", "motor", "dong co", "lsu", "jig", "mom", "mes", "opcenter", "dieu tra"
+    )
+    if any(t in norm for t in tu_ngu_rag):
+        return False
+    # Từ nghi vấn, hướng dẫn, quy trình tài liệu
+    tu_hoi = (
+        "la gi", "nhu the nao", "the nao", "tai sao", "o dau", "lam sao", "sao",
+        "khong?", "ra sao", "cach", "quy trinh", "huong dan", "tai lieu"
+    )
+    if any(t in norm for t in tu_hoi):
+        return False
+    # Giới từ liên kết đối tượng
+    if any(g in norm for g in ("phan hoi cua", "phan hoi ve", "phan hoi tu", "phan hoi cho")):
+        return False
+    # Độ dài câu: lệnh xem phản hồi ngắn gọn
+    if len(norm) >= 60:
+        return False
+    cum_lenh = (
+        "xem phan hoi", "xem lai phan hoi", "thong ke phan hoi", "bao cao phan hoi",
+        "tom tat phan hoi", "tong hop phan hoi", "xem danh gia phan hoi",
+        "xem cac phan hoi", "xem phan hoi gan day", "kiem tra phan hoi"
+    )
+    return any(c in norm for c in cum_lenh)
+
+
 # Priority order: specific intents first, generic ones last.
 _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
+    (
+        XEM_PHAN_HOI,
+        (
+            "xem phan hoi", "xem lai phan hoi",
+            "thong ke phan hoi", "bao cao phan hoi",
+            "tom tat phan hoi", "tong hop phan hoi",
+            "xem danh gia phan hoi", "xem cac phan hoi",
+            "xem phan hoi gan day", "kiem tra phan hoi",
+            "/xemphanhoi", "/feedback", "/phanhoi",
+        ),
+    ),
     (
         XU_HUONG_LOG_TINH,
         (
@@ -196,6 +250,8 @@ def classify_all_intents(text: str) -> list:
             continue
         if y_dinh == VE_BIEU_DO and "gui mail" in norm:
             # "bieu do gui mail" belongs to alert-config commands, not charting.
+            continue
+        if y_dinh == XEM_PHAN_HOI and not _la_lenh_xem_phan_hoi(clean, norm):
             continue
         for cum in cum_tu:
             if cum in norm:
@@ -344,6 +400,7 @@ def giai_thich_y_dinh(intent: str) -> str:
     return {
         CANH_BAO_NGUONG: "Tôi hiểu đây là yêu cầu cảnh báo ngưỡng.",
         XU_HUONG_LOG_TINH: "Tôi hiểu bạn muốn phân tích xu hướng SMA(20) trên log tĩnh.",
+        XEM_PHAN_HOI: "Tôi hiểu bạn muốn xem lại tóm tắt phản hồi đáp án.",
         VE_BIEU_DO: "Tôi hiểu bạn muốn vẽ biểu đồ.",
         XEM_TIEN_DO_VU: "Tôi hiểu bạn muốn xem tiến độ vụ điều tra.",
         LAP_CAY_4M_VU: "Tôi hiểu bạn muốn lập cây điều tra 4M và chuỗi Why-Why.",
@@ -363,6 +420,7 @@ def nhan_y_dinh(intent: str) -> str:
     return {
         CANH_BAO_NGUONG: "Cảnh báo ngưỡng",
         XU_HUONG_LOG_TINH: "Phân tích xu hướng SMA(20)",
+        XEM_PHAN_HOI: "Xem lại phản hồi",
         VE_BIEU_DO: "Vẽ biểu đồ",
         XEM_TIEN_DO_VU: "Tiến độ vụ điều tra",
         LAP_CAY_4M_VU: "Cây điều tra 4M & Why-Why",

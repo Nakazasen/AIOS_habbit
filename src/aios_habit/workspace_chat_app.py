@@ -2376,6 +2376,7 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
         TAO_SO,
         TAO_VU_DIEU_TRA,
         VE_BIEU_DO,
+        XEM_PHAN_HOI,
         XEM_TIEN_DO_VU,
         XU_HUONG_LOG_TINH,
         _khong_dau,
@@ -2488,7 +2489,13 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
                     van_ban += chart_md
             except Exception:
                 pass
-        return van_ban or None
+    if y_dinh == XEM_PHAN_HOI:
+        try:
+            from aios_habit.feedback_review_home import format_feedback_review_summary
+
+            return format_feedback_review_summary()
+        except Exception:
+            return None
     if y_dinh == XU_HUONG_LOG_TINH:
         try:
             from aios_habit.production_prediction.jig_chat_wire import (
