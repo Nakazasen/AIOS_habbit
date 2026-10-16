@@ -900,13 +900,19 @@ def _select_hybrid_results(
     def add(result: SearchResult, reason: str) -> bool:
         if result.chunk_id in selected_ids or result.chunk_id in rejected_ids:
             return False
-        document_key = result.document_id or result.source_path
+        canonical_doc_name = (
+            (result.source_name or "").strip()
+            or (Path(result.source_path).name.strip() if result.source_path else "")
+            or (result.document_id or "").strip()
+        ).casefold()
+        document_key = canonical_doc_name or result.document_id or result.source_path
         query_str = getattr(plan, "original_query", None) if plan is not None else None
         is_named_doc = bool(
             query_str
             and (
                 (result.source_name and result.source_name.lower() in query_str.lower())
                 or (result.document_id and result.document_id.lower() in query_str.lower())
+                or (canonical_doc_name and canonical_doc_name in query_str.lower())
             )
         )
         effective_doc_limit = max(per_document_limit, 5) if is_named_doc else per_document_limit
@@ -4384,19 +4390,12 @@ class LocalChunkIndex:
             (options.allowed_document_ids and len(options.allowed_document_ids) == 1)
             or (options.allowed_source_paths and len(options.allowed_source_paths) == 1)
         )
-        has_named_doc = bool(
-            re.search(
-                r'(?:wsc-[0-9a-f]{12,}|\b[\w-]+\.(?:txt|xlsx|pptx|docx|pdf|csv)\b)',
-                getattr(plan, "original_query", "") or "",
-                re.IGNORECASE,
-            )
-        )
         fuse_options = replace(
             options,
             per_document_limit=(
                 max(options.per_document_limit, 5)
-                if (is_single_doc or has_named_doc)
-                else min(options.per_document_limit, 3)
+                if is_single_doc
+                else options.per_document_limit
             ),
         )
         response = fuse_ranked_channels(

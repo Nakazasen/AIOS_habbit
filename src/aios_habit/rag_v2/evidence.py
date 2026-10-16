@@ -682,12 +682,19 @@ def build_evidence_pack(
     def add_result(result: SearchResult) -> bool:
         if result.chunk_id in selected_chunk_ids:
             return False
-        doc_count = doc_counts.get(result.document_id, 0)
+        canonical_doc_name = (
+            (result.source_name or "").strip()
+            or (Path(result.source_path).name.strip() if result.source_path else "")
+            or (result.document_id or "").strip()
+        ).casefold()
+        doc_key = canonical_doc_name or result.document_id
+        doc_count = doc_counts.get(doc_key, 0)
         is_named = bool(
             query_text
             and (
                 (result.source_name and result.source_name.lower() in query_text.lower())
                 or (result.document_id and result.document_id.lower() in query_text.lower())
+                or (canonical_doc_name and canonical_doc_name in query_text.lower())
             )
         )
         doc_limit = max(effective_per_doc_limit, 5) if is_named else effective_per_doc_limit
@@ -700,7 +707,7 @@ def build_evidence_pack(
                 result.chunk_id,
             )
             return False
-        doc_counts[result.document_id] = doc_count + 1
+        doc_counts[doc_key] = doc_count + 1
         selected_chunk_ids.add(result.chunk_id)
         selected.append(result)
         return True

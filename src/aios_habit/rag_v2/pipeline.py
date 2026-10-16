@@ -1230,7 +1230,6 @@ class RagV2DevPipeline:
             evidence_config = replace(
                 evidence_config,
                 max_items=max(evidence_config.max_items, 15),
-                per_document_limit=max(evidence_config.per_document_limit, 5),
             )
 
         if summary_first and plan.retrieval_mode == "overview":

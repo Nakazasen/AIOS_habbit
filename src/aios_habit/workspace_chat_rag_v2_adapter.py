@@ -283,6 +283,7 @@ RERANKER_MODEL_REVISION_ENV = "AIOS_BGE_RERANKER_MODEL_REVISION"
 RERANKER_MODEL_CHECKSUM_ENV = "AIOS_BGE_RERANKER_MODEL_CHECKSUM"
 DEEP_TIMEOUT_MS_ENV = "AIOS_WORKSPACE_RAG_V2_DEEP_TIMEOUT_MS"
 DEEP_RERANK_LIMIT_ENV = "AIOS_WORKSPACE_RAG_V2_DEEP_RERANK_LIMIT"
+PER_DOCUMENT_LIMIT_ENV = "AIOS_WORKSPACE_RAG_V2_PER_DOCUMENT_LIMIT"
 
 # This preference deliberately lives next to the local Workspace Chat data,
 # not in .env. It lets an owner enable or disable the optional CPU reranker
@@ -426,6 +427,7 @@ class WorkspaceChatRagV2CanaryConfig:
     # by the policy or the user, never for the default fast path.
     deep_timeout_ms: int = 300000
     deep_rerank_limit: int = 10
+    per_document_limit: int = 3
 
     def __post_init__(self) -> None:
         profile = self.requested_profile.strip()
@@ -448,6 +450,8 @@ class WorkspaceChatRagV2CanaryConfig:
             raise ValueError("deep_rerank_limit must be between 1 and 15")
         if self.adaptive_enabled and not 15000 <= self.deep_timeout_ms <= 300000:
             raise ValueError("deep_timeout_ms must be between 15000 and 300000")
+        if self.per_document_limit < 1:
+            raise ValueError("per_document_limit must be at least 1")
 
 
     @classmethod
@@ -542,6 +546,9 @@ class WorkspaceChatRagV2CanaryConfig:
             ),
             deep_rerank_limit=int(
                 values.get(DEEP_RERANK_LIMIT_ENV, 10) or 10
+            ),
+            per_document_limit=int(
+                values.get(PER_DOCUMENT_LIMIT_ENV, values.get("AIOS_RETRIEVAL_DOC_DIVERSITY_CAP", 3)) or 3
             ),
         )
 
@@ -3788,27 +3795,72 @@ def _map_serialized_query_result(
     pre_reason_codes: Sequence[str] = (),
     post_decision: str = "not_run",
     post_reason_codes: Sequence[str] = (),
+    per_document_limit: int | None = None,
+    question: str | None = None,
+    is_named_document_query: bool = False,
 ) -> dict[str, Any]:
 
     evidence_items = []
     retrieved_sources = []
     citations = []
     per_source_counts: Counter[str] = Counter()
+    doc_chunk_counts: Counter[str] = Counter()
     summary_dict = query_result.get("summary", {})
     insufficiency_reasons = query_result.get("insufficiency_reasons", [])
 
-    for index, item in enumerate(query_result.get("items", []), 1):
+    effective_doc_cap = (
+        per_document_limit
+        if per_document_limit is not None and per_document_limit > 0
+        else int(os.environ.get(PER_DOCUMENT_LIMIT_ENV, os.environ.get("AIOS_RETRIEVAL_DOC_DIVERSITY_CAP", "3")) or "3")
+    )
+    is_single_source = len(originals) <= 1
+
+    for item in query_result.get("items", []):
         original = originals.get(item.get("document_id", ""))
         if original is None:
             continue
         text = str(item.get("text", "")).strip()
         if not text:
             continue
+
+        raw_title = (original.title or "").strip()
+        doc_key = (
+            raw_title.split(" (")[0].strip().casefold()
+            if raw_title
+            else (
+                Path(original.managed_path).name.strip().casefold()
+                if original.managed_path
+                else str(item.get("document_id") or original.source_id or "").strip().casefold()
+            )
+        )
+        is_named_doc = bool(
+            is_single_source
+            or is_named_document_query
+            or (
+                question
+                and (
+                    (raw_title and raw_title.casefold() in question.casefold())
+                    or (original.source_id and original.source_id.casefold() in question.casefold())
+                    or (item.get("document_id") and str(item.get("document_id")).casefold() in question.casefold())
+                )
+            )
+        )
+        if not is_named_doc and doc_chunk_counts[doc_key] >= effective_doc_cap:
+            LOGGER.info(
+                "adapter.diversity_cap_triggered doc_key=%s limit=%d chunk_id=%s",
+                doc_key,
+                effective_doc_cap,
+                item.get("evidence_id") or item.get("citation_id"),
+            )
+            continue
+        doc_chunk_counts[doc_key] += 1
+
         title = sanitize_citation_title(original.title)
         location = _serialized_location(item)
         score = float(item.get("score", 0.0))
         citation_id = str(item.get("citation_id", ""))
         evidence_id = str(item.get("evidence_id", ""))
+        index = len(evidence_items) + 1
 
         evidence_items.append(
             {
@@ -3851,7 +3903,7 @@ def _map_serialized_query_result(
     summary_count = len(evidence_items)
     distinct_sources = len(per_source_counts)
     candidate_count = int(summary_dict.get("candidate_count", 0))
-    returned_count = int(summary_dict.get("returned_count", 0))
+    returned_count = summary_count
     filtered_as_stale_count = int(summary_dict.get("filtered_as_stale_count", 0))
     indexed_chunk_count = int(summary_dict.get("indexed_chunk_count", 0))
     synthesis_dict = query_result.get("synthesis", {})
@@ -3976,6 +4028,14 @@ def _get_cached_specs_for_domain(
     except OSError:
         return tuple(index_domain.get_specs_for_domain(target_domain, spec_index_path, question=question))
 
+    matched_named_ids: tuple[str, ...] = ()
+    if question:
+        try:
+            matched_named, _ = index_domain.match_named_documents(question, db_path=resolved_path)
+            if matched_named:
+                matched_named_ids = tuple(sorted(s.document_id for s in matched_named))
+        except Exception:
+            pass
     exact_ids = tuple(index_domain.extract_exact_mechanical_identifiers(str(question or "")))
     cache_key = (
         str(target_domain or "").strip().lower(),
@@ -3983,6 +4043,7 @@ def _get_cached_specs_for_domain(
         stat.st_mtime_ns,
         stat.st_size,
         exact_ids,
+        matched_named_ids,
     )
     with _INDEX_FINGERPRINT_LOCK:
         cached = _DOMAIN_SPECS_QUERY_CACHE.get(cache_key)
@@ -4614,6 +4675,14 @@ def _run_profile(
         policy_version=policy_version,
         timeout_s=(config.deep_timeout_ms / 1000.0 if rerank_requested else default_query_timeout_seconds()),
     )
+    is_named_doc_query = False
+    try:
+        from aios_habit import index_domain
+        matched_named, _ = index_domain.match_named_documents(question)
+        if matched_named:
+            is_named_doc_query = True
+    except Exception:
+        pass
     mapped = _map_serialized_query_result(
         query_res_dict,
         originals,
@@ -4626,6 +4695,9 @@ def _run_profile(
         pre_reason_codes=pre_reason_codes,
         post_decision=post_decision,
         post_reason_codes=post_reason_codes,
+        per_document_limit=getattr(config, "per_document_limit", None),
+        question=question,
+        is_named_document_query=is_named_doc_query or (len(specs) == 1),
     )
     LOGGER.info(
         "workspace_chat_rag_v2 %s",
