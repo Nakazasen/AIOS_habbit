@@ -615,6 +615,55 @@ def render_draft_approval_row(
                 st.warning(str(saved.get("error_vi")))
 
 
+def strip_instruction_header(content: str) -> str:
+    """Detect and remove system instruction JSON header at the beginning of assistant content.
+
+    Old model backends (or specific prompt drifts) sometimes output the system instruction block:
+    {"summary": "...", "changes": [], "tests": []}
+    at the very beginning of the message content. This helper strips that leading
+    JSON block while preserving the rest of the message intact.
+
+    Valid content starting with normal braces or JSON in the body is untouched.
+    """
+    if not content or not isinstance(content, str):
+        return "" if content is None else str(content)
+
+    trimmed = content.lstrip()
+    if not trimmed.startswith("{"):
+        return content
+
+    try:
+        decoder = json.JSONDecoder()
+        obj, end_idx = decoder.raw_decode(trimmed)
+    except (json.JSONDecodeError, ValueError):
+        return content
+
+    if not isinstance(obj, dict):
+        return content
+
+    keys = set(obj.keys())
+    instruction_keys = {"summary", "changes", "tests"}
+    common_keys = instruction_keys.intersection(keys)
+
+    # Must contain the characteristic instruction keys:
+    # 1. All 3 keys (summary, changes, tests), or
+    # 2. At least 2 keys with changes/tests being a list (characteristic of the instruction format)
+    is_instruction = False
+    if instruction_keys.issubset(keys):
+        is_instruction = True
+    elif len(common_keys) >= 2:
+        if ("changes" in keys and isinstance(obj.get("changes"), list)) or (
+            "tests" in keys and isinstance(obj.get("tests"), list)
+        ):
+            is_instruction = True
+
+    if not is_instruction:
+        return content
+
+    remaining = trimmed[end_idx:]
+    return re.sub(r"^(?:[ \t]*[\r\n]+)+", "", remaining)
+
+
 def render_chat_bubble(
     msg: ChatMessage,
     is_latest: bool = False,
@@ -634,10 +683,10 @@ def render_chat_bubble(
                 st.html(
                     f'<div style="display:inline-flex; align-items:center; gap:6px; background:rgba(14,165,233,0.15); border:1px solid rgba(14,165,233,0.4); color:#38bdf8; font-size:12px; font-weight:600; padding:2px 10px; border-radius:9999px; margin-bottom:10px;">✨ {latest_badge_text}</div>',
                 )
+            raw_content = strip_instruction_header(str(msg.content or ""))
             if not render_interactive:
                 from aios_habit import chat_interview_ui as _chat_interview_ui
                 from aios_habit import chat_action_create_case as _chat_create_case
-                raw_content = str(msg.content or "")
                 clean_content = _chat_interview_ui.strip_interactive_markers(raw_content)
                 clean_content = _chat_create_case.strip_case_preview_marker(clean_content)
                 clean_content = re.sub(r"<!--\s*aios_chat_artifact:.*?-->", "", clean_content, flags=re.DOTALL)
@@ -647,7 +696,6 @@ def render_chat_bubble(
             from aios_habit.agent_work_artifact import extract_chat_artifact_metadata
             from aios_habit import chat_interview_ui as _chat_interview_ui
             from aios_habit import chat_action_create_case as _chat_create_case
-            raw_content = str(msg.content or "")
             _is_external_ai = False
             _ext_model_name = ""
             _ext_provider_name = ""
