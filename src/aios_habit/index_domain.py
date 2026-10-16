@@ -372,34 +372,87 @@ def extract_named_document_candidates(question: str) -> list[str]:
     return candidates
 
 
+_DOMAIN_DOCUMENT_ALIAS_MAP_CACHE: Optional[dict[str, str]] = None
+
+
+def load_domain_document_alias_map() -> dict[str, str]:
+    """Load the mapping of document_id / wsc filename -> original filename alias."""
+    global _DOMAIN_DOCUMENT_ALIAS_MAP_CACHE
+    if _DOMAIN_DOCUMENT_ALIAS_MAP_CACHE is not None:
+        return _DOMAIN_DOCUMENT_ALIAS_MAP_CACHE
+
+    map_path = Path(__file__).resolve().parent / "domain_document_alias_map.json"
+    if map_path.is_file():
+        try:
+            import json
+
+            with open(map_path, "r", encoding="utf-8") as f:
+                _DOMAIN_DOCUMENT_ALIAS_MAP_CACHE = json.load(f)
+                return _DOMAIN_DOCUMENT_ALIAS_MAP_CACHE
+        except Exception:
+            pass
+
+    _DOMAIN_DOCUMENT_ALIAS_MAP_CACHE = {}
+    return _DOMAIN_DOCUMENT_ALIAS_MAP_CACHE
+
+
 _SPEC_ALIAS_CACHE: dict[str, Optional[str]] = {}
 
 
 def _get_spec_original_alias(spec: Any) -> Optional[str]:
-    """Extract original filename alias from materialized text file header if available."""
+    """Extract original filename alias from domain alias map or materialized source header."""
     p = getattr(spec, "path", None)
-    if not p:
-        return None
-    key = str(p)
-    if key in _SPEC_ALIAS_CACHE:
-        return _SPEC_ALIAS_CACHE[key]
-    alias = None
-    target_path = p if isinstance(p, Path) and p.is_file() else None
-    if target_path is None:
-        candidate_path = Path("local_runs/workspace_chat_rag_v2_canary/materialized_sources") / getattr(p, "name", str(p))
-        if candidate_path.is_file():
-            target_path = candidate_path
+    doc_id = getattr(spec, "document_id", "") or getattr(spec, "source_id", "")
+    fname = p.name if p else str(getattr(spec, "source_name", ""))
+    cache_key = f"{doc_id}:{fname}:{p}"
+    if cache_key in _SPEC_ALIAS_CACHE:
+        return _SPEC_ALIAS_CACHE[cache_key]
 
-    if target_path and target_path.name.startswith("wsc-") and target_path.name.endswith(".txt"):
-        try:
-            with open(target_path, "r", encoding="utf-8", errors="ignore") as f:
-                line = f.readline()
-                m = re.match(r"^File\s+(?:Excel|PDF|Word|PowerPoint|\w+)\s*:\s*([^\r\n]+)", line, re.IGNORECASE)
-                if m:
-                    alias = m.group(1).strip()
-        except Exception:
-            alias = None
-    _SPEC_ALIAS_CACHE[key] = alias
+    alias_map = load_domain_document_alias_map()
+    alias: Optional[str] = None
+
+    # 1. Lookup in bundled domain alias map by doc_id or filename
+    if doc_id and doc_id in alias_map:
+        alias = alias_map[doc_id]
+    elif fname and fname in alias_map:
+        alias = alias_map[fname]
+    elif p and getattr(p, "stem", "") in alias_map:
+        alias = alias_map[p.stem]
+
+    # 2. If not found in alias map, scan source file header on disk
+    if not alias:
+        target_path: Optional[Path] = p if isinstance(p, Path) and p.is_file() else None
+        if target_path is None and fname:
+            candidate_dirs = (
+                Path("C:/AIOS_workspace_chat_rag_v2_production/materialized_sources"),
+                Path("materialized_sources"),
+                Path("local_runs/workspace_chat_rag_v2_production/materialized_sources"),
+                Path("local_runs/workspace_chat_rag_v2_canary/materialized_sources"),
+            )
+            for cdir in candidate_dirs:
+                cand = cdir / fname
+                if cand.is_file():
+                    target_path = cand
+                    break
+                if not fname.endswith(".txt"):
+                    cand_txt = cdir / f"{fname}.txt"
+                    if cand_txt.is_file():
+                        target_path = cand_txt
+                        break
+
+        if target_path and target_path.is_file():
+            try:
+                with open(target_path, "r", encoding="utf-8", errors="ignore") as f:
+                    first_line = f.readline()
+                    m = re.match(r"^File\s+(?:Excel|PDF|Word|PowerPoint|\w+)\s*:\s*([^\r\n]+)", first_line, re.IGNORECASE)
+                    if m:
+                        alias = m.group(1).strip()
+            except Exception:
+                alias = None
+
+    _SPEC_ALIAS_CACHE[cache_key] = alias
+    if str(p) not in _SPEC_ALIAS_CACHE:
+        _SPEC_ALIAS_CACHE[str(p)] = alias
     return alias
 
 
@@ -510,19 +563,23 @@ def match_named_documents(
                 best_overlap = 0.0
                 best_spec = None
                 for s, fname, alias, norm_name, norm_name_noc, norm_alias, norm_alias_noc in spec_info:
-                    if not norm_name.endswith("." + cand_ext):
-                        continue
-                    spec_tokens = set(re.split(r"[-_\s()\[\]「」【】+~]+", norm_name))
-                    spec_tokens_noc = set(re.split(r"[-_\s()\[\]「」【】+~]+", norm_name_noc))
-                    matched_toks = 0
-                    for t in cand_tokens:
-                        t_noc = _strip_model_code_prefix(t)
-                        if t in spec_tokens or t in spec_tokens_noc or t_noc in spec_tokens_noc:
-                            matched_toks += 1
-                    ratio = matched_toks / max(len(cand_tokens), 1)
-                    if ratio >= 0.5 and ratio > best_overlap:
-                        best_overlap = ratio
-                        best_spec = s
+                    names_to_check: list[tuple[str, str]] = [(norm_name, norm_name_noc)]
+                    if norm_alias and norm_alias_noc:
+                        names_to_check.append((norm_alias, norm_alias_noc))
+                    for n_name, n_noc in names_to_check:
+                        if cand_ext and not n_name.endswith("." + cand_ext):
+                            continue
+                        spec_tokens = set(re.split(r"[-_\s()\[\]「」【】+~]+", n_name))
+                        spec_tokens_noc = set(re.split(r"[-_\s()\[\]「」【】+~]+", n_noc))
+                        matched_toks = 0
+                        for t in cand_tokens:
+                            t_noc = _strip_model_code_prefix(t)
+                            if t in spec_tokens or t in spec_tokens_noc or t_noc in spec_tokens_noc:
+                                matched_toks += 1
+                        ratio = matched_toks / max(len(cand_tokens), 1)
+                        if ratio >= 0.5 and ratio > best_overlap:
+                            best_overlap = ratio
+                            best_spec = s
                 if best_spec is not None:
                     cand_matched.append((10, best_spec))
 

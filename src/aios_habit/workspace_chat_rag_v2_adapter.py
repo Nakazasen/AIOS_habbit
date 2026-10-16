@@ -5321,31 +5321,19 @@ def retrieve_workspace_chat_evidence(
         sources = ready_subset
         collection_id = _collection_id_for_sources(sources)
 
-    # Honest refusal if the question explicitly names a document not found in the index
+    # When a named document does not match exactly: fall back to normal retrieval
+    # (dense + BM25) with logging; do not block with Honest Refusal.
     try:
         from aios_habit import index_domain
         matched_specs, missing_names = index_domain.match_named_documents(question, sources=sources)
         if missing_names and not matched_specs:
             missing_doc = missing_names[0]
-            refusal_msg = (
-                f"Chưa đủ bằng chứng trong kho tri thức: Không tìm thấy tài liệu \"{missing_doc}\" "
-                f"được nêu đích danh trong câu hỏi để tra cứu."
+            LOGGER.warning(
+                "[named_doc_fallback] Tài liệu '%s' nêu đích danh không khớp catalog, hạ xuống truy hồi thường (dense + BM25)",
+                missing_doc,
             )
-            return _finish({
-                "status": "named_document_not_found",
-                "summary_count": 1,
-                "evidence_items": [],
-                "retrieved_context_sources": (),
-                "safe_owner_message": refusal_msg,
-                "local_synthesis": {
-                    "answer": refusal_msg,
-                    "abstained": False,
-                    "named_document_missing": True,
-                    "missing_document": missing_doc,
-                },
-            })
-    except Exception:
-        pass
+    except Exception as exc:
+        LOGGER.warning("[named_doc_check_error] %s", exc)
 
     # Domain routing (feature-flagged): detect the question's knowledge domain
     # and search that domain's collection instead of the legacy mixed one.

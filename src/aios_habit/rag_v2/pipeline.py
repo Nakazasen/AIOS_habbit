@@ -679,6 +679,121 @@ def _rerank_bilingual_tri_thuc(
     )
 
 
+def _balance_lsu_machine_series(
+    plan: RetrievalQueryPlan,
+    response: SearchResponse,
+    *,
+    is_lsu: bool = False,
+) -> SearchResponse:
+    """Balance retrieval between Iris and Sirius LSU machine series when query lacks a specific series label."""
+    if not response.results:
+        return response
+
+    query_text = (getattr(plan, "original_query", None) or str(plan)).strip()
+    has_sirius = bool(re.search(r"\bsirius\b", query_text, re.IGNORECASE))
+    has_iris = bool(re.search(r"\biris\b", query_text, re.IGNORECASE))
+
+    # If the user explicitly specified a machine line, do not interfere
+    if has_sirius or has_iris:
+        return response
+
+    def _get_machine_line(res: SearchResult) -> str:
+        name = (res.source_name or "").lower()
+        path = (res.source_path or "").lower()
+        if "sirius" in name or "siriud" in name or "sirius" in path:
+            return "sirius"
+        if "iris" in name or "y_beamh" in name or "iris" in path:
+            return "iris"
+        return "other"
+
+    results = list(response.results)
+
+    # Check candidates from multiple machine lines
+    series_candidates: dict[str, list[SearchResult]] = {"sirius": [], "iris": [], "other": []}
+    for r in results:
+        line = _get_machine_line(r)
+        series_candidates[line].append(r)
+
+    # If not in LSU collection and neither sirius nor iris is represented, skip
+    if not is_lsu and (not series_candidates["sirius"] or not series_candidates["iris"]):
+        return response
+
+    # If only one machine line exists or one has no candidates, keep original
+    if not series_candidates["sirius"] or not series_candidates["iris"]:
+        return response
+
+    # Check dense relevance: if an Iris candidate has strong dense rank or high dense cosine
+    # but was pushed down by sparse token overlap on Sirius, promote top Iris candidates
+    iris_dense_top = [
+        r
+        for r in series_candidates["iris"]
+        if 0 < r.ranking_signals.get("dense_channel_rank", 999) <= 10
+        or r.ranking_signals.get("dense_cosine", 0.0) >= 0.50
+    ]
+    if not iris_dense_top:
+        return response
+
+    # Interleave/rebalance so top-k is not monopolized by Sirius
+    # Limit Sirius in top 6 to max 3 chunks, ensuring top Iris candidate is in slot 2 or 3
+    balanced: list[SearchResult] = []
+    sirius_count = 0
+    iris_count = 0
+    used_ids: set[str] = set()
+
+    # Always start with the absolute top 1
+    top1 = results[0]
+    balanced.append(top1)
+    used_ids.add(top1.chunk_id)
+    line1 = _get_machine_line(top1)
+    if line1 == "sirius":
+        sirius_count += 1
+    elif line1 == "iris":
+        iris_count += 1
+
+    # Ensure best Iris candidate gets a top slot (slot 2)
+    best_iris = iris_dense_top[0]
+    if best_iris.chunk_id not in used_ids:
+        boost = 0.015
+        new_signals = dict(best_iris.ranking_signals)
+        new_signals["machine_series_balance_boost"] = boost
+        promoted_iris = replace(
+            best_iris,
+            ranking_signals=new_signals,
+            score=best_iris.score + boost,
+        )
+        balanced.append(promoted_iris)
+        used_ids.add(best_iris.chunk_id)
+        iris_count += 1
+
+    # Add remaining results respecting diversity in the top 6
+    for r in results:
+        if r.chunk_id in used_ids:
+            continue
+        line = _get_machine_line(r)
+        if len(balanced) < 6:
+            if line == "sirius" and sirius_count >= 3:
+                continue
+            if line == "iris" and iris_count >= 3:
+                continue
+        balanced.append(r)
+        used_ids.add(r.chunk_id)
+        if line == "sirius":
+            sirius_count += 1
+        elif line == "iris":
+            iris_count += 1
+
+    # Append any skipped ones at the end
+    for r in results:
+        if r.chunk_id not in used_ids:
+            balanced.append(r)
+            used_ids.add(r.chunk_id)
+
+    return SearchResponse(
+        results=tuple(balanced),
+        summary=response.summary,
+    )
+
+
 class RagV2DevPipeline:
     """Compose existing RAG v2 primitives without touching Workspace Chat."""
 
@@ -1352,6 +1467,12 @@ class RagV2DevPipeline:
             or "tri_thuc" in str(getattr(self.index, "db_path", "")).casefold()
         )
         response = _rerank_bilingual_tri_thuc(plan, response, is_tri_thuc=is_tri_thuc)
+        is_lsu = (
+            "lsu" in str(getattr(self.config, "runtime_root", "")).casefold()
+            or "lsu" in str(getattr(self.config, "index_path", "")).casefold()
+            or "lsu" in str(getattr(self.index, "db_path", "")).casefold()
+        )
+        response = _balance_lsu_machine_series(plan, response, is_lsu=is_lsu)
         pack = build_evidence_pack(plan, response, config=evidence_config)
         synthesis_started = perf_counter()
         prioritize_body_evidence = (
