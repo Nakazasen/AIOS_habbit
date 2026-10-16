@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
+import re
 from typing import Any
 
 KET_QUA_DIR = Path(r"D:\Sandbox\aios-dieu-phoi\hop-thu\lan-desktop\ket-qua")
@@ -19,6 +20,31 @@ DEFAULT_SUMMARY_JSON = KET_QUA_DIR / "ket-qua-stress-rerun-fixed-scoring-home.js
 DEFAULT_RAW_JSONL = KET_QUA_DIR / "du-lieu-tho-tung-luot-stress-rerun-fixed-scoring-home.jsonl"
 DEFAULT_QUESTIONS_JSONL = KET_QUA_DIR / "bo-cau-hoi-hoi-quy-120-desktop-home.jsonl"
 DEFAULT_REPORT_MD = KET_QUA_DIR / "DESKTOP-STRESS-RERUN-FIXED-SCORING-HOME.md"
+
+
+def normalize_keyword_text(text: str) -> str:
+    r"""Chuẩn hóa khoảng trắng đơn vị đo trước khi khớp từ khóa.
+    Tách số (nguyên hoặc thập phân) và đơn vị đo (chữ cái / %) bằng biểu thức chính quy:
+    re.sub(r'(\d+(?:[.,]\d+)?)\s*([a-zA-Z%]+)', r'\1 \2', text)
+    giúp các cặp định dạng '3s'/'3 s', '1.1mm'/'1.1 mm', '64.09Dot'/'64.09 dot', '5.9Dot'/'5.9 dot'
+    được tính là khớp. (Ticket: DESKTOP-BENCHMARK-KEYWORD-TOLERANCE-NORM-FIX-HOME)
+    """
+    if not text:
+        return ""
+    t = text.lower()
+    t = re.sub(r"(\d+(?:[.,]\d+)?)\s*([a-zA-Z%]+)", r"\1 \2", t)
+    return re.sub(r"\s+", " ", t).strip()
+
+
+def match_keywords_with_tolerance(ans_text: str, keywords: list[str]) -> list[str]:
+    """Khớp từ khóa trong văn bản đáp án với cơ chế dung sai khoảng trắng đơn vị đo."""
+    ans_norm = normalize_keyword_text(ans_text)
+    matched = []
+    for kw in keywords:
+        kw_norm = normalize_keyword_text(kw)
+        if kw_norm and kw_norm in ans_norm:
+            matched.append(kw)
+    return matched
 
 
 def compute_warehouse_distribution(turns: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
@@ -221,7 +247,32 @@ def generate_report(
     lines.append("---")
     lines.append("")
 
-    lines.append("## 4. CHI TIẾT CÁC CÂU THẤT BẠI (NẾU CÓ)")
+    lines.append("## 4. ĐÁNH GIÁ CHI TIẾT RIÊNG HAI CÂU Q0718 VÀ Q0828")
+    lines.append("")
+    if q0718:
+        lines.append(f"### 4.1. Câu Q0718 (`Turn {q0718.get('turn_index')}`)")
+        lines.append(f"- **Tài liệu đích kỳ vọng**: `{q0718.get('target_doc_expected')}`")
+        lines.append(f"- **Tài liệu thực tế khớp được**: `{q0718.get('matched_target_doc')}`")
+        lines.append(f"- **Danh sách nguồn trong trace**: `{q0718.get('trace_titles')}`")
+        lines.append(f"- **Từ khóa kỳ vọng**: `{q0718.get('keywords_expected')}`")
+        lines.append(f"- **Từ khóa khớp trong đáp án**: `{q0718.get('keywords_matched')}`")
+        lines.append(f"- **Kết quả điểm kiểm**: `doc_matched = {q0718.get('doc_matched')}`, `checkpoint_pass = {q0718.get('checkpoint_pass')}`")
+        lines.append(f"- **Trích dẫn đáp án hiển thị**: `{q0718.get('answer_preview')}`")
+        lines.append("")
+    if q0828:
+        lines.append(f"### 4.2. Câu Q0828 (`Turn {q0828.get('turn_index')}`)")
+        lines.append(f"- **Tài liệu đích kỳ vọng**: `{q0828.get('target_doc_expected')}`")
+        lines.append(f"- **Tài liệu thực tế khớp được**: `{q0828.get('matched_target_doc')}`")
+        lines.append(f"- **Danh sách nguồn trong trace**: `{q0828.get('trace_titles')}`")
+        lines.append(f"- **Từ khóa kỳ vọng**: `{q0828.get('keywords_expected')}`")
+        lines.append(f"- **Từ khóa khớp trong đáp án**: `{q0828.get('keywords_matched')}`")
+        lines.append(f"- **Kết quả điểm kiểm**: `doc_matched = {q0828.get('doc_matched')}`, `checkpoint_pass = {q0828.get('checkpoint_pass')}`")
+        lines.append(f"- **Trích dẫn đáp án hiển thị**: `{q0828.get('answer_preview')}`")
+        lines.append("")
+    lines.append("---")
+    lines.append("")
+
+    lines.append("## 5. CHI TIẾT CÁC CÂU THẤT BẠI (NẾU CÓ)")
     lines.append("")
     if not failed_list:
         lines.append("> [!NOTE]")
@@ -240,7 +291,7 @@ def generate_report(
     lines.append("---")
     lines.append("")
 
-    lines.append("## 5. BẢNG KẾT QUẢ CHI TIẾT TỪNG LƯỢT HỎI ĐÁP QUA GIAO DIỆN THẬT")
+    lines.append("## 6. BẢNG KẾT QUẢ CHI TIẾT TỪNG LƯỢT HỎI ĐÁP QUA GIAO DIỆN THẬT")
     lines.append("")
     lines.append("| Lượt | Mã câu | Khối | Giai đoạn | Backend | UI E2E (s) | QA->Complete (s) | Khớp tài liệu | Đạt từ khóa | Điểm kiểm | Nguồn truy hồi / Tài liệu khớp |")
     lines.append("| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- |")
@@ -261,7 +312,7 @@ def generate_report(
     lines.append("")
     lines.append("---")
     lines.append("")
-    lines.append("## 6. KHỐI JSON NGHIỆM THU THEO QUY CHUẨN ĐIỀU PHỐI")
+    lines.append("## 7. KHỐI JSON NGHIỆM THU THEO QUY CHUẨN ĐIỀU PHỐI")
     lines.append("")
     lines.append("```json")
     json_block = {

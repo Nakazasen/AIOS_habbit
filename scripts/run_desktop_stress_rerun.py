@@ -506,6 +506,20 @@ def _norm_text(s: str) -> str:
     return re.sub(r"\s+", " ", (s or "").strip().lower())
 
 
+def normalize_keyword_text(text: str) -> str:
+    r"""Chuẩn hóa khoảng trắng đơn vị đo trước khi khớp từ khóa.
+    Tách số (nguyên hoặc thập phân) và đơn vị đo (chữ cái / %) bằng biểu thức chính quy:
+    re.sub(r'(\d+(?:[.,]\d+)?)\s*([a-zA-Z%]+)', r'\1 \2', text)
+    giúp các cặp định dạng '3s'/'3 s', '1.1mm'/'1.1 mm', '64.09Dot'/'64.09 dot', '5.9Dot'/'5.9 dot'
+    được tính là khớp. (Ticket: DESKTOP-BENCHMARK-KEYWORD-TOLERANCE-NORM-FIX-HOME)
+    """
+    if not text:
+        return ""
+    t = text.lower()
+    t = re.sub(r"(\d+(?:[.,]\d+)?)\s*([a-zA-Z%]+)", r"\1 \2", t)
+    return re.sub(r"\s+", " ", t).strip()
+
+
 def evaluate_checkpoint(
     q_item: dict[str, Any],
     ans_text: str,
@@ -574,10 +588,11 @@ def evaluate_checkpoint(
             break
 
     # 3. Kiem tra tu khoa bat buoc: CHỈ TÍNH TRONG ĐÁP ÁN (ans_text), KHÔNG TÍNH TRONG TRACE
-    ans_norm = _norm_text(ans_text)
+    # Chuan hoa khoang trang don vi do truoc khi khop tu khoa (DESKTOP-BENCHMARK-KEYWORD-TOLERANCE-NORM-FIX-HOME)
+    ans_norm = normalize_keyword_text(ans_text)
     matched_keywords = []
     for kw in keywords:
-        kw_norm = _norm_text(kw)
+        kw_norm = normalize_keyword_text(kw)
         if kw_norm and kw_norm in ans_norm:
             matched_keywords.append(kw)
 
