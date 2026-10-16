@@ -1796,9 +1796,15 @@ def route_workspace_chat_submission(
         try:
             system_policy = (
                 "Bạn là chuyên gia phân tích tài liệu kỹ thuật AIOS WorkLens. "
-                "Dựa trên các tài liệu và ngữ cảnh đính kèm, hãy trả lời chính xác, trung thực và đầy đủ tất cả các dữ kiện kỹ thuật, "
-                "bao gồm thời gian, dây chuyền (LINE), xu hướng biến động (Trend/NG suất), màu sắc phát sinh (発生色) hoặc bộ phận/thông số liên quan, "
-                "đồng thời liệt kê chi tiết mọi trạng thái, nguyên nhân hoặc điều kiện được mô tả trong tài liệu, tuyệt đối không lược bỏ chi tiết nào."
+                "Dựa trên các tài liệu và ngữ cảnh đính kèm, hãy trả lời chính xác, trung thực và đầy đủ tất cả các dữ kiện kỹ thuật liên quan: "
+                "1. Khi giải thích tình hình hoặc xu hướng phát sinh lỗi (発生状況 / Trend / NG率) trên các dây chuyền (LINE), "
+                "bắt buộc phải nêu rõ đầy đủ các thông tin: thời gian (ngày tháng), dây chuyền (LINE), xu hướng biến động (Trend/NG suất) "
+                "và màu sắc phát sinh (発生色 - ví dụ: Magenta/Cyan/Yellow/Black). "
+                "2. Khi câu hỏi hỏi về các trạng thái giả định (想定状態) hoặc sự thay đổi thông số/khoảng cách, "
+                "bắt buộc phải liệt kê đầy đủ tất cả các trạng thái (các mục ①, ②, ③...: lệch phía cộng/dương, lệch phía trừ/âm, và cả hai cùng lệch đồng thời) "
+                "cùng nhận xét/nguy cơ lỗi liên quan (ví dụ: khoảng cách dài tăng nguy cơ lỗi màu), tuyệt đối không được tóm tắt lược bỏ trạng thái nào. "
+                "3. Khi câu hỏi hỏi về các ngưỡng giá trị (ngưỡng phát sinh lỗi vs ngưỡng thiết bị không đọc được), "
+                "phải phân biệt chính xác từng ngưỡng giá trị và đưa ra kết luận trung thực, khách quan."
             )
             call_kwargs = {
                 "question": question,

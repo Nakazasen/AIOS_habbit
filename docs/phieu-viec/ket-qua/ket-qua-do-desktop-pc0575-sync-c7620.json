@@ -1,0 +1,140 @@
+{
+  "ma_ve": "DESKTOP-PC0575-SYNC-C7620",
+  "thoi_diem": "2026-10-16T06:10:46.439247+00:00",
+  "git_head": "bf2d08e1a416f9c0a0ed192c74d8821f5345f168",
+  "may_thuc_thi": "KDTVN-PC0575",
+  "cau_hinh": "BB-CONFIG-PARITY-01 (CPU-only, OMP=1, MKL=1, NUMPY_DENSE=1, port 8501)",
+  "results": [
+    {
+      "stt": 1,
+      "id": "Q0700",
+      "question": "C23とC24ではどのような発生Trendでしたか。",
+      "ref_answer": "2月19日にC23/C24でNG率が同じTrendで同時に上昇し、発生色はMagentaです。出典ファイル：Sirius 2 _ C7620_報告版 4.pptx.",
+      "conversation_id": "CONV-PC0575-C7620-Q0700-909D00",
+      "answer_text": "Dựa trên tài liệu đính kèm, xu hướng phát sinh lỗi (発生状況 / Trend) tại C23 và C24 được ghi nhận như sau:\n\n* **Thời gian:** Ngày 2 tháng 19 (２月１９日).\n* **Dây chuyền (LINE):** C23/24.\n* **Xu hướng biến động (Trend/NG suất):** NG suất có cùng xu hướng và đồng thời tăng lên (NG 率が同じ傾向→同時に上昇).\n* **Màu sắc phát sinh (発生色):** Magenta (do lỗi ở công đoạn điều chỉnh: sau khi hiệu chỉnh màu, giá trị sai lệch màu theo phương phó quét so với Bk phát sinh từ 70dot trở lên).\n\nNguồn: `Sirius 2 _ C7620_報告版 4.pptx`.",
+      "answer_length": 502,
+      "passed": true,
+      "criteria_eval": [
+        {
+          "criteria": "C23/24 hoặc C23 và C24",
+          "passed": true
+        },
+        {
+          "criteria": "Ngày 19/2 (2月19日)",
+          "passed": true
+        },
+        {
+          "criteria": "NG cùng xu hướng / đồng thời tăng",
+          "passed": true
+        },
+        {
+          "criteria": "Màu Magenta (発生色はMagenta)",
+          "passed": true
+        }
+      ],
+      "micro_timings": {
+        "pipe_wait_ms": 4.17,
+        "coverage_verify_ms": 41.13,
+        "lexical_ms": 187.26,
+        "embed_ms": 337.18,
+        "dense_ms": 671.53,
+        "sparse_ms": 491.15,
+        "fuse_ms": 65.14,
+        "context_expand_ms": 0.0
+      },
+      "pure_retrieval_s": 1.7934,
+      "target_collection": "lsu",
+      "backend": "gemini_web",
+      "ok": true,
+      "screenshot": "D:\\Sandbox\\aios-dieu-phoi\\hop-thu\\lan-desktop-pc0575\\ket-qua\\anh-pc0575-c7620-01-q0700.png",
+      "screenshot_sha256": "912C584DBDFB442054D3FEDFBB780EFB87DF46112C950D2584568832765A4E2A",
+      "screenshot_size_bytes": 130283
+    },
+    {
+      "stt": 2,
+      "id": "Q0703",
+      "question": "B距離が長くなる想定状態は何ですか。",
+      "ref_answer": "①Mの光路高さが通常よりプラス側へずれる、②Bkの光路高さがマイナス側へずれる、③その両方が同時にずれる、という3状態が示されています。B距離が長いほどC7620 M色Errorが出やすいとしています。出典ファイル：Sirius 2 _ C7620_報告版 4.pptx.",
+      "conversation_id": "CONV-PC0575-C7620-Q0703-A2B759",
+      "answer_text": "Dựa trên tài liệu [Sirius 2 _ C7620_報告版 4.pptx], các trạng thái giả định dẫn đến việc **khoảng cách B (B距離)** trở nên dài hơn (gây ra tình trạng khoảng cách giữa Bk và M lớn, dễ xuất hiện lỗi M màu Error C7620) được liệt kê cụ thể như sau:\n\n* **①**: Trường hợp bình thường, nhưng vị trí đường quang (光路) của M dịch chuyển nhiều hơn về phía cộng/dương (+側) (trong khi Bk không thay đổi).\n* **②**: Trường hợp bình thường, nhưng vị trí đường quang của Bk dịch chuyển về phía trừ/âm (-側) (trong khi M không thay đổi).\n* **③**: Trường hợp cả hai trạng thái ① và ② xảy ra đồng thời (cả hai bên đều dịch chuyển cùng lúc).\n\n*(Ngoài ra, tài liệu cũng ghi nhận nguyên nhân liên quan đến sự thay đổi lượng kích thước HOUSING màu Bk sau ngày bảo trì khuôn 14 tháng 2: nếu vị trí cao hơn B1, đường quang (Light Path) sẽ dịch chuyển về phía trừ/âm, từ đó làm cho khoảng cách giữa Bk và M trở nên dài hơn).*",
+      "answer_length": 892,
+      "passed": true,
+      "criteria_eval": [
+        {
+          "criteria": "M lệch + (phía cộng/dương)",
+          "passed": true
+        },
+        {
+          "criteria": "Bk lệch - (phía trừ/âm)",
+          "passed": true
+        },
+        {
+          "criteria": "Cả hai cùng lệch đồng thời",
+          "passed": true
+        },
+        {
+          "criteria": "Khoảng cách B dài -> nguy cơ lỗi C7620 M",
+          "passed": true
+        }
+      ],
+      "micro_timings": {
+        "pipe_wait_ms": 2.32,
+        "coverage_verify_ms": 1.68,
+        "lexical_ms": 150.28,
+        "embed_ms": 339.72,
+        "dense_ms": 405.97,
+        "sparse_ms": 273.38,
+        "fuse_ms": 65.1,
+        "context_expand_ms": 0.0
+      },
+      "pure_retrieval_s": 1.2361,
+      "target_collection": "lsu",
+      "backend": "gemini_web",
+      "ok": true,
+      "screenshot": "D:\\Sandbox\\aios-dieu-phoi\\hop-thu\\lan-desktop-pc0575\\ket-qua\\anh-pc0575-c7620-02-q0703.png",
+      "screenshot_sha256": "2ACD76AFEDC4D8CFBE43F26C51A240A8F5B1D9513092789D9D80A20F270F3309",
+      "screenshot_size_bytes": 112338
+    },
+    {
+      "stt": 3,
+      "id": "Q0708",
+      "question": "光路高さ1.15 mmを超えると必ずCamera読取不能になりますか。",
+      "ref_answer": "いいえ。資料では1.15 mm以上はC7620発生可能性があるLevelで、Camera読取範囲外になる目安は1.24以上と記載されています。この2つのThresholdを区別する必要があります。出典ファイル：Sirius 2 _ C7620_報告版 4.pptx.",
+      "conversation_id": "CONV-PC0575-C7620-Q0708-AA2810",
+      "answer_text": "Dựa trên các tài liệu kỹ thuật đính kèm, câu trả lời cho câu hỏi của bạn như sau:\n\n* **光路高さが 1.24 以上の場合 Camera の読み込める範囲から外れ** [1, 2, 3] (Khi chiều cao đường quang từ 1.24 trở lên, nó sẽ vượt ra khỏi phạm vi mà Camera có thể đọc được) [1, 2, 3].\n* **光路高さが 1.15 以上の場合 C7620 発生可能性があり** [1, 2, 3] (Khi chiều cao đường quang từ 1.15 trở lên, có khả năng xảy ra lỗi C7620) [1, 2, 3].\n\nDo đó, không phải cứ vượt quá 1.15 mm là **luôn luôn** khiến Camera không đọc được ngay lập tức, mà theo tài liệu:\n- Mức **từ 1.15 mm trở lên** là có khả năng phát sinh lỗi **C7620** [1, 2, 3].\n- Mức **từ 1.24 trở lên** mới chính là ngưỡng làm cho Camera nằm ngoài phạm vi đọc được (*Camera の読み込める範囲から外れ*) [1, 2, 3].",
+      "answer_length": 695,
+      "passed": true,
+      "criteria_eval": [
+        {
+          "criteria": "Kết luận phủ định (Không phải / Không)",
+          "passed": true
+        },
+        {
+          "criteria": "1.15 mm là ngưỡng có nguy cơ C7620",
+          "passed": true
+        },
+        {
+          "criteria": "1.24 mm là ngưỡng Camera vượt ngoài tầm đọc",
+          "passed": true
+        }
+      ],
+      "micro_timings": {
+        "pipe_wait_ms": 9.22,
+        "coverage_verify_ms": 0.91,
+        "lexical_ms": 293.87,
+        "embed_ms": 354.54,
+        "dense_ms": 282.39,
+        "sparse_ms": 231.67,
+        "fuse_ms": 15.42,
+        "context_expand_ms": 0.0
+      },
+      "pure_retrieval_s": 1.1788,
+      "target_collection": "lsu",
+      "backend": "gemini_web",
+      "ok": true,
+      "screenshot": "D:\\Sandbox\\aios-dieu-phoi\\hop-thu\\lan-desktop-pc0575\\ket-qua\\anh-pc0575-c7620-03-q0708.png",
+      "screenshot_sha256": "FFDF46BB1C549676D2965805A0A319D2D93214DA61FA99E602666E6099997F96",
+      "screenshot_size_bytes": 117599
+    }
+  ]
+}
