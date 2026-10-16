@@ -124,12 +124,20 @@ PIPE_NAMES = {
 SCREENSHOT_TURNS = {1, 2, 3, 4, 5, 8, 19, 20, 25, 50, 75, 100, 124}
 
 
+_current_session_log: Path = SESSION_LOG_FILE
+
+
+def set_current_session_log(p: Path) -> None:
+    global _current_session_log
+    _current_session_log = p
+
+
 def log(msg: str) -> None:
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
     formatted = f"[{now_str}] {msg}"
     print(formatted, flush=True)
     try:
-        with open(SESSION_LOG_FILE, "a", encoding="utf-8") as f:
+        with open(_current_session_log, "a", encoding="utf-8") as f:
             f.write(formatted + "\n")
     except Exception:
         pass
@@ -1159,11 +1167,23 @@ def run_stress_suite(
     report_name: str | None = None,
     skip_preflight: bool = False,
     override_backend: str | None = None,
+    run_tag: str | None = None,
 ) -> dict[str, Any]:
-    if SESSION_LOG_FILE.exists():
-        SESSION_LOG_FILE.unlink()
-    if RAW_TURNS_JSONL.exists():
-        RAW_TURNS_JSONL.unlink()
+    tag_suffix = f"_{run_tag.lower()}" if run_tag else ""
+    tag_dash = f"-{run_tag.lower()}" if run_tag else ""
+
+    session_log_file = OUT_DIR / f"session_stress_rerun{tag_suffix}.log" if run_tag else SESSION_LOG_FILE
+    server_log_file = OUT_DIR / f"server_stress_rerun{tag_suffix}.log" if run_tag else SERVER_LOG_FILE
+    raw_turns_jsonl = OUT_DIR / f"du-lieu-tho-tung-luot-stress-rerun{tag_dash}.jsonl" if run_tag else RAW_TURNS_JSONL
+    raw_turns_csv = OUT_DIR / f"du-lieu-tho-tung-luot-stress-rerun{tag_dash}.csv" if run_tag else RAW_TURNS_CSV
+    summary_json = OUT_DIR / f"ket-qua-stress-rerun{tag_dash}.json" if run_tag else SUMMARY_JSON
+
+    set_current_session_log(session_log_file)
+
+    if session_log_file.exists():
+        session_log_file.unlink()
+    if raw_turns_jsonl.exists():
+        raw_turns_jsonl.unlink()
 
     report_path = (OUT_DIR / report_name) if report_name else REPORT_MD
 
@@ -1218,7 +1238,7 @@ def run_stress_suite(
             context = browser.new_context(viewport={"width": 1600, "height": 1000})
             t_start_app = datetime.now()
             t_start_app_str = t_start_app.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-            server_proc = start_server(PORT, SERVER_LOG_FILE, ai_backend=ai_backend)
+            server_proc = start_server(PORT, server_log_file, ai_backend=ai_backend)
             if not wait_for_server(PORT, timeout=90):
                 raise RuntimeError("Streamlit server khong phan hoi tren cong 8570 sau 90s!")
 
@@ -1251,14 +1271,14 @@ def run_stress_suite(
 
                 shot_path = None
                 if t_idx in SCREENSHOT_TURNS:
-                    shot_path = OUT_DIR / f"anh-stress-rerun-t{t_idx:03d}-{phase}-{blk}-{qid.lower()}.png"
+                    shot_path = OUT_DIR / f"anh-stress-rerun{tag_dash}-t{t_idx:03d}-{phase}-{blk}-{qid.lower()}.png"
 
                 fire_delay = 5.0 if t_idx == 1 else None
                 rec = execute_ui_turn(
                     page=page,
                     tracker=tracker,
                     q_item=q_item,
-                    server_log_file=SERVER_LOG_FILE,
+                    server_log_file=server_log_file,
                     screenshot_file=shot_path,
                     target_fire_delay_s=fire_delay,
                     t_server_ready=t_server_ready if t_idx == 1 else None,
@@ -1266,7 +1286,7 @@ def run_stress_suite(
                 )
                 all_turn_records.append(rec)
 
-                with open(RAW_TURNS_JSONL, "a", encoding="utf-8") as jf:
+                with open(raw_turns_jsonl, "a", encoding="utf-8") as jf:
                     jf.write(json.dumps(rec, ensure_ascii=False) + "\n")
 
                 if shot_path and shot_path.exists():
@@ -1314,13 +1334,21 @@ def run_stress_suite(
             curr_messages = store.LOCAL_CHAT_DIR / "messages.jsonl"
             if curr_traces.exists():
                 shutil.copy2(curr_traces, OUT_DIR / "traces.jsonl")
-                log(f"[PRESERVE] Da sao chep traces.jsonl ({curr_traces.stat().st_size} bytes) vao {OUT_DIR / 'traces.jsonl'}")
+                if run_tag:
+                    shutil.copy2(curr_traces, OUT_DIR / f"traces{tag_suffix}.jsonl")
+                    log(f"[PRESERVE] Da sao chep traces.jsonl ({curr_traces.stat().st_size} bytes) vao {OUT_DIR / f'traces{tag_suffix}.jsonl'} va traces.jsonl")
+                else:
+                    log(f"[PRESERVE] Da sao chep traces.jsonl ({curr_traces.stat().st_size} bytes) vao {OUT_DIR / 'traces.jsonl'}")
             else:
                 log(f"[PRESERVE_WARN] Tep traces.jsonl khong ton tai tai {curr_traces}!")
 
             if curr_messages.exists():
                 shutil.copy2(curr_messages, OUT_DIR / "messages.jsonl")
-                log(f"[PRESERVE] Da sao chep messages.jsonl ({curr_messages.stat().st_size} bytes) vao {OUT_DIR / 'messages.jsonl'}")
+                if run_tag:
+                    shutil.copy2(curr_messages, OUT_DIR / f"messages{tag_suffix}.jsonl")
+                    log(f"[PRESERVE] Da sao chep messages.jsonl ({curr_messages.stat().st_size} bytes) vao {OUT_DIR / f'messages{tag_suffix}.jsonl'} va messages.jsonl")
+                else:
+                    log(f"[PRESERVE] Da sao chep messages.jsonl ({curr_messages.stat().st_size} bytes) vao {OUT_DIR / 'messages.jsonl'}")
             else:
                 log(f"[PRESERVE_WARN] Tep messages.jsonl khong ton tai tai {curr_messages}!")
         except Exception as pres_exc:
@@ -1343,7 +1371,7 @@ def run_stress_suite(
         "keywords_pass", "keywords_pass_min", "keywords_pass_majority", "keywords_pass_strict",
         "checkpoint_pass", "target_doc", "question", "answer_preview",
     ]
-    with open(RAW_TURNS_CSV, "w", encoding="utf-8-sig", newline="") as cf:
+    with open(raw_turns_csv, "w", encoding="utf-8-sig", newline="") as cf:
         writer = csv.DictWriter(cf, fieldnames=csv_fields, extrasaction="ignore")
         writer.writeheader()
         for r in all_turn_records:
@@ -1475,8 +1503,15 @@ def run_stress_suite(
         "answer_preview": q0828_rec.get("answer_preview"),
     } if q0828_rec else {}
 
+    if report_name:
+        ticket_val = Path(report_name).stem
+    elif limit is not None:
+        ticket_val = f"DESKTOP-STRESS-HARNESS-TRIAL-{limit}{('-' + run_tag.upper()) if run_tag else ''}"
+    else:
+        ticket_val = f"DESKTOP-STRESS-RERUN-FIXED-SCORING-HOME{('-' + run_tag.upper()) if run_tag else ''}"
+
     summary_payload = {
-        "ticket": "DESKTOP-STRESS-RERUN-FIXED-SCORING-HOME" if limit is None else f"DESKTOP-STRESS-HARNESS-TRIAL-{limit}",
+        "ticket": ticket_val,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "git_head": git_head,
         "ai_backend": ai_backend,
@@ -1516,7 +1551,7 @@ def run_stress_suite(
         "screenshots": screenshot_hashes,
     }
 
-    with open(SUMMARY_JSON, "w", encoding="utf-8") as sf:
+    with open(summary_json, "w", encoding="utf-8") as sf:
         json.dump(summary_payload, sf, ensure_ascii=False, indent=2)
 
     log("=" * 95)
@@ -1530,8 +1565,8 @@ def run_stress_suite(
     try:
         from generate_stress_rerun_report import generate_report
         generate_report(
-            summary_path=SUMMARY_JSON,
-            raw_path=RAW_TURNS_JSONL,
+            summary_path=summary_json,
+            raw_path=raw_turns_jsonl,
             report_path=report_path,
             questions_path=QUESTIONS_JSONL,
         )
@@ -1548,6 +1583,7 @@ def main() -> None:
     parser.add_argument("--report-name", type=str, default=None, help="Ten tep bao cao MD xuat ra")
     parser.add_argument("--skip-preflight", action="store_true", help="Bo qua buoc tien tram lam am worker")
     parser.add_argument("--ai-backend", type=str, default=None, help="Ghi de AI backend (local, cagent_api, ...)")
+    parser.add_argument("--tag", "--run-tag", dest="run_tag", type=str, default=None, help="Hau to phan biet dot chay (vi du: r2)")
     args = parser.parse_args()
 
     run_stress_suite(
@@ -1555,6 +1591,7 @@ def main() -> None:
         report_name=args.report_name,
         skip_preflight=args.skip_preflight,
         override_backend=args.ai_backend,
+        run_tag=args.run_tag,
     )
 
 

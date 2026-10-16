@@ -280,4 +280,16 @@ def generate_report(
 
 
 if __name__ == "__main__":
-    generate_report()
+    import argparse
+    parser = argparse.ArgumentParser(description="Sinh bao cao kiem thu ap luc giao dien that")
+    parser.add_argument("--summary", type=str, default=None, help="Duong dan tep summary JSON")
+    parser.add_argument("--raw", type=str, default=None, help="Duong dan tep du lieu tho JSONL")
+    parser.add_argument("--report", type=str, default=None, help="Duong dan tep bao cao MD xuat ra")
+    parser.add_argument("--questions", type=str, default=None, help="Duong dan bo cau hoi JSONL")
+    args = parser.parse_args()
+    generate_report(
+        summary_path=Path(args.summary) if args.summary else None,
+        raw_path=Path(args.raw) if args.raw else None,
+        report_path=Path(args.report) if args.report else None,
+        questions_path=Path(args.questions) if args.questions else None,
+    )
