@@ -1,0 +1,103 @@
+{
+  "phase": "after",
+  "timestamp": "2026-10-16T17:35:40",
+  "target_notebook": "NB-E35A7BEE",
+  "target_conversation": "CONV-9C730D76",
+  "renderer_pid": 10320,
+  "time_to_ready_s": 5.25,
+  "dom_elements_count": 3693,
+  "sidebar_expanders_count": 43,
+  "chat_messages_count": 72,
+  "buttons_count": 151,
+  "renderer_peak_ram_rss_mb": 301.45,
+  "renderer_final_ram_rss_mb": 198.69,
+  "renderer_avg_cpu_percent": 1.25,
+  "renderer_net_cpu_time_60s": 1.58,
+  "samples": [
+    {
+      "elapsed_s": 5.0,
+      "ram_rss_mb": 301.45,
+      "ram_vms_mb": 215.36,
+      "cpu_percent": 0.0,
+      "total_cpu_time_s": 8.97
+    },
+    {
+      "elapsed_s": 10.0,
+      "ram_rss_mb": 285.8,
+      "ram_vms_mb": 215.34,
+      "cpu_percent": 0.0,
+      "total_cpu_time_s": 8.97
+    },
+    {
+      "elapsed_s": 15.0,
+      "ram_rss_mb": 285.8,
+      "ram_vms_mb": 215.34,
+      "cpu_percent": 0.0,
+      "total_cpu_time_s": 8.97
+    },
+    {
+      "elapsed_s": 20.0,
+      "ram_rss_mb": 221.23,
+      "ram_vms_mb": 148.85,
+      "cpu_percent": 6.6,
+      "total_cpu_time_s": 9.3
+    },
+    {
+      "elapsed_s": 25.0,
+      "ram_rss_mb": 221.23,
+      "ram_vms_mb": 148.85,
+      "cpu_percent": 0.0,
+      "total_cpu_time_s": 9.3
+    },
+    {
+      "elapsed_s": 30.0,
+      "ram_rss_mb": 205.95,
+      "ram_vms_mb": 134.34,
+      "cpu_percent": 8.4,
+      "total_cpu_time_s": 9.72
+    },
+    {
+      "elapsed_s": 35.0,
+      "ram_rss_mb": 205.94,
+      "ram_vms_mb": 134.28,
+      "cpu_percent": 0.0,
+      "total_cpu_time_s": 9.72
+    },
+    {
+      "elapsed_s": 40.0,
+      "ram_rss_mb": 205.94,
+      "ram_vms_mb": 134.28,
+      "cpu_percent": 0.0,
+      "total_cpu_time_s": 9.72
+    },
+    {
+      "elapsed_s": 45.0,
+      "ram_rss_mb": 205.94,
+      "ram_vms_mb": 134.28,
+      "cpu_percent": 0.0,
+      "total_cpu_time_s": 9.72
+    },
+    {
+      "elapsed_s": 50.0,
+      "ram_rss_mb": 205.89,
+      "ram_vms_mb": 134.19,
+      "cpu_percent": 0.0,
+      "total_cpu_time_s": 9.72
+    },
+    {
+      "elapsed_s": 55.0,
+      "ram_rss_mb": 198.68,
+      "ram_vms_mb": 134.19,
+      "cpu_percent": 0.0,
+      "total_cpu_time_s": 9.72
+    },
+    {
+      "elapsed_s": 60.0,
+      "ram_rss_mb": 198.69,
+      "ram_vms_mb": 134.19,
+      "cpu_percent": 0.0,
+      "total_cpu_time_s": 9.72
+    }
+  ],
+  "screenshot_path": "D:\\Sandbox\\aios-dieu-phoi\\hop-thu\\lan-desktop-pc0575\\ket-qua\\anh-pc0575-ui-render-after.png"
+}

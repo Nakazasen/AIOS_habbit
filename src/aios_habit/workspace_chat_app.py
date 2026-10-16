@@ -4988,38 +4988,67 @@ else:
                 except Exception:
                     pass
 
-                # Realtime alert auto-refresh watcher (DESKTOP-LSU-ALERT-WIRE-HOME)
-                @st.fragment(run_every=1.5)
-                def _rt_alert_live_watcher(conv_id: str, last_count: int) -> None:
+                # Realtime alert auto-refresh watcher (DESKTOP-LSU-ALERT-WIRE-HOME / DESKTOP-PC0575-UI-RENDER-FIX)
+                # Chi kich hoat rerun dinh ky khi so co canh bao realtime dang hoat dong hoac nguoi dung dang o che do theo doi
+                def _is_rt_alert_active() -> bool:
                     try:
-                        from aios_habit.workspace_chat_store import load_messages
-                        current_msgs = load_messages(conv_id)
-                        if len(current_msgs) > last_count:
-                            try:
-                                st.rerun(scope="app")
-                            except TypeError:
-                                st.rerun()
+                        from aios_habit.production_prediction.session_isolation import classify_session
+                        if get_jig_session_type() == "truc_ban":
+                            return True
+                        if st.session_state.get("wsc_jig_persona") == "truc_ban" or st.session_state.get("wsc_monitoring_mode", False):
+                            return True
+                        if classify_session(getattr(active_conversation, "title", "")) == "truc_ban":
+                            return True
                     except Exception:
                         pass
+                    try:
+                        from aios_habit.production_prediction.rt_app_wire import get_last_dispatch_time
+                        if time.time() - get_last_dispatch_time() < 300:
+                            return True
+                        for m in reversed(messages[-20:] if len(messages) > 20 else messages):
+                            c = str(getattr(m, "content", "") or "")
+                            if "<!-- aios_realtime_alert:" in c or "Cảnh báo realtime" in c:
+                                return True
+                    except Exception:
+                        pass
+                    return False
 
-                _rt_alert_live_watcher(active_conversation.id, len(messages))
+                if _is_rt_alert_active():
+                    @st.fragment(run_every=1.5)
+                    def _rt_alert_live_watcher(conv_id: str, last_count: int) -> None:
+                        try:
+                            from aios_habit.workspace_chat_store import load_messages
+                            current_msgs = load_messages(conv_id)
+                            if len(current_msgs) > last_count:
+                                try:
+                                    st.rerun(scope="app")
+                                except TypeError:
+                                    st.rerun()
+                        except Exception:
+                            pass
+
+                    _rt_alert_live_watcher(active_conversation.id, len(messages))
 
                 chat_container = st.container()
                 with chat_container:
                     if not messages:
                         st.write(t("chat_start_prompt", locale=current_ui_locale))
                     last_assistant_idx = max((i for i, m in enumerate(messages) if m.role == "assistant"), default=-1)
+                    total_msgs = len(messages)
+                    interactive_threshold_idx = max(0, total_msgs - 10)
                     for i, m in enumerate(messages):
-                        is_latest_ans = (i == last_assistant_idx and i == len(messages) - 1)
+                        is_latest_ans = (i == last_assistant_idx and i == total_msgs - 1)
                         _fb_question = ""
                         if m.role == "assistant":
                             for _prev in reversed(messages[:i]):
                                 if _prev.role == "user":
                                     _fb_question = _prev.content or ""
                                     break
+                        should_render_interactive = (i >= interactive_threshold_idx)
                         render_chat_bubble(m, is_latest=is_latest_ans, locale=current_ui_locale,
                                            conversation_id=active_conversation.id,
-                                           feedback_question=_fb_question)
+                                           feedback_question=_fb_question,
+                                           render_interactive=should_render_interactive)
                     if is_answering:
                         stream_state = (
                             active_ai_request.get("stream_state")

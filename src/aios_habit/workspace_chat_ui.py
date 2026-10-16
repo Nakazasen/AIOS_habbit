@@ -622,6 +622,7 @@ def render_chat_bubble(
     trace_loader: Optional[Callable[[str], Optional[EvidenceTrace]]] = None,
     conversation_id: str = "",
     feedback_question: str = "",
+    render_interactive: bool = True,
 ):
     if msg.role == "user":
         with st.chat_message("user"):
@@ -633,6 +634,16 @@ def render_chat_bubble(
                 st.html(
                     f'<div style="display:inline-flex; align-items:center; gap:6px; background:rgba(14,165,233,0.15); border:1px solid rgba(14,165,233,0.4); color:#38bdf8; font-size:12px; font-weight:600; padding:2px 10px; border-radius:9999px; margin-bottom:10px;">✨ {latest_badge_text}</div>',
                 )
+            if not render_interactive:
+                from aios_habit import chat_interview_ui as _chat_interview_ui
+                from aios_habit import chat_action_create_case as _chat_create_case
+                raw_content = str(msg.content or "")
+                clean_content = _chat_interview_ui.strip_interactive_markers(raw_content)
+                clean_content = _chat_create_case.strip_case_preview_marker(clean_content)
+                clean_content = re.sub(r"<!--\s*aios_chat_artifact:.*?-->", "", clean_content, flags=re.DOTALL)
+                clean_content = re.sub(r"<!--\s*aios_realtime_alert:.*?-->", "", clean_content, flags=re.DOTALL).strip()
+                st.markdown(clean_content)
+                return
             from aios_habit.agent_work_artifact import extract_chat_artifact_metadata
             from aios_habit import chat_interview_ui as _chat_interview_ui
             from aios_habit import chat_action_create_case as _chat_create_case
@@ -1128,6 +1139,7 @@ def render_source_library(
     preparation_status_map: Optional[Dict[str, str]] = None,
     on_retry_preparation: Optional[Callable[[str, str], None]] = None,
     locale: str = "vi",
+    max_visible_sources: int = 20,
 ):
     st.subheader(f"📚 {t('source_library', locale=locale)}")
 
@@ -1166,9 +1178,40 @@ def render_source_library(
             for item in all_items:
                 on_toggle_source(item["scope"], item["source"].id, False)
 
+    search_key = f"wsc_source_filter_{conversation_id}"
+    search_query = ""
+    session_state = getattr(st, "session_state", {})
+    has_stored_filter = bool(session_state.get(search_key) if hasattr(session_state, "get") else False)
+    if len(all_items) > max_visible_sources or has_stored_filter:
+        search_query = st.text_input(
+            t("doc_search_label", locale=locale, count=len(all_items)),
+            key=search_key,
+            placeholder=t("doc_search_placeholder", locale=locale),
+        ).strip().casefold()
+
+    if search_query:
+        filtered_items = [
+            item for item in all_items
+            if search_query in getattr(item["source"], "title", "").casefold()
+        ]
+        st.caption(t("doc_search_found", locale=locale, matched=len(filtered_items), total=len(all_items)))
+    else:
+        filtered_items = all_items
+
+    limit_key = f"wsc_source_limit_{conversation_id}"
+    current_limit = session_state.get(limit_key, max_visible_sources) if hasattr(session_state, "get") else max_visible_sources
+
+    if len(filtered_items) > current_limit:
+        items_to_render = filtered_items[:current_limit]
+    else:
+        items_to_render = filtered_items
+
+    if len(filtered_items) > max_visible_sources or current_limit > max_visible_sources:
+        st.caption(f"📄 Hiển thị {len(items_to_render)} / {len(filtered_items)} nguồn")
+
     prep_map = preparation_status_map or {}
 
-    for item in all_items:
+    for item in items_to_render:
         s = item["source"]
         scope = item["scope"]
         is_enabled = item["enabled"]
@@ -1243,6 +1286,24 @@ def render_source_library(
                     __safe_rerun()
 
         st.divider()
+
+    if len(filtered_items) > current_limit:
+        col_more, col_all_src = st.columns(2)
+        with col_more:
+            if st.button(f"➕ Tải thêm (+{max_visible_sources})", key=f"wsc_btn_load_more_{conversation_id}", use_container_width=True):
+                if hasattr(st, "session_state"):
+                    st.session_state[limit_key] = current_limit + max_visible_sources
+                __safe_rerun()
+        with col_all_src:
+            if st.button(f"📂 Xem tất cả ({len(filtered_items)})", key=f"wsc_btn_show_all_{conversation_id}", use_container_width=True):
+                if hasattr(st, "session_state"):
+                    st.session_state[limit_key] = len(filtered_items)
+                __safe_rerun()
+    elif current_limit > max_visible_sources and len(filtered_items) > max_visible_sources:
+        if st.button(f"🔼 Thu gọn về {max_visible_sources} nguồn", key=f"wsc_btn_collapse_{conversation_id}", use_container_width=True):
+            if hasattr(st, "session_state"):
+                st.session_state[limit_key] = max_visible_sources
+            __safe_rerun()
 
 
 def render_source_library_summary(notebook_count: int, temporary_count: int, enabled_count: int, locale: str = "vi") -> None:
