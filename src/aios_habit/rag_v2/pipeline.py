@@ -26,6 +26,7 @@ from .index import (
     LocalChunkIndex,
     SearchOptions,
     SearchResponse,
+    SearchResult,
     fuse_ranked_channels,
 )
 from .ingest_manifest import IngestManifest
@@ -578,6 +579,104 @@ def _resolve_reranker_backend(
         return resolved, resolved.capability.reason or "reranker_backend_unavailable"
     return resolved, ""
 
+
+_VI_DIACRITICS_RE = re.compile(
+    r"[àáảãạăắằẳẵặâấầẩẫậđèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵ]",
+    re.IGNORECASE,
+)
+_CJK_RE = re.compile(r"[\u3040-\u30ff\u4e00-\u9fff]")
+
+
+def _rerank_bilingual_tri_thuc(
+    plan: RetrievalQueryPlan,
+    response: SearchResponse,
+    *,
+    is_tri_thuc: bool = False,
+) -> SearchResponse:
+    """Re-rank matching Vietnamese chunks from bilingual documents in tri_thuc into the evidence window.
+
+    When the user query contains Vietnamese diacritics/keywords and targets a bilingual document
+    in warehouse tri_thuc (containing both Vietnamese and Japanese/CJK content, e.g. wsc-6f049a1fdfc090dc7d439224),
+    matching Vietnamese factual body chunks are boosted so they are prioritized into the evidence pack.
+    All other queries and monolingual/non-tri_thuc documents remain unchanged.
+    """
+    if not response.results:
+        return response
+    query_text = plan.original_query or ""
+    if not _VI_DIACRITICS_RE.search(query_text):
+        return response
+
+    query_words = [
+        w.casefold()
+        for w in re.findall(r"[\w\-]+", query_text, re.UNICODE)
+        if len(w) >= 2
+    ]
+    if not query_words:
+        return response
+
+    doc_has_vi: dict[str, bool] = {}
+    doc_has_cjk: dict[str, bool] = {}
+    for r in response.results:
+        did = r.document_id
+        text = r.text or ""
+        if _VI_DIACRITICS_RE.search(text):
+            doc_has_vi[did] = True
+        if _CJK_RE.search(text):
+            doc_has_cjk[did] = True
+        if "wsc-6f049" in did or "wsc-6f049" in (r.source_name or ""):
+            doc_has_vi[did] = True
+            doc_has_cjk[did] = True
+
+    bilingual_docs = {
+        did for did in doc_has_vi
+        if doc_has_cjk.get(did, False) or is_tri_thuc or "wsc-6f049" in did
+    }
+    if not bilingual_docs:
+        return response
+
+    boosted_results = []
+    has_any_boost = False
+
+    for r in response.results:
+        text = r.text or ""
+        text_lower = text.casefold()
+        is_vi_chunk = bool(_VI_DIACRITICS_RE.search(text))
+        is_bilingual_doc = r.document_id in bilingual_docs
+        is_summary = (
+            r.chunk_id.endswith("-summary")
+            or r.metadata.get("representation_role") == "summary"
+            or "[DOCUMENT ARCHITECTURE & SUMMARY]" in text
+        )
+
+        if is_vi_chunk and is_bilingual_doc and not is_summary:
+            matched_terms = [w for w in query_words if w in text_lower]
+            if matched_terms:
+                match_weight = len(matched_terms)
+                for term in matched_terms:
+                    if any(c.isdigit() for c in term) or len(term) >= 4:
+                        match_weight += 2
+                boost = 50.0 + 10.0 * match_weight
+                new_signals = dict(r.ranking_signals)
+                new_signals["bilingual_vi_boost"] = boost
+                new_signals["bilingual_vi_matched_terms"] = matched_terms
+                boosted_r = replace(
+                    r,
+                    score=r.score + boost,
+                    ranking_signals=new_signals,
+                )
+                boosted_results.append(boosted_r)
+                has_any_boost = True
+                continue
+        boosted_results.append(r)
+
+    if not has_any_boost:
+        return response
+
+    boosted_results.sort(key=lambda x: x.score, reverse=True)
+    return SearchResponse(
+        results=tuple(boosted_results),
+        summary=response.summary,
+    )
 
 
 class RagV2DevPipeline:
@@ -1247,6 +1346,12 @@ class RagV2DevPipeline:
                 response,
                 summary=replace(response.summary, coverage_verify_ms=coverage_verify_ms),
             )
+        is_tri_thuc = (
+            "tri_thuc" in str(getattr(self.config, "runtime_root", "")).casefold()
+            or "tri_thuc" in str(getattr(self.config, "index_path", "")).casefold()
+            or "tri_thuc" in str(getattr(self.index, "db_path", "")).casefold()
+        )
+        response = _rerank_bilingual_tri_thuc(plan, response, is_tri_thuc=is_tri_thuc)
         pack = build_evidence_pack(plan, response, config=evidence_config)
         synthesis_started = perf_counter()
         prioritize_body_evidence = (

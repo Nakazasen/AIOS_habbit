@@ -54,6 +54,7 @@ class ExcelTableRegion:
     merged_ranges: tuple[str, ...] = ()
     chunk_index: int = 0
     total_chunks: int = 1
+    section_name: str = ""
 
 
 @dataclass(frozen=True)
@@ -116,7 +117,13 @@ def legacy_xls_available() -> bool:
 def normalize_cell_value(value: Any) -> str:
     if value is None:
         return ""
-    if isinstance(value, datetime.datetime):
+    if isinstance(value, float):
+        rounded = round(value, 6)
+        if rounded == int(rounded):
+            raw = str(int(rounded))
+        else:
+            raw = f"{rounded:.6f}".rstrip("0").rstrip(".")
+    elif isinstance(value, datetime.datetime):
         raw = value.isoformat(sep=" ")
     elif isinstance(value, (datetime.date, datetime.time)):
         raw = value.isoformat()
@@ -173,8 +180,10 @@ def _header_depth(rows: list[tuple[int, dict[int, str]]], first: int, last: int,
         has_merge = any(item.min_row <= row_number <= item.max_row and item.min_col <= last and item.max_col >= first for item in merges)
         textual = sum(bool(value) and not _looks_numeric(value) for value in line)
         numeric = sum(bool(value) and _looks_numeric(value) for value in line)
-        next_numeric = sum(_looks_numeric(value) for value in (rows[offset + 1][1].values() if offset + 1 < len(rows) else ()))
-        if has_merge or (textual and (not numeric or next_numeric > numeric)):
+        next_values = rows[offset + 1][1] if offset + 1 < len(rows) else {}
+        next_line = [next_values.get(column, "") for column in range(first, last + 1)]
+        next_numeric = sum(bool(value) and _looks_numeric(value) for value in next_line)
+        if has_merge or (textual and numeric == 0) or (textual and next_numeric > numeric and numeric == 0):
             depth += 1
         else:
             break
@@ -197,21 +206,72 @@ def _headers(rows: tuple[tuple[str, ...], ...], width: int) -> tuple[str, ...]:
     return tuple(output)
 
 
+def _is_section_header_row(values: dict[int, str] | Sequence[Any], prev_values: dict[int, str] | Sequence[Any] | None = None) -> bool:
+    if not values:
+        return False
+    if isinstance(values, dict):
+        val_list = [str(v).strip() for v in values.values() if v is not None and str(v).strip()]
+    else:
+        val_list = [str(v).strip() for v in values if v is not None and str(v).strip()]
+    if not val_list or len(val_list) > 2:
+        return False
+    if any(_looks_numeric(v) for v in val_list):
+        return False
+    text = " ".join(val_list).lower()
+    sub_header_keywords = (
+        "測定", "đo", "độ lệch", "xác nhận", "確認", "bracket", "ブラケット",
+        "lens", "レンズ", "bảng", "table", "mục", "section", "tiêu chuẩn",
+        "kết quả", "result", "summary", "báo cáo", "quy tắc", "chỉ thị"
+    )
+    if any(kw in text for kw in sub_header_keywords):
+        return True
+    if len(val_list) <= 2 and prev_values is not None:
+        if isinstance(prev_values, dict):
+            prev_list = [str(v).strip() for v in prev_values.values() if v is not None and str(v).strip()]
+        else:
+            prev_list = [str(v).strip() for v in prev_values if v is not None and str(v).strip()]
+        if any(_looks_numeric(v) for v in prev_list):
+            return True
+    return False
+
+
 def _regions(sheet: str, rows: list[tuple[int, dict[int, str]]], merges: list[Any], config: ExcelExtractionConfig) -> list[ExcelTableRegion]:
     row_groups: list[list[tuple[int, dict[int, str]]]] = []
     current: list[tuple[int, dict[int, str]]] = []
     previous = 0
+    prev_values: dict[int, str] | None = None
     for item in rows:
-        if current and item[0] > previous + 1:
+        row_number, values = item
+        split_gap = current and row_number > previous + 1
+        current_has_numeric = any(_looks_numeric(v) for _, vs in current for v in vs.values())
+        split_sub = current and current_has_numeric and _is_section_header_row(values, prev_values)
+        if split_gap or split_sub:
             row_groups.append(current)
             current = []
         current.append(item)
-        previous = item[0]
+        previous = row_number
+        prev_values = values
     if current:
         row_groups.append(current)
 
     output: list[ExcelTableRegion] = []
+    active_section = ""
     for group in row_groups:
+        has_numbers = any(_looks_numeric(v) for _, vals in group for v in vals.values())
+        group_text = " ".join(v for _, vals in group for v in vals.values()).strip()
+        section_name_candidate = ""
+        for r_num, r_vals in group:
+            if _is_section_header_row(r_vals):
+                if isinstance(r_vals, dict):
+                    section_name_candidate = " ".join(str(v).strip() for v in r_vals.values() if v).strip()
+                else:
+                    section_name_candidate = " ".join(str(v).strip() for v in r_vals if v).strip()
+                break
+        if section_name_candidate:
+            active_section = section_name_candidate
+        elif not has_numbers and group_text:
+            active_section = group_text
+
         columns = sorted({column for _, values in group for column in values})
         for first, last in _blocks(columns):
             last = min(last, first + config.max_columns_per_region - 1)
@@ -272,6 +332,7 @@ def _regions(sheet: str, rows: list[tuple[int, dict[int, str]]], merges: list[An
                     (chunk_start_row, chunk_end_row), (first, last), tuple(matrix), tuple(cells),
                     header_rows, headers, tuple(map(str, chunk_relevant)),
                     chunk_index=chunk_index, total_chunks=total_chunks,
+                    section_name=active_section,
                 ))
     return output
 
@@ -352,7 +413,7 @@ def _extract_openpyxl(data: bytes, suffix: str, config: ExcelExtractionConfig, i
     result = ExcelExtraction(suffix)
     workbook = None
     try:
-        workbook = openpyxl.load_workbook(BytesIO(data), read_only=False, data_only=False, keep_links=False, keep_vba=False)
+        workbook = openpyxl.load_workbook(BytesIO(data), read_only=False, data_only=True, keep_links=False, keep_vba=False)
         result.sheet_names = tuple(workbook.sheetnames)
         cell_count = image_bytes = 0
         for sheet_index, sheet_name in enumerate(workbook.sheetnames):

@@ -57,7 +57,15 @@ def _cap_utf8(text: str, limit: int) -> tuple[str, bool]:
 
 
 def _normalize_cell_value(value: Any) -> str:
-    if isinstance(value, datetime):
+    if value is None:
+        return ""
+    if isinstance(value, float):
+        rounded = round(value, 6)
+        if rounded == int(rounded):
+            raw = str(int(rounded))
+        else:
+            raw = f"{rounded:.6f}".rstrip("0").rstrip(".")
+    elif isinstance(value, datetime):
         raw = value.isoformat(sep=" ")
     elif isinstance(value, (date, time)):
         raw = value.isoformat()
@@ -161,7 +169,7 @@ def extract_xlsx_text(file_bytes: bytes, filename: str) -> ExtractedWorkspaceSou
     all_sheet_names: tuple[str, ...] = ()
 
     try:
-        workbook = openpyxl.load_workbook(BytesIO(file_bytes), read_only=True, data_only=False, keep_links=False)
+        workbook = openpyxl.load_workbook(BytesIO(file_bytes), read_only=True, data_only=True, keep_links=False)
         all_sheet_names = tuple(workbook.sheetnames)
 
         for sheet_index, sheet_name in enumerate(workbook.sheetnames):

@@ -951,7 +951,7 @@ def _extract_top_chunks_lexical(
     if not sources:
         return [], ()
 
-    raw_terms = [t for t in re.findall(r"[a-zA-Z0-9_\-]+", question.casefold()) if len(t) >= 2]
+    raw_terms = [t for t in re.findall(r"[\w\-]+", question.casefold(), re.UNICODE) if len(t) >= 2]
     stop = {
         "là", "gì", "như", "thế", "nào", "cho", "tôi", "biết", "về", "có", "không",
         "ở", "đâu", "khi", "các", "những", "the", "what", "how", "is", "are", "and",
@@ -1094,7 +1094,7 @@ def _rank_sources_for_fallback(
     """Sort context sources so keyword-relevant ones appear first under budget."""
     if not sources or len(sources) <= 1:
         return sources
-    raw_terms = [t for t in re.findall(r"[a-zA-Z0-9_\-]+", question.casefold()) if len(t) >= 2]
+    raw_terms = [t for t in re.findall(r"[\w\-]+", question.casefold(), re.UNICODE) if len(t) >= 2]
     stop = {
         "là", "gì", "như", "thế", "nào", "cho", "tôi", "biết", "về", "có", "không",
         "ở", "đâu", "khi", "các", "những", "the", "what", "how", "is", "are", "and",
@@ -1937,7 +1937,7 @@ def route_workspace_chat_submission(
                 for idx, itm in enumerate(cited_items, 1):
                     t_title = (itm.get("title") if isinstance(itm, dict) else getattr(itm, "title", f"Nguồn {idx}")) or f"Nguồn {idx}"
                     t_text = (itm.get("text") or itm.get("snippet", "") if isinstance(itm, dict) else getattr(itm, "text", "")) or ""
-                    t_snip = t_text.strip()[:400].replace("\n", " ")
+                    t_snip = t_text.strip().replace("\n", " ")
                     lines.append(f"[{idx}] **{t_title}**:\n{t_snip}")
                 lines.append("\n*(Ghi chú: Dịch vụ AI bên ngoài không phản hồi hoặc đã quá thời gian chờ; câu trả lời được trích xuất trực tiếp từ tài liệu nội bộ đã kiểm chứng.)*")
             elif not lines:

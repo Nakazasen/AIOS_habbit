@@ -745,7 +745,7 @@ def build_evidence_pack(
         uncovered_obligations or uncovered_facets
     ):
         best_result: Optional[SearchResult] = None
-        best_key: Optional[Tuple[int, int, int, int]] = None
+        best_key: Optional[Tuple[int, int, int, int, int]] = None
         for rank_index, result in enumerate(selection_results):
             if result.chunk_id in selected_chunk_ids:
                 continue
@@ -759,7 +759,9 @@ def build_evidence_pack(
             )
             if not obligation_gain and not facet_gain:
                 continue
+            vi_boost = int(result.ranking_signals.get("bilingual_vi_boost", 0.0) > 0)
             key = (
+                vi_boost,
                 obligation_gain + facet_gain,
                 obligation_gain,
                 facet_gain,

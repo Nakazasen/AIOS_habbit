@@ -380,6 +380,17 @@ class StructureAwareChunker:
         )
 
     def _chunk_text_element(self, element: DocumentElement, text: str) -> List[DocumentChunk]:
+        # PowerPoint whole slide requirement: ensure the full text of each slide stays intact in one retrievable chunk
+        if element.slide is not None or (element.file_type or "").lower() in {"pptx", "ppt"}:
+            return [self._build_chunk(
+                element,
+                text,
+                0,
+                parent_element_ids=(element.parent_element_id,) if element.parent_element_id else (),
+                representation_role="child",
+                retrievable=True,
+            )]
+
         chunks: List[DocumentChunk] = []
         child_index = 0
         for parent_index, parent_text in enumerate(self._split_text(text, self.parent_max_chars)):
@@ -621,7 +632,10 @@ class StructureAwareChunker:
 
         sheet_prefix = f"Sheet: {element.sheet}\n" if element.sheet else ""
         if headers:
-            schema_lines = [f"Columns: {' | '.join(headers)}"]
+            schema_lines = []
+            if element.section_path:
+                schema_lines.append(f"Section: {' > '.join(element.section_path)}")
+            schema_lines.append(f"Columns: {' | '.join(headers)}")
             schema_lines.extend(
                 f"Header row {source_start + offset}: {' | '.join(_clean_text(value) for value in row)}"
                 for offset, row in enumerate(header_rows)
@@ -687,6 +701,8 @@ class StructureAwareChunker:
         lines = []
         if element.sheet:
             lines.append(f"Sheet: {element.sheet}")
+        if element.section_path:
+            lines.append(f"Section: {' > '.join(element.section_path)}")
         if headers:
             lines.append(f"Columns: {' | '.join(headers)}")
         lines.extend(

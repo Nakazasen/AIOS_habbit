@@ -376,6 +376,7 @@ class ExcelDocumentConverterAdapter(BaseDocumentConverterAdapter):
     def convert(self, path: str, context: ConversionContext) -> List[DocumentElement]:
         from aios_habit.excel_extractors import extract_excel
 
+        path = str(path)
         if not self.supports(path):
             if context.fail_soft:
                 return [self._create_failed_element(path, f"Unsupported file: {path}", context, "ExcelDocumentConverterAdapter")]
@@ -394,9 +395,10 @@ class ExcelDocumentConverterAdapter(BaseDocumentConverterAdapter):
                 return [self._create_failed_element(path, detail, context, "ExcelDocumentConverterAdapter")]
             raise ValueError(detail)
 
-        path_hash = hashlib.sha256(path.encode("utf-8")).hexdigest()[:12]
+        path_str = str(path)
+        path_hash = hashlib.sha256(path_str.encode("utf-8")).hexdigest()[:12]
         doc_id = context.document_id or f"doc_{path_hash}"
-        file_type = os.path.splitext(path)[1].lower()[1:]
+        file_type = os.path.splitext(path_str)[1].lower()[1:]
         warning = "; ".join(dict.fromkeys([*extracted.warnings, *extracted.truncated_reasons])) or None
         status = ExtractionStatus.PARTIAL if extracted.partial else ExtractionStatus.SUCCESS
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -422,12 +424,13 @@ class ExcelDocumentConverterAdapter(BaseDocumentConverterAdapter):
             )
             elements.append(DocumentElement(
                 element_id=f"{doc_id}_xls_{path_hash}_region_{index}", document_id=doc_id,
-                source_path=path, source_name=os.path.basename(path), file_type=file_type,
+                source_path=path_str, source_name=os.path.basename(path_str), file_type=file_type,
                 extractor="ExcelDocumentConverterAdapter", extraction_status=status,
                 extraction_warning=warning, element_type=ElementType.TABLE, table=table,
                 sheet=region.sheet, row_range=region.row_range,
                 column_range=region.column_range, cell_range=region.cell_range,
                 privacy_labels=context.privacy_labels, source_fingerprint=context.source_fingerprint,
+                section_path=(region.section_name,) if region.section_name else (),
                 created_at=now,
             ))
 
@@ -567,10 +570,11 @@ class WordDocumentConverterAdapter(BaseDocumentConverterAdapter):
 
 class PowerPointDocumentConverterAdapter(BaseDocumentConverterAdapter):
     def supports(self, path: str, file_type: Optional[str] = None, mime: Optional[str] = None) -> bool:
-        ext = os.path.splitext(path)[1].lower()
+        ext = os.path.splitext(str(path))[1].lower()
         return ext == ".pptx"
 
     def convert(self, path: str, context: ConversionContext) -> List[DocumentElement]:
+        path = str(path)
         if not self.supports(path):
             if context.fail_soft:
                 return [self._create_failed_element(path, f"Unsupported file: {path}", context, "PowerPointDocumentConverterAdapter")]
@@ -601,12 +605,19 @@ class PowerPointDocumentConverterAdapter(BaseDocumentConverterAdapter):
                     content_xml = archive.read(slide_name)
                     root = ET.fromstring(content_xml)
                     
-                    texts = []
-                    for t in root.iter('{http://schemas.openxmlformats.org/drawingml/2006/main}t'):
-                        if t.text:
-                            texts.append(t.text)
+                    # Extract text preserving paragraphs
+                    p_texts = []
+                    for p in root.iter('{http://schemas.openxmlformats.org/drawingml/2006/main}p'):
+                        run_texts = [t.text for t in p.iter('{http://schemas.openxmlformats.org/drawingml/2006/main}t') if t.text]
+                        p_str = "".join(run_texts).strip()
+                        if p_str:
+                            p_texts.append(p_str)
                     
-                    slide_text = " ".join(texts).strip()
+                    if p_texts:
+                        slide_text = "\n".join(p_texts).strip()
+                    else:
+                        texts = [t.text for t in root.iter('{http://schemas.openxmlformats.org/drawingml/2006/main}t') if t.text]
+                        slide_text = " ".join(texts).strip()
 
                     # Trích xuất ghi chú diễn giả (Speaker Notes) nếu có
                     notes_text = ""
@@ -643,27 +654,22 @@ class PowerPointDocumentConverterAdapter(BaseDocumentConverterAdapter):
                         else:
                             slide_text = f"[Ghi chú diễn giả]: {notes_text}"
 
-                    paragraphs = [p.strip() for p in slide_text.split("\n\n") if p.strip()]
-                    if not paragraphs:
-                        paragraphs = [""]
-
-                    for idx, para in enumerate(paragraphs):
-                        element_id = f"{doc_id}_pptx_{path_hash}_s{slide_idx}_{idx}"
-                        elements.append(DocumentElement(
-                            element_id=element_id,
-                            document_id=doc_id,
-                            source_path=path,
-                            source_name=os.path.basename(path),
-                            file_type="pptx",
-                            extractor="PowerPointDocumentConverterAdapter",
-                            extraction_status=ExtractionStatus.SUCCESS,
-                            element_type=ElementType.TEXT,
-                            text=para,
-                            slide=slide_idx,
-                            privacy_labels=context.privacy_labels,
-                            source_fingerprint=context.source_fingerprint,
-                            created_at=datetime.datetime.now(datetime.timezone.utc).isoformat()
-                        ))
+                    element_id = f"{doc_id}_pptx_{path_hash}_s{slide_idx}"
+                    elements.append(DocumentElement(
+                        element_id=element_id,
+                        document_id=doc_id,
+                        source_path=path,
+                        source_name=os.path.basename(path),
+                        file_type="pptx",
+                        extractor="PowerPointDocumentConverterAdapter",
+                        extraction_status=ExtractionStatus.SUCCESS,
+                        element_type=ElementType.TEXT,
+                        text=slide_text,
+                        slide=slide_idx,
+                        privacy_labels=context.privacy_labels,
+                        source_fingerprint=context.source_fingerprint,
+                        created_at=datetime.datetime.now(datetime.timezone.utc).isoformat()
+                    ))
         except Exception as e:
             if context.fail_soft:
                 return [self._create_failed_element(path, f"PowerPoint read failed: {e}", context, "PowerPointDocumentConverterAdapter")]
