@@ -1171,11 +1171,24 @@ class RagV2DevPipeline:
             candidate_limit=self.config.candidate_limit,
             per_document_limit=effective_per_document_limit,
         )
+        lexical_w = self.config.lexical_channel_weight
+        dense_w = self.config.dense_channel_weight
+        sparse_w = self.config.sparse_channel_weight
+        from aios_habit.rag_v2.index import _has_maintenance_date_or_column_range
+        if _has_maintenance_date_or_column_range(plan.original_query):
+            if bool(re.search(r"\b\d{1,2}/\d{1,2}\b", plan.original_query)):
+                lexical_w = 0.2
+                dense_w = 3.0
+                sparse_w = 1.5
+            else:
+                lexical_w = 0.05
+                dense_w = 2.0
+                sparse_w = 3.5
         ranking_config = HybridRankingConfig(
             rrf_k=self.config.rrf_k,
-            lexical_weight=self.config.lexical_channel_weight,
-            dense_weight=self.config.dense_channel_weight,
-            sparse_weight=self.config.sparse_channel_weight,
+            lexical_weight=lexical_w,
+            dense_weight=dense_w,
+            sparse_weight=sparse_w,
             rerank_limit=self.config.rerank_limit,
         )
         if self.config.strict_semantic and self.config.index_read_only:

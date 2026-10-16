@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 import re
 from typing import Any
+import unicodedata
 
 KET_QUA_DIR = Path(r"D:\Sandbox\aios-dieu-phoi\hop-thu\lan-desktop\ket-qua")
 DEFAULT_SUMMARY_JSON = KET_QUA_DIR / "ket-qua-stress-rerun-fixed-scoring-home.json"
@@ -23,16 +24,26 @@ DEFAULT_REPORT_MD = KET_QUA_DIR / "DESKTOP-STRESS-RERUN-FIXED-SCORING-HOME.md"
 
 
 def normalize_keyword_text(text: str) -> str:
-    r"""Chuẩn hóa khoảng trắng đơn vị đo trước khi khớp từ khóa.
-    Tách số (nguyên hoặc thập phân) và đơn vị đo (chữ cái / %) bằng biểu thức chính quy:
-    re.sub(r'(\d+(?:[.,]\d+)?)\s*([a-zA-Z%]+)', r'\1 \2', text)
-    giúp các cặp định dạng '3s'/'3 s', '1.1mm'/'1.1 mm', '64.09Dot'/'64.09 dot', '5.9Dot'/'5.9 dot'
-    được tính là khớp. (Ticket: DESKTOP-BENCHMARK-KEYWORD-TOLERANCE-NORM-FIX-HOME)
+    r"""Chuẩn hóa ký tự Unicode NFKC, dấu gạch ngang / dấu bằng và khoảng trắng đơn vị đo.
+    1. Unicode NFKC: chuyển đổi các ký tự full-width (ví dụ 'ｍｍ' -> 'mm', '０.７' -> '0.7', '＝' -> '=', '－' -> '-')
+    2. Chuẩn hóa các dạng gạch ngang (en-dash '–', em-dash '—', minus '−', figure dash '‒', horizontal bar '―')
+       và dấu bằng '=' thành '-' phục vụ so khớp từ khóa dung sai.
+    3. Tách số (nguyên hoặc thập phân) và đơn vị đo (chữ cái / %) bằng biểu thức chính quy:
+       re.sub(r'(\d+(?:[.,]\d+)?)\s*([a-zA-Z%]+)', r'\1 \2', text)
+       giúp các cặp định dạng '3s'/'3 s', '1.1mm'/'1.1 mm', '64.09Dot'/'64.09 dot', '5.9Dot'/'5.9 dot'
+       được tính là khớp.
+    (Tickets: DESKTOP-BENCHMARK-KEYWORD-TOLERANCE-NORM-FIX-HOME, DESKTOP-BENCHMARK-PUNCT-AND-INGEST-NORM-FIX-HOME)
     """
     if not text:
         return ""
-    t = text.lower()
+    # Bước 1: Chuẩn hóa Unicode NFKC
+    t = unicodedata.normalize("NFKC", text)
+    t = t.lower()
+    # Bước 2: Chuẩn hóa các dạng gạch ngang và dấu bằng về '-'
+    t = re.sub(r"[–—−‒―=]", "-", t)
+    # Bước 3: Chuẩn hóa khoảng trắng số và đơn vị đo
     t = re.sub(r"(\d+(?:[.,]\d+)?)\s*([a-zA-Z%]+)", r"\1 \2", t)
+    # Bước 4: Chuẩn hóa khoảng trắng dư thừa
     return re.sub(r"\s+", " ", t).strip()
 
 

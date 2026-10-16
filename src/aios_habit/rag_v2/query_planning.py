@@ -234,6 +234,16 @@ def extract_content_terms(value: str) -> Tuple[str, ...]:
             continue
         seen.add(token)
         result.append(token)
+    # Preserve signed numeric tokens (e.g. -8, -3, +2, +8) and double-dash '--'
+    for match in re.finditer(r"(?<!\w)[-+]\d+(?:\.\d+)?(?!\w)", value or ""):
+        st = match.group(0).lower()
+        if st not in seen:
+            seen.add(st)
+            result.append(st)
+    if "--" in (value or ""):
+        if "--" not in seen:
+            seen.add("--")
+            result.append("--")
     # 2. CJK compound decomposition
     if _CJK_RE.search(split_text):
         for match in _CJK_RE.finditer(split_text):
@@ -300,7 +310,18 @@ def _right_starts_with_question_cue(value: str) -> bool:
 
 
 def _clean_clause(value: str) -> str:
-    return " ".join(value.strip(" -•\t?").split())
+    cleaned = (value or "").replace("`", "")
+    # Strip leading bullet dashes, but preserve trailing content like '--'
+    cleaned = re.sub(r"^[\s\-•\t]+", "", cleaned)
+    cleaned = re.sub(r"[\s•\t\?]+$", "", cleaned)
+    return " ".join(cleaned.split())
+
+
+_PURE_INTERROGATIVE_RE = re.compile(
+    r"^(?:(?:phải|cần)\s+)?(?:xử\s*lý|khắc\s*phục|giải\s*quyết|làm|thực\s*hiện)?\s*"
+    r"(?:như\s*thế\s*nào|thế\s*nào|ra\s*sao|sao|làm\s*sao|gì|đâu|nào)\s*[\?!\.]*$",
+    re.IGNORECASE,
+)
 
 
 def _unique_clause_parts(parts: Sequence[str], original: str) -> list[str]:
@@ -310,7 +331,13 @@ def _unique_clause_parts(parts: Sequence[str], original: str) -> list[str]:
     for raw in parts:
         part = _clean_clause(raw)
         key = part.casefold()
-        if not part or key == original_key or not extract_content_terms(part) or key in seen:
+        if (
+            not part
+            or key == original_key
+            or not extract_content_terms(part)
+            or key in seen
+            or _PURE_INTERROGATIVE_RE.match(part.strip())
+        ):
             continue
         seen.add(key)
         cleaned.append(part)
@@ -321,9 +348,11 @@ def _unique_clause_parts(parts: Sequence[str], original: str) -> list[str]:
 
 def _split_question_clauses(original: str) -> list[str]:
     """Split only on explicit question structure, never on noun-phrase 'and'."""
-    structural = _unique_clause_parts(_FACET_SPLIT_RE.split(original), original)
-    if len(structural) >= 2:
-        return structural
+    raw_splits = _FACET_SPLIT_RE.split(original)
+    if len(raw_splits) >= 2:
+        structural = _unique_clause_parts(raw_splits, original)
+        if structural:
+            return structural
 
     question_parts = _unique_clause_parts(re.split(r"\?\s+", original), original)
     if len(question_parts) >= 2 and all(_has_question_cue(part) for part in question_parts):
@@ -479,7 +508,7 @@ def detect_query_language(query: str) -> str:
 def _clean_variant(value: Any) -> str:
     if not isinstance(value, str):
         return ""
-    cleaned = " ".join(value.strip().split())
+    cleaned = " ".join(value.replace("`", "").strip().split())
     if (
         not cleaned
         or len(cleaned) > _MAX_VARIANT_CHARS
@@ -497,9 +526,10 @@ def _identity_variants(
     if not original:
         return ()
     language_hint = detect_query_language(original)
+    clean_original = _clean_variant(original) or original
     variants = [
         RetrievalQueryVariant(
-            text=original,
+            text=clean_original,
             language_hint=language_hint,
             origin="original",
             variant_id="query_original",
@@ -507,17 +537,21 @@ def _identity_variants(
         )
     ]
     parts = _split_question_clauses(original)
-    if len(parts) >= 2:
+    if parts:
         for position, part in enumerate(parts, 1):
-            variants.append(
-                RetrievalQueryVariant(
-                    text=part,
-                    language_hint=language_hint,
-                    origin="facet",
-                    variant_id=f"facet_{position}",
-                    facet_id=f"facet_{position}",
+            if (
+                part.casefold() != original.casefold()
+                and part.casefold() != clean_original.casefold()
+            ):
+                variants.append(
+                    RetrievalQueryVariant(
+                        text=part,
+                        language_hint=language_hint,
+                        origin="facet",
+                        variant_id=f"facet_{position}",
+                        facet_id=f"facet_{position}",
+                    )
                 )
-            )
 
     paired_match = re.search(r"(?<![A-Za-z0-9])(C\d{2,3})\s*(?:と|and|&|/|,|\+)\s*C?(\d{2,3})(?![A-Za-z0-9])", original, re.IGNORECASE)
     if paired_match:

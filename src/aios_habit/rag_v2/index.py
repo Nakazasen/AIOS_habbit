@@ -68,6 +68,8 @@ _SPECIAL_ENTITY_RES = (
     re.compile(r"\b(?:g1|g2|OHP)\b", re.IGNORECASE),
     re.compile(r"\b(?:1035|1004)\b"),
     re.compile(r"(?<!\w)[A-Za-z][A-Za-z0-9]*(?:[_-][A-Za-z0-9]+)+(?!\w)"),
+    re.compile(r"(?<!\w)\d{2,4}-\d{3,4}(?!\w)", re.IGNORECASE),
+    re.compile(r"(?<!\w)[A-Z0-9]{3,4}\d{4,}[A-Z0-9]*(?!\w)", re.IGNORECASE),
 )
 # Structured CSV log documents that operate on the dedicated structured query lane (CSV-STRUCTURED-LANE-HOME)
 # rather than dense semantic embeddings. Dense embedding was explicitly cancelled by user & coordinator decision.
@@ -172,6 +174,30 @@ def _compute_entity_boost(
     return min(boost, MAX_ENTITY_BOOST) + min(doc_boost, 0.15)
 
 
+def _has_maintenance_date_or_column_range(query: str) -> bool:
+    if not query:
+        return False
+    clean_query = query.replace("`", "")
+    # 1. Maintenance date pattern (e.g. 14/2, 2/14) with maintenance/component terms
+    has_date = bool(re.search(r"\b\d{1,2}/\d{1,2}\b", clean_query))
+    has_maint_ctx = bool(
+        re.search(
+            r"(?:bảo\s*dưỡng|bao\s*duong|khuôn|khuon|maintenance|金型|housing|màu|mau)",
+            clean_query,
+            re.IGNORECASE,
+        )
+    )
+    if has_date and has_maint_ctx:
+        return True
+
+    # 2. Numeric column ranges (e.g. -8 đến -3, +2 đến +8, -8 ~ -3, cột từ -8 đến -3)
+    if re.search(r"[-+]\d+\s*(?:đến|to|~|-)\s*[-+]\d+", clean_query, re.IGNORECASE):
+        return True
+    if re.search(r"cột\s*(?:từ\s*)?[-+]\d+", clean_query, re.IGNORECASE):
+        return True
+
+    return False
+
 
 def _query_carries_exact_values(query: str) -> bool:
     """Return True when the query contains an identifier/code/number token.
@@ -211,6 +237,10 @@ def _identifier_match_priority(
 def _tokens(value: str) -> List[str]:
     text = value or ""
     tokens = [match.group(0).lower() for match in _TOKEN_RE.finditer(text)]
+    for match in re.finditer(r"(?<!\w)[-+]\d+(?:\.\d+)?(?!\w)", text):
+        tokens.append(match.group(0).lower())
+    if "--" in text:
+        tokens.append("--")
     for match in _CJK_RE.finditer(text):
         compound = match.group(0).lower()
         if len(compound) < 2:
@@ -828,7 +858,12 @@ def _merge_search_results(current: SearchResult, incoming: SearchResult) -> Sear
 
 
 def _result_tokens(text: str) -> set[str]:
-    return {match.group(0).casefold() for match in _TOKEN_RE.finditer(text or "")}
+    tokens = {match.group(0).casefold() for match in _TOKEN_RE.finditer(text or "")}
+    for match in re.finditer(r"(?<!\w)[-+]\d+(?:\.\d+)?(?!\w)", text or ""):
+        tokens.add(match.group(0).casefold())
+    if "--" in (text or ""):
+        tokens.add("--")
+    return tokens
 
 
 def _is_near_duplicate(
@@ -4330,7 +4365,20 @@ class LocalChunkIndex:
             limit = max(limit, 25)
         if ranking_config is None:
             source_names = self._sample_source_names()
-            if uses_script_mismatch_ranking(plan.original_query, source_names):
+            if _has_maintenance_date_or_column_range(plan.original_query):
+                if bool(re.search(r"\b\d{1,2}/\d{1,2}\b", plan.original_query)):
+                    ranking_config = HybridRankingConfig(
+                        lexical_weight=0.2,
+                        dense_weight=3.0,
+                        sparse_weight=1.5,
+                    )
+                else:
+                    ranking_config = HybridRankingConfig(
+                        lexical_weight=0.05,
+                        dense_weight=2.0,
+                        sparse_weight=3.5,
+                    )
+            elif uses_script_mismatch_ranking(plan.original_query, source_names):
                 lexical_w, dense_w, sparse_w = MISMATCH_CHANNEL_WEIGHTS
                 ranking_config = HybridRankingConfig(
                     lexical_weight=lexical_w,

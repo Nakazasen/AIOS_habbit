@@ -713,12 +713,18 @@ def build_evidence_pack(
         return True
 
     def has_direct_target_support(result: SearchResult) -> bool:
-        return (
-            not query_plan.target_terms
-            or result.ranking_signals.get("target_term_match_count", 0.0) > 0.0
-            or bool(set(result.matched_terms).intersection(query_plan.target_terms))
-            or bool(result.matched_target_equivalent_variant_ids)
-        )
+        if not query_plan.target_terms:
+            return True
+        if result.ranking_signals.get("target_term_match_count", 0.0) > 0.0:
+            return True
+        if bool(set(result.matched_terms).intersection(query_plan.target_terms)):
+            return True
+        if bool(result.matched_target_equivalent_variant_ids):
+            return True
+        text_lower = (result.text or "").lower()
+        if any(term in text_lower for term in query_plan.target_terms if len(term) >= 2):
+            return True
+        return False
 
     target_supported_results = tuple(
         result for result in results if has_direct_target_support(result)
@@ -727,12 +733,15 @@ def build_evidence_pack(
         query_plan.original_query,
         tuple((result.source_name or "") + " " + (result.text or "")[:200] for result in results),
     )
+    from aios_habit.rag_v2.index import _has_maintenance_date_or_column_range
+    has_semantic_boost = _has_maintenance_date_or_column_range(query_plan.original_query)
     selection_results = (
         target_supported_results
         if query_plan.intent_category in {"procedure", "diagnosis", "compare_change"}
         and target_supported_results
         and not script_mismatch
         and not plan_has_cjk_variants(query_plan)
+        and not has_semantic_boost
         else results
     )
     uncovered_obligations = set(response.summary.planned_obligation_ids)

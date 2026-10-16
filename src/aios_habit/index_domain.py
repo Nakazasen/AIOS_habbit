@@ -552,6 +552,44 @@ def match_named_documents(
                     matches_for_suffix.append((score, s))
 
             if matches_for_suffix:
+                if len(matches_for_suffix) > 1:
+                    # Disambiguation: if question contains exact report ID (e.g. 05-0469) or serial ID (e.g. J3C0053Y4242)
+                    id_patterns = [
+                        r"\b\d{2,4}-\d{3,4}\b",
+                        r"(?:số\s*hiệu|so\s*hieu|mã\s*báo\s*cáo|báo\s*cáo\s*số|report\s*(?:no|id)?)\s*[:#\s]*([a-zA-Z0-9\-]+)",
+                        r"(?:serial|s/no|sno|s/n|số\s*máy|so\s*may)\s*[:#\s]*([a-zA-Z0-9\-]+)",
+                    ]
+                    extracted_ids: set[str] = set()
+                    for pat in id_patterns:
+                        for m in re.finditer(pat, question, re.IGNORECASE):
+                            tok = m.group(1) if m.groups() else m.group(0)
+                            if tok and len(tok) >= 3:
+                                extracted_ids.add(tok.lower())
+
+                    if extracted_ids:
+                        exact_matches: list[tuple[int, Any]] = []
+                        for sc, s in matches_for_suffix:
+                            p = getattr(s, "path", None)
+                            fn = p.name if p else str(getattr(s, "source_name", ""))
+                            fn_clean = re.sub(r"[-_\s]", "", fn.lower())
+                            alias = _get_spec_original_alias(s)
+                            alias_clean = re.sub(r"[-_\s]", "", alias.lower()) if alias else ""
+                            matched_exact_id = False
+                            for eid in extracted_ids:
+                                eid_clean = re.sub(r"[-_\s]", "", eid)
+                                if (
+                                    eid in fn.lower()
+                                    or (eid_clean and eid_clean in fn_clean)
+                                    or (alias and (eid in alias.lower() or (eid_clean and eid_clean in alias_clean)))
+                                ):
+                                    matched_exact_id = True
+                                    break
+                            if matched_exact_id:
+                                exact_matches.append((sc + 1000, s))
+
+                        if exact_matches:
+                            matches_for_suffix = exact_matches
+
                 cand_matched.extend(matches_for_suffix)
                 break
 
@@ -1239,7 +1277,8 @@ def get_specs_for_domain(
         if matched_specs:
             matched_ids = {s.document_id for s in matched_specs}
             if allowed_ids is None or any(m_id in allowed_ids for m_id in matched_ids):
-                return tuple(s for s in all_specs if s.document_id in matched_ids)
+                valid_ids = matched_ids if allowed_ids is None else (matched_ids & set(allowed_ids))
+                return tuple(s for s in matched_specs if s.document_id in valid_ids)
 
     if allowed_ids is None:
         return tuple(all_specs)
