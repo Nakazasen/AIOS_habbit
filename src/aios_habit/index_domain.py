@@ -16,6 +16,7 @@ from __future__ import annotations
 import os
 import re
 import sqlite3
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Mapping, NamedTuple, Optional, Sequence, Set
@@ -276,20 +277,41 @@ def classify_document(
     return result
 
 
+def _normalize_named_doc_text(text: str) -> str:
+    """Normalize text with NFKC and whitespace collapsing for robust filename matching."""
+    if not text:
+        return ""
+    normalized = unicodedata.normalize("NFKC", text)
+    return re.sub(r"\s+", " ", normalized).strip().lower()
+
+
+def _strip_model_code_prefix(text: str) -> str:
+    """Normalize Cxxxx model error codes by tolerating optional C prefix (e.g. C0650 <-> 0650)."""
+    return re.sub(r"(?<=[\s_\-\(\[\{/])c(\d{4})(?=[\s_\-\)\]\}/.]|$)", r"\1", text, flags=re.IGNORECASE)
+
+
 def clean_named_doc_token(name: str) -> str:
-    """Strip surrounding quotes and leading Vietnamese/English document cue prefixes."""
+    """Strip surrounding quotes and leading Vietnamese/English document cue prefixes and domain names."""
     cleaned = (name or "").strip(' \t\n\r"\'\u201c\u201d\u2018\u2019')
+    cue_pattern = re.compile(
+        r"^(?:"
+        r"tài\s*liệu|file|tệp(?:\s*tin)?|báo\s*cáo|văn\s*bản|theo|sheet|bảng|"
+        r"email|e-mail|thư|mail|biên\s*bản|tin\s*nhắn|"
+        r"điều\s*tra(?:\s*lỗi)?|dieu\s*tra(?:\s*loi)?|"
+        r"tổng\s*hợp|tong\s*hop|tri\s*thức|tri\s*thuc|lsu|mom"
+        r")\s+",
+        re.IGNORECASE,
+    )
     while True:
-        m = re.match(
-            r"^(?:tài\s*liệu|file|tệp|báo\s*cáo|văn\s*bản|theo|sheet|bảng)\s+",
-            cleaned,
-            re.IGNORECASE,
-        )
+        m = cue_pattern.match(cleaned)
         if m:
             cleaned = cleaned[m.end():].strip(' \t\n\r"\'\u201c\u201d\u2018\u2019')
         else:
             break
     return cleaned
+
+
+_NAMED_DOC_EXT_PATTERN = r"(?:pdf|xlsx?|xlsm|csv|docx?|pptx?|txt|msg)"
 
 
 def extract_named_document_candidates(question: str) -> list[str]:
@@ -300,7 +322,7 @@ def extract_named_document_candidates(question: str) -> list[str]:
 
     # 1. Quoted filenames: "..." or '...' or “...” or ‘...’
     quoted_pattern = re.compile(
-        r'[\"\'\u201c\u2018]([^\n\r\"\'\u201d\u2019]+?\.(?:pdf|xlsx?|csv|docx?|pptx?|txt|msg))[\"\'\u201d\u2019]',
+        r'[\"\'\u201c\u2018]([^\n\r\"\'\u201d\u2019]+?\.' + _NAMED_DOC_EXT_PATTERN + r')[\"\'\u201d\u2019]',
         re.IGNORECASE,
     )
     for m in quoted_pattern.finditer(question):
@@ -308,9 +330,16 @@ def extract_named_document_candidates(question: str) -> list[str]:
         if val and val not in candidates:
             candidates.append(val)
 
-    # 2. Cued filenames: (tài liệu | file | tệp | báo cáo | văn bản | theo) [optional quotes] filename.ext
+    # 2. Cued filenames: cue + filename.ext (supports Latin, Vietnamese, CJK/Japanese, brackets)
+    cjk_and_chars = (
+        r"a-zA-Z0-9_\u00C0-\u024F\u1EA0-\u1EF9"
+        r"\u3000-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF"
+        r"\s\.\-_()\[\]「」【】+~"
+    )
     cue_pattern = re.compile(
-        r'(?:tài\s*liệu|file|tệp|báo\s*cáo|văn\s*bản|theo)\s+[\"\'\u201c\u2018]?([a-zA-Z0-9_\u00C0-\u024F\u1EA0-\u1EF9][a-zA-Z0-9_\u00C0-\u024F\u1EA0-\u1EF9\s\.\-]{0,80}?\.(?:pdf|xlsx?|csv|docx?|pptx?|txt|msg))[\"\'\u201d\u2019]?(?=[,\s\(\)\?!;:]|$)',
+        r"(?:tài\s*liệu|file|tệp(?:\s*tin)?|báo\s*cáo|văn\s*bản|theo|email|e-mail|thư|mail|sheet|bảng|biên\s*bản)\s+"
+        r"[\"\'\u201c\u2018]?([" + cjk_and_chars + r"]{1,120}?\." + _NAMED_DOC_EXT_PATTERN + r")[\"\'\u201d\u2019]?"
+        r"(?=[,\s\(\)\?!;:]|$)",
         re.IGNORECASE,
     )
     for m in cue_pattern.finditer(question):
@@ -318,9 +347,20 @@ def extract_named_document_candidates(question: str) -> list[str]:
         if val and val not in candidates:
             candidates.append(val)
 
-    # 3. Uncued bare single-token filenames: e.g. khong_ton_tai_123.pdf, test.docx
+    # 3. Prefixed multi-token names without cue (FW ..., RE ..., KTD-...)
+    prefix_pattern = re.compile(
+        r"\b((?:FW|RE|KTD|wsc)[_\s\-][" + cjk_and_chars + r"]{1,120}?\." + _NAMED_DOC_EXT_PATTERN + r")"
+        r"(?=[,\s\(\)\?!;:]|$)",
+        re.IGNORECASE,
+    )
+    for m in prefix_pattern.finditer(question):
+        val = clean_named_doc_token(m.group(1))
+        if val and val not in candidates:
+            candidates.append(val)
+
+    # 4. Uncued bare single-token filenames: e.g. khong_ton_tai_123.pdf, test.docx
     bare_pattern = re.compile(
-        r'\b([a-zA-Z0-9_\.\-]+\.(?:pdf|xlsx?|csv|docx?|pptx?|txt|msg))\b',
+        r"\b([a-zA-Z0-9_\.\-]+\." + _NAMED_DOC_EXT_PATTERN + r")\b",
         re.IGNORECASE,
     )
     for m in bare_pattern.finditer(question):
@@ -330,6 +370,43 @@ def extract_named_document_candidates(question: str) -> list[str]:
                 candidates.append(val)
 
     return candidates
+
+
+_SPEC_ALIAS_CACHE: dict[str, Optional[str]] = {}
+
+
+def _get_spec_original_alias(spec: Any) -> Optional[str]:
+    """Extract original filename alias from materialized text file header if available."""
+    p = getattr(spec, "path", None)
+    if not p:
+        return None
+    key = str(p)
+    if key in _SPEC_ALIAS_CACHE:
+        return _SPEC_ALIAS_CACHE[key]
+    alias = None
+    target_path = p if isinstance(p, Path) and p.is_file() else None
+    if target_path is None:
+        candidate_path = Path("local_runs/workspace_chat_rag_v2_canary/materialized_sources") / getattr(p, "name", str(p))
+        if candidate_path.is_file():
+            target_path = candidate_path
+
+    if target_path and target_path.name.startswith("wsc-") and target_path.name.endswith(".txt"):
+        try:
+            with open(target_path, "r", encoding="utf-8", errors="ignore") as f:
+                line = f.readline()
+                m = re.match(r"^File\s+(?:Excel|PDF|Word|PowerPoint|\w+)\s*:\s*([^\r\n]+)", line, re.IGNORECASE)
+                if m:
+                    alias = m.group(1).strip()
+        except Exception:
+            alias = None
+    _SPEC_ALIAS_CACHE[key] = alias
+    return alias
+
+
+def _get_named_doc_suffixes(cand: str) -> list[str]:
+    """Generate candidate suffixes from longest to shortest down to minimum 1 word + extension."""
+    tokens = cand.strip().split()
+    return [" ".join(tokens[i:]) for i in range(len(tokens))]
 
 
 def match_named_documents(
@@ -351,32 +428,114 @@ def match_named_documents(
             if s not in all_specs:
                 all_specs.append(s)
 
-    q_lower = question.lower()
+    q_norm = _normalize_named_doc_text(question)
+    q_norm_noc = _strip_model_code_prefix(q_norm)
 
-    # 1. Match known spec filenames in question
     matched_specs: list[Any] = []
-    matched_names: set[str] = set()
-    for s in sorted(
-        all_specs,
-        key=lambda x: len(getattr(x, "path", Path(getattr(x, "source_name", ""))).name),
-        reverse=True,
-    ):
-        fname = getattr(s, "path", None)
-        fname_str = fname.name if fname else str(getattr(s, "source_name", ""))
-        if not fname_str or len(fname_str) < 4:
-            continue
-        if fname_str.lower() in q_lower:
-            matched_specs.append(s)
-            matched_names.add(fname_str.lower())
+    matched_spec_ids: set[str] = set()
+    matched_candidate_strings: set[str] = set()
 
-    # 2. Check candidates extracted from question for missing named documents
+    # Pre-calculate normalized names and aliases for all specs
+    spec_info: list[tuple[Any, str, Optional[str], str, str, Optional[str], Optional[str]]] = []
+    for s in all_specs:
+        p = getattr(s, "path", None)
+        fname = p.name if p else str(getattr(s, "source_name", ""))
+        alias = _get_spec_original_alias(s)
+        norm_name = _normalize_named_doc_text(fname)
+        norm_name_noc = _strip_model_code_prefix(norm_name)
+        norm_alias = _normalize_named_doc_text(alias) if alias else None
+        norm_alias_noc = _strip_model_code_prefix(norm_alias) if norm_alias else None
+        spec_info.append((s, fname, alias, norm_name, norm_name_noc, norm_alias, norm_alias_noc))
+
+    # 1. Exact or verbatim match of spec filenames or aliases in question
+    for s, fname, alias, norm_name, norm_name_noc, norm_alias, norm_alias_noc in spec_info:
+        spec_key = getattr(s, "document_id", id(s))
+        if len(norm_name) >= 4 and (norm_name in q_norm or norm_name_noc in q_norm_noc):
+            if spec_key not in matched_spec_ids:
+                matched_specs.append(s)
+                matched_spec_ids.add(spec_key)
+                matched_candidate_strings.add(norm_name)
+        elif norm_alias and len(norm_alias) >= 4 and (norm_alias in q_norm or norm_alias_noc in q_norm_noc):
+            if spec_key not in matched_spec_ids:
+                matched_specs.append(s)
+                matched_spec_ids.add(spec_key)
+                matched_candidate_strings.add(norm_alias)
+
+    # 2. Candidate-based matching with longest suffix priority and tolerance
     candidates = extract_named_document_candidates(question)
     missing: list[str] = []
+
     for cand in candidates:
-        cand_lower = cand.lower()
-        if any(cand_lower in m or m in cand_lower for m in matched_names):
+        cand_norm = _normalize_named_doc_text(cand)
+        cand_norm_noc = _strip_model_code_prefix(cand_norm)
+
+        if any(cand_norm in m or m in cand_norm for m in matched_candidate_strings):
             continue
-        missing.append(cand)
+
+        cand_matched: list[tuple[int, Any]] = []
+
+        # Strategy A: Longest suffix matching against real document catalog
+        suffixes = _get_named_doc_suffixes(cand)
+        for suffix in suffixes:
+            suf_norm = _normalize_named_doc_text(suffix)
+            suf_norm_noc = _strip_model_code_prefix(suf_norm)
+            if len(suf_norm) < 4:
+                continue
+
+            matches_for_suffix: list[tuple[int, Any]] = []
+            for s, fname, alias, norm_name, norm_name_noc, norm_alias, norm_alias_noc in spec_info:
+                matched = False
+                if norm_name == suf_norm or norm_name.endswith(suf_norm) or norm_name_noc.endswith(suf_norm_noc):
+                    matched = True
+                elif norm_alias and (norm_alias == suf_norm or norm_alias.endswith(suf_norm) or norm_alias_noc.endswith(suf_norm_noc)):
+                    matched = True
+
+                if matched:
+                    score = len(suf_norm)
+                    # Disambiguation boost: if question contains other tokens from the document filename
+                    for part in re.split(r"[-_\s]+", norm_name):
+                        if len(part) >= 3 and (part in q_norm or part in q_norm_noc):
+                            score += 5
+                    matches_for_suffix.append((score, s))
+
+            if matches_for_suffix:
+                cand_matched.extend(matches_for_suffix)
+                break
+
+        # Strategy B: Token overlap for complex titles with Japanese/brackets
+        if not cand_matched:
+            cand_tokens = [t for t in re.split(r"[-_\s()\[\]「」【】+~]+", cand_norm) if len(t) >= 2]
+            cand_ext = cand_norm.split(".")[-1] if "." in cand_norm else ""
+            if len(cand_tokens) >= 2:
+                best_overlap = 0.0
+                best_spec = None
+                for s, fname, alias, norm_name, norm_name_noc, norm_alias, norm_alias_noc in spec_info:
+                    if not norm_name.endswith("." + cand_ext):
+                        continue
+                    spec_tokens = set(re.split(r"[-_\s()\[\]「」【】+~]+", norm_name))
+                    spec_tokens_noc = set(re.split(r"[-_\s()\[\]「」【】+~]+", norm_name_noc))
+                    matched_toks = 0
+                    for t in cand_tokens:
+                        t_noc = _strip_model_code_prefix(t)
+                        if t in spec_tokens or t in spec_tokens_noc or t_noc in spec_tokens_noc:
+                            matched_toks += 1
+                    ratio = matched_toks / max(len(cand_tokens), 1)
+                    if ratio >= 0.5 and ratio > best_overlap:
+                        best_overlap = ratio
+                        best_spec = s
+                if best_spec is not None:
+                    cand_matched.append((10, best_spec))
+
+        if cand_matched:
+            cand_matched.sort(key=lambda x: x[0], reverse=True)
+            for _, s in cand_matched:
+                spec_key = getattr(s, "document_id", id(s))
+                if spec_key not in matched_spec_ids:
+                    matched_specs.append(s)
+                    matched_spec_ids.add(spec_key)
+            matched_candidate_strings.add(cand_norm)
+        else:
+            missing.append(cand)
 
     return tuple(matched_specs), tuple(missing)
 
