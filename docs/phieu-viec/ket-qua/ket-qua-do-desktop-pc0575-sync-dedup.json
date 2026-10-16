@@ -1,0 +1,38 @@
+{
+  "ma_ve": "DESKTOP-PC0575-SYNC-DEDUP",
+  "thoi_diem": "2026-10-16T06:36:39.889547+00:00",
+  "git_head": "dfc0a9cbdf80b7320ba99db3ca4c1ac5c2d8360d",
+  "eval_results": {
+    "ai_disclaimer": {
+      "conversation_id": "CONV-PC0575-DEDUP-AI-6E9560",
+      "question": "C23とC24ではどのような発生Trendでしたか。",
+      "answer_length": 305,
+      "disclaimer_count": 1,
+      "expected_count": 1,
+      "passed": true,
+      "screenshot": "D:\\Sandbox\\aios-dieu-phoi\\hop-thu\\lan-desktop-pc0575\\ket-qua\\anh-pc0575-dedup-01-ai-disclaimer.png",
+      "screenshot_sha256": "55CD73676AE646978C7480247FC75B3AEA1B3339D158FBDD9C7E8DD298EE7884"
+    },
+    "jig_chart": {
+      "conversation_id": "CONV-PC0575-DEDUP-JIG-E4A83B",
+      "question": "vẽ biểu đồ bowskew cho JIG-01",
+      "answer_length": 89259,
+      "chart_count_text": 1,
+      "chart_count_dom": 1,
+      "expected_count": 1,
+      "passed": true,
+      "screenshot": "D:\\Sandbox\\aios-dieu-phoi\\hop-thu\\lan-desktop-pc0575\\ket-qua\\anh-pc0575-dedup-02-jig-chart.png",
+      "screenshot_sha256": "3394BE062CD74021E7B6D97BC602C55533E670C3BF373AE723F3A000F22E2EC9"
+    },
+    "local_fallback": {
+      "conversation_id": "CONV-PC0575-DEDUP-LOCAL-4DECFD",
+      "disclaimer_count": 0,
+      "expected_count": 0,
+      "ast_invariant_passed": true,
+      "passed": true,
+      "screenshot": "D:\\Sandbox\\aios-dieu-phoi\\hop-thu\\lan-desktop-pc0575\\ket-qua\\anh-pc0575-dedup-03-local-fallback.png",
+      "screenshot_sha256": "3DC0C4510B474C75FDFB95C6DC3D4E7E9738FCF19E0BEFDC0260711EB872B519"
+    }
+  },
+  "all_passed": true
+}

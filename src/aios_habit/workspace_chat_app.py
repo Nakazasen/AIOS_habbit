@@ -2556,6 +2556,7 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
                     van_ban += chart_md
             except Exception:
                 pass
+        return van_ban or None
     if y_dinh == XEM_PHAN_HOI:
         try:
             from aios_habit.feedback_review_home import format_feedback_review_summary
