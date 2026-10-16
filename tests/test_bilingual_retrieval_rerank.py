@@ -157,3 +157,40 @@ def test_bilingual_tri_thuc_preserves_other_behavior():
     reranked_mono = _rerank_bilingual_tri_thuc(plan_vi, res_mono, is_tri_thuc=True)
     assert reranked_mono.results[0].chunk_id == "m1"
     assert reranked_mono.results[1].chunk_id == "m2"
+
+
+def test_bilingual_reranking_isolated_from_non_tri_thuc():
+    """Verify non-tri_thuc warehouses (lsu, dieu_tra_loi, che_do) are completely isolated."""
+    query = "Tỷ lệ NG của ba JIG trọng điểm khác nhau thế nào?"
+    plan = coerce_query_plan(query)
+    doc_id = "wsc-msg-bilingual"
+    doc_name = "RE_ Iris LSU Beam径NG多発 異常品質会議2回目.msg"
+    # Even if document has both Vietnamese and Japanese/CJK, is_tri_thuc=False must prevent any boost
+    r_target = _make_dummy_result("c_target", "doc_target", "AI cảnh báo lỗi LSU.pptx", "Slide tiếng Việt", score=35.0)
+    r_bilingual = _make_dummy_result(
+        "c_bilingual", doc_id, doc_name,
+        "Biên bản cuộc họp song ngữ: Cần kiểm tra Beam径NG多発 và báo cáo kết quả.", score=15.0
+    )
+    res = SearchResponse(
+        results=(r_target, r_bilingual),
+        summary=SearchSummary(
+            query=query,
+            indexed_chunk_count=10,
+            eligible_chunk_count=10,
+            candidate_count=2,
+            returned_count=2,
+        ),
+    )
+
+    # When is_tri_thuc is False (default)
+    reranked_default = _rerank_bilingual_tri_thuc(plan, res)
+    assert reranked_default.results[0].chunk_id == "c_target"
+    assert reranked_default.results[1].chunk_id == "c_bilingual"
+    assert "bilingual_vi_boost" not in reranked_default.results[1].ranking_signals
+
+    # When explicitly is_tri_thuc=False
+    reranked_false = _rerank_bilingual_tri_thuc(plan, res, is_tri_thuc=False)
+    assert reranked_false.results[0].chunk_id == "c_target"
+    assert reranked_false.results[1].chunk_id == "c_bilingual"
+    assert "bilingual_vi_boost" not in reranked_false.results[1].ranking_signals
+

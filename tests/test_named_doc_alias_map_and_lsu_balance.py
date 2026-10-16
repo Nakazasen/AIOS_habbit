@@ -158,12 +158,48 @@ def test_lsu_series_balancing_for_unlabeled_query_q0696():
 
     # Top 1 remains top 1 (Sirius)
     assert balanced_resp.results[0].chunk_id == "sirius_chunk_1"
-    # Iris candidate is promoted into slot #2 due to strong dense relevance
-    assert balanced_resp.results[1].chunk_id == "iris_target_chunk"
-    assert "machine_series_balance_boost" in balanced_resp.results[1].ranking_signals
+    # Natural top 2 is preserved, not forcibly replaced without Iris label
+    assert balanced_resp.results[1].chunk_id == "sirius_chunk_2"
+    # Iris candidate is promoted into slot #3 due to strong dense relevance and similar scores
+    assert balanced_resp.results[2].chunk_id == "iris_target_chunk"
+    assert "machine_series_balance_boost" in balanced_resp.results[2].ranking_signals
     # Expected Iris keywords are now accessible in top slots
-    assert "Correlation" in balanced_resp.results[1].text
-    assert "JIG Nano Scan" in balanced_resp.results[1].text
+    assert "Correlation" in balanced_resp.results[2].text
+    assert "JIG Nano Scan" in balanced_resp.results[2].text
+
+
+def test_lsu_series_balancing_skips_when_scores_not_similar():
+    # When top candidate has score 35.0 and Iris candidate has score 15.0 (diff = 20.0 >= 2.0),
+    # balancing must NOT intervene.
+    results = [
+        _make_result(
+            chunk_id="target_chunk_1",
+            document_id="target_doc_1",
+            text="High scoring target",
+            score=35.0,
+            source_name="AI cảnh báo lỗi LSU.pptx",
+        ),
+        _make_result(
+            chunk_id="target_chunk_2",
+            document_id="target_doc_1",
+            text="Second high scoring target",
+            score=25.0,
+            source_name="AI cảnh báo lỗi LSU.pptx",
+        ),
+        _make_result(
+            chunk_id="iris_candidate",
+            document_id="iris_doc",
+            text="Iris meeting notes",
+            score=15.0,
+            source_name="RE_ Iris LSU Beam径NG多発　異常品質会議.msg",
+            ranking_signals={"dense_channel_rank": 3, "dense_cosine": 0.58},
+        ),
+    ]
+    resp = SearchResponse(results=tuple(results), summary=_make_summary())
+    plan = coerce_query_plan("Tỷ lệ NG của ba JIG trọng điểm khác nhau thế nào?")
+    balanced = _balance_lsu_machine_series(plan, resp, is_lsu=True)
+    # Order must remain completely unchanged
+    assert [r.chunk_id for r in balanced.results] == ["target_chunk_1", "target_chunk_2", "iris_candidate"]
 
 
 def test_lsu_series_balancing_preserves_explicit_series_queries():

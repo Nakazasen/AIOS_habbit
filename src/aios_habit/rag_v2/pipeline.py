@@ -600,6 +600,8 @@ def _rerank_bilingual_tri_thuc(
     matching Vietnamese factual body chunks are boosted so they are prioritized into the evidence pack.
     All other queries and monolingual/non-tri_thuc documents remain unchanged.
     """
+    if not is_tri_thuc:
+        return response
     if not response.results:
         return response
     query_text = plan.original_query or ""
@@ -732,16 +734,23 @@ def _balance_lsu_machine_series(
     ]
     if not iris_dense_top:
         return response
+    top1 = results[0]
+    best_iris = iris_dense_top[0]
 
-    # Interleave/rebalance so top-k is not monopolized by Sirius
-    # Limit Sirius in top 6 to max 3 chunks, ensuring top Iris candidate is in slot 2 or 3
+    # Only intervene when candidate scores are similar (difference < 2.0)
+    score_diff = abs(top1.score - best_iris.score)
+    if score_diff >= 2.0:
+        return response
+
+    # Interleave/rebalance so top-k is not monopolized by Sirius.
+    # Preserve top 1 and top 2 (do not force Iris into slot 2 when query does not specify Iris series),
+    # ensuring top Iris candidate is placed into slot 3.
     balanced: list[SearchResult] = []
     sirius_count = 0
     iris_count = 0
     used_ids: set[str] = set()
 
     # Always start with the absolute top 1
-    top1 = results[0]
     balanced.append(top1)
     used_ids.add(top1.chunk_id)
     line1 = _get_machine_line(top1)
@@ -750,8 +759,18 @@ def _balance_lsu_machine_series(
     elif line1 == "iris":
         iris_count += 1
 
-    # Ensure best Iris candidate gets a top slot (slot 2)
-    best_iris = iris_dense_top[0]
+    # Preserve natural top 2 if available and not Iris
+    if len(results) > 1 and results[1].chunk_id not in used_ids:
+        cand2 = results[1]
+        line2 = _get_machine_line(cand2)
+        balanced.append(cand2)
+        used_ids.add(cand2.chunk_id)
+        if line2 == "sirius":
+            sirius_count += 1
+        elif line2 == "iris":
+            iris_count += 1
+
+    # Ensure best Iris candidate gets a top slot (slot 3 when top 2 are preserved)
     if best_iris.chunk_id not in used_ids:
         boost = 0.015
         new_signals = dict(best_iris.ranking_signals)
@@ -1466,7 +1485,8 @@ class RagV2DevPipeline:
             or "tri_thuc" in str(getattr(self.config, "index_path", "")).casefold()
             or "tri_thuc" in str(getattr(self.index, "db_path", "")).casefold()
         )
-        response = _rerank_bilingual_tri_thuc(plan, response, is_tri_thuc=is_tri_thuc)
+        if is_tri_thuc:
+            response = _rerank_bilingual_tri_thuc(plan, response, is_tri_thuc=True)
         is_lsu = (
             "lsu" in str(getattr(self.config, "runtime_root", "")).casefold()
             or "lsu" in str(getattr(self.config, "index_path", "")).casefold()
