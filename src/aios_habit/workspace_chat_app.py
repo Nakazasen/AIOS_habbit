@@ -852,6 +852,8 @@ from aios_habit.workspace_chat_ui import (
     NOTEBOOK_DELETE_FAILURE,
     render_bridge_header_status,
     render_handoff_pending_banner,
+    render_fallback_notice,
+    should_show_fallback_notice,
 )
 from aios_habit.antigravity_bridge import (
     get_antigravity_bridge_health,
@@ -5134,6 +5136,8 @@ else:
                         badge_data.get("type") == "ai_answered"
                         and badge_data.get("operational_mode") == "local_grounded_fallback"
                     ):
+                        if should_show_fallback_notice(badge_data):
+                            render_fallback_notice(badge_data, locale=current_ui_locale)
                         # Honest local lane: this answer came from excerpts on this
                         # machine, not from a model. It must not wear the AI header,
                         # the unverified-model caption, or the AI disclaimer.

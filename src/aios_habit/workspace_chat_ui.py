@@ -4,7 +4,7 @@ import re
 import streamlit as st
 import time
 from pathlib import Path
-from typing import List, Dict, Any, Callable, Optional, Tuple
+from typing import List, Dict, Any, Callable, Optional, Tuple, Mapping
 from aios_habit.workspace_chat_models import (
     DocumentNotebook,
     WorkspaceConversation,
@@ -672,6 +672,7 @@ def render_chat_bubble(
     conversation_id: str = "",
     feedback_question: str = "",
     render_interactive: bool = True,
+    badge_data: Optional[Mapping[str, Any]] = None,
 ):
     if msg.role == "user":
         with st.chat_message("user"):
@@ -936,6 +937,8 @@ def render_chat_bubble(
                 elif _is_can_bien:
                     st.info(display_content)
                 else:
+                    if badge_data is not None and should_show_fallback_notice(badge_data):
+                        render_fallback_notice(badge_data, locale=locale)
                     if _is_external_ai:
                         st.info(f"🌐 **{t('external_ai_provenance_banner', locale=locale)}**")
                     st.markdown(display_content)
@@ -1825,6 +1828,62 @@ def render_insufficient_context(reason: str = "no_sources", locale: str = "vi"):
 def render_source_changed_message(locale: str = "vi"):
     """Renders source-set-changed warning."""
     st.warning(t("source_changed_warning", locale=locale))
+
+
+def should_show_fallback_notice(badge_data: Optional[Mapping[str, Any]]) -> bool:
+    """Determine whether a fallback notice should be displayed for the turn.
+
+    Returns True ONLY when the actual routing result fell back away from the
+    user's requested/pinned backend due to an error or timeout (especially
+    falling back to local extractive synthesis).
+
+    Returns False when:
+    - User explicitly selected 'local' backend
+    - Turn succeeded with the chosen/pinned backend
+    - Routing is normal without fallback
+    - badge_data is None or empty
+    """
+    if not isinstance(badge_data, Mapping):
+        return False
+
+    if not badge_data.get("fallback_used"):
+        return False
+
+    initial_backend = str(badge_data.get("initial_backend") or "").strip()
+    if not initial_backend or initial_backend == "local":
+        return False
+
+    operational_mode = str(badge_data.get("operational_mode") or "").strip()
+    provider = str(badge_data.get("provider") or "").strip()
+    bridge = str(badge_data.get("bridge") or "").strip()
+
+    is_local_target = (
+        operational_mode in {"local_grounded_fallback", "draft_fallback"}
+        or "local" in operational_mode
+        or "cục bộ" in provider.lower()
+        or bridge in {"Trích xuất cục bộ", "Dự bị bản thảo"}
+    )
+    return is_local_target
+
+
+def format_fallback_notice(badge_data: Optional[Mapping[str, Any]], locale: str = "vi") -> str:
+    """Format the localized fallback notice message based on badge provenance."""
+    if not should_show_fallback_notice(badge_data):
+        return ""
+    initial_backend = str((badge_data or {}).get("initial_backend") or "").strip()
+    from aios_habit.ai_lane import backend_label_vi
+    service_name = backend_label_vi(initial_backend) if initial_backend else "C-Agent"
+    return t("local_fallback_warning", locale=locale, service=service_name)
+
+
+def render_fallback_notice(badge_data: Optional[Mapping[str, Any]], locale: str = "vi") -> None:
+    """Render the warning alert near the turn answer when a fallback occurred."""
+    if not should_show_fallback_notice(badge_data):
+        return
+    notice_text = format_fallback_notice(badge_data, locale=locale)
+    if notice_text:
+        st.warning(notice_text)
+
 
 
 def build_jig_instant_card_data(dong_log: Dict[str, Any], ket_qua_ewma: Dict[str, Any]) -> Dict[str, Any]:
