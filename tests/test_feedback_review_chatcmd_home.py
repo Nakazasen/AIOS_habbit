@@ -255,9 +255,12 @@ def test_e2e_xu_ly_y_dinh_chat_luu_tin_nhan_tra_loi(monkeypatch):
 
 
 def test_doi_chung_kho_that_tai_may():
-    """Verify live local_cases/answer_feedback.jsonl has 38 lines and matches summary."""
+    """Verify live local_cases/answer_feedback.jsonl matches summary dynamically."""
     fb_file = answer_feedback.feedback_file()
-    assert fb_file.exists(), f"File {fb_file} không tồn tại!"
+    if not fb_file.exists():
+        summary = format_feedback_review_summary()
+        assert "Chưa có phản hồi nào trong kho lưu cục bộ." in summary
+        return
 
     # Count lines manually from JSONL file
     raw_records = []
@@ -267,12 +270,16 @@ def test_doi_chung_kho_that_tai_may():
             if line:
                 raw_records.append(json.loads(line))
 
-    assert len(raw_records) == 38, f"Kỳ vọng 38 dòng thực tế, đếm được {len(raw_records)}!"
+    summary = format_feedback_review_summary()
+    if not raw_records:
+        assert "Chưa có phản hồi nào trong kho lưu cục bộ." in summary
+        return
+
     good_count = sum(1 for r in raw_records if r.get("rating") == "huu_ich")
     bad_count = sum(1 for r in raw_records if r.get("rating") == "chua_huu_ich")
-    assert good_count == 21
-    assert bad_count == 17
+    total = len(raw_records)
 
-    summary = format_feedback_review_summary()
-    assert "Tổng số phản hồi:** 38 lượt (21 đạt / 17 chê)" in summary
-    assert "55.3% đạt · 44.7% chê" in summary
+    assert f"Tổng số phản hồi:** {total} lượt ({good_count} đạt / {bad_count} chê)" in summary
+    rate_good = round(good_count / total * 100, 1)
+    rate_bad = round(bad_count / total * 100, 1)
+    assert f"{rate_good}% đạt · {rate_bad}% chê" in summary

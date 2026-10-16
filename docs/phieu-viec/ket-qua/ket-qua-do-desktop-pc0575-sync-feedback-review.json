@@ -1,0 +1,35 @@
+{
+  "ma_ve": "DESKTOP-PC0575-SYNC-FEEDBACK-REVIEW",
+  "trang_thai": "HOAN_THANH",
+  "thoi_diem": "2026-10-16T06:49:58.029187+00:00",
+  "may_thuc_thi": "KDTVN-PC0575",
+  "commit_head": "c79dd668dd9b6df3a238b0cd285f7a7504440eb1",
+  "kho_phan_hoi": "D:\\Sandbox\\AIOS_habbit\\local_cases\\answer_feedback.jsonl",
+  "dem_tay": {
+    "tong": 1,
+    "dat": 1,
+    "che": 0,
+    "ty_le_dat": 100.0,
+    "ty_le_che": 0.0
+  },
+  "ket_qua_app": {
+    "app_ready_s": 3.14,
+    "answered": true,
+    "has_summary_header": true,
+    "has_total_line": true,
+    "has_rate_line": true,
+    "assistant_content": "### 📊 Tóm tắt phản hồi đáp án (Vòng lặp cải thiện liên tục)\n\n- **Tổng số phản hồi:** 1 lượt (1 đạt / 0 chê)\n- **Tỷ lệ đạt / chê:** 100.0% đạt · 0.0% chê\n\n#### 🔍 Các lý do chê lặp lại nhiều nhất\n- _Chưa có phản hồi chê nào._\n\n#### 📈 Mức cảnh báo xu hướng SMA(20)\n- ✅ **Ổn định:** Không có cảnh báo xu hướng bất thường theo cơ chế SMA(20) (các điểm chê đơn lẻ không kích hoạt cảnh báo).\n- _Ghi chú dữ liệu:_ Chuỗi dài nhất hiện tại 1 ngày (sơ bộ, chưa đủ cửa sổ 20 ngày).\n\n#### 🕒 Phản hồi gần đây\n1. [✅ Đạt] `Quy trình bảo dưỡng gồm những gì?`"
+  },
+  "anh_minh_chung": {
+    "anh_ready": {
+      "ten": "anh-pc0575-feedback-review-00-app-ready.png",
+      "sha256": "6B8723F9D66143561A683029C6CDEC5EFB58E76C71923C3FBB8313A0A1267B99",
+      "size_bytes": 29149
+    },
+    "anh_live": {
+      "ten": "anh-pc0575-feedback-review-01-summary-live.png",
+      "sha256": "1BAFF24F604B890A237E957FD7B5403E1A45312BFA325CDD40EA719AFEC96C93",
+      "size_bytes": 83919
+    }
+  }
+}
