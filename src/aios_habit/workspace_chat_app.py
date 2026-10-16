@@ -1794,6 +1794,32 @@ def _run_chat_turn_async(
                     "ai_source": "system_guard",
                     "document_missing": True,
                 }
+                from aios_habit.workspace_chat_models import ChatMessage
+                from aios_habit.workspace_chat_store import save_message
+                save_message(ChatMessage(
+                    id=f"MSG-A-{uuid.uuid4().hex[:8].upper()}",
+                    conversation_id=conversation_id,
+                    role="assistant",
+                    content=answer,
+                ))
+                t_turn_end = time.time()
+                turn_total_s = t_turn_end - t_turn_start
+                ts_complete = format_marker_timestamp()
+                try:
+                    LOGGER.info(
+                        "[STREAMING_QA_COMPLETE] conv=%s total_s=%.3f total_ms=%.1f backend=%s ok=%s timestamp=%s",
+                        conversation_id,
+                        turn_total_s,
+                        turn_total_s * 1000,
+                        "local_truthful_refusal",
+                        True,
+                        ts_complete,
+                    )
+                except Exception:
+                    pass
+                _safe_print_streaming_marker(
+                    f"[STREAMING_QA_COMPLETE] conv={conversation_id} total_s={turn_total_s:.3f} total_ms={turn_total_s * 1000:.1f} backend=local_truthful_refusal ok=True timestamp={ts_complete}"
+                )
                 return (True, answer, badge, None)
 
             if ret_res.get("status") == "quality_search_unavailable":
