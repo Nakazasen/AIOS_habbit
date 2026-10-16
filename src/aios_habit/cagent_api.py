@@ -10,7 +10,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Mapping, Sequence
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
@@ -19,6 +19,85 @@ from urllib.request import Request, urlopen
 
 DEFAULT_TIMEOUT_SECONDS = int(os.environ.get("AIOS_CAGENT_TIMEOUT_SECONDS", "60"))
 DEFAULT_CAGENT_API_URL = "https://kdtvn-ai.cmcts.vn/api/v1/prediction/1881aa32-c996-4e6f-9257-78246177ba9f"
+
+# Ngân sách cắt tỉa lịch sử hội thoại cho C-Agent (DESKTOP-PC0575-CAGENT-PAYLOAD-TRIM-FIX)
+# Mặc định tối đa 6 tin nhắn gần nhất (3 lượt hỏi-đáp) và không quá 4.000 ký tự.
+DEFAULT_CAGENT_MAX_HISTORY_TURNS = int(
+    os.environ.get(
+        "AIOS_CAGENT_MAX_HISTORY_TURNS",
+        os.environ.get("AIOS_CAGENT_MAX_HISTORY_MESSAGES", "6"),
+    )
+)
+DEFAULT_CAGENT_MAX_HISTORY_CHARS = int(
+    os.environ.get("AIOS_CAGENT_MAX_HISTORY_CHARS", "4000")
+)
+
+
+def trim_chat_history_for_cagent(
+    chat_history: Sequence[Mapping[str, Any]] | None,
+    *,
+    max_turns: int | None = None,
+    max_chars: int | None = None,
+) -> tuple[dict[str, Any], ...]:
+    """Giới hạn lịch sử hội thoại gửi kèm cuộc gọi tổng hợp C-Agent (DESKTOP-PC0575-CAGENT-PAYLOAD-TRIM-FIX).
+
+    Quy tắc nghiệp vụ:
+    1. Giữ nguyên vẹn 100% nếu hội thoại ngắn (<= max_turns và <= max_chars).
+    2. Cắt tỉa hội thoại dài, chỉ giữ các lượt gần nhất trong ngân sách số lượt và tổng ký tự.
+    3. Bảo toàn chỉ thị neo ngữ cảnh (anchor directive) nếu có ở cuối lịch sử.
+    4. Không bao giờ can thiệp vào câu hỏi hiện tại hay bằng chứng truy hồi (được lắp ráp riêng).
+    """
+    if not chat_history:
+        return ()
+
+    eff_max_turns = max_turns if max_turns is not None else DEFAULT_CAGENT_MAX_HISTORY_TURNS
+    eff_max_chars = max_chars if max_chars is not None else DEFAULT_CAGENT_MAX_HISTORY_CHARS
+
+    items = [dict(m) for m in chat_history]
+    if not items:
+        return ()
+
+    total_chars = sum(len(str(m.get("content", ""))) for m in items)
+    if len(items) <= eff_max_turns and total_chars <= eff_max_chars:
+        return tuple(items)
+
+    # Tách directive neo ngữ cảnh ở cuối (nếu có) để luôn ưu tiên giữ
+    anchor_item: dict[str, Any] | None = None
+    if items and items[-1].get("role") == "system" and "[CHỈ THỊ NEO NGỮ CẢNH" in str(items[-1].get("content", "")):
+        anchor_item = items[-1]
+        items = items[:-1]
+
+    # Giới hạn số lượt/tin nhắn gần nhất
+    allowed_turns = eff_max_turns if anchor_item is None else max(1, eff_max_turns - 1)
+    if len(items) > allowed_turns:
+        items = items[-allowed_turns:]
+
+    # Giới hạn tổng ký tự (ưu tiên giữ tin nhắn mới nhất, loại bỏ dần tin cũ hơn)
+    anchor_chars = len(str(anchor_item.get("content", ""))) if anchor_item else 0
+    available_chars = max(0, eff_max_chars - anchor_chars)
+
+    accumulated: list[dict[str, Any]] = []
+    current_char_count = 0
+    for m in reversed(items):
+        m_len = len(str(m.get("content", "")))
+        if current_char_count + m_len <= available_chars:
+            accumulated.append(m)
+            current_char_count += m_len
+        elif not accumulated and available_chars > 0:
+            trimmed_msg = dict(m)
+            content_str = str(m.get("content", ""))
+            trimmed_msg["content"] = content_str[:available_chars]
+            accumulated.append(trimmed_msg)
+            current_char_count += available_chars
+            break
+        else:
+            break
+
+    accumulated.reverse()
+    if anchor_item is not None:
+        accumulated.append(anchor_item)
+
+    return tuple(accumulated)
 
 # WIRE-QA-CAGENT spec §2: tối đa 1 lần thử lại, backoff cố định 2–3 giây,
 # chỉ cho lỗi mạng tức thời (URLError không phải timeout) và HTTP 5xx.

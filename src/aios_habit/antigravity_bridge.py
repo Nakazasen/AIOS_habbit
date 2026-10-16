@@ -1188,7 +1188,11 @@ def route_workspace_chat_submission(
 
     def _try_cagent_api() -> tuple[bool, str, dict[str, Any] | None, str | None]:
         nonlocal evidence_items
-        from aios_habit.cagent_api import DEFAULT_CAGENT_API_URL, call_cagent_prediction
+        from aios_habit.cagent_api import (
+            DEFAULT_CAGENT_API_URL,
+            call_cagent_prediction,
+            trim_chat_history_for_cagent,
+        )
         endpoint = (
             str(cagent_endpoint_url or "").strip()
             or os.environ.get("AIOS_CAGENT_API_URL", "").strip()
@@ -1239,10 +1243,11 @@ def route_workspace_chat_submission(
         if memory_consent_requires_reconfirmation(memory_result, consent_memory_fingerprint):
             return (False, "", None, MEMORY_CONSENT_RECONFIRM_MESSAGE)
 
+        cagent_history = trim_chat_history_for_cagent(chat_history)
         system_prompt, user_prompt = build_workspace_ai_prompt(
             question,
             prompt_sources,
-            chat_history,
+            cagent_history,
             answer_language=answer_language,
             memory_result=memory_result,
         )
