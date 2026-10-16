@@ -1794,16 +1794,57 @@ def _run_chat_turn_async(
                     "ai_source": "system_guard",
                     "document_missing": True,
                 }
-                from aios_habit.workspace_chat_models import ChatMessage
-                from aios_habit.workspace_chat_store import save_message
-                save_message(ChatMessage(
-                    id=f"MSG-A-{uuid.uuid4().hex[:8].upper()}",
-                    conversation_id=conversation_id,
-                    role="assistant",
-                    content=answer,
-                ))
+                t_first_token = time.time()
+                ttft_s = t_first_token - t_turn_start
+                ts_first_token = format_marker_timestamp()
+                if on_chunk is not None:
+                    try:
+                        on_chunk(answer)
+                    except Exception:
+                        pass
+                first_token_emitted = False
+                if isinstance(stream_state, dict):
+                    lock = stream_state.get("lock")
+                    if lock is not None:
+                        with lock:
+                            if stream_state.get("first_token_time") is not None:
+                                first_token_emitted = True
+                    else:
+                        if stream_state.get("first_token_time") is not None:
+                            first_token_emitted = True
+                if not first_token_emitted:
+                    try:
+                        LOGGER.info(
+                            "[STREAMING_QA_FIRST_TOKEN] conv=%s ttft_s=%.3f ttft_ms=%.1f timestamp=%s",
+                            conversation_id,
+                            ttft_s,
+                            ttft_s * 1000,
+                            ts_first_token,
+                        )
+                    except Exception:
+                        pass
+                    _safe_print_streaming_marker(
+                        f"[STREAMING_QA_FIRST_TOKEN] conv={conversation_id} ttft_s={ttft_s:.3f} ttft_ms={ttft_s * 1000:.1f} timestamp={ts_first_token}"
+                    )
+
+                try:
+                    from aios_habit.workspace_chat_models import ChatMessage
+                    from aios_habit.workspace_chat_store import save_message
+
+                    assistant_msg = ChatMessage(
+                        id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
+                        conversation_id=conversation_id,
+                        role="assistant",
+                        content=answer,
+                        reply_to_message_id=user_message_id or None,
+                    )
+                    save_message(assistant_msg)
+                except Exception as save_err:
+                    LOGGER.warning("Không thể lưu tin nhắn từ chối vào messages.jsonl: %s", save_err)
+
                 t_turn_end = time.time()
                 turn_total_s = t_turn_end - t_turn_start
+                eff_backend = badge.get("provider") or badge.get("ai_source") or ai_backend
                 ts_complete = format_marker_timestamp()
                 try:
                     LOGGER.info(
@@ -1811,14 +1852,14 @@ def _run_chat_turn_async(
                         conversation_id,
                         turn_total_s,
                         turn_total_s * 1000,
-                        "local_truthful_refusal",
+                        eff_backend,
                         True,
                         ts_complete,
                     )
                 except Exception:
                     pass
                 _safe_print_streaming_marker(
-                    f"[STREAMING_QA_COMPLETE] conv={conversation_id} total_s={turn_total_s:.3f} total_ms={turn_total_s * 1000:.1f} backend=local_truthful_refusal ok=True timestamp={ts_complete}"
+                    f"[STREAMING_QA_COMPLETE] conv={conversation_id} total_s={turn_total_s:.3f} total_ms={turn_total_s * 1000:.1f} backend={eff_backend} ok=True timestamp={ts_complete}"
                 )
                 return (True, answer, badge, None)
 
