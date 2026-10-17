@@ -71,3 +71,17 @@ def test_build_query_plan_accepts_cjk_expansion():
     )
     assert plan.expansion_status == "expanded"
     assert any("生産完了" in variant.text for variant in plan.variants)
+
+
+def test_cjk_expand_timeout_configuration(monkeypatch):
+    from aios_habit.rag_v2.multilingual_query_expand import (
+        DEFAULT_CJK_EXPAND_TIMEOUT_SECONDS,
+        get_cjk_expand_timeout_seconds,
+    )
+
+    assert 5 <= DEFAULT_CJK_EXPAND_TIMEOUT_SECONDS <= 8
+    assert get_cjk_expand_timeout_seconds() == DEFAULT_CJK_EXPAND_TIMEOUT_SECONDS
+
+    monkeypatch.setenv("AIOS_CJK_EXPAND_TIMEOUT_SECONDS", "7")
+    assert get_cjk_expand_timeout_seconds() == 7
+    monkeypatch.delenv("AIOS_CJK_EXPAND_TIMEOUT_SECONDS", raising=False)

@@ -1012,6 +1012,13 @@ def _select_semantic_candidate_sources(
 
 
 _BRIDGE_UNAVAILABLE_UNTIL: float = 0.0
+_BRIDGE_COOLDOWN_SECONDS: float = 10.0
+
+
+def _reset_cjk_bridge_fuse() -> None:
+    """Reset the CJK query expansion bridge fuse."""
+    global _BRIDGE_UNAVAILABLE_UNTIL
+    _BRIDGE_UNAVAILABLE_UNTIL = 0.0
 
 
 def _maybe_expand_latin_query_for_cjk_corpus(
@@ -1035,15 +1042,19 @@ def _maybe_expand_latin_query_for_cjk_corpus(
 
         health = get_antigravity_bridge_health()
         if not health.is_direct_ready:
-            _BRIDGE_UNAVAILABLE_UNTIL = time.monotonic() + 10.0
+            _BRIDGE_UNAVAILABLE_UNTIL = time.monotonic() + _BRIDGE_COOLDOWN_SECONDS
             return None
-        return expand_question_for_corpus_script(
+        expanded = expand_question_for_corpus_script(
             question,
             corpus_script="cjk",
             gemini_ready=True,
         )
+        if not expanded or not expanded.get("variants"):
+            _BRIDGE_UNAVAILABLE_UNTIL = time.monotonic() + _BRIDGE_COOLDOWN_SECONDS
+            return None
+        return expanded
     except Exception:
-        _BRIDGE_UNAVAILABLE_UNTIL = time.monotonic() + 10.0
+        _BRIDGE_UNAVAILABLE_UNTIL = time.monotonic() + _BRIDGE_COOLDOWN_SECONDS
         LOGGER.debug("CJK query expansion skipped", exc_info=True)
         return None
 

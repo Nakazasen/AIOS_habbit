@@ -184,6 +184,41 @@ def test_latin_only_corpus_does_not_call_cjk_expansion():
     ) is None
 
 
+def test_cjk_expansion_trips_fuse_on_failure():
+    from unittest.mock import MagicMock, patch
+
+    sources = tuple(
+        WorkspaceAIContextSource(
+            source_id=f"cjk-{i}",
+            source_scope="notebook",
+            source_type="xlsx",
+            title=f"生産マニュアル_{i}.xlsx",
+            privacy_label="local_only",
+            text="完工登録の手順、生産計画と実績の照合。",
+            included_chars=40,
+            truncated=False,
+        )
+        for i in range(10)
+    )
+    adapter._reset_cjk_bridge_fuse()
+    mock_health = MagicMock(is_direct_ready=True)
+    with patch(
+        "aios_habit.antigravity_bridge.get_antigravity_bridge_health",
+        return_value=mock_health,
+    ), patch(
+        "aios_habit.workspace_chat_rag_v2_adapter.expand_question_for_corpus_script",
+        return_value=None,
+    ) as mock_exp:
+        res1 = adapter._maybe_expand_latin_query_for_cjk_corpus("How to register?", sources)
+        assert res1 is None
+        assert adapter._BRIDGE_UNAVAILABLE_UNTIL > 0.0
+        # Subsequent call is skipped immediately without invoking expand again
+        res2 = adapter._maybe_expand_latin_query_for_cjk_corpus("How to register?", sources)
+        assert res2 is None
+        assert mock_exp.call_count == 1
+    adapter._reset_cjk_bridge_fuse()
+
+
 def test_short_latin_codes_keep_two_letter_tokens():
     from aios_habit.rag_v2.multilingual_query_expand import short_latin_codes
 

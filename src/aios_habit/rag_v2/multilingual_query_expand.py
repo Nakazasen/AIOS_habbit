@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from typing import Any, Mapping, Optional, Sequence
 
@@ -151,17 +152,39 @@ def parse_expansion_payload(
     return {"variants": cleaned}
 
 
+DEFAULT_CJK_EXPAND_TIMEOUT_SECONDS: int = 6
+
+
+def get_cjk_expand_timeout_seconds() -> int:
+    """Timeout for pre-retrieval query expansion (target: 5-8s)."""
+    raw = os.environ.get("AIOS_CJK_EXPAND_TIMEOUT_SECONDS", "").strip()
+    if raw:
+        try:
+            val = int(raw)
+            if val > 0:
+                return val
+        except ValueError:
+            pass
+    return DEFAULT_CJK_EXPAND_TIMEOUT_SECONDS
+
+
 def expand_question_for_corpus_script(
     question: str,
     *,
     corpus_script: str,
     gemini_ready: bool,
+    timeout_seconds: Optional[int] = None,
 ) -> Optional[dict[str, Any]]:
     """Expand using Gemini Web. Sends the question only — no source text."""
     if not gemini_ready or corpus_script not in {"cjk"}:
         return None
     from aios_habit.antigravity_bridge import call_antigravity_bridge
 
+    effective_timeout = (
+        timeout_seconds
+        if timeout_seconds is not None and timeout_seconds > 0
+        else get_cjk_expand_timeout_seconds()
+    )
     response = call_antigravity_bridge(
         question=(
             f"Document script family: {corpus_script}\n"
@@ -171,7 +194,7 @@ def expand_question_for_corpus_script(
         context_text="",
         privacy_mode="cloud_allowed",
         answer_language="ja",
-        timeout_seconds=60,
+        timeout_seconds=effective_timeout,
     )
     if not response.ok:
         return None
