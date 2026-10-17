@@ -27,6 +27,7 @@ from typing import Any, Dict, Iterable, Iterator, List, Optional
 VIETNAM_TZ = timezone(timedelta(hours=7))
 
 MAC_DINH_KHO_PATH = Path("local_cases") / "jig_log_archive"
+MAC_DINH_KHO_MO_PHONG_PATH = Path("local_cases") / "jig_log_archive_simulated"
 
 # Giới hạn chống phình kho khi người dùng tải tệp lớn: mỗi lần nạp tối đa 50.000 dòng.
 GIOI_HAN_DONG_MOI_LAN = 50_000
@@ -77,38 +78,24 @@ class DongKhoLog:
         )
 
 
-def _duong_dan_thang(thang: datetime, kho: Path) -> Path:
-    return Path(kho) / f"{thang.strftime('%Y-%m')}.jsonl"
+def _duong_dan_thang(thang: datetime, kho: Path, la_mo_phong: bool = False) -> Path:
+    prefix = "simulated_" if la_mo_phong else ""
+    return Path(kho) / f"{prefix}{thang.strftime('%Y-%m')}.jsonl"
 
 
 def _ten_an_toan(duong_dan: str) -> str:
-    """Chỉ giữ **tên tệp**, không bao giờ ghi đường dẫn tuyệt đối vào kho.
-
-    Kho log là tệp cục bộ nhưng vẫn có thể bị sao chép/chia sẻ; đường dẫn tuyệt
-    đối tới thư mục dữ liệu nhà máy không được nằm trong đó.
-    """
+    """Chỉ giữ **tên tệp**, không bao giờ ghi đường dẫn tuyệt đối vào kho."""
     if not duong_dan:
         return ""
     try:
         ten = Path(str(duong_dan)).name
     except (OSError, ValueError):
         ten = str(duong_dan)
-    # ``Path.name`` không xử lý được dạng ``file:///…`` hoặc đường dẫn chỉ có
-    # dấu ``/``; cắt thêm một lần cho chắc.
     return ten.rsplit("/", 1)[-1].rsplit("\\", 1)[-1].strip()
 
 
 def _chuoi_an_toan(gia_tri: Any) -> str:
-    """Chuẩn hoá một ô văn bản trước khi ghi vào kho.
-
-    Người dùng có thể dán đường dẫn tuyệt đối vào **bất kỳ** cột nào (Unit, chỉ
-    số, trạng thái…), không chỉ cột JIG. Ô nào trông như đường dẫn thì rút về tên
-    tệp, để kho không bao giờ chứa đường dẫn dữ liệu nhà máy.
-
-    Chỉ coi là đường dẫn khi có dấu hiệu rõ: dấu ``\\``, tiền tố ổ đĩa kiểu
-    ``D:\\``/``D:/``, ``://``, hoặc bắt đầu bằng ``/``. Tên chỉ số thật có chứa
-    ``:`` và đôi khi ``/`` (``takt:UnitSet/Cable[sec]``) nên không được nhận nhầm.
-    """
+    """Chuẩn hoá một ô văn bản trước khi ghi vào kho."""
     chuoi = str(gia_tri or "").strip()
     if not chuoi:
         return ""
@@ -131,9 +118,7 @@ def ghi_ban_ghi(
 ) -> Dict[str, Any]:
     """Ghi thêm các bản ghi log vào kho.
 
-    Trả về ``{"da_ghi": n, "bo_qua_rong": n, "bi_cat": n}``. ``bi_cat`` > 0 nghĩa
-    là đã chạm giới hạn ``GIOI_HAN_DONG_MOI_LAN`` và phần còn lại **không** được
-    ghi; lớp gọi phải nói rõ cho người dùng thay vì im lặng cắt dữ liệu.
+    Trả về ``{"da_ghi": n, "bo_qua_rong": n, "bi_cat": n}``.
     """
     cac_dong: List[DongKhoLog] = []
     bo_qua_rong = 0
@@ -168,14 +153,21 @@ def ghi_ban_ghi(
 
 
 def _ghi_dong(cac_dong: List[DongKhoLog], kho: Path, luc: datetime) -> int:
-    """Ghi danh sách dòng đã chuẩn hoá xuống tệp JSONL theo tháng."""
+    """Ghi danh sách dòng đã chuẩn hoá xuống tệp JSONL theo tháng (tách tệp nếu mô phỏng)."""
     if not cac_dong:
         return 0
-    duong_dan = _duong_dan_thang(luc, kho)
-    duong_dan.parent.mkdir(parents=True, exist_ok=True)
-    with duong_dan.open("a", encoding="utf-8") as f:
-        for dong in cac_dong:
-            f.write(json.dumps(dong.to_dict(), ensure_ascii=False) + "\n")
+    nhom_dong: Dict[bool, List[DongKhoLog]] = {False: [], True: []}
+    for dong in cac_dong:
+        la_mp = str(dong.nguon or "").startswith("SIMULATED_")
+        nhom_dong[la_mp].append(dong)
+    for la_mp, dongs in nhom_dong.items():
+        if not dongs:
+            continue
+        duong_dan = _duong_dan_thang(luc, kho, la_mo_phong=la_mp)
+        duong_dan.parent.mkdir(parents=True, exist_ok=True)
+        with duong_dan.open("a", encoding="utf-8") as f:
+            for dong in dongs:
+                f.write(json.dumps(dong.to_dict(), ensure_ascii=False) + "\n")
     return len(cac_dong)
 
 
@@ -183,18 +175,31 @@ def doc_kho(
     kho: str | Path = MAC_DINH_KHO_PATH,
     *,
     thang: Optional[datetime] = None,
+    chi_that: bool = False,
+    chi_mo_phong: bool = False,
 ) -> List[DongKhoLog]:
-    """Đọc kho log; mặc định đọc mọi tháng, có thể giới hạn một tháng."""
+    """Đọc kho log; mặc định đọc mọi tháng, có thể giới hạn một tháng.
+
+    - chi_that=True: chỉ lấy các bản ghi dữ liệu sản xuất thật, loại bỏ toàn bộ SIMULATED_*.
+    - chi_mo_phong=True: chỉ lấy các bản ghi mô phỏng mang nhãn SIMULATED_*.
+    """
     goc = Path(kho)
     if not goc.exists():
         return []
-    if thang is not None:
-        cac_tep = [_duong_dan_thang(thang, goc)]
+    if goc.is_file():
+        cac_tep = [goc]
+    elif thang is not None:
+        cac_tep = [_duong_dan_thang(thang, goc, la_mo_phong=False)]
+        if not chi_that:
+            cac_tep.append(_duong_dan_thang(thang, goc, la_mo_phong=True))
     else:
         cac_tep = sorted(goc.glob("*.jsonl"))
     ket_qua: List[DongKhoLog] = []
     for tep in cac_tep:
         if not tep.exists():
+            continue
+        ten_tep = tep.name.lower()
+        if chi_that and ten_tep.startswith("simulated_"):
             continue
         try:
             with tep.open("r", encoding="utf-8") as f:
@@ -207,7 +212,13 @@ def doc_kho(
                     except ValueError:
                         continue
                     if isinstance(du_lieu, dict):
-                        ket_qua.append(DongKhoLog.from_dict(du_lieu))
+                        ban_ghi = DongKhoLog.from_dict(du_lieu)
+                        la_mp = str(ban_ghi.nguon or "").startswith("SIMULATED_") or ten_tep.startswith("simulated_")
+                        if chi_that and la_mp:
+                            continue
+                        if chi_mo_phong and not la_mp:
+                            continue
+                        ket_qua.append(ban_ghi)
         except OSError:
             continue
     return ket_qua
@@ -219,9 +230,11 @@ def lich_su_theo_jig(
     jig_id: str = "",
     metric_name: str = "",
     limit: int = 200,
+    chi_that: bool = False,
+    chi_mo_phong: bool = False,
 ) -> List[float]:
     """Lấy chuỗi giá trị gần nhất theo JIG và chỉ số, để đối chiếu xu hướng."""
-    cac_dong = [d for d in doc_kho(kho) if d.value is not None]
+    cac_dong = [d for d in doc_kho(kho, chi_that=chi_that, chi_mo_phong=chi_mo_phong) if d.value is not None]
     if jig_id:
         cac_dong = [d for d in cac_dong if d.jig_id == jig_id]
     if metric_name:

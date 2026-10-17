@@ -79,8 +79,8 @@ def parse_stream_record(payload: Dict[str, Any]) -> StreamRecord:
             except ValueError:
                 raise ValueError("Thời gian gửi lên chưa đúng định dạng.") from None
     nguon = str(payload.get("nguon", NGUON_THAT)).strip() or NGUON_THAT
-    if nguon not in (NGUON_THAT, NGUON_PHAT_LAI_MO_PHONG):
-        raise ValueError("Nguồn bản tin không hợp lệ (chỉ nhận 'that' hoặc 'SIMULATED_REALTIME').")
+    if nguon != NGUON_THAT and not nguon.startswith("SIMULATED_"):
+        raise ValueError("Nguồn bản tin không hợp lệ (chỉ nhận 'that' hoặc tiền tố 'SIMULATED_*').")
     return StreamRecord(
         timestamp=timestamp,
         unit_serial=unit_serial,
@@ -196,24 +196,25 @@ class StreamBuffer:
         kiem_drift = phat_hien_drift(self.recent_values(record.jig_id, record.metric, 50))
         if kiem_drift["canh_bao"]:
             ket_qua["canh_bao"] = True
-            self._dang_canh_bao.add(key)
-            cursor = self.ghi_su_kien(
-                "canh_bao_drift",
-                record.jig_id,
-                record.metric,
-                {
-                    "unit_serial": record.unit_serial,
-                    "gia_tri": record.value,
-                    "don_vi": record.unit,
-                    "nguon": record.nguon,
-                    "timestamp": record.timestamp or datetime.now().replace(microsecond=0).isoformat(),
-                    "z": round(kiem_drift["z"], 2),
-                    "trung_binh_nen": round(kiem_drift["trung_binh_nen"], 4),
-                    "trung_binh_moi": round(kiem_drift["trung_binh_moi"], 4),
-                    "chi_tiet": "Thông số trôi khỏi nền (z=%.2f) — có thể dẫn đến phát sinh NG." % kiem_drift["z"],
-                },
-            )
-            ket_qua["cursor_su_kien"] = cursor
+            if key not in self._dang_canh_bao:
+                self._dang_canh_bao.add(key)
+                cursor = self.ghi_su_kien(
+                    "canh_bao_drift",
+                    record.jig_id,
+                    record.metric,
+                    {
+                        "unit_serial": record.unit_serial,
+                        "gia_tri": record.value,
+                        "don_vi": record.unit,
+                        "nguon": record.nguon,
+                        "timestamp": record.timestamp or datetime.now().replace(microsecond=0).isoformat(),
+                        "z": round(kiem_drift["z"], 2),
+                        "trung_binh_nen": round(kiem_drift["trung_binh_nen"], 4),
+                        "trung_binh_moi": round(kiem_drift["trung_binh_moi"], 4),
+                        "chi_tiet": "Thông số trôi khỏi nền (z=%.2f) — có thể dẫn đến phát sinh NG." % kiem_drift["z"],
+                    },
+                )
+                ket_qua["cursor_su_kien"] = cursor
         else:
             self._dang_canh_bao.discard(key)
         return ket_qua
