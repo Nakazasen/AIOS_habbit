@@ -17,7 +17,7 @@ from aios_habit.rag_answer_composer import StrongModelAnswer, stable_answer_draf
 DEFAULT_ENDPOINT = "http://127.0.0.1:11434/v1/chat/completions"
 DEFAULT_TIMEOUT_SECONDS = 30
 DEFAULT_MAX_CONTEXT_CHARS = 6000
-DEFAULT_MAX_TOKENS = 2048
+DEFAULT_MAX_TOKENS = 8192
 MAX_SOURCE_REFS = 5
 
 # Reasoning-capable endpoints (for example DeepSeek thinking models) can spend
@@ -25,7 +25,7 @@ MAX_SOURCE_REFS = 5
 # ``content`` field.  One bounded retry asks for a direct answer with a doubled
 # budget; the reasoning ban in ``_post_chat`` still applies, so reasoning text
 # is never used as the user-visible answer.
-EMPTY_ANSWER_RETRY_TOKEN_CEILING = 8192
+EMPTY_ANSWER_RETRY_TOKEN_CEILING = 16384
 EMPTY_ANSWER_ERROR_MESSAGE_VI = "Nguồn AI không trả về nội dung trả lời (empty answer)."
 _EMPTY_ANSWER_RETRY_DIRECTIVE = (
     "\n\nQUAN TRỌNG: Trả lời TRỰC TIẾP trong nội dung chính; giữ phần suy luận "
@@ -241,7 +241,7 @@ def load_provider_config_from_env_or_session(
         session.get("local_ai_max_tokens", os.getenv("AIOS_LOCAL_AI_MAX_TOKENS")),
         DEFAULT_MAX_TOKENS,
         256,
-        8192,
+        32768,
     )
     return ProviderConfig(
         provider_type=provider_type,

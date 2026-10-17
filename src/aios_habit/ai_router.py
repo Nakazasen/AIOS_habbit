@@ -70,6 +70,7 @@ class RouterProviderConfig:
     api_keys: list[str] = field(default_factory=list)
     allow_model_auto_substitution: bool = True
     supported_languages: tuple[str, ...] = ("vi", "ja", "en")
+    max_tokens: int = 8192
 
 
 @dataclass
@@ -185,6 +186,7 @@ def call_openai_compatible_provider(config: RouterProviderConfig, request: Route
         locality="local" if config.trusted_internal else "cloud",
         timeout_seconds=effective_timeout,
         enabled=config.enabled,
+        max_tokens=getattr(config, "max_tokens", 8192),
         router_deadline_monotonic=getattr(request, "router_deadline_monotonic", None),
     )
     res = answer_with_provider(
@@ -567,6 +569,7 @@ def provider_configs_from_env(
         trusted_internal = is_local_endpoint(local_endpoint)
         base_display = profile.display_name_vi if profile else "AI trong máy tương thích OpenAI"
         api_key = str(values.get("AIOS_LOCAL_AI_API_KEY") or "")
+        local_max_tokens = _env_int(values, "AIOS_LOCAL_AI_MAX_TOKENS", 8192, 256, 32768)
         for idx, model_name in enumerate(local_models):
             pid = "openai_compatible_local" if idx == 0 else f"openai_compatible_local:failover_{idx}"
             disp = base_display if len(local_models) == 1 else f"{base_display} ({model_name})"
@@ -581,6 +584,7 @@ def provider_configs_from_env(
                     trusted_internal,
                     10 + idx * 2,
                     local_timeout,
+                    max_tokens=local_max_tokens,
                 )
             )
     priority = 100
