@@ -2901,6 +2901,39 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
 }
 
 
+def is_pc0575_environment() -> bool:
+    """Check if current runtime environment is machine KDTVN-PC0575.
+
+    Can be explicitly controlled via env var AIOS_EXTERNAL_AI_LABEL_PROFILE ('pc0575' vs 'home').
+    Defaults to checking COMPUTERNAME / hostname.
+    """
+    import os
+    import platform
+
+    profile = os.environ.get("AIOS_EXTERNAL_AI_LABEL_PROFILE", "").strip().lower()
+    if profile == "pc0575":
+        return True
+    if profile == "home":
+        return False
+    comp = os.environ.get("COMPUTERNAME", "").strip().upper()
+    if comp == "KDTVN-PC0575":
+        return True
+    node = platform.node().strip().upper()
+    if node == "KDTVN-PC0575":
+        return True
+    return False
+
+
+PC0575_VI_OVERRIDES: Dict[str, str] = {
+    "mode_external_ai": "Hỏi AI ngoài phạm vi kho kiến thức",
+    "mode_external_ai_help": "Chế độ Hỏi AI ngoài phạm vi kho kiến thức (tự do, không dựa trên kho tài liệu)",
+    "mode_pick_external": "🌐 Hỏi AI ngoài phạm vi kho kiến thức",
+    "external_ai_provenance_banner": "Câu trả lời ngoài phạm vi kho kiến thức — không dựa trên dữ kiện trong kho. Kiểm chứng trước khi dùng.",
+    "bridge_ask_external_button": "Hỏi AI ngoài phạm vi kho kiến thức câu này",
+    "bridge_ask_external_caption": "Chưa đủ bằng chứng trong kho tài liệu. Bạn có thể hỏi AI ngoài phạm vi kho kiến thức:",
+}
+
+
 def t(key: str, locale: Optional[str] = None, **kwargs: Any) -> str:
     """Lookup translation for key with automatic fallback to Vietnamese ('vi').
 
@@ -2910,9 +2943,15 @@ def t(key: str, locale: Optional[str] = None, **kwargs: Any) -> str:
     Supports string formatting via kwargs.
     """
     norm_locale = normalize_locale(locale)
-    loc_dict = TRANSLATIONS.get(norm_locale, TRANSLATIONS[DEFAULT_LOCALE])
 
-    template = loc_dict.get(key)
+    template = None
+    if norm_locale == "vi" and is_pc0575_environment():
+        template = PC0575_VI_OVERRIDES.get(key)
+
+    if template is None:
+        loc_dict = TRANSLATIONS.get(norm_locale, TRANSLATIONS[DEFAULT_LOCALE])
+        template = loc_dict.get(key)
+
     if template is None:
         template = TRANSLATIONS[DEFAULT_LOCALE].get(key, key)
 
