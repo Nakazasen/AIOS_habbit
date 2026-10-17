@@ -2444,6 +2444,7 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
         MO_SO,
         TAO_SO,
         TAO_VU_DIEU_TRA,
+        DANH_GIA_NHAN,
         VE_BIEU_DO,
         XEM_PHAN_HOI,
         XEM_TIEN_DO_VU,
@@ -2559,8 +2560,35 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
             except Exception:
                 pass
         return van_ban or None
+    if y_dinh == DANH_GIA_NHAN:
+        try:
+            from aios_habit.chat_action_create_case import get_active_case_id
+            from aios_habit.error_cases.autoclassify_feedback import record_autoclassify_feedback
+            rating_val = slots.get("rating", "đúng")
+            correction = slots.get("correction")
+            cid = slots.get("case_id") or get_active_case_id()
+            conv_id = getattr(active_conversation, "id", "") or ""
+            record_autoclassify_feedback(
+                case_id=cid,
+                rating=rating_val,
+                user_correction=correction,
+                conversation_id=conv_id,
+            )
+            corr_note = f"\n- **Hiệu chỉnh nhóm:** `{correction}`" if correction else ""
+            return (
+                f"### ✅ Đã ghi nhận đánh giá nhãn phân loại: `{rating_val}`\n\n"
+                f"- **Vụ điều tra:** `{cid or 'Ngữ cảnh hiện tại'}`\n"
+                f"- **Đánh giá:** `{rating_val}`"
+                f"{corr_note}\n"
+                "- **Lưu trữ:** `local_cases/autoclassify_feedback.jsonl` (phục vụ giám sát độ chính xác Bước 5)."
+            )
+        except Exception as e:
+            return f"### ⚠️ Không thể lưu phản hồi nhãn: {e}"
     if y_dinh == XEM_PHAN_HOI:
         try:
+            if slots.get("loai_phan_hoi") == "phan_loai":
+                from aios_habit.error_cases.autoclassify_feedback import format_autoclassify_review_summary
+                return format_autoclassify_review_summary()
             from aios_habit.feedback_review_home import format_feedback_review_summary
 
             return format_feedback_review_summary()

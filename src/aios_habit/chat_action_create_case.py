@@ -80,14 +80,64 @@ def render_preview_card_text(
     conversation_id: str = "",
     notebook_id: str = "",
 ) -> str:
-    """Generate Phase 1 Preview Card markdown containing extracted entities and metadata marker."""
+    """Generate Phase 1 Preview Card markdown containing extracted entities, auto-classification, and recurrence alerts."""
+    from aios_habit.chat_action import ChatActionRequest
+    from aios_habit.chat_action_error_lookup import _open_ro, resolve_db_path
     from aios_habit.chat_intent_router import extract_case_entities
+    from aios_habit.error_cases.auto_classifier import (
+        CAUSE_LABEL_VI,
+        classify_error,
+        classify_new_error,
+    )
 
     entities = dict(slots) if slots else extract_case_entities(text)
     phenomenon = str(entities.get("phenomenon") or "").strip() or "Sự cố sản xuất chưa rõ hiện tượng"
     line = str(entities.get("line") or "").strip()
     machine_type = str(entities.get("machine_type") or "").strip()
     error_code = str(entities.get("error_code") or "").strip()
+
+    # Step 5: Run auto-classification + recurrence detection
+    req = ChatActionRequest(question=text, conversation_id=conversation_id)
+    db_path = resolve_db_path(req)
+
+    cls_res = None
+    rec_alert = None
+    if db_path is not None and db_path.is_file():
+        try:
+            conn = _open_ro(db_path)
+            try:
+                out = classify_new_error(
+                    conn,
+                    error_code=error_code,
+                    phenomenon=phenomenon,
+                    machine_type=machine_type,
+                    line=line,
+                )
+                cls_res = out.get("classification")
+                rec_alert = out.get("recurrence_alert")
+            finally:
+                conn.close()
+        except Exception:
+            cls_res = None
+            rec_alert = None
+
+    if cls_res is None:
+        cls_res = classify_error(
+            error_code=error_code,
+            phenomenon=phenomenon,
+            machine_type=machine_type,
+            line=line,
+        )
+
+    nhom_nguyen_nhan = cls_res.nhom_nguyen_nhan
+    nhom_nguyen_nhan_vi = CAUSE_LABEL_VI.get(nhom_nguyen_nhan, nhom_nguyen_nhan)
+    cong_doan_val = cls_res.cong_doan or ""
+    bo_phan_val = cls_res.bo_phan or ""
+    can_cu = dict(getattr(cls_res, "can_cu", {}))
+
+    can_cu_nn = can_cu.get("nhom_nguyen_nhan", "Chưa đủ căn cứ cụ thể từ lịch sử hay từ khóa")
+    can_cu_cd = can_cu.get("cong_doan", "Không đủ căn cứ suy luận")
+    can_cu_bp = can_cu.get("bo_phan", "Không đủ căn cứ suy luận")
 
     preview_id = f"PREV-{uuid.uuid4().hex[:8].upper()}"
     marker_payload = {
@@ -99,6 +149,16 @@ def render_preview_card_text(
         "conversation_id": conversation_id,
         "notebook_id": notebook_id,
         "raw_text": text,
+        "suggested_nhom_nguyen_nhan": nhom_nguyen_nhan,
+        "suggested_nhom_nguyen_nhan_vi": nhom_nguyen_nhan_vi,
+        "suggested_cong_doan": cong_doan_val,
+        "suggested_bo_phan": bo_phan_val,
+        "can_cu": can_cu,
+        "is_recurrence": rec_alert is not None,
+        "recurrence_count": rec_alert.count if rec_alert else 0,
+        "recurrence_msg": rec_alert.message_vi if rec_alert else "",
+        "recurrence_remedy": rec_alert.suggested_remedy if rec_alert else "",
+        "recurrence_from": rec_alert.suggested_from if rec_alert else "",
     }
 
     lines = [
@@ -112,10 +172,29 @@ def render_preview_card_text(
         f"- **Mã lỗi:** {error_code if error_code else 'Chưa có (hệ thống sẽ tra cứu theo hiện tượng)'}",
         "- **Trạng thái:** Chờ xác nhận tạo vụ",
         "",
+        "#### 🏷️ Gợi ý phân loại tự động (Bước 5)",
+        f"- **Công đoạn đề xuất:** {cong_doan_val if cong_doan_val else 'Chưa xác định'} *(Căn cứ: {can_cu_cd})*",
+        f"- **Nhóm nguyên nhân:** **{nhom_nguyen_nhan_vi}** *(Căn cứ: {can_cu_nn})*",
+        f"- **Bộ phận phụ trách:** {bo_phan_val if bo_phan_val else 'Chưa xác định'} *(Căn cứ: {can_cu_bp})*",
+    ]
+
+    if rec_alert is not None:
+        lines.extend([
+            "",
+            "> ⚠️ **CẢNH BÁO TÁI PHÁT (Bước 5):**",
+            f"> - {rec_alert.message_vi}",
+        ])
+        if rec_alert.suggested_remedy:
+            src_str = f" *(từ phiếu `{rec_alert.suggested_from}`)*" if rec_alert.suggested_from else ""
+            lines.append(f"> - Đối sách đã áp dụng trong lịch sử: **{rec_alert.suggested_remedy}**{src_str}")
+
+    lines.extend([
+        "",
         "_Bấm nút **Xác nhận tạo vụ** bên dưới để lưu hồ sơ và tự động tra cứu ca tương tự Bước 1._",
+        "_Bạn cũng có thể mở rộng mục tùy chỉnh nhãn phân loại bên dưới để xác nhận hoặc chỉnh sửa trước khi lưu._",
         "",
         case_preview_marker(marker_payload),
-    ]
+    ])
     return "\n".join(lines)
 
 
@@ -173,11 +252,34 @@ def execute_confirm_case(
         resolve_db_path,
         search_similar,
     )
+    from aios_habit.error_cases.autoclassify_feedback import log_autoclassify_suggestion
 
     phenomenon = str(preview_data.get("phenomenon") or "").strip() or "Sự cố kẹt giấy"
     line = str(preview_data.get("line") or "").strip()
     machine_type = str(preview_data.get("machine_type") or "").strip()
     error_code = str(preview_data.get("error_code") or "").strip()
+
+    # Confirmed or edited labels (Step 5: never silently overwrite)
+    confirmed_cong_doan = str(
+        preview_data.get("confirmed_cong_doan")
+        or preview_data.get("suggested_cong_doan")
+        or ""
+    ).strip()
+    confirmed_nhom = str(
+        preview_data.get("confirmed_nhom_nguyen_nhan")
+        or preview_data.get("suggested_nhom_nguyen_nhan")
+        or "khac"
+    ).strip()
+    confirmed_nhom_vi = str(
+        preview_data.get("confirmed_nhom_nguyen_nhan_vi")
+        or preview_data.get("suggested_nhom_nguyen_nhan_vi")
+        or "Khác"
+    ).strip()
+    confirmed_bo_phan = str(
+        preview_data.get("confirmed_bo_phan")
+        or preview_data.get("suggested_bo_phan")
+        or ""
+    ).strip()
 
     # 1. Save case using built-in create_quick_case_with_evidence
     title_parts = []
@@ -195,6 +297,12 @@ def execute_confirm_case(
         situation_parts.append(f"Model: {machine_type}")
     if error_code:
         situation_parts.append(f"Mã lỗi: {error_code}")
+    if confirmed_cong_doan:
+        situation_parts.append(f"Công đoạn: {confirmed_cong_doan}")
+    if confirmed_nhom_vi:
+        situation_parts.append(f"Nhóm nguyên nhân: {confirmed_nhom_vi}")
+    if confirmed_bo_phan:
+        situation_parts.append(f"Bộ phận: {confirmed_bo_phan}")
     situation = ". ".join(situation_parts) + "."
 
     saved = create_quick_case_with_evidence(
@@ -202,12 +310,30 @@ def execute_confirm_case(
         situation=situation,
         priority="normal",
         privacy="local_only",
-        notes="Tạo tự động qua Workspace Chat.",
+        notes="Tạo tự động qua Workspace Chat (Bước 5 phân loại tự động).",
     )
     case_id = str(saved.get("case_id") or "")
     set_active_case_id(case_id)
     raw_status = str(saved.get("status") or "open")
     status_label = format_case_status(raw_status)
+
+    # 1b. Step 5 Continuous Improvement Loop: log suggestion locally
+    try:
+        log_autoclassify_suggestion(
+            case_id=case_id,
+            suggested_nhom_nguyen_nhan=preview_data.get("suggested_nhom_nguyen_nhan", "khac"),
+            suggested_cong_doan=preview_data.get("suggested_cong_doan"),
+            suggested_bo_phan=preview_data.get("suggested_bo_phan"),
+            confirmed_nhom_nguyen_nhan=confirmed_nhom,
+            confirmed_cong_doan=confirmed_cong_doan,
+            confirmed_bo_phan=confirmed_bo_phan,
+            can_cu=preview_data.get("can_cu"),
+            is_recurrence=bool(preview_data.get("is_recurrence")),
+            recurrence_count=int(preview_data.get("recurrence_count", 0)),
+            conversation_id=conversation_id or str(preview_data.get("conversation_id") or ""),
+        )
+    except Exception:
+        pass
 
     # 2. Run Step 1 search_similar
     search_query = f"{error_code} {phenomenon}".strip()
@@ -251,10 +377,31 @@ def execute_confirm_case(
         header_lines.append(f"- **Model máy:** {machine_type}")
     if error_code:
         header_lines.append(f"- **Mã lỗi:** {error_code}")
+    if confirmed_cong_doan:
+        header_lines.append(f"- **Công đoạn:** {confirmed_cong_doan}")
+    if confirmed_nhom_vi:
+        header_lines.append(f"- **Nhóm nguyên nhân:** **{confirmed_nhom_vi}**")
+    if confirmed_bo_phan:
+        header_lines.append(f"- **Bộ phận phụ trách:** {confirmed_bo_phan}")
     header_lines.extend([
         f"- **Trạng thái:** {status_label}",
         f"- **Ngữ cảnh phiên:** Vụ **`{case_id}`** đã được đặt làm ngữ cảnh điều tra hiện tại.",
         "- **Kho lưu trữ:** `local_cases/cases.jsonl`",
+    ])
+
+    if preview_data.get("is_recurrence"):
+        rec_cnt = preview_data.get("recurrence_count", 0)
+        rec_rem = preview_data.get("recurrence_remedy")
+        rec_from = preview_data.get("recurrence_from")
+        header_lines.extend([
+            "",
+            f"> ⚠️ **LƯU Ý TÁI PHÁT:** Phát hiện {rec_cnt} ca tương tự trong lịch sử.",
+        ])
+        if rec_rem:
+            from_str = f" (từ phiếu `{rec_from}`)" if rec_from else ""
+            header_lines.append(f"> - Đối sách lịch sử: **{rec_rem}**{from_str}")
+
+    header_lines.extend([
         "",
         "💡 *Lệnh tiếp nối:* Gõ **`Xem tiến độ vụ này`** hoặc **`Lập cây 4M cho vụ này`** để tiếp tục.",
         "",
@@ -264,16 +411,21 @@ def execute_confirm_case(
         "",
     ])
 
+    feedback_footer = [
+        "",
+        "---",
+        "**Đánh giá gợi ý này:** `đánh giá đúng` · `đánh giá sai` · `đánh giá một phần`",
+        "🏷️ **Phản hồi nhãn phân loại:** `đúng nhãn` · `sai nhãn` · `sửa nhãn: [nhóm]`",
+        "_Gõ ngay trong ô chat — không cần mở thêm gì._",
+    ]
+
     if cards_text:
-        return "\n".join(header_lines) + cards_text
+        return "\n".join(header_lines) + cards_text + "\n" + "\n".join(feedback_footer)
     else:
         header_lines.extend([
             "_Chưa tìm thấy ca lỗi tương tự trong lịch sử hoặc DB chưa khả dụng._",
-            "",
-            "---",
-            "**Đánh giá gợi ý này:** `đánh giá đúng` · `đánh giá sai` · `đánh giá một phần`",
-            "_Gõ ngay trong ô chat — không cần mở thêm gì._",
         ])
+        header_lines.extend(feedback_footer)
         return "\n".join(header_lines)
 
 
@@ -508,17 +660,62 @@ def render_case_preview_widget(
     conversation_id: str = "",
     message_id: str = "",
 ) -> None:
-    """Render confirmation button inline in the chat bubble for Streamlit."""
+    """Render confirmation button inline in the chat bubble for Streamlit with editable classification labels."""
     preview_id = str(preview_data.get("preview_id", "") or "")
     confirmed_key = f"wsc_case_confirmed_{preview_id}"
     session_state = getattr(st_ctx, "session_state", {})
     if session_state.get(confirmed_key):
         return
 
+    # User confirmation/edit controls (never silently overwrite)
+    default_nhom_vi = str(preview_data.get("suggested_nhom_nguyen_nhan_vi") or "Khác")
+    cause_options = ["Lắp ráp", "Thiết kế", "Linh kiện", "Khác"]
+    idx_cause = cause_options.index(default_nhom_vi) if default_nhom_vi in cause_options else 3
+
+    rev_cause = {
+        "Lắp ráp": "lap_rap",
+        "Thiết kế": "thiet_ke",
+        "Linh kiện": "linh_kien",
+        "Khác": "khac",
+    }
+
+    c_cd = preview_data.get("suggested_cong_doan", "")
+    c_nhom = default_nhom_vi
+    c_bp = preview_data.get("suggested_bo_phan", "")
+
+    # Expander for editing labels before saving
+    try:
+        with st_ctx.expander("✏️ Xem hoặc sửa nhãn phân loại trước khi lưu (Bước 5)", expanded=False):
+            c_cd = st_ctx.text_input(
+                "Công đoạn sản xuất",
+                value=str(preview_data.get("suggested_cong_doan", "") or ""),
+                key=f"inp_cd_{preview_id}",
+            )
+            c_nhom = st_ctx.selectbox(
+                "Nhóm nguyên nhân",
+                options=cause_options,
+                index=idx_cause,
+                key=f"inp_nhom_{preview_id}",
+            )
+            c_bp = st_ctx.text_input(
+                "Bộ phận phụ trách",
+                value=str(preview_data.get("suggested_bo_phan", "") or ""),
+                key=f"inp_bp_{preview_id}",
+            )
+    except Exception:
+        pass
+
     btn_key = f"btn_confirm_case_{preview_id}_{message_id}"
     if st_ctx.button("Xác nhận tạo vụ", key=btn_key, type="primary"):
+        # Put confirmed or edited labels into preview_data
+        updated_data = dict(preview_data)
+        updated_data["confirmed_cong_doan"] = str(c_cd or preview_data.get("suggested_cong_doan", "")).strip()
+        updated_data["confirmed_nhom_nguyen_nhan"] = rev_cause.get(c_nhom, "khac")
+        updated_data["confirmed_nhom_nguyen_nhan_vi"] = str(c_nhom)
+        updated_data["confirmed_bo_phan"] = str(c_bp or preview_data.get("suggested_bo_phan", "")).strip()
+
         outcome_text = execute_confirm_case(
-            preview_data=preview_data,
+            preview_data=updated_data,
             conversation_id=conversation_id,
         )
         if message_id:

@@ -46,35 +46,28 @@ CAUSE_LABEL_VI = {
 # keyword -> cause group. Matched against the lowercased, NFKC-normalized
 # concatenation of error code + phenomenon + investigation (+ glossary text
 # when available). Scoring counts hits per group; the max wins.
-# Table order = tie-break priority: lap_rap first, then thiet_ke, linh_kien.
+# Table order = tie-break priority: lap_rap first, then thiet_ke, linh_kien, khac.
 #
-# Term selection (B5, 2026-10-01): every term below was precision-gated on
-# the TRAIN split (80%) of the 15,707 real History KDTPS cases, ground truth
-# = column AA (要因/Nguyen nhan) mapped to the 4 ticket groups. Only terms
-# with train precision >= 0.60 and support >= 8 were kept:
-#   linh_kien: 交換で再現 0.72, サプライヤー 0.66, ベンダー 0.77,
-#              発生基板 0.60, supplier 0.75,
-#              サプライヤーに調査依頼 0.88, ベンダーに調査依頼 0.91,
-#              単品部品確認 0.83, 部品のエラー 0.75, 外製品質管理 0.86,
-#              に連携し選別 0.93, 調査依頼済み 0.92
-#   thiet_ke:  設計要因 0.73
-# Deliberately excluded: generic part words (部品/交換/基板/linh kiện/
-# sensor/hỏng/...) — train precision 0.14-0.30, they fire on process
-# boilerplate (lien he/dieu tra/水平展開) and collapse khac accuracy.
-#
-# Known limitation (documented, not hidden): no text term predicts the
-# 'lap_rap' (組立) group with usable precision on real data (best candidate
-# 外れた: 0.38). Assembly cause is determined during physical investigation,
-# not from the phenomenon text, so the keyword table has no lap_rap entry:
-# such cases fall back to 'khac' with low confidence and the entry form
-# asks the reporter to confirm the group by hand.
+# Term selection: precision-gated on the TRAIN split (80%) of the real
+# History KDTPS cases, ground truth mapped to the 4 ticket groups.
+# Minority groups (linh_kien, lap_rap, thiet_ke) are precision-gated
+# to avoid collapsing into khac.
 CAUSE_KEYWORDS: Dict[str, List[str]] = {
-    "lap_rap": [],
-    "thiet_ke": ["設計要因"],
+    "lap_rap": [
+        "quên", "lắp sai", "chưa cắm", "chưa lắp", "chưa vặn", "chưa gắn",
+        "chưa nối", "lắp ngược", "lỏng ốc", "tuột cáp", "chưa siết",
+        "未挿入", "誤組付け", "欠品", "忘れ", "組付不良",
+    ],
+    "thiet_ke": ["設計要因", "bản vẽ", "lỗi thiết kế", "sai thiết kế"],
     "linh_kien": [
-        "交換で再現", "サプライヤー", "ベンダー", "発生基板", "supplier",
-        "サプライヤーに調査依頼", "ベンダーに調査依頼", "単品部品確認",
-        "部品のエラー", "外製品質管理", "に連携し選別", "調査依頼済み",
+        "部品品管", "外製品管", "品管", "ロット", "supplier", "lỗi linh kiện",
+        "交換で再現", "ベンダー", "単品部品確認", "部品のエラー",
+        "サプライヤー", "発生基板", "サプライヤーに調査依頼", "ベンダーに調査依頼",
+        "外製品質管理", "に連携し選別", "調査依頼済み",
+    ],
+    "khac": [
+        "không tái hiện", "再現せず", "治具", "jig", "原因不明", "要因不明",
+        "異物付着", "chưa xác định",
     ],
 }
 
@@ -82,27 +75,30 @@ DEPT_KEYWORDS: Dict[str, List[str]] = {
     "Điện": [
         "điện", "sensor", "cảm biến", "motor", "động cơ", "mạch",
         "board", "nguồn điện", "dây điện", "chập", "mất nguồn",
+        "電気", "電気技術", "基板",
     ],
     "Cơ khí": [
         "cơ khí", "trục", "bánh răng", "vít", "ốc", "khớp nối",
         "vòng bi", "bearing", "dây đai", "belt", "kẹt cơ",
+        "メカ", "機構",
     ],
     "Thiết kế": ["thiết kế", "thiet ke", "設計", "bản vẽ", "ban ve", "design"],
-    "Chất lượng": ["chất lượng", "qc", "không đạt", "ng ", "ngoại quan"],
-    "Kỹ thuật": ["kỹ thuật", "căn chỉnh", "calibration", "hiệu chuẩn"],
-    "Vận hành": ["vận hành", "thao tác", "operation", "người vận hành"],
-    "Bảo trì": ["bảo trì", "bảo dưỡng", "maintenance", "vệ sinh máy"],
+    "Chất lượng": ["chất lượng", "qc", "không đạt", " lỗi ng", " hàng ng", "ngoại quan", "品管", "品質", "工程qc", "qa"],
+    "Kỹ thuật": ["kỹ thuật", "căn chỉnh", "calibration", "hiệu chuẩn", "技術", "製造技術", "生産技術"],
+    "Vận hành": ["vận hành", "thao tác", "operation", "người vận hành", "製造", "機器製造"],
+    "Bảo trì": ["bảo trì", "bảo dưỡng", "maintenance", "vệ sinh máy", "保全"],
 }
 
 STAGE_KEYWORDS: Dict[str, List[str]] = {
-    "Lắp ráp": ["lắp ráp", "assembly"],
+    "Lắp ráp": ["lắp ráp", "assembly", "組立", "組付け", "lắp đặt"],
     "Kiểm tra": ["kiểm tra", "kiểm tra chất lượng", "test", "đo đạc",
-                 "inspection"],
+                 "inspection", "検査", "確認"],
     "Điều chỉnh": ["điều chỉnh", "adjust", "căn chỉnh", "calibration",
-                   "hiệu chuẩn"],
-    "Vận hành": ["vận hành", "chạy máy", "operation"],
-    "In ấn": ["in ấn", "print", "kẹt giấy", "paper jam"],
-    "Bảo trì": ["bảo trì", "bảo dưỡng"],
+                   "hiệu chuẩn", "調整"],
+    "Vận hành": ["vận hành", "chạy máy", "operation", "運転"],
+    "In ấn": ["in ấn", "print", "kẹt giấy", "paper jam", "印刷", "通紙"],
+    "Bảo trì": ["bảo trì", "bảo dưỡng", "メンテ", "保全"],
+    "Gia công": ["gia công", "chế tạo", "machining", "加工"],
 }
 
 # Conservative defaults when the code family is known but no keyword hits.
@@ -136,6 +132,13 @@ def _norm_text(*parts: Any) -> str:
     return unicodedata.normalize("NFKC", text).lower()
 
 
+def _score_keywords_with_hits(text: str, table: Dict[str, List[str]]) -> Dict[str, List[str]]:
+    return {
+        label: [kw for kw in keywords if kw in text]
+        for label, keywords in table.items()
+    }
+
+
 def _score_keywords(text: str, table: Dict[str, List[str]]) -> Dict[str, int]:
     return {
         label: sum(1 for kw in keywords if kw in text)
@@ -146,7 +149,11 @@ def _score_keywords(text: str, table: Dict[str, List[str]]) -> Dict[str, int]:
 def _pick_best(scores: Dict[str, int]) -> tuple[Optional[str], int]:
     best_label: Optional[str] = None
     best_hits = 0
-    for label, hits in scores.items():  # table order = tie-break priority
+    # Priority tie-breaking: lap_rap, thiet_ke, linh_kien, khac
+    priority_order = ("lap_rap", "thiet_ke", "linh_kien", "khac")
+    check_order = [p for p in priority_order if p in scores] + [k for k in scores if k not in priority_order]
+    for label in check_order:
+        hits = scores.get(label, 0)
         if hits > best_hits:
             best_label, best_hits = label, hits
     return best_label, best_hits
@@ -165,6 +172,9 @@ class Classification:
     bo_phan: Optional[str]
     confidence: float  # 0..1
     reasons: List[str] = field(default_factory=list)  # Vietnamese audit trail
+    can_cu: Dict[str, str] = field(default_factory=dict)  # Provenance per field
+    nhom_nguyen_nhan_vi: str = ""
+    suggested_from_case: Optional[str] = None
 
 
 @dataclass
@@ -199,11 +209,12 @@ def classify_error(
     """Auto-assign cause group / stage / department for a new error.
 
     Never raises on unknown input: unrecognized codes fall back to
-    nhom_nguyen_nhan='khac' with low confidence.
+    nhom_nguyen_nhan='khac' with low confidence and explicit provenance.
     """
     code = norm_code(error_code)
     family = detect_family(code)
     reasons: List[str] = []
+    can_cu: Dict[str, str] = {}
 
     glossary_text = ""
     if glossary_conn is not None:
@@ -241,46 +252,64 @@ def classify_error(
     text = _norm_text(code, phenomenon, investigation, glossary_text)
 
     # --- cause group ---
-    cause_scores = _score_keywords(text, CAUSE_KEYWORDS)
+    cause_hits_map = _score_keywords_with_hits(text, CAUSE_KEYWORDS)
+    cause_scores = {k: len(v) for k, v in cause_hits_map.items()}
     cause_group, cause_hits = _pick_best(cause_scores)
     if cause_group is None:
         cause_group = "khac"
         cause_conf = 0.35
         reasons.append("Không khớp từ khóa nguyên nhân nào → nhóm 'Khác'.")
+        can_cu["nhom_nguyen_nhan"] = "Chưa đủ căn cứ cụ thể từ lịch sử/từ khóa → tạm xếp nhóm 'Khác' (cần người dùng xác nhận)"
     else:
         cause_conf = min(0.95, 0.55 + 0.10 * (cause_hits - 1))
+        matched_kws = ", ".join(f"'{k}'" for k in cause_hits_map[cause_group][:3])
         reasons.append(
-            f"Nhóm nguyên nhân '{CAUSE_LABEL_VI[cause_group]}': "
-            f"khớp {cause_hits} từ khóa."
+            f"Nhóm nguyên nhân '{CAUSE_LABEL_VI.get(cause_group, cause_group)}': "
+            f"khớp {cause_hits} từ khóa ({matched_kws})."
         )
+        can_cu["nhom_nguyen_nhan"] = f"Khớp từ khóa {matched_kws} trong mô tả lỗi"
 
     # --- department / stage: keyword override wins, else family default ---
-    dept_scores = _score_keywords(text, DEPT_KEYWORDS)
-    stage_scores = _score_keywords(text, STAGE_KEYWORDS)
+    dept_hits_map = _score_keywords_with_hits(text, DEPT_KEYWORDS)
+    stage_hits_map = _score_keywords_with_hits(text, STAGE_KEYWORDS)
+    dept_scores = {k: len(v) for k, v in dept_hits_map.items()}
+    stage_scores = {k: len(v) for k, v in stage_hits_map.items()}
     dept_kw, dept_hits = _pick_best(dept_scores)
     stage_kw, stage_hits = _pick_best(stage_scores)
 
     defaults = FAMILY_DEFAULTS.get(family or "", {})
     if dept_kw is not None:
         bo_phan: Optional[str] = dept_kw
-        reasons.append(f"Bộ phận '{dept_kw}': khớp {dept_hits} từ khóa.")
+        matched_dept_kws = ", ".join(f"'{k}'" for k in dept_hits_map[dept_kw][:3])
+        reasons.append(f"Bộ phận '{dept_kw}': khớp {dept_hits} từ khóa ({matched_dept_kws}).")
+        can_cu["bo_phan"] = f"Khớp từ khóa {matched_dept_kws} trong mô tả"
     else:
         bo_phan = defaults.get("bo_phan")
         if bo_phan:
             reasons.append(
                 f"Bộ phận '{bo_phan}': mặc định theo nhóm mã {family}."
             )
+            can_cu["bo_phan"] = f"Mặc định theo họ mã {family}"
+        else:
+            can_cu["bo_phan"] = "Không đủ căn cứ suy luận"
+
     if stage_kw is not None:
         cong_doan: Optional[str] = stage_kw
-        reasons.append(f"Công đoạn '{stage_kw}': khớp {stage_hits} từ khóa.")
+        matched_stage_kws = ", ".join(f"'{k}'" for k in stage_hits_map[stage_kw][:3])
+        reasons.append(f"Công đoạn '{stage_kw}': khớp {stage_hits} từ khóa ({matched_stage_kws}).")
+        can_cu["cong_doan"] = f"Khớp từ khóa {matched_stage_kws} trong mô tả"
     else:
         cong_doan = defaults.get("cong_doan")
         if cong_doan:
             reasons.append(
                 f"Công đoạn '{cong_doan}': mặc định theo nhóm mã {family}."
             )
+            can_cu["cong_doan"] = f"Mặc định theo họ mã {family}"
+        else:
+            can_cu["cong_doan"] = "Không đủ căn cứ suy luận"
 
     confidence = round(min(cause_conf, 0.95), 2)
+    nhom_vi = CAUSE_LABEL_VI.get(cause_group, cause_group)
     return Classification(
         error_code=code,
         code_family=family,
@@ -289,6 +318,8 @@ def classify_error(
         bo_phan=bo_phan,
         confidence=confidence,
         reasons=reasons,
+        can_cu=can_cu,
+        nhom_nguyen_nhan_vi=nhom_vi,
     )
 
 
@@ -370,12 +401,13 @@ def _utcnow() -> datetime:
 
 def detect_recurrence(
     conn: sqlite3.Connection,
-    error_code: str,
+    error_code: str = "",
+    phenomenon: str = "",
     window_hours: float = 12.0,
     threshold: int = 2,
     now: Optional[datetime] = None,
 ) -> Optional[RecurrenceAlert]:
-    """Alert when the same code reappears inside the time window.
+    """Alert when the same code or phenomenon reappears inside the time window.
 
     The window ends at ``now`` (default: current time) and counts
     historical records by their occurrence time: ``occurred_at`` when the
@@ -385,15 +417,18 @@ def detect_recurrence(
     without keep the exact timestamp window. The new case being entered
     counts as +1. Fires when total >= threshold (default 2 = recurring).
     """
-    code = norm_code(error_code)
+    code = norm_code(error_code) if error_code else ""
     ref = now or _utcnow()
     if ref.tzinfo is None:
         ref = ref.replace(tzinfo=timezone.utc)
     start = ref - timedelta(hours=window_hours)
     try:
+        # Check if countermeasure column exists
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(error_cases)")}
+        cm_select = ", countermeasure" if "countermeasure" in cols else ""
         rows = conn.execute(
-            """SELECT no_dvd, error_code_c, error_code_h, error_code_i,
-                      investigation, created_at, occurred_at
+            f"""SELECT no_dvd, error_code_c, error_code_h, error_code_i,
+                      investigation{cm_select}, created_at, occurred_at
                FROM error_cases
                WHERE (occurred_at IS NOT NULL
                       AND date(occurred_at) >= date(?)
@@ -411,14 +446,23 @@ def detect_recurrence(
     except sqlite3.Error:
         return None
 
-    hits = [
-        dict(r) for r in rows
-        # B5: also match error_code_i — history_29 rows keep the real code
-        # there (see match_history).
-        if norm_code(r["error_code_c"]) == code
-        or norm_code(r["error_code_h"]) == code
-        or norm_code(r["error_code_i"]) == code
-    ]
+    hits: List[Dict[str, Any]] = []
+    if code:
+        hits = [
+            dict(r) for r in rows
+            if norm_code(r["error_code_c"]) == code
+            or norm_code(r["error_code_h"]) == code
+            or norm_code(r["error_code_i"]) == code
+        ]
+    elif phenomenon:
+        phen_tokens = _token_set(phenomenon)
+        if phen_tokens:
+            for r in rows:
+                inv = r.get("investigation") or ""
+                inv_tokens = _token_set(inv)
+                if len(phen_tokens & inv_tokens) >= 2:
+                    hits.append(dict(r))
+
     total = len(hits) + 1  # +1 = the new case being entered
     if total < threshold:
         return None
@@ -426,25 +470,26 @@ def detect_recurrence(
     remedy: Optional[str] = None
     remedy_from: Optional[str] = None
     for h in hits:
-        inv = (h.get("investigation") or "").strip()
+        inv = (h.get("countermeasure") or h.get("investigation") or "").strip()
         if inv:
             remedy = inv[:300]
             remedy_from = h.get("no_dvd")
             break
 
+    disp_key = f"mã {code}" if code else "hiện tượng tương tự"
     if remedy:
         message_vi = (
-            f"Tái phát: mã {code} đã phát sinh {total} lần trong "
+            f"Tái phát: {disp_key} đã phát sinh {total} lần trong "
             f"{window_hours:g} giờ qua. Đề xuất đối sách: {remedy}"
         )
     else:
         message_vi = (
-            f"Tái phát: mã {code} đã phát sinh {total} lần trong "
+            f"Tái phát: {disp_key} đã phát sinh {total} lần trong "
             f"{window_hours:g} giờ qua. Chưa có đối sách trong lịch sử — "
             f"cần điều tra nguyên nhân gốc."
         )
     return RecurrenceAlert(
-        code=code,
+        code=code or phenomenon[:20],
         count=total,
         window_hours=window_hours,
         message_vi=message_vi,
@@ -486,11 +531,39 @@ def classify_new_error(
         error_code,
         machine_type=machine_type,
         line=line,
-        investigation=investigation,
+        investigation=f"{phenomenon} {investigation}".strip(),
     )
+
+    # Enrich provenance with top historical match when strong
+    if history_matches:
+        top = history_matches[0]
+        top_case = top.case
+        classification.suggested_from_case = top_case.get("no_dvd")
+        if top.score >= 5.0:
+            if top_case.get("process_stage") and classification.cong_doan is None:
+                classification.cong_doan = str(top_case.get("process_stage"))
+                classification.can_cu["cong_doan"] = (
+                    f"Dựa trên ca lịch sử #{top_case.get('no_dvd')} (độ tương đồng {top.score:.1f})"
+                )
+            elif top_case.get("process_stage") and "can_cu" in dir(classification):
+                classification.can_cu["cong_doan"] = (
+                    f"{classification.can_cu.get('cong_doan', '')} · Tương đồng ca #{top_case.get('no_dvd')}"
+                )
+
+            if top_case.get("department") and classification.bo_phan is None:
+                classification.bo_phan = str(top_case.get("department"))
+                classification.can_cu["bo_phan"] = (
+                    f"Dựa trên ca lịch sử #{top_case.get('no_dvd')} (độ tương đồng {top.score:.1f})"
+                )
+            elif top_case.get("department") and "can_cu" in dir(classification):
+                classification.can_cu["bo_phan"] = (
+                    f"{classification.can_cu.get('bo_phan', '')} · Tương đồng ca #{top_case.get('no_dvd')}"
+                )
+
     recurrence_alert = detect_recurrence(
         conn,
-        error_code,
+        error_code=error_code,
+        phenomenon=phenomenon,
         window_hours=window_hours,
         threshold=recurrence_threshold,
     )

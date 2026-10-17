@@ -26,11 +26,13 @@ TAO_SO = "tao_so"                        # create a notebook
 MO_SO = "mo_so"                          # open a notebook
 HO_SO_DIEU_TRA = "ho_so_dieu_tra"        # open the investigation case workspace
 CONG_CU_NANG_CAO = "cong_cu_nang_cao"    # open the advanced JIG analysis tools
+DANH_GIA_NHAN = "danh_gia_nhan"          # inline rating for auto-classified labels (Step 5)
 HOI_DAP_CHUNG = "hoi_dap_chung"          # small talk / greeting
 HOI_TAI_LIEU = "hoi_tai_lieu"            # document Q&A (RAG) fallback
 DU_LIEU_DAN = "du_lieu_dan"              # pasted CSV/log block in the message
 
 TAT_CA_Y_DINH = (
+    DANH_GIA_NHAN,
     CANH_BAO_NGUONG,
     XU_HUONG_LOG_TINH,
     XEM_PHAN_HOI,
@@ -63,7 +65,7 @@ def _la_lenh_xem_phan_hoi(clean: str, norm: str) -> bool:
     Lệnh không phá đường hỏi đáp thông thường - câu hỏi bình thường chứa từ khóa
     của lệnh vẫn đi đường RAG như cũ.
     """
-    if norm.startswith(("/xemphanhoi", "/feedback", "/phanhoi", "lenh: xem phan hoi", "cmd: feedback")):
+    if norm.startswith(("/xemphanhoi", "/feedback", "/phanhoi", "/autoclassify", "/phanloai", "lenh: xem phan hoi", "cmd: feedback")):
         return True
     # Chứa mã lỗi máy (VD: C7620, JAM4709, F000) -> câu hỏi tra cứu, không phải lệnh
     if re.search(r"\b(?:[cfj]\s*-?\d{3,4}|jam\s*-?\d{3,4})\b", norm, re.IGNORECASE):
@@ -92,13 +94,24 @@ def _la_lenh_xem_phan_hoi(clean: str, norm: str) -> bool:
     cum_lenh = (
         "xem phan hoi", "xem lai phan hoi", "thong ke phan hoi", "bao cao phan hoi",
         "tom tat phan hoi", "tong hop phan hoi", "xem danh gia phan hoi",
-        "xem cac phan hoi", "xem phan hoi gan day", "kiem tra phan hoi"
+        "xem cac phan hoi", "xem phan hoi gan day", "kiem tra phan hoi",
+        "xem phan hoi phan loai", "thong ke phan loai", "bao cao phan loai",
+        "danh gia phan loai", "phan hoi phan loai",
     )
     return any(c in norm for c in cum_lenh)
 
 
 # Priority order: specific intents first, generic ones last.
 _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
+    (
+        DANH_GIA_NHAN,
+        (
+            "dung nhan", "sai nhan", "mot phan nhan",
+            "danh gia dung nhan", "danh gia sai nhan",
+            "sua nhan thanh", "sua nhan:", "sua nhan",
+            "/danhgianhan",
+        ),
+    ),
     (
         XEM_PHAN_HOI,
         (
@@ -107,7 +120,10 @@ _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
             "tom tat phan hoi", "tong hop phan hoi",
             "xem danh gia phan hoi", "xem cac phan hoi",
             "xem phan hoi gan day", "kiem tra phan hoi",
+            "xem phan hoi phan loai", "thong ke phan loai",
+            "bao cao phan loai", "danh gia phan loai",
             "/xemphanhoi", "/feedback", "/phanhoi",
+            "/autoclassify-feedback", "/autoclassify-review",
         ),
     ),
     (
@@ -375,6 +391,36 @@ def extract_slots(text: str, intent: str) -> Dict[str, str]:
         m = mau.search(clean)
         if m:
             slots["ten_so"] = m.group(1).strip().strip("\"'")
+    elif intent == DANH_GIA_NHAN:
+        slots_dg: Dict[str, str] = {}
+        norm_c = _khong_dau(clean)
+        if "dung" in norm_c:
+            slots_dg["rating"] = "đúng"
+        elif "mot phan" in norm_c:
+            slots_dg["rating"] = "một phần"
+        elif "sai" in norm_c:
+            slots_dg["rating"] = "sai"
+        else:
+            slots_dg["rating"] = "đúng"
+
+        for grp, vi in (
+            ("linh_kien", "linh kien"),
+            ("lap_rap", "lap rap"),
+            ("thiet_ke", "thiet ke"),
+            ("khac", "khac"),
+        ):
+            if vi in norm_c:
+                slots_dg["correction"] = grp
+                break
+        cid = extract_case_id_from_text(clean)
+        if cid:
+            slots_dg["case_id"] = cid
+        return slots_dg
+    elif intent == XEM_PHAN_HOI:
+        norm_c = _khong_dau(clean)
+        if "phan loai" in norm_c:
+            return {"loai_phan_hoi": "phan_loai"}
+        return {}
     elif intent == XU_HUONG_LOG_TINH:
         slots_trend: Dict[str, str] = {}
         m_csv = re.search(r'"([^"]+\.csv)"|(\S+\.csv)', clean, re.IGNORECASE)
@@ -398,6 +444,7 @@ def route(text: str) -> Tuple[str, Dict[str, str]]:
 def giai_thich_y_dinh(intent: str) -> str:
     """Short Vietnamese note shown in chat so the user sees what the app understood."""
     return {
+        DANH_GIA_NHAN: "Tôi hiểu bạn muốn đánh giá nhãn phân loại tự động.",
         CANH_BAO_NGUONG: "Tôi hiểu đây là yêu cầu cảnh báo ngưỡng.",
         XU_HUONG_LOG_TINH: "Tôi hiểu bạn muốn phân tích xu hướng SMA(20) trên log tĩnh.",
         XEM_PHAN_HOI: "Tôi hiểu bạn muốn xem lại tóm tắt phản hồi đáp án.",
@@ -418,6 +465,7 @@ def giai_thich_y_dinh(intent: str) -> str:
 def nhan_y_dinh(intent: str) -> str:
     """Short Vietnamese label for one intent (section header in a merged reply)."""
     return {
+        DANH_GIA_NHAN: "Đánh giá nhãn phân loại",
         CANH_BAO_NGUONG: "Cảnh báo ngưỡng",
         XU_HUONG_LOG_TINH: "Phân tích xu hướng SMA(20)",
         XEM_PHAN_HOI: "Xem lại phản hồi",
