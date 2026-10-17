@@ -113,6 +113,59 @@ class RetrievalQueryVariant:
 
 
 @dataclass(frozen=True)
+class HybridRankingConfig:
+    """Bounded, scale-independent ranking controls for three retrieval channels (QD-07)."""
+
+    rrf_k: int = 60
+    lexical_weight: float = 1.0
+    dense_weight: float = 1.0
+    sparse_weight: float = 1.0
+    rerank_limit: int = 30
+    near_duplicate_threshold: float = 0.92
+    multivector_score_band: float = 0.15
+
+    def __post_init__(self) -> None:
+        if self.rrf_k < 1 or self.rerank_limit < 1:
+            raise ValueError("ranking limits must be positive")
+        if (
+            self.lexical_weight <= 0.0
+            or self.dense_weight <= 0.0
+            or self.sparse_weight <= 0.0
+        ):
+            raise ValueError("channel weights must be positive")
+        if not 0.0 <= self.near_duplicate_threshold <= 1.0:
+            raise ValueError("near_duplicate_threshold must be between zero and one")
+        if self.multivector_score_band < 0.0:
+            raise ValueError("multivector_score_band must be non-negative")
+
+
+def determine_query_channel_ranking_config(query: str) -> Optional[HybridRankingConfig]:
+    """Single authoritative decision point for dynamic channel weight overrides (QD-07)."""
+    if not query:
+        return None
+    clean_query = query.replace("`", "")
+    has_date = bool(re.search(r"\b\d{1,2}/\d{1,2}\b", clean_query))
+    has_maint_ctx = False
+    try:
+        from aios_habit.domain_config import get_maintenance_context_pattern
+        has_maint_ctx = bool(get_maintenance_context_pattern().search(clean_query))
+    except Exception:
+        has_maint_ctx = False
+
+    if has_date and has_maint_ctx:
+        return HybridRankingConfig(lexical_weight=0.2, dense_weight=3.0, sparse_weight=1.5)
+
+    has_col_range = (
+        bool(re.search(r"[-+]\d+\s*(?:đến|to|~|-)\s*[-+]\d+", clean_query, re.IGNORECASE))
+        or bool(re.search(r"cột\s*(?:từ\s*)?[-+]\d+", clean_query, re.IGNORECASE))
+    )
+    if has_col_range:
+        return HybridRankingConfig(lexical_weight=0.05, dense_weight=2.0, sparse_weight=3.5)
+
+    return None
+
+
+@dataclass(frozen=True)
 class RetrievalQueryPlan:
     """Validated original query plus deterministic, inspectable retrieval variants."""
 
@@ -127,6 +180,8 @@ class RetrievalQueryPlan:
     # Runtime routing hint. Omitted from fingerprint so enabling summary-first
     # does not rewrite stored plan identity for the default full path.
     retrieval_mode: str = "full"
+    # Unified channel ranking configuration (QD-07)
+    ranking_config: Optional[HybridRankingConfig] = None
 
     @property
     def facet_ids(self) -> Tuple[str, ...]:
@@ -937,6 +992,7 @@ def identity_query_plan(query: str, *, status: str = "identity") -> RetrievalQue
         intent_category=intent_category,
         required_obligations=required_obligations,
         query_language=detect_query_language(original),
+        ranking_config=determine_query_channel_ranking_config(original),
     )
 
 
@@ -1003,6 +1059,7 @@ def build_query_plan(query: str, expansion: Mapping[str, Any] | None = None) -> 
         intent_category=intent_category,
         required_obligations=required_obligations,
         query_language=fallback.query_language,
+        ranking_config=fallback.ranking_config,
     )
 
 

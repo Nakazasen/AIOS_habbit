@@ -94,10 +94,28 @@ class EvidencePackConfig:
     min_semantic_support_score: float = 0.55
     max_snippet_chars: int = 1500
     per_document_limit: int = 3
+    named_document_limit: int = 5
+    focused_document_limit: int = 15
+    synthesis_per_doc_limit: int = 3
+    synthesis_named_per_doc_limit: int = 5
     high_score_threshold: float = 8.0
     medium_score_threshold: float = 3.0
     conditional_entity_expand: Optional[bool] = None
     max_expand_items: int = 12
+
+    def effective_document_limit(self, *, is_named_doc: bool = False, is_focused: bool = False) -> int:
+        """Return the effective per-document quota under unified diversity policy (QD-08)."""
+        if is_focused:
+            return self.focused_document_limit
+        if is_named_doc:
+            return self.named_document_limit
+        return self.per_document_limit
+
+    def effective_synthesis_claim_limit(self, *, is_named_doc: bool = False) -> int:
+        """Return the maximum initial claims/chunks per document during synthesis (QD-08)."""
+        if is_named_doc:
+            return self.synthesis_named_per_doc_limit
+        return self.synthesis_per_doc_limit
     soft_warning_codes: frozenset[str] = frozenset({
         "incomplete_query_term_coverage",
         "weak_query_term_coverage",
@@ -259,6 +277,7 @@ class EvidencePack:
     planned_obligation_count: int
     created_at: str
     entity_expand_telemetry: Optional[Dict[str, Any]] = None
+    config: EvidencePackConfig = field(default_factory=EvidencePackConfig)
 
 
 # ---------------------------------------------------------------------------
@@ -705,7 +724,11 @@ def build_evidence_pack(
                 or (canonical_doc_name and canonical_doc_name in query_text.lower())
             )
         )
-        doc_limit = max(effective_per_doc_limit, 5) if is_named else effective_per_doc_limit
+        is_focused = query_plan.intent_category in ("focused_document", "single_document")
+        doc_limit = max(
+            effective_per_doc_limit,
+            config.effective_document_limit(is_named_doc=is_named, is_focused=is_focused),
+        )
         if doc_count >= doc_limit:
             LOGGER.info(
                 "rag_v2.diversity_cap_triggered document_id=%s source=%s limit=%d chunk_id=%s",
@@ -1045,6 +1068,7 @@ def build_evidence_pack(
         planned_obligation_count=planned_obligation_count,
         created_at=datetime.now().isoformat(),
         entity_expand_telemetry=entity_telemetry,
+        config=config,
     )
 
 

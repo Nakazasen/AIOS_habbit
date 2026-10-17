@@ -2370,17 +2370,19 @@ def _claim_value_score(
     *,
     field_codes: Tuple[str, ...] = (),
     file_identifiers: Tuple[str, ...] = (),
-) -> tuple[int, int, int, int, int, int, int, int, int, int]:
-    """Score a claim candidate by evidence value, not retrieval rank.
+) -> tuple[int, int, int, int, int, int, int, int, int, float, int]:
+    """Score a claim candidate by evidence value and retrieval confidence (QD-12).
 
     Field codes (HOUSE_METHOD) and file identifiers (YY2-Z151.exe) named in the
     question outrank generic literal overlap, so a Japanese table row defining
     the asked field is not buried by prose that merely shares vocabulary.
     Literal/code/number overlap with the question still outranks generic prose,
     and body chunks outrank document summaries so a concrete answer is not
-    starved by overview text sitting at the head of the pack.
+    starved by overview text sitting at the head of the pack. Retrieval evidence
+    score is incorporated as a deterministic priority weight before token count.
     """
     terms = set(extract_content_terms(fragment))
+    retrieval_priority = round(float(getattr(item, "score", 0.0) or 0.0), 4)
     return (
         _item_matches_query_source(item, query),
         int(bool(item.matched_target_equivalent_variant_ids)),
@@ -2391,6 +2393,7 @@ def _claim_value_score(
         _answer_value_count(fragment, query_terms),
         _query_identifier_overlap(fragment, query)[1],
         -int(_is_summary_evidence(item)),
+        retrieval_priority,
         len(terms & query_terms),
     )
 
@@ -2635,7 +2638,11 @@ def _compose_grounded_claims(
             if any(item.evidence_id in claim.evidence_ids for claim in claims):
                 continue
             current_doc_count = doc_claim_counts.get(item.document_id, 0)
-            max_initial_per_doc = 5 if _item_matches_query_source(item, pack.query) > 0 else 1
+            is_named = _item_matches_query_source(item, pack.query) > 0
+            if hasattr(pack, "config") and hasattr(pack.config, "effective_synthesis_claim_limit"):
+                max_initial_per_doc = pack.config.effective_synthesis_claim_limit(is_named_doc=is_named)
+            else:
+                max_initial_per_doc = 5 if is_named else 3
             is_eligible_initial = current_doc_count < max_initial_per_doc
             if prefer_new_document != is_eligible_initial:
                 continue

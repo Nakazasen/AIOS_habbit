@@ -649,7 +649,7 @@ def match_named_documents(
                                     matched_exact_id = True
                                     break
                             if matched_exact_id:
-                                exact_matches.append((sc + 1000, s))
+                                exact_matches.append((sc + 1.0, s))
 
                         if exact_matches:
                             matches_for_suffix = exact_matches

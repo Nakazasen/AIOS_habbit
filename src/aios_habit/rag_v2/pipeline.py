@@ -654,13 +654,14 @@ def _rerank_bilingual_tri_thuc(
                 for term in matched_terms:
                     if any(c.isdigit() for c in term) or len(term) >= 4:
                         match_weight += 2
-                boost = 50.0 + 10.0 * match_weight
+                boost = min(0.15 + 0.03 * float(match_weight), 0.40)
                 new_signals = dict(r.ranking_signals)
                 new_signals["bilingual_vi_boost"] = boost
                 new_signals["bilingual_vi_matched_terms"] = matched_terms
+                new_score = min(1.0, r.score + boost) if r.score <= 1.0 else (r.score + boost)
                 boosted_r = replace(
                     r,
-                    score=r.score + boost,
+                    score=new_score,
                     ranking_signals=new_signals,
                 )
                 boosted_results.append(boosted_r)
@@ -737,9 +738,10 @@ def _balance_lsu_machine_series(
     top1 = results[0]
     best_iris = iris_dense_top[0]
 
-    # Only intervene when candidate scores are similar (difference < 2.0)
+    # Only intervene when candidate scores are similar (difference < 0.02 on [0, 1] scale, or < 2.0 on unnormalized scale)
+    threshold = 0.02 if max(top1.score, best_iris.score) <= 1.0 else 2.0
     score_diff = abs(top1.score - best_iris.score)
-    if score_diff >= 2.0:
+    if score_diff >= threshold:
         return response
 
     # Interleave/rebalance so top-k is not monopolized by Sirius.
@@ -1171,26 +1173,20 @@ class RagV2DevPipeline:
             candidate_limit=self.config.candidate_limit,
             per_document_limit=effective_per_document_limit,
         )
-        lexical_w = self.config.lexical_channel_weight
-        dense_w = self.config.dense_channel_weight
-        sparse_w = self.config.sparse_channel_weight
-        from aios_habit.rag_v2.index import _has_maintenance_date_or_column_range
-        if _has_maintenance_date_or_column_range(plan.original_query):
-            if bool(re.search(r"\b\d{1,2}/\d{1,2}\b", plan.original_query)):
-                lexical_w = 0.2
-                dense_w = 3.0
-                sparse_w = 1.5
-            else:
-                lexical_w = 0.05
-                dense_w = 2.0
-                sparse_w = 3.5
-        ranking_config = HybridRankingConfig(
-            rrf_k=self.config.rrf_k,
-            lexical_weight=lexical_w,
-            dense_weight=dense_w,
-            sparse_weight=sparse_w,
-            rerank_limit=self.config.rerank_limit,
-        )
+        if plan.ranking_config is not None:
+            ranking_config = replace(
+                plan.ranking_config,
+                rrf_k=self.config.rrf_k,
+                rerank_limit=self.config.rerank_limit,
+            )
+        else:
+            ranking_config = HybridRankingConfig(
+                rrf_k=self.config.rrf_k,
+                lexical_weight=self.config.lexical_channel_weight,
+                dense_weight=self.config.dense_channel_weight,
+                sparse_weight=self.config.sparse_channel_weight,
+                rerank_limit=self.config.rerank_limit,
+            )
         if self.config.strict_semantic and self.config.index_read_only:
             verify_started = perf_counter()
             coverage = self.index.verify_selected_document_coverage(

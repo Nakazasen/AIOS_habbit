@@ -57,23 +57,23 @@ def test_bilingual_tri_thuc_reranking_promotes_vietnamese_chunk():
     r_summary = _make_dummy_result(
         f"{doc_id}-summary", doc_id, doc_name,
         "[DOCUMENT ARCHITECTURE & SUMMARY]\nQuy tắc chỉ thị số giá. Thùng ORICON quy định lưu kho tầng 1, 2.",
-        score=25.0,
+        score=0.25,
         is_summary=True,
     )
     r_ja_top = _make_dummy_result(
         "chunk_ja_top", doc_id, doc_name,
         "保管ルール: 2階C棟のp-Rackに保管する場合、ORICONボックスの重量制限に従うこと。10kg以上は1段目に配置する。",
-        score=22.0,
+        score=0.22,
     )
     r_vi_target = _make_dummy_result(
         "chunk_vi_factual", doc_id, doc_name,
         "Lưu ý: Đối với thùng ORICON có trọng lượng từ 10kg trở lên, quy định phải đặt ở tầng 1 của giá p-Rack.",
-        score=14.0,  # Originally lower score than Japanese chunk!
+        score=0.14,  # Originally lower score than Japanese chunk!
     )
     r_ja_other = _make_dummy_result(
         "chunk_ja_other", doc_id, doc_name,
         "棚番号の表記方法について。C棟2階の配置図を参照すること。",
-        score=10.0,
+        score=0.10,
     )
 
     response = SearchResponse(
@@ -119,8 +119,8 @@ def test_bilingual_tri_thuc_preserves_other_behavior():
 
     doc_id = "wsc-6f049a1fdfc090dc7d439224"
     doc_name = "wsc-6f049a1fdfc090dc7d439224.txt"
-    r1 = _make_dummy_result("c1", doc_id, doc_name, "日本語テキスト 10kg", score=20.0)
-    r2 = _make_dummy_result("c2", doc_id, doc_name, "Tiếng Việt 10kg tầng 1", score=10.0)
+    r1 = _make_dummy_result("c1", doc_id, doc_name, "日本語テキスト 10kg", score=0.20)
+    r2 = _make_dummy_result("c2", doc_id, doc_name, "Tiếng Việt 10kg tầng 1", score=0.10)
     res_ja = SearchResponse(
         results=(r1, r2),
         summary=SearchSummary(
@@ -141,8 +141,8 @@ def test_bilingual_tri_thuc_preserves_other_behavior():
     vi_query = "Quy định về thông số kỹ thuật"
     plan_vi = coerce_query_plan(vi_query)
     doc_mono = "doc_mono_ja"
-    r_mono1 = _make_dummy_result("m1", doc_mono, "manual.pdf", "仕様について", score=15.0)
-    r_mono2 = _make_dummy_result("m2", doc_mono, "manual.pdf", "操作手順", score=12.0)
+    r_mono1 = _make_dummy_result("m1", doc_mono, "manual.pdf", "仕様について", score=0.15)
+    r_mono2 = _make_dummy_result("m2", doc_mono, "manual.pdf", "操作手順", score=0.12)
     res_mono = SearchResponse(
         results=(r_mono1, r_mono2),
         summary=SearchSummary(
@@ -166,10 +166,10 @@ def test_bilingual_reranking_isolated_from_non_tri_thuc():
     doc_id = "wsc-msg-bilingual"
     doc_name = "RE_ Iris LSU Beam径NG多発 異常品質会議2回目.msg"
     # Even if document has both Vietnamese and Japanese/CJK, is_tri_thuc=False must prevent any boost
-    r_target = _make_dummy_result("c_target", "doc_target", "AI cảnh báo lỗi LSU.pptx", "Slide tiếng Việt", score=35.0)
+    r_target = _make_dummy_result("c_target", "doc_target", "AI cảnh báo lỗi LSU.pptx", "Slide tiếng Việt", score=0.35)
     r_bilingual = _make_dummy_result(
         "c_bilingual", doc_id, doc_name,
-        "Biên bản cuộc họp song ngữ: Cần kiểm tra Beam径NG多発 và báo cáo kết quả.", score=15.0
+        "Biên bản cuộc họp song ngữ: Cần kiểm tra Beam径NG多発 và báo cáo kết quả.", score=0.15
     )
     res = SearchResponse(
         results=(r_target, r_bilingual),

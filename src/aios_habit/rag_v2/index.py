@@ -21,9 +21,11 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from .chunking import DocumentChunk
 from .query_planning import (
+    HybridRankingConfig,
     RetrievalQueryPlan,
     coerce_query_plan,
     detect_retrieval_mode,
+    determine_query_channel_ranking_config,
     extract_content_terms,
     match_text_obligations,
 )
@@ -181,22 +183,7 @@ def _compute_entity_boost(
 
 
 def _has_maintenance_date_or_column_range(query: str) -> bool:
-    if not query:
-        return False
-    clean_query = query.replace("`", "")
-    # 1. Maintenance date pattern (e.g. 14/2, 2/14) with maintenance/component terms
-    has_date = bool(re.search(r"\b\d{1,2}/\d{1,2}\b", clean_query))
-    has_maint_ctx = bool(get_maintenance_context_pattern().search(clean_query))
-    if has_date and has_maint_ctx:
-        return True
-
-    # 2. Numeric column ranges (e.g. -8 đến -3, +2 đến +8, -8 ~ -3, cột từ -8 đến -3)
-    if re.search(r"[-+]\d+\s*(?:đến|to|~|-)\s*[-+]\d+", clean_query, re.IGNORECASE):
-        return True
-    if re.search(r"cột\s*(?:từ\s*)?[-+]\d+", clean_query, re.IGNORECASE):
-        return True
-
-    return False
+    return determine_query_channel_ranking_config(query) is not None
 
 
 def _query_carries_exact_values(query: str) -> bool:
@@ -755,32 +742,6 @@ class SearchResponse:
     results: tuple[SearchResult, ...]
     summary: SearchSummary
 
-
-@dataclass(frozen=True)
-class HybridRankingConfig:
-    """Bounded, scale-independent ranking controls for three retrieval channels."""
-
-    rrf_k: int = 60
-    lexical_weight: float = 1.0
-    dense_weight: float = 1.0
-    sparse_weight: float = 1.0
-    rerank_limit: int = 30
-    near_duplicate_threshold: float = 0.92
-    multivector_score_band: float = 0.15
-
-    def __post_init__(self) -> None:
-        if self.rrf_k < 1 or self.rerank_limit < 1:
-            raise ValueError("ranking limits must be positive")
-        if (
-            self.lexical_weight <= 0.0
-            or self.dense_weight <= 0.0
-            or self.sparse_weight <= 0.0
-        ):
-            raise ValueError("channel weights must be positive")
-        if not 0.0 <= self.near_duplicate_threshold <= 1.0:
-            raise ValueError("near_duplicate_threshold must be between zero and one")
-        if self.multivector_score_band < 0.0:
-            raise ValueError("multivector_score_band must be non-negative")
 
 
 def _ordered_union(*values: Iterable[str]) -> tuple[str, ...]:
@@ -4442,27 +4403,20 @@ class LocalChunkIndex:
         if plan_has_cjk_variants(plan):
             limit = max(limit, 25)
         if ranking_config is None:
-            source_names = self._sample_source_names()
-            if _has_maintenance_date_or_column_range(plan.original_query):
-                if bool(re.search(r"\b\d{1,2}/\d{1,2}\b", plan.original_query)):
+            if plan.ranking_config is not None:
+                ranking_config = plan.ranking_config
+            else:
+                source_names = self._sample_source_names()
+                dynamic_cfg = determine_query_channel_ranking_config(plan.original_query)
+                if dynamic_cfg is not None:
+                    ranking_config = dynamic_cfg
+                elif uses_script_mismatch_ranking(plan.original_query, source_names):
+                    lexical_w, dense_w, sparse_w = MISMATCH_CHANNEL_WEIGHTS
                     ranking_config = HybridRankingConfig(
-                        lexical_weight=0.2,
-                        dense_weight=3.0,
-                        sparse_weight=1.5,
+                        lexical_weight=lexical_w,
+                        dense_weight=dense_w,
+                        sparse_weight=sparse_w,
                     )
-                else:
-                    ranking_config = HybridRankingConfig(
-                        lexical_weight=0.05,
-                        dense_weight=2.0,
-                        sparse_weight=3.5,
-                    )
-            elif uses_script_mismatch_ranking(plan.original_query, source_names):
-                lexical_w, dense_w, sparse_w = MISMATCH_CHANNEL_WEIGHTS
-                ranking_config = HybridRankingConfig(
-                    lexical_weight=lexical_w,
-                    dense_weight=dense_w,
-                    sparse_weight=sparse_w,
-                )
 
         options = options or SearchOptions()
         pool_options = replace(
