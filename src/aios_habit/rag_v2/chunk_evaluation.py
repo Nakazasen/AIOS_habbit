@@ -834,11 +834,18 @@ def load_bge_eval_identity(manifest_path: Optional[str | Path] = None) -> Dict[s
         raise FileNotFoundError("bge_m3_model_path_missing")
     if not revision or not checksum:
         raise ValueError("bge_m3_model_identity_incomplete")
+    try:
+        from .bge_onnx_backend import detect_onnx_execution_provider
+        actual_provider = detect_onnx_execution_provider()
+    except Exception:
+        actual_provider = device or "cpu"
     return {
         "model_path": model_path,
         "revision": revision,
         "checksum": checksum,
         "device": device or "cpu",
+        "actual_device": actual_provider,
+        "execution_provider": actual_provider,
         "use_fp16": use_fp16,
         "identity": f"bge-m3:{revision[:12]}:{checksum.split(':')[-1][:16]}",
     }

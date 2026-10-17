@@ -254,6 +254,7 @@ class OnnxInt8BgeM3Backend:
         self._dimension = dimension
         self._sparse_head = _load_sparse_head(self._model_path)
         self._special_ids = self._special_token_ids()
+        actual_provider = detect_onnx_execution_provider(self._session)
         self._descriptor = SemanticModelDescriptor(
             model_id=model_id,
             revision=revision,
@@ -263,6 +264,8 @@ class OnnxInt8BgeM3Backend:
             normalized=True,
             artifact_checksum=verified,
             device="cpu",
+            actual_device=actual_provider,
+            execution_provider=actual_provider,
         )
         self._capability = SemanticCapability(
             capability="embedding",
@@ -517,3 +520,36 @@ def _onnxruntime_version() -> str:
         return version("onnxruntime")
     except Exception:
         return ""
+
+
+def detect_onnx_execution_provider(session: Any = None) -> str:
+    """Detect actual ONNX Runtime execution provider from session or runtime environment.
+
+    Fulfills ticket DESKTOP-QD-S2-GLOSSARY-WORKER-LIFECYCLE-HOME (QD-05).
+    Reads dynamic execution providers instead of assuming static 'cpu'.
+    """
+    if session is not None and hasattr(session, "get_providers"):
+        try:
+            providers = session.get_providers()
+            if providers:
+                return str(providers[0])
+        except Exception:
+            pass
+    try:
+        import onnxruntime as ort
+        available = ort.get_available_providers()
+        for p in (
+            "CUDAExecutionProvider",
+            "DirectMLExecutionProvider",
+            "ROCMExecutionProvider",
+            "OpenVINOExecutionProvider",
+            "CPUExecutionProvider",
+        ):
+            if p in available:
+                return p
+        if available:
+            return str(available[0])
+    except Exception:
+        pass
+    return "CPUExecutionProvider"
+

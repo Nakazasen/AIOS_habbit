@@ -39,6 +39,8 @@ class SemanticModelDescriptor:
     cache_identity: str = ""
     artifact_checksum: str = ""
     device: str = "cpu"
+    actual_device: str = ""
+    execution_provider: str = ""
 
     def __post_init__(self) -> None:
         model_id = self.model_id.strip()
@@ -50,8 +52,19 @@ class SemanticModelDescriptor:
             raise ValueError("only cosine distance is supported")
         if self.artifact_checksum and not self.artifact_checksum.startswith("sha256:"):
             raise ValueError("artifact_checksum must use the sha256:<hex> form")
+        actual_device = (self.actual_device or "").strip()
+        execution_provider = (self.execution_provider or "").strip()
+        if not execution_provider and actual_device:
+            execution_provider = actual_device
+        elif not actual_device and execution_provider:
+            actual_device = execution_provider
+        elif not actual_device and not execution_provider:
+            actual_device = self.device.strip() or "cpu"
+            execution_provider = actual_device
         object.__setattr__(self, "model_id", model_id)
         object.__setattr__(self, "device", self.device.strip() or "cpu")
+        object.__setattr__(self, "actual_device", actual_device)
+        object.__setattr__(self, "execution_provider", execution_provider)
         if not self.cache_identity:
             object.__setattr__(self, "cache_identity", self.fingerprint)
 
@@ -83,6 +96,8 @@ class SemanticModelDescriptor:
             "normalized": self.normalized,
             "artifact_checksum": self.artifact_checksum,
             "device": self.device,
+            "actual_device": self.actual_device,
+            "execution_provider": self.execution_provider,
             "fingerprint": self.fingerprint,
             "cache_identity": self.cache_identity,
         }

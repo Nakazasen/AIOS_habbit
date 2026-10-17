@@ -1,0 +1,234 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Optical LSU Bilingual Equivalences Glossary",
+  "description": "External domain terminology glossary for LSU Optics cross-lingual retrieval (Ticket DESKTOP-QD-S2-GLOSSARY-WORKER-LIFECYCLE-HOME - QD-03). Decouples 28 optical equivalence rules from core query planning Python code.",
+  "version": "1.0.0",
+  "ja_to_vi": [
+    {
+      "id": "ja_opt_01",
+      "category": "optical_positions",
+      "pattern": "画像\\s*中央",
+      "flags": "IGNORECASE",
+      "equivalent": "trung tâm ảnh",
+      "note": "Image center coordinate zone"
+    },
+    {
+      "id": "ja_opt_02",
+      "category": "optical_positions",
+      "pattern": "(?<![A-Za-z0-9])中央(?![A-Za-z0-9])",
+      "flags": "IGNORECASE",
+      "equivalent": "trung tâm",
+      "note": "Center position"
+    },
+    {
+      "id": "ja_opt_03",
+      "category": "optical_positions",
+      "pattern": "周辺(?:\\s*部)?",
+      "flags": "IGNORECASE",
+      "equivalent": "hai bên ảnh",
+      "note": "Image periphery / both sides"
+    },
+    {
+      "id": "ja_opt_04",
+      "category": "optical_positions",
+      "pattern": "画像",
+      "flags": "IGNORECASE",
+      "equivalent": "ảnh",
+      "note": "Image"
+    },
+    {
+      "id": "ja_opt_05",
+      "category": "optical_positions",
+      "pattern": "基準軸",
+      "flags": "IGNORECASE",
+      "equivalent": "trục tiêu chuẩn trục chuẩn",
+      "note": "Reference axis"
+    },
+    {
+      "id": "ja_opt_06",
+      "category": "optical_positions",
+      "pattern": "左右",
+      "flags": "IGNORECASE",
+      "equivalent": "độ lệch trái phải",
+      "note": "Left-right deviation"
+    },
+    {
+      "id": "ja_opt_07",
+      "category": "laser_power",
+      "pattern": "(?:laser\\s*power|レーザー\\s*パワー|レーザー・パワー)",
+      "flags": "IGNORECASE",
+      "equivalent": "lượng sáng Laser Power",
+      "note": "Laser power / optical quantity"
+    },
+    {
+      "id": "ja_opt_08",
+      "category": "laser_power",
+      "pattern": "光量(?:\\s*データ)?",
+      "flags": "IGNORECASE",
+      "equivalent": "lượng sáng",
+      "note": "Light quantity / data"
+    },
+    {
+      "id": "ja_opt_09",
+      "category": "laser_power",
+      "pattern": "(?:beam\\s*径|ビーム\\s*径)",
+      "flags": "IGNORECASE",
+      "equivalent": "đường kính beam",
+      "note": "Beam diameter"
+    },
+    {
+      "id": "ja_opt_10",
+      "category": "laser_power",
+      "pattern": "光軸",
+      "flags": "IGNORECASE",
+      "equivalent": "trục quang",
+      "note": "Optical axis"
+    },
+    {
+      "id": "ja_opt_11",
+      "category": "actions",
+      "pattern": "確認",
+      "flags": "IGNORECASE",
+      "equivalent": "kiểm tra",
+      "note": "Inspection / confirmation"
+    },
+    {
+      "id": "ja_opt_12",
+      "category": "actions",
+      "pattern": "調整",
+      "flags": "IGNORECASE",
+      "equivalent": "điều chỉnh",
+      "note": "Adjustment"
+    },
+    {
+      "id": "ja_opt_13",
+      "category": "actions",
+      "pattern": "測定",
+      "flags": "IGNORECASE",
+      "equivalent": "đo lường",
+      "note": "Measurement"
+    },
+    {
+      "id": "ja_opt_14",
+      "category": "actions",
+      "pattern": "SIM\\s*貼付|貼付け",
+      "flags": "IGNORECASE",
+      "equivalent": "dán SIM tape",
+      "note": "SIM tape pasting"
+    },
+    {
+      "id": "ja_opt_15",
+      "category": "actions",
+      "pattern": "補正順番|手順",
+      "flags": "IGNORECASE",
+      "equivalent": "trình tự thao tác",
+      "note": "Correction procedure / operational order"
+    },
+    {
+      "id": "ja_opt_16",
+      "category": "actions",
+      "pattern": "相関|correlation",
+      "flags": "IGNORECASE",
+      "equivalent": "tương quan",
+      "note": "Correlation analysis"
+    }
+  ],
+  "vi_to_ja": [
+    {
+      "id": "vi_opt_01",
+      "category": "optical_positions",
+      "pattern": "trung\\s*tâm\\s*ảnh",
+      "flags": "IGNORECASE",
+      "equivalent": "画像中央",
+      "note": "Center of image"
+    },
+    {
+      "id": "vi_opt_02",
+      "category": "optical_positions",
+      "pattern": "trung\\s*tâm",
+      "flags": "IGNORECASE",
+      "equivalent": "中央",
+      "note": "Center"
+    },
+    {
+      "id": "vi_opt_03",
+      "category": "optical_positions",
+      "pattern": "hai\\s*bên\\s*ảnh|ngoại\\s*vi",
+      "flags": "IGNORECASE",
+      "equivalent": "周辺",
+      "note": "Periphery / both sides of image"
+    },
+    {
+      "id": "vi_opt_04",
+      "category": "optical_positions",
+      "pattern": "trục\\s*(?:tiêu\\s*)?chuẩn",
+      "flags": "IGNORECASE",
+      "equivalent": "基準軸",
+      "note": "Reference standard axis"
+    },
+    {
+      "id": "vi_opt_05",
+      "category": "optical_positions",
+      "pattern": "độ\\s*lệch\\s*trái\\s*[-–]?\\s*phải|lệch\\s*trái\\s*[-–]?\\s*phải",
+      "flags": "IGNORECASE",
+      "equivalent": "左右 基準軸",
+      "note": "Left-right deviation"
+    },
+    {
+      "id": "vi_opt_06",
+      "category": "laser_power",
+      "pattern": "lượng\\s*sáng|công\\s*suất\\s*laser",
+      "flags": "IGNORECASE",
+      "equivalent": "Laser Power 光量",
+      "note": "Light quantity / laser power"
+    },
+    {
+      "id": "vi_opt_07",
+      "category": "laser_power",
+      "pattern": "đường\\s*kính\\s*beam",
+      "flags": "IGNORECASE",
+      "equivalent": "Beam径",
+      "note": "Beam diameter"
+    },
+    {
+      "id": "vi_opt_08",
+      "category": "laser_power",
+      "pattern": "trục\\s*quang",
+      "flags": "IGNORECASE",
+      "equivalent": "光軸",
+      "note": "Optical axis"
+    },
+    {
+      "id": "vi_opt_09",
+      "category": "actions",
+      "pattern": "kiểm\\s*tra|xác\\s*nhận",
+      "flags": "IGNORECASE",
+      "equivalent": "確認",
+      "note": "Inspection / confirmation"
+    },
+    {
+      "id": "vi_opt_10",
+      "category": "actions",
+      "pattern": "dán\\s*(?:sim|tape)|sim\\s*tape",
+      "flags": "IGNORECASE",
+      "equivalent": "SIM 貼付 貼付け",
+      "note": "SIM tape pasting"
+    },
+    {
+      "id": "vi_opt_11",
+      "category": "actions",
+      "pattern": "trình\\s*tự(?:\\s*thao\\s*tác)?|thứ\\s*tự\\s*thao\\s*tác",
+      "flags": "IGNORECASE",
+      "equivalent": "補正順番 手順",
+      "note": "Operational order / sequence"
+    },
+    {
+      "id": "vi_opt_12",
+      "category": "actions",
+      "pattern": "tương\\s*quan",
+      "flags": "IGNORECASE",
+      "equivalent": "相関 Correlation",
+      "note": "Correlation"
+    }
+  ]
+}

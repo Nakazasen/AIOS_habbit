@@ -59,6 +59,11 @@ def _get_persistent_spawn_init_lock(pipe_name: str) -> threading.Lock:
         return lock
 
 
+_PERSISTENT_WORKERS_LRU: dict[str, tuple[RagV2DevConfig, float]] = {}
+_EVICTED_PERSISTENT_PIPES: set[str] = set()
+_PERSISTENT_LRU_LOCK = threading.RLock()
+
+
 
 def _is_worker_pid_alive(pid: int) -> bool:
     """Return True if OS process ``pid`` is currently alive (non-blocking)."""
@@ -156,6 +161,62 @@ _PERSIST_SPAWN_WAIT_SECONDS = 360.0
 _PERSIST_QUERY_CONNECT_SECONDS = float(os.environ.get("AIOS_BGE_PERSIST_CONNECT_TIMEOUT", "60.0"))
 
 
+def get_system_memory_info() -> tuple[float, float]:
+    """Return (total_ram_gb, available_ram_gb)."""
+    try:
+        import psutil
+        vm = psutil.virtual_memory()
+        return vm.total / (1024 ** 3), vm.available / (1024 ** 3)
+    except Exception:
+        pass
+    if os.name == "nt":
+        try:
+            import ctypes
+            from ctypes import wintypes
+
+            class MEMORYSTATUSEX(ctypes.Structure):
+                _fields_ = [
+                    ("dwLength", wintypes.DWORD),
+                    ("dwMemoryLoad", wintypes.DWORD),
+                    ("ullTotalPhys", ctypes.c_uint64),
+                    ("ullAvailPhys", ctypes.c_uint64),
+                    ("ullTotalPageFile", ctypes.c_uint64),
+                    ("ullAvailPageFile", ctypes.c_uint64),
+                    ("ullTotalVirtual", ctypes.c_uint64),
+                    ("ullAvailVirtual", ctypes.c_uint64),
+                    ("sullAvailExtendedVirtual", ctypes.c_uint64),
+                ]
+
+            stat = MEMORYSTATUSEX()
+            stat.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
+            if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(stat)):
+                return stat.ullTotalPhys / (1024 ** 3), stat.ullAvailPhys / (1024 ** 3)
+        except Exception:
+            pass
+    return 16.0, 3.0
+
+
+def get_max_persistent_workers() -> int:
+    """Return maximum allowed concurrent persistent BGE workers based on host RAM.
+
+    Rules (Ticket DESKTOP-QD-S2-GLOSSARY-WORKER-LIFECYCLE-HOME - QD-06):
+    - On 16 GB machines (total <= 18 GB): max 1 resident worker, or 2 workers only if available RAM > 4 GB.
+    - Can be overridden via AIOS_MAX_PERSISTENT_WORKERS env var.
+    """
+    env_override = os.environ.get("AIOS_MAX_PERSISTENT_WORKERS", "").strip()
+    if env_override:
+        try:
+            v = int(env_override)
+            if v >= 1:
+                return v
+        except ValueError:
+            pass
+    total_gb, avail_gb = get_system_memory_info()
+    if total_gb <= 18.0:
+        return 2 if avail_gb > 4.0 else 1
+    return 2 if avail_gb > 6.0 else 1
+
+
 def _current_interpreter_supports_bge_runtime() -> bool:
     """Return whether the interpreter running this client can load BGE's runtime.
 
@@ -239,6 +300,80 @@ class BgeSubprocessWorkerClient:
         self._persistent_spawn_init_lock = threading.Lock()
         self._persistent_spawn_init_locks_guard = threading.Lock()
         self._persistent_spawn_init_locks: dict[str, threading.Lock] = {}
+        self._persistent_workers_lru = _PERSISTENT_WORKERS_LRU
+        self._evicted_persistent_pipes = _EVICTED_PERSISTENT_PIPES
+        self._lru_lock = _PERSISTENT_LRU_LOCK
+
+    def record_worker_access(self, config: RagV2DevConfig, pipe_name: str | None = None) -> None:
+        """Update last accessed timestamp for a persistent worker in the LRU tracking pool."""
+        if not self._persistent_applies(config):
+            return
+        pipe = pipe_name or pipe_name_for_config(config)
+        with self._lru_lock:
+            self._persistent_workers_lru[pipe] = (config, time.monotonic())
+            self._evicted_persistent_pipes.discard(pipe)
+
+    def get_active_persistent_workers(self) -> dict[str, tuple[RagV2DevConfig, float]]:
+        """Return snapshot of active tracked persistent workers."""
+        with self._lru_lock:
+            return dict(self._persistent_workers_lru)
+
+    def evict_lru_workers_if_needed(self, current_config: RagV2DevConfig) -> list[str]:
+        """Evict least recently used persistent worker(s) if pool exceeds capacity limit.
+
+        Fulfills QD-06: Automatically reclaims memory by shutting down LRU workers
+        when loading new domain workers beyond host limits.
+        """
+        if not self._persistent_applies(current_config):
+            return []
+        current_pipe = pipe_name_for_config(current_config)
+        max_workers = get_max_persistent_workers()
+        evicted: list[str] = []
+        to_shutdown: list[tuple[str, RagV2DevConfig, float]] = []
+
+        with self._lru_lock:
+            active: dict[str, tuple[RagV2DevConfig, float]] = {}
+            for pipe, (cfg, ts) in list(self._persistent_workers_lru.items()):
+                status = self._read_persistent_status_file(cfg)
+                if status and status.get("alive") and _pipe_instance_available(pipe):
+                    active[pipe] = (cfg, ts)
+            self._persistent_workers_lru.clear()
+            self._persistent_workers_lru.update(active)
+
+            target_limit = max_workers if current_pipe in self._persistent_workers_lru else max(max_workers - 1, 0)
+
+            while len(self._persistent_workers_lru) > target_limit:
+                candidates = [
+                    (p, c, t) for p, (c, t) in self._persistent_workers_lru.items()
+                    if p != current_pipe
+                ]
+                if not candidates:
+                    break
+                candidates.sort(key=lambda x: x[2])
+                oldest_pipe, oldest_cfg, oldest_ts = candidates[0]
+                del self._persistent_workers_lru[oldest_pipe]
+                to_shutdown.append((oldest_pipe, oldest_cfg, oldest_ts))
+                evicted.append(oldest_pipe)
+
+            self._persistent_workers_lru[current_pipe] = (current_config, time.monotonic())
+            self._evicted_persistent_pipes.discard(current_pipe)
+
+        for oldest_pipe, oldest_cfg, oldest_ts in to_shutdown:
+            LOGGER.info(
+                "[LRU_WORKER_EVICT] Evicting persistent worker pipe=%s (idle=%.1fs, max_workers=%d)",
+                oldest_pipe,
+                time.monotonic() - oldest_ts,
+                max_workers,
+            )
+            try:
+                self.shutdown_persistent_worker(oldest_cfg)
+            except Exception as exc:
+                LOGGER.warning("Error shutting down evicted worker %s: %s", oldest_pipe, exc)
+            with self._lru_lock:
+                self._evicted_persistent_pipes.add(oldest_pipe)
+
+        return evicted
+
 
     def _get_collection_spawn_init_lock(
         self,
@@ -283,7 +418,14 @@ class BgeSubprocessWorkerClient:
             self._lock.release()
 
     def is_ready(self, config: RagV2DevConfig) -> bool:
-        return bool(self.readiness(config)["ready"])
+        if bool(self.readiness(config)["ready"]):
+            return True
+        if self._persistent_applies(config):
+            pipe = pipe_name_for_config(config)
+            with self._lru_lock:
+                if pipe in self._evicted_persistent_pipes:
+                    return True
+        return False
 
     def is_alive(self) -> bool:
         if not self._lock.acquire(timeout=0.5):
@@ -696,6 +838,7 @@ class BgeSubprocessWorkerClient:
         rerank_requested: bool = False,
         routing_reason_codes: Sequence[str] = (),
         policy_version: str = "adaptive-reranking-v1",
+        cancel_event: Optional[threading.Event] = None,
     ) -> dict[str, Any]:
         """Query an already-ready worker; never spawn or load a model here."""
         for code in routing_reason_codes:
@@ -716,6 +859,7 @@ class BgeSubprocessWorkerClient:
                 rerank_requested=rerank_requested,
                 routing_reason_codes=routing_reason_codes,
                 policy_version=policy_version,
+                cancel_event=cancel_event,
             )
 
         if not self._lock.acquire(timeout=0.5):
@@ -1083,6 +1227,7 @@ class BgeSubprocessWorkerClient:
         try:
             status_probe = self._read_persistent_status_file(config)
             if status_probe is not None and status_probe.get("ready"):
+                self.record_worker_access(config)
                 self._last_failure_reason = ""
                 return {
                     "status": "ok",
@@ -1092,6 +1237,9 @@ class BgeSubprocessWorkerClient:
                 }
         except Exception:
             pass
+
+        # Step 1b (QD-06): Evict least recently used worker(s) if pool exceeds capacity limit
+        self.evict_lru_workers_if_needed(config)
 
         # Step 2: Single-flight initialization coordination.
         # Exactly ONE background thread executes the persistent exchange with the full
@@ -1116,6 +1264,7 @@ class BgeSubprocessWorkerClient:
                         # Non-blocking status check before acquiring spawn lock
                         status_before = self._read_persistent_status_file(config)
                         if status_before is not None and status_before.get("ready"):
+                            self.record_worker_access(config)
                             flight["result"] = {
                                 "status": "ok",
                                 "reused": True,
@@ -1133,6 +1282,7 @@ class BgeSubprocessWorkerClient:
                             # Re-check status file inside per-collection lock in case worker became ready while waiting
                             status_inside = self._read_persistent_status_file(config)
                             if status_inside is not None and status_inside.get("ready"):
+                                self.record_worker_access(config)
                                 flight["result"] = {
                                     "status": "ok",
                                     "reused": True,
@@ -1172,7 +1322,9 @@ class BgeSubprocessWorkerClient:
                                     initialized=True,
                                     readiness=readiness,
                                 )
+                                self.record_worker_access(config)
                         self._last_failure_reason = ""
+                        self.record_worker_access(config)
                         flight["result"] = {
                             "status": "ok",
                             "reused": bool(readiness.get("reused", False)),
@@ -1213,6 +1365,7 @@ class BgeSubprocessWorkerClient:
             raise SemanticBackendError(str(err)) from err
 
         leader_result = flight["result"] or {}
+        self.record_worker_access(config)
         return {
             "status": leader_result.get("status", "ok"),
             "reused": True if not is_leader else bool(leader_result.get("reused", False)),
@@ -1231,6 +1384,7 @@ class BgeSubprocessWorkerClient:
         rerank_requested: bool,
         routing_reason_codes: Sequence[str],
         policy_version: str,
+        cancel_event: Optional[threading.Event] = None,
     ) -> dict[str, Any]:
         request: dict[str, Any] = {
             "command": "query",
@@ -1245,6 +1399,14 @@ class BgeSubprocessWorkerClient:
         }
         if expansion is not None:
             request["expansion"] = expansion
+
+        # QD-06: Auto-relaunch worker if not currently ready or if previously evicted
+        status_probe = self._read_persistent_status_file(config)
+        if status_probe is None or not status_probe.get("ready"):
+            LOGGER.info("[LRU_WORKER_AUTO_RELAUNCH] Worker not ready for %s, re-initializing...", config.index_filename)
+            self.evict_lru_workers_if_needed(config)
+            self._initialize_worker_persistent(config, timeout_s=timeout_s)
+
         try:
             response = self._persistent_exchange(
                 config,
@@ -1252,11 +1414,28 @@ class BgeSubprocessWorkerClient:
                 timeout_s=timeout_s,
                 connect_timeout_s=min(float(timeout_s), _PERSIST_QUERY_CONNECT_SECONDS),
                 allow_spawn=False,
+                cancel_event=cancel_event,
             )
-        except SemanticBackendError:
-            raise
+        except SemanticBackendError as exc:
+            if "bge_worker_persist_unavailable" in str(exc):
+                # Worker became unavailable / evicted; re-initialize and retry once
+                LOGGER.info("[LRU_WORKER_AUTO_RELAUNCH] Worker unavailable, auto-relaunching and retrying query...")
+                self.evict_lru_workers_if_needed(config)
+                self._initialize_worker_persistent(config, timeout_s=timeout_s)
+                response = self._persistent_exchange(
+                    config,
+                    request,
+                    timeout_s=timeout_s,
+                    connect_timeout_s=min(float(timeout_s), _PERSIST_QUERY_CONNECT_SECONDS),
+                    allow_spawn=False,
+                    cancel_event=cancel_event,
+                )
+            else:
+                raise
         except Exception as exc:
             raise SemanticBackendError("bge_worker_persist_query_exception") from exc
+
+        self.record_worker_access(config)
         if response.get("status") != "ok":
             err = response.get("error", "unknown")
             err_type = response.get("error_type", "unknown")
@@ -1285,20 +1464,51 @@ class BgeSubprocessWorkerClient:
         """Ask the persistent worker to exit (test/maintenance helper)."""
         if not self._persistent_applies(config):
             return False
+        pipe_name = pipe_name_for_config(config)
+        with self._lru_lock:
+            self._persistent_workers_lru.pop(pipe_name, None)
+            self._evicted_persistent_pipes.discard(pipe_name)
+        status = self._read_persistent_status_file(config)
+        worker_pid = status.get("pid") if status else None
         remove_worker_status_file(config)
+        response_ok = False
         try:
             response = self._persistent_exchange(
                 config,
                 {"command": "shutdown"},
-                timeout_s=10.0,
+                timeout_s=5.0,
                 connect_timeout_s=2.0,
                 allow_spawn=False,
             )
+            response_ok = bool(response.get("status") == "ok")
         except Exception:
+            response_ok = False
+        finally:
             remove_worker_status_file(config)
-            return False
-        remove_worker_status_file(config)
-        return response.get("status") == "ok"
+
+        if isinstance(worker_pid, int) and worker_pid > 0 and _is_worker_pid_alive(worker_pid):
+            grace_deadline = time.monotonic() + 1.5
+            while time.monotonic() < grace_deadline:
+                if not _is_worker_pid_alive(worker_pid):
+                    break
+                time.sleep(0.05)
+            if _is_worker_pid_alive(worker_pid):
+                try:
+                    import psutil
+                    proc = psutil.Process(worker_pid)
+                    proc.terminate()
+                    proc.wait(timeout=1.0)
+                except Exception:
+                    pass
+                try:
+                    if _is_worker_pid_alive(worker_pid):
+                        import psutil
+                        proc = psutil.Process(worker_pid)
+                        proc.kill()
+                        proc.wait(timeout=1.0)
+                except Exception:
+                    pass
+        return response_ok
 
     def _persistent_exchange(
         self,
@@ -1328,6 +1538,8 @@ class BgeSubprocessWorkerClient:
         result: list[tuple[str, Any]] = []
         abort_event = threading.Event()
         abort_lock = threading.Lock()
+        active_conn: list[Any] = []
+        active_conn_lock = threading.Lock()
         connect_done_event = threading.Event()
         cmd_name = str(payload.get("command", "unknown"))
         pipe_lock = _get_pipe_session_lock(pipe_name)
@@ -1342,6 +1554,16 @@ class BgeSubprocessWorkerClient:
             return abort_event.is_set() or (
                 cancel_event is not None and cancel_event.is_set()
             )
+
+        def _close_active_conn() -> None:
+            with active_conn_lock:
+                if active_conn:
+                    conn_obj = active_conn[0]
+                    if conn_obj is not None:
+                        try:
+                            conn_obj.close()
+                        except Exception:
+                            pass
 
         def _maybe_log_pipe_wait(now_perf: float) -> None:
             with wait_log_lock:
@@ -1393,6 +1615,8 @@ class BgeSubprocessWorkerClient:
                         if _is_aborted():
                             raise SemanticBackendError("bge_worker_persist_aborted")
                         conn = mpc.Client(pipe_name, family="AF_PIPE", authkey=authkey)
+                        with active_conn_lock:
+                            active_conn.append(conn)
                         break
                     except (OSError, EOFError) as exc:
                         if pipe_lock_acquired:
@@ -1437,13 +1661,20 @@ class BgeSubprocessWorkerClient:
                             raise SemanticBackendError("bge_worker_persist_aborted")
                         exec_started = time.perf_counter()
                         conn.send(dict(payload))
-                    response = conn.recv()
+                    try:
+                        response = conn.recv()
+                    except (EOFError, OSError, BrokenPipeError) as recv_err:
+                        if _is_aborted():
+                            raise SemanticBackendError("bge_worker_persist_aborted") from recv_err
+                        raise
                     pipe_exec_ms = round((time.perf_counter() - exec_started) * 1000.0, 2)
                 finally:
-                    try:
-                        conn.close()
-                    except Exception:
-                        pass
+                    with active_conn_lock:
+                        try:
+                            conn.close()
+                        except Exception:
+                            pass
+                        active_conn.clear()
                 if _is_aborted():
                     raise SemanticBackendError("bge_worker_persist_aborted")
                 if isinstance(response, dict):
@@ -1473,21 +1704,27 @@ class BgeSubprocessWorkerClient:
                 remaining = join_deadline - time.perf_counter()
                 if remaining <= 0.0:
                     break
-                thread.join(timeout=min(remaining, 0.25))
+                thread.join(timeout=min(remaining, 0.05))
                 if not thread.is_alive():
                     break
                 if not connect_done_event.is_set():
                     _maybe_log_pipe_wait(time.perf_counter())
                 if cancel_event is not None and cancel_event.is_set():
                     abort_event.set()
+                    _close_active_conn()
                     break
 
         with abort_lock:
             if thread.is_alive():
                 abort_event.set()
+                _close_active_conn()
+                thread.join(timeout=0.25)
+                if cancel_event is not None and cancel_event.is_set():
+                    raise SemanticBackendError("bge_worker_persist_cancelled")
                 raise SemanticBackendError("bge_worker_persist_timeout")
         if not result:
             abort_event.set()
+            _close_active_conn()
             raise SemanticBackendError("bge_worker_persist_no_response")
         kind, value = result[0]
         if kind == "error":
