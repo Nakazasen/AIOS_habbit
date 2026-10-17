@@ -1151,6 +1151,8 @@ class RagV2DevPipeline:
         # procedure, prerequisite, and safety chunks needed to answer one
         # operational question.  Preserve the configured cap for multi-source
         # searches, but permit the normal retrieval window for one document.
+        if evidence_config is None:
+            evidence_config = EvidencePackConfig()
         allowed_document_ids_set = frozenset(allowed_documents)
         allowed_privacy_labels_set = (
             frozenset(self.config.allowed_privacy_labels)
@@ -1158,12 +1160,14 @@ class RagV2DevPipeline:
             else None
         )
         effective_per_document_limit = (
-            max(self.config.retrieval_limit, self.config.rerank_limit)
+            evidence_config.effective_operational_single_doc_limit(
+                self.config.retrieval_limit, self.config.rerank_limit
+            )
             if (
                 len(allowed_document_ids_set) == 1
                 and plan.intent_category in {"procedure", "actionable_output", "diagnosis"}
             )
-            else self.config.per_document_limit
+            else evidence_config.per_document_limit
         )
         options = SearchOptions(
             allowed_privacy_labels=allowed_privacy_labels_set,
@@ -1172,6 +1176,7 @@ class RagV2DevPipeline:
             expected_source_fingerprints=expected,
             candidate_limit=self.config.candidate_limit,
             per_document_limit=effective_per_document_limit,
+            evidence_config=evidence_config,
         )
         if plan.ranking_config is not None:
             ranking_config = replace(
@@ -1455,9 +1460,8 @@ class RagV2DevPipeline:
             evidence_config = replace(
                 evidence_config,
                 max_items=max(evidence_config.max_items, self.config.retrieval_limit),
-                per_document_limit=max(
-                    evidence_config.per_document_limit,
-                    self.config.retrieval_limit,
+                per_document_limit=evidence_config.effective_operational_retrieval_floor_limit(
+                    self.config.retrieval_limit
                 ),
             )
 

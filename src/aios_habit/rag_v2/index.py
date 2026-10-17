@@ -613,6 +613,7 @@ class SearchOptions:
     expected_source_fingerprints: Mapping[str, str] = field(default_factory=dict)
     candidate_limit: int = 100
     per_document_limit: int = 2
+    evidence_config: Optional[Any] = None
     allowed_privacy_labels_set: Optional[frozenset[str]] = field(
         init=False, repr=False, compare=False, default=None
     )
@@ -661,6 +662,18 @@ class SearchOptions:
                 else None
             ),
         )
+
+
+def _resolve_evidence_config(
+    evidence_config: Optional[Any] = None,
+    options: Optional["SearchOptions"] = None,
+) -> Any:
+    if evidence_config is not None:
+        return evidence_config
+    if options is not None and getattr(options, "evidence_config", None) is not None:
+        return options.evidence_config
+    from .evidence import EvidencePackConfig
+    return EvidencePackConfig()
 
 
 @dataclass(frozen=True)
@@ -887,11 +900,13 @@ def _select_hybrid_results(
     per_document_limit: int,
     near_duplicate_threshold: float,
     semantic_floor: Optional[float] = None,
+    evidence_config: Optional[Any] = None,
 ) -> tuple[list[SearchResult], list[SearchResult]]:
     selected: list[SearchResult] = []
     selected_ids: set[str] = set()
     rejected_ids: set[str] = set()
     document_counts: Counter[str] = Counter()
+    cfg = _resolve_evidence_config(evidence_config)
 
     def add(result: SearchResult, reason: str) -> bool:
         if result.chunk_id in selected_ids or result.chunk_id in rejected_ids:
@@ -911,7 +926,11 @@ def _select_hybrid_results(
                 or (canonical_doc_name and canonical_doc_name in query_str.lower())
             )
         )
-        effective_doc_limit = max(per_document_limit, 5) if is_named_doc else per_document_limit
+        effective_doc_limit = (
+            cfg.effective_retrieval_named_limit(per_document_limit)
+            if is_named_doc
+            else per_document_limit
+        )
         if document_counts[document_key] >= effective_doc_limit or _is_near_duplicate(
             result, selected, near_duplicate_threshold
         ):
@@ -1161,6 +1180,7 @@ def fuse_ranked_channels(
         per_document_limit=options.per_document_limit,
         near_duplicate_threshold=ranking.near_duplicate_threshold,
         semantic_floor=semantic_floor,
+        evidence_config=options.evidence_config if options else None,
     )
     assembly_latency_ms = (perf_counter() - assembly_started) * 1000.0
     content_terms = set(plan.content_terms)
@@ -4419,10 +4439,12 @@ class LocalChunkIndex:
                     )
 
         options = options or SearchOptions()
+        cfg = _resolve_evidence_config(options=options)
+        dense_floor = cfg.effective_dense_pool_floor(dense_limit)
         pool_options = replace(
             options,
             candidate_limit=max(options.candidate_limit, dense_limit),
-            per_document_limit=max(options.per_document_limit, dense_limit),
+            per_document_limit=max(options.per_document_limit, dense_floor),
         )
         lexical_started = perf_counter()
         lexical = self.search_with_summary(
@@ -4472,10 +4494,8 @@ class LocalChunkIndex:
         )
         fuse_options = replace(
             options,
-            per_document_limit=(
-                max(options.per_document_limit, 5)
-                if is_single_doc
-                else options.per_document_limit
+            per_document_limit=cfg.effective_fuse_single_doc_limit(
+                options.per_document_limit, is_single_doc
             ),
         )
         response = fuse_ranked_channels(
@@ -5625,13 +5645,14 @@ class LocalChunkIndex:
                 re.IGNORECASE,
             )
         )
+        cfg = _resolve_evidence_config(options=options)
         for candidate in candidates:
 
             row = candidate["row"]
             document_key = row["document_id"] or row["source_path"]
             cand_signals = candidate["signals"]
             doc_limit = (
-                max(effective_per_doc_limit, 3)
+                cfg.effective_explicit_file_ref_limit(effective_per_doc_limit)
                 if (
                     has_explicit_file_ref
                     and effective_per_doc_limit >= 2

@@ -98,24 +98,17 @@ class EvidencePackConfig:
     focused_document_limit: int = 15
     synthesis_per_doc_limit: int = 3
     synthesis_named_per_doc_limit: int = 5
+    # Retrieval-layer per-document cap policies (QD-S3B)
+    fuse_single_document_limit: int = 5
+    explicit_file_ref_per_doc_limit: int = 3
+    dense_pool_per_document_limit: Optional[int] = None
+    operational_single_doc_limit: Optional[int] = None
+    operational_retrieval_floor_limit: Optional[int] = None
+    retrieval_named_document_limit: Optional[int] = None
     high_score_threshold: float = 8.0
     medium_score_threshold: float = 3.0
     conditional_entity_expand: Optional[bool] = None
     max_expand_items: int = 12
-
-    def effective_document_limit(self, *, is_named_doc: bool = False, is_focused: bool = False) -> int:
-        """Return the effective per-document quota under unified diversity policy (QD-08)."""
-        if is_focused:
-            return self.focused_document_limit
-        if is_named_doc:
-            return self.named_document_limit
-        return self.per_document_limit
-
-    def effective_synthesis_claim_limit(self, *, is_named_doc: bool = False) -> int:
-        """Return the maximum initial claims/chunks per document during synthesis (QD-08)."""
-        if is_named_doc:
-            return self.synthesis_named_per_doc_limit
-        return self.synthesis_per_doc_limit
     soft_warning_codes: frozenset[str] = frozenset({
         "incomplete_query_term_coverage",
         "weak_query_term_coverage",
@@ -126,6 +119,61 @@ class EvidencePackConfig:
         "expansion_unavailable",
         "expansion_rejected",
     })
+
+    def effective_document_limit(self, *, is_named_doc: bool = False, is_focused: bool = False) -> int:
+        """Return the effective per-document quota under unified diversity policy (QD-08)."""
+        if is_focused:
+            return self.focused_document_limit
+        if is_named_doc:
+            return (
+                self.retrieval_named_document_limit
+                if self.retrieval_named_document_limit is not None
+                else self.named_document_limit
+            )
+        return self.per_document_limit
+
+    def effective_synthesis_claim_limit(self, *, is_named_doc: bool = False) -> int:
+        """Return the maximum initial claims/chunks per document during synthesis (QD-08)."""
+        if is_named_doc:
+            return self.synthesis_named_per_doc_limit
+        return self.synthesis_per_doc_limit
+
+    def effective_retrieval_named_limit(self, per_document_limit: int = 0) -> int:
+        """Return the effective per-document retrieval cap for named documents (QD-S3B Point 1)."""
+        named_cap = (
+            self.retrieval_named_document_limit
+            if self.retrieval_named_document_limit is not None
+            else self.named_document_limit
+        )
+        return max(per_document_limit, named_cap)
+
+    def effective_dense_pool_floor(self, dense_limit: int) -> int:
+        """Return the per-document pool floor for hybrid search (QD-S3B Point 2)."""
+        if self.dense_pool_per_document_limit is not None:
+            return self.dense_pool_per_document_limit
+        return dense_limit
+
+    def effective_fuse_single_doc_limit(self, current_limit: int, is_single_doc: bool) -> int:
+        """Return the fuse-stage per-document limit for single-doc scopes (QD-S3B Point 3)."""
+        if is_single_doc:
+            return max(current_limit, self.fuse_single_document_limit)
+        return current_limit
+
+    def effective_explicit_file_ref_limit(self, current_limit: int) -> int:
+        """Return the candidate per-document floor when query has explicit file ref (QD-S3B Point 4)."""
+        return max(current_limit, self.explicit_file_ref_per_doc_limit)
+
+    def effective_operational_single_doc_limit(self, retrieval_limit: int, rerank_limit: int) -> int:
+        """Return the pipeline retrieval per-document limit for single-doc operational queries (QD-S3B Point 5)."""
+        if self.operational_single_doc_limit is not None:
+            return self.operational_single_doc_limit
+        return max(retrieval_limit, rerank_limit)
+
+    def effective_operational_retrieval_floor_limit(self, retrieval_limit: int) -> int:
+        """Return the evidence packaging per-document floor for operational queries (QD-S3B Point 6)."""
+        if self.operational_retrieval_floor_limit is not None:
+            return max(self.per_document_limit, self.operational_retrieval_floor_limit)
+        return max(self.per_document_limit, retrieval_limit)
 
     def __post_init__(self) -> None:
         if self.max_items < 1:
