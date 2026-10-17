@@ -25,7 +25,7 @@ MAX_SOURCE_REFS = 5
 # ``content`` field.  One bounded retry asks for a direct answer with a doubled
 # budget; the reasoning ban in ``_post_chat`` still applies, so reasoning text
 # is never used as the user-visible answer.
-EMPTY_ANSWER_RETRY_TOKEN_CEILING = 16384
+EMPTY_ANSWER_RETRY_TOKEN_CEILING = 65536
 EMPTY_ANSWER_ERROR_MESSAGE_VI = "Nguồn AI không trả về nội dung trả lời (empty answer)."
 _EMPTY_ANSWER_RETRY_DIRECTIVE = (
     "\n\nQUAN TRỌNG: Trả lời TRỰC TIẾP trong nội dung chính; giữ phần suy luận "
@@ -53,6 +53,7 @@ class ProviderConfig:
     enabled: bool = False
     max_context_chars: int = DEFAULT_MAX_CONTEXT_CHARS
     max_tokens: int = DEFAULT_MAX_TOKENS
+    reasoning_effort: str = ""
     router_deadline_monotonic: Optional[float] = None
 
 
@@ -235,14 +236,18 @@ def load_provider_config_from_env_or_session(
         session.get("local_ai_max_context_chars", os.getenv("AIOS_LOCAL_AI_MAX_CONTEXT_CHARS")),
         DEFAULT_MAX_CONTEXT_CHARS,
         1000,
-        12000,
+        256000,
     )
     max_tokens = _as_int(
         session.get("local_ai_max_tokens", os.getenv("AIOS_LOCAL_AI_MAX_TOKENS")),
         DEFAULT_MAX_TOKENS,
         256,
-        32768,
+        131072,
     )
+    reasoning_effort = str(
+        session.get("local_ai_reasoning_effort")
+        or os.getenv("AIOS_LOCAL_AI_REASONING_EFFORT", "")
+    ).strip()
     return ProviderConfig(
         provider_type=provider_type,
         endpoint_url=endpoint,
@@ -253,6 +258,7 @@ def load_provider_config_from_env_or_session(
         enabled=enabled,
         max_context_chars=max_context,
         max_tokens=max_tokens,
+        reasoning_effort=reasoning_effort,
     )
 
 
@@ -347,6 +353,11 @@ def _post_chat_once(
     on_chunk: Optional[Callable[[str], None]] = None,
     timeout_seconds: Optional[float] = None,
 ) -> dict[str, Any]:
+    effective_model_max_tokens = (
+        min(max_tokens, 32768)
+        if "poolside/" in str(config.model_name or "").lower()
+        else max_tokens
+    )
     payload: dict[str, Any] = {
         "model": config.model_name,
         "messages": [
@@ -354,8 +365,11 @@ def _post_chat_once(
             {"role": "user", "content": user_prompt},
         ],
         "temperature": 0.1,
-        "max_tokens": max_tokens,
+        "max_tokens": effective_model_max_tokens,
     }
+    effort = str(getattr(config, "reasoning_effort", "") or "").strip()
+    if effort:
+        payload["reasoning_effort"] = effort
     if stream or on_chunk is not None:
         payload["stream"] = True
 
