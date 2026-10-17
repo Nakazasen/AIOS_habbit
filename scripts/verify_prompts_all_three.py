@@ -2,6 +2,9 @@ import sys
 import re
 from pathlib import Path
 
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 REPO_ROOT = Path(r"D:\Sandbox\AIOS_habbit")
 sys.path.insert(0, str(REPO_ROOT / "src"))
 

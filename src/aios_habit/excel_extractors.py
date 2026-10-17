@@ -225,13 +225,6 @@ def _is_section_header_row(values: dict[int, str] | Sequence[Any], prev_values: 
     )
     if any(kw in text for kw in sub_header_keywords):
         return True
-    if len(val_list) <= 2 and prev_values is not None:
-        if isinstance(prev_values, dict):
-            prev_list = [str(v).strip() for v in prev_values.values() if v is not None and str(v).strip()]
-        else:
-            prev_list = [str(v).strip() for v in prev_values if v is not None and str(v).strip()]
-        if any(_looks_numeric(v) for v in prev_list):
-            return True
     return False
 
 
