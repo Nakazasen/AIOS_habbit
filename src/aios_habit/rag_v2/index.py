@@ -1383,6 +1383,10 @@ def _backfill_source_state_on_connection(conn: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_chunks_retrievable_doc_fp "
         "ON chunks(retrievable, document_id, source_fingerprint)"
     )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_chunks_retrievable_source_name "
+        "ON chunks(retrievable, source_name)"
+    )
     conn.executescript(_SOURCE_STATE_SCHEMA_AND_TRIGGERS_SQL)
     expected_chunks = int(
         conn.execute("SELECT COUNT(*) FROM chunks WHERE retrievable = 1").fetchone()[0]
@@ -1416,8 +1420,41 @@ def _backfill_source_state_on_connection(conn: sqlite3.Connection) -> None:
             )
 
 
+def ensure_index_source_name_index(db_path: str | Path) -> bool:
+    """Ensure ``idx_chunks_retrievable_source_name`` exists on an index SQLite file.
+
+    Returns True if the index is present or was successfully created, False otherwise.
+    """
+    path = Path(db_path)
+    if not path.is_file():
+        return False
+    try:
+        uri = path.resolve().as_uri() + "?mode=ro"
+        with sqlite3.connect(uri, uri=True, timeout=2.0) as ro_conn:
+            has_idx = bool(
+                ro_conn.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = 'idx_chunks_retrievable_source_name'"
+                ).fetchone()
+            )
+            if has_idx:
+                return True
+    except sqlite3.Error:
+        return False
+
+    try:
+        with sqlite3.connect(str(path), timeout=60.0) as rw_conn:
+            rw_conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_chunks_retrievable_source_name "
+                "ON chunks(retrievable, source_name)"
+            )
+            rw_conn.commit()
+        return True
+    except (sqlite3.Error, OSError):
+        return False
+
+
 def ensure_index_source_state(db_path: str | Path) -> bool:
-    """Ensure ``source_state`` and ``idx_chunks_retrievable_doc_fp`` exist on an index SQLite file.
+    """Ensure ``source_state``, ``idx_chunks_retrievable_doc_fp``, and ``idx_chunks_retrievable_source_name`` exist on an index SQLite file.
 
     Returns True when ``source_state`` is present and synchronized, or False if the
     database does not exist, lacks a ``chunks`` table, or cannot be written.
@@ -1445,12 +1482,17 @@ def ensure_index_source_state(db_path: str | Path) -> bool:
                     "SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = 'idx_chunks_retrievable_doc_fp'"
                 ).fetchone()
             )
+            has_src_idx = bool(
+                ro_conn.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = 'idx_chunks_retrievable_source_name'"
+                ).fetchone()
+            )
             has_trig = bool(
                 ro_conn.execute(
                     "SELECT 1 FROM sqlite_master WHERE type = 'trigger' AND name = 'chunks_source_state_insert'"
                 ).fetchone()
             )
-            if has_state and has_fp_idx and has_trig:
+            if has_state and has_fp_idx and has_src_idx and has_trig:
                 expected_chunks = int(
                     ro_conn.execute("SELECT COUNT(*) FROM chunks WHERE retrievable = 1").fetchone()[0]
                 )
@@ -1569,6 +1611,21 @@ class LocalChunkIndex:
             self._fts5_available = bool(enable_fts5 and self._conn.execute(
                 "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'chunks_fts'"
             ).fetchone())
+            has_src_idx = bool(
+                self._conn.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = 'idx_chunks_retrievable_source_name'"
+                ).fetchone()
+            )
+            if not has_src_idx:
+                try:
+                    with sqlite3.connect(str(self.db_path), timeout=30.0) as rw_conn:
+                        rw_conn.execute(
+                            "CREATE INDEX IF NOT EXISTS idx_chunks_retrievable_source_name "
+                            "ON chunks(retrievable, source_name)"
+                        )
+                        rw_conn.commit()
+                except (sqlite3.Error, OSError):
+                    pass
         else:
             self._fts5_available = False
             self._create_schema()
@@ -1581,6 +1638,11 @@ class LocalChunkIndex:
         self._has_retrievable_doc_fp_index = bool(
             self._conn.execute(
                 "SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = 'idx_chunks_retrievable_doc_fp'"
+            ).fetchone()
+        )
+        self._has_retrievable_source_name_index = bool(
+            self._conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = 'idx_chunks_retrievable_source_name'"
             ).fetchone()
         )
         self._has_source_state_table = bool(
@@ -1630,6 +1692,9 @@ class LocalChunkIndex:
         )
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_chunks_retrievable_doc_fp ON chunks(retrievable, document_id, source_fingerprint)"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_chunks_retrievable_source_name ON chunks(retrievable, source_name)"
         )
         _backfill_source_state_on_connection(self._conn)
         self._conn.executescript(

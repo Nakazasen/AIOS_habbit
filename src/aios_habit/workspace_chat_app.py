@@ -6266,9 +6266,33 @@ else:
                                 source_scope = select_workspace_chat_preparation_scope(
                                     packed_question, tuple(non_empty_sources), limit=1
                                 )
-                                all_states = get_workspace_chat_source_preparation_status(
-                                    tuple(non_empty_sources)
-                                )
+                                if prod_index_ready:
+                                    # APP-SOURCE-MODEL: Tài liệu notebook trong kho production đã được niêm phong,
+                                    # chỉ quét các nguồn tạm (SOURCE_SCOPE_TEMPORARY) theo đúng cách đường mở sổ đã làm.
+                                    temp_sources_to_check = tuple(
+                                        s for s in non_empty_sources
+                                        if getattr(s, "source_scope", "") == SOURCE_SCOPE_TEMPORARY
+                                    )
+                                    temp_states = (
+                                        get_workspace_chat_source_preparation_status(temp_sources_to_check)
+                                        if temp_sources_to_check
+                                        else {}
+                                    )
+                                    all_states = {
+                                        f"{getattr(s, 'source_scope', '')}:{getattr(s, 'source_id', '')}": (
+                                            temp_states.get(
+                                                f"{getattr(s, 'source_scope', '')}:{getattr(s, 'source_id', '')}",
+                                                "ready",
+                                            )
+                                            if getattr(s, "source_scope", "") == SOURCE_SCOPE_TEMPORARY
+                                            else "ready"
+                                        )
+                                        for s in non_empty_sources
+                                    }
+                                else:
+                                    all_states = get_workspace_chat_source_preparation_status(
+                                        tuple(non_empty_sources)
+                                    )
                                 ready_sources = tuple(
                                     s for s in non_empty_sources
                                     if all_states.get(f"{s.source_scope}:{s.source_id}") == "ready"

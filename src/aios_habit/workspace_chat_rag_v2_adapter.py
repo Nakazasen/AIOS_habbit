@@ -1156,6 +1156,49 @@ def _store_coverage_result(key: tuple[str, str, str, str], value: bool) -> None:
         _COVERAGE_CACHE[key] = (time.monotonic() + _COVERAGE_CACHE_TTL_SECONDS, value)
 
 
+_ENSURED_SOURCE_NAME_INDEX_PATHS: set[str] = set()
+_ENSURED_SOURCE_NAME_INDEX_LOCK = threading.Lock()
+
+
+def _ensure_source_name_index(index_path: Path) -> None:
+    """Auto-create idx_chunks_retrievable_source_name on an existing index if missing."""
+    resolved_str = index_path.resolve().as_posix()
+    with _ENSURED_SOURCE_NAME_INDEX_LOCK:
+        if resolved_str in _ENSURED_SOURCE_NAME_INDEX_PATHS:
+            return
+        _ENSURED_SOURCE_NAME_INDEX_PATHS.add(resolved_str)
+    try:
+        from aios_habit.rag_v2.index import ensure_index_source_name_index
+        ensure_index_source_name_index(index_path)
+    except Exception:
+        pass
+
+
+_CATALOG_TITLE_MAP: dict[tuple[str, int, int], dict[str, str]] = {}
+_CATALOG_TITLE_LOCK = threading.Lock()
+
+
+def _get_catalog_title_map(index_path: Path, st: os.stat_result) -> dict[str, str]:
+    key = (index_path.resolve().as_posix(), st.st_mtime_ns, st.st_size)
+    with _CATALOG_TITLE_LOCK:
+        cached = _CATALOG_TITLE_MAP.get(key)
+        if cached is not None:
+            return cached
+    try:
+        from aios_habit import index_domain
+        catalog_specs = index_domain.load_all_index_specs(index_path)
+        title_map = {}
+        for spec in catalog_specs:
+            spec_title = (getattr(spec, "title", "") or "").strip()
+            if spec_title and spec_title not in title_map:
+                title_map[spec_title] = str(spec.document_id)
+    except Exception:
+        title_map = {}
+    with _CATALOG_TITLE_LOCK:
+        _CATALOG_TITLE_MAP[key] = title_map
+    return title_map
+
+
 def _durable_semantic_coverage_ready(    source: WorkspaceAIContextSource,
     config: WorkspaceChatRagV2CanaryConfig,
 ) -> bool:
@@ -1192,6 +1235,7 @@ def _durable_semantic_coverage_ready(    source: WorkspaceAIContextSource,
     cached = _cached_coverage_result(cache_key)
     if cached is not None:
         return cached
+    _ensure_source_name_index(index_path)
     try:
         uri = f"file:{index_path.resolve().as_posix()}?mode=ro"
         connection = sqlite3.connect(uri, uri=True)
@@ -1227,19 +1271,12 @@ def _durable_semantic_coverage_ready(    source: WorkspaceAIContextSource,
                 if candidate_title:
                     matched_doc_id: Optional[str] = None
                     try:
-                        from aios_habit import index_domain
-
-                        catalog_specs = index_domain.load_all_index_specs(index_path)
-                        for spec in catalog_specs:
-                            spec_title = (getattr(spec, "title", "") or "").strip()
-                            if spec_title == candidate_title:
-                                matched_doc_id = str(spec.document_id)
-                                break
+                        title_map = _get_catalog_title_map(index_path, st)
+                        matched_doc_id = title_map.get(candidate_title)
                         if matched_doc_id is None and "C7620" in candidate_title:
-                            for spec in catalog_specs:
-                                spec_title = (getattr(spec, "title", "") or "").strip()
+                            for spec_title, doc_id in title_map.items():
                                 if "C7620" in spec_title:
-                                    matched_doc_id = str(spec.document_id)
+                                    matched_doc_id = doc_id
                                     break
                     except Exception:
                         matched_doc_id = None
@@ -4569,12 +4606,29 @@ def _run_profile(
     started = time.perf_counter()
     from aios_habit.rag_v2.pipeline import SourceSpec
     if any(not isinstance(s, SourceSpec) for s in sources):
-        statuses = get_workspace_chat_source_preparation_status(tuple(sources), config=config)
-        ready_subset = tuple(
-            s for s in sources
-            if isinstance(s, SourceSpec)
-            or statuses.get(f"{_safe_source_scope(s)}:{_safe_source_id(s)}") == _PREPARATION_READY_STATE
-        )
+        if is_production_index_available(config=config):
+            temp_sources = tuple(
+                s for s in sources
+                if not isinstance(s, SourceSpec) and _safe_source_scope(s) == SOURCE_SCOPE_TEMPORARY
+            )
+            temp_statuses = (
+                get_workspace_chat_source_preparation_status(temp_sources, config=config)
+                if temp_sources
+                else {}
+            )
+            ready_subset = tuple(
+                s for s in sources
+                if isinstance(s, SourceSpec)
+                or _safe_source_scope(s) != SOURCE_SCOPE_TEMPORARY
+                or temp_statuses.get(f"{_safe_source_scope(s)}:{_safe_source_id(s)}") == _PREPARATION_READY_STATE
+            )
+        else:
+            statuses = get_workspace_chat_source_preparation_status(tuple(sources), config=config)
+            ready_subset = tuple(
+                s for s in sources
+                if isinstance(s, SourceSpec)
+                or statuses.get(f"{_safe_source_scope(s)}:{_safe_source_id(s)}") == _PREPARATION_READY_STATE
+            )
         if ready_subset:
             sources = ready_subset
 
@@ -5334,11 +5388,24 @@ def retrieve_workspace_chat_evidence(
         return _finish(_quality_search_unavailable("feature_flag_disabled"))
 
     # Operate strictly on ready sources so pending documents in notebook do not block retrieval
-    statuses = get_workspace_chat_source_preparation_status(sources, config=resolved)
-    ready_subset = tuple(
-        s for s in sources
-        if statuses.get(f"{_safe_source_scope(s)}:{_safe_source_id(s)}") == _PREPARATION_READY_STATE
-    )
+    if is_production_index_available(config=resolved):
+        temp_sources = tuple(s for s in sources if _safe_source_scope(s) == SOURCE_SCOPE_TEMPORARY)
+        temp_statuses = (
+            get_workspace_chat_source_preparation_status(temp_sources, config=resolved)
+            if temp_sources
+            else {}
+        )
+        ready_subset = tuple(
+            s for s in sources
+            if _safe_source_scope(s) != SOURCE_SCOPE_TEMPORARY
+            or temp_statuses.get(f"{_safe_source_scope(s)}:{_safe_source_id(s)}") == _PREPARATION_READY_STATE
+        )
+    else:
+        statuses = get_workspace_chat_source_preparation_status(sources, config=resolved)
+        ready_subset = tuple(
+            s for s in sources
+            if statuses.get(f"{_safe_source_scope(s)}:{_safe_source_id(s)}") == _PREPARATION_READY_STATE
+        )
     if ready_subset:
         sources = ready_subset
         collection_id = _collection_id_for_sources(sources)
