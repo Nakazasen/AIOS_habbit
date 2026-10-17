@@ -165,18 +165,25 @@ def build_evidence_trace_from_citations(
     for idx, item in enumerate(evidence_items, start=1):
         if isinstance(item, dict):
             item_id = str(item.get("id") or item.get("source_id") or item.get("evidence_id") or f"src_{idx}")
-            title = str(item.get("title") or item.get("source_title") or f"Nguồn {idx}")
+            title = str(item.get("title") or item.get("source_title") or item.get("source_name") or f"Nguồn {idx}")
             snippet = str(item.get("text") or item.get("snippet") or item.get("content") or item.get("extracted_text") or "")
             source_path = str(item.get("source_path") or item.get("filename") or item.get("source_id") or "")
             citation_label = str(item.get("citation_id") or item.get("citation_label") or item.get("evidence_id") or f"[{idx}]")
             source_id = str(item.get("source_id") or item.get("id") or item.get("evidence_id") or source_path or item_id)
         else:
             item_id = str(getattr(item, "id", None) or getattr(item, "source_id", None) or getattr(item, "evidence_id", None) or f"src_{idx}")
-            title = str(getattr(item, "source_title", None) or getattr(item, "title", None) or f"Nguồn {idx}")
+            title = str(getattr(item, "source_title", None) or getattr(item, "title", None) or getattr(item, "source_name", None) or f"Nguồn {idx}")
             snippet = str(getattr(item, "snippet", None) or getattr(item, "text", None) or getattr(item, "extracted_text", None) or "")
             source_path = str(getattr(item, "source_path", None) or getattr(item, "filename", None) or getattr(item, "relative_path", None) or "")
             citation_label = str(getattr(item, "citation_id", None) or getattr(item, "citation_label", None) or getattr(item, "evidence_id", None) or f"[{idx}]")
             source_id = str(getattr(item, "source_id", None) or getattr(item, "id", None) or getattr(item, "evidence_id", None) or source_path or item_id)
+
+        try:
+            from aios_habit.index_domain import load_domain_document_alias_map
+            _amap = load_domain_document_alias_map()
+            title = _amap.get(item_id) or _amap.get(source_path) or _amap.get(title) or title
+        except Exception:
+            pass
 
         is_allowed = True
         if allowed_set is not None:

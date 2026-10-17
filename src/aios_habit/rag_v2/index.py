@@ -5508,6 +5508,7 @@ class LocalChunkIndex:
             fused.values(),
             key=lambda item: (
                 -int(bool(item.get("target_equivalent_variant_ids"))),
+                -float(item.get("signals", {}).get("equivalent_target_term_match_count", 0.0)),
                 -float(item.get("target_match_count", 0.0))
                 if query_plan.intent_category == "lookup" else 0.0,
                 -item["rrf_score"],
@@ -5636,6 +5637,15 @@ class LocalChunkIndex:
             signals["multi_variant_rrf"] = candidate["rrf_score"]
             for variant_id, match_count in candidate["equivalent_variant_match_counts"].items():
                 signals[f"equivalent_variant_match_count:{variant_id}"] = float(match_count)
+            doc_id = row["document_id"]
+            raw_src_name = row["source_name"]
+            canon_src_name = raw_src_name
+            try:
+                from aios_habit.index_domain import load_domain_document_alias_map
+                _alias_m = load_domain_document_alias_map()
+                canon_src_name = _alias_m.get(doc_id) or _alias_m.get(raw_src_name) or raw_src_name
+            except Exception:
+                pass
             results.append(
                 SearchResult(
                     chunk_id=row["chunk_id"],
@@ -5643,7 +5653,7 @@ class LocalChunkIndex:
                     text=row["text"],
                     document_id=row["document_id"],
                     source_path=row["source_path"],
-                    source_name=row["source_name"],
+                    source_name=canon_src_name,
                     file_type=row["file_type"],
                     metadata=candidate["metadata"],
                     privacy_labels=candidate["privacy_labels"],

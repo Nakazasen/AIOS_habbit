@@ -687,7 +687,15 @@ def build_evidence_pack(
             or (Path(result.source_path).name.strip() if result.source_path else "")
             or (result.document_id or "").strip()
         ).casefold()
-        doc_key = canonical_doc_name or result.document_id
+        is_synthetic_or_hash_id = (
+            not result.document_id
+            or result.document_id.startswith("wsc-")
+            or len(result.document_id) >= 20
+        )
+        if is_synthetic_or_hash_id and canonical_doc_name:
+            doc_key = canonical_doc_name
+        else:
+            doc_key = result.document_id or canonical_doc_name
         doc_count = doc_counts.get(doc_key, 0)
         is_named = bool(
             query_text

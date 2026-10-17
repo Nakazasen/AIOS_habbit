@@ -592,6 +592,8 @@ _OPTICAL_LSU_JA_TO_VI_EQUIVALENCES: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"確認", re.IGNORECASE), "kiểm tra"),
     (re.compile(r"調整", re.IGNORECASE), "điều chỉnh"),
     (re.compile(r"測定", re.IGNORECASE), "đo lường"),
+    (re.compile(r"SIM\s*貼付|貼付け", re.IGNORECASE), "dán SIM tape"),
+    (re.compile(r"補正順番|手順", re.IGNORECASE), "trình tự thao tác"),
 )
 
 _OPTICAL_LSU_VI_TO_JA_EQUIVALENCES: tuple[tuple[re.Pattern[str], str], ...] = (
@@ -602,6 +604,8 @@ _OPTICAL_LSU_VI_TO_JA_EQUIVALENCES: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"đường\s*kính\s*beam", re.IGNORECASE), "Beam径"),
     (re.compile(r"trục\s*quang", re.IGNORECASE), "光軸"),
     (re.compile(r"kiểm\s*tra|xác\s*nhận", re.IGNORECASE), "確認"),
+    (re.compile(r"dán\s*(?:sim|tape)|sim\s*tape", re.IGNORECASE), "SIM 貼付 貼付け"),
+    (re.compile(r"trình\s*tự(?:\s*thao\s*tác)?|thứ\s*tự\s*thao\s*tác", re.IGNORECASE), "補正順番 手順"),
 )
 
 

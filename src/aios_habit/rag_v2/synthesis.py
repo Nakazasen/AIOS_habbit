@@ -8,7 +8,11 @@ import re
 from typing import Iterable, Protocol, Tuple
 
 from .evidence import EvidenceAnswerMode, EvidenceItem, EvidencePack
-from .query_planning import extract_content_terms
+from .query_planning import (
+    extract_content_terms,
+    _OPTICAL_LSU_JA_TO_VI_EQUIVALENCES,
+    _OPTICAL_LSU_VI_TO_JA_EQUIVALENCES,
+)
 
 
 # Operator-level policy switch for cloud synthesis. Evidence packs keep their
@@ -1315,6 +1319,7 @@ def _normalize_slide_line_artifacts(text: str) -> str:
     cleaned = _TRAILING_INLINE_COPYRIGHT_RE.sub("", text)
     cleaned = _SINGLE_KANJI_LEFT_SPACE_RE.sub(r"\1", cleaned)
     cleaned = _SINGLE_KANJI_RIGHT_SPACE_RE.sub(r"\1", cleaned)
+    cleaned = re.sub(r"(?<![\w])([A-Za-z0-9_-]{2,})(?:\s+\1)+(?![\w])", r"\1", cleaned)
     return cleaned
 
 
@@ -1408,7 +1413,8 @@ def _is_fragment_noise(fragment: str) -> bool:
                 continue
             adjacent_repeats += 1
     if adjacent_repeats >= 1:
-        return True
+        if len(tokens) < 20 or adjacent_repeats >= 3 or (adjacent_repeats / len(tokens)) >= 0.15:
+            return True
     if len(tokens) >= 6:
         pair_counts = {}
         for pair in zip(tokens, tokens[1:]):
@@ -1471,7 +1477,7 @@ def _extract_measurement_table_ranges(raw_text: str) -> list[str]:
             if not section_name or "section" in line.casefold():
                 section_name = cand
         parts = [p.strip() for p in line.split("|")]
-        if len(parts) >= 4:
+        if len(parts) >= 3:
             label = parts[0]
             nums: list[float] = []
             num_strs: list[str] = []
@@ -1484,7 +1490,7 @@ def _extract_measurement_table_ranges(raw_text: str) -> list[str]:
                         num_strs.append(clean_p)
                     except ValueError:
                         pass
-            if len(nums) >= 4:
+            if len(nums) >= 2:
                 row_data.append((label, nums, num_strs))
 
     if not row_data:
@@ -1496,7 +1502,7 @@ def _extract_measurement_table_ranges(raw_text: str) -> list[str]:
 
     for label, nums, num_strs in row_data:
         dec_nums = [float(p) for p in num_strs if "." in p]
-        target_nums = dec_nums if len(dec_nums) >= 4 else nums
+        target_nums = dec_nums if len(dec_nums) >= 2 else nums
         all_target_nums.extend(target_nums)
         r_min, r_max = min(target_nums), max(target_nums)
         has_3dec = any(len(p.split(".")[1]) >= 3 for p in num_strs if "." in p)
@@ -1515,8 +1521,8 @@ def _extract_measurement_table_ranges(raw_text: str) -> list[str]:
 
     if len(row_data) >= 2 and all_target_nums:
         t_min, t_max = min(all_target_nums), max(all_target_nums)
-        floor_min = f"{int(t_min * 100) / 100:.2f}"
-        ceil_max = f"{t_max:.2f}"
+        floor_min = f"{int(t_min * 100) / 100:.2f}" if t_min >= 0 else f"{t_min:.3f}"
+        ceil_max = f"{t_max:.2f}" if t_max >= 0 else f"{t_max:.3f}"
         exact_min = f"{t_min:.3f}"
         exact_max = f"{t_max:.3f}"
 
@@ -1772,12 +1778,19 @@ def _is_exact_value_term(term: str) -> bool:
 
 def _synthesis_query_terms(query: str, *, prioritize_literals: bool) -> set[str]:
     terms = set(extract_content_terms(query))
-    if any(k in (query or "") for k in ("画像中央", "中央", "周辺", "Laser Power", "laser power", "レーザー", "光量", "Beam径", "ビーム径")):
+    query_str = query or ""
+    for pattern, equiv in _OPTICAL_LSU_VI_TO_JA_EQUIVALENCES:
+        if pattern.search(query_str):
+            terms.update(extract_content_terms(equiv))
+    for pattern, equiv in _OPTICAL_LSU_JA_TO_VI_EQUIVALENCES:
+        if pattern.search(query_str):
+            terms.update(extract_content_terms(equiv))
+    if any(k in query_str for k in ("画像中央", "中央", "周辺", "Laser Power", "laser power", "レーザー", "光量", "Beam径", "ビーム径")):
         terms.update(["lượng", "sáng", "trung", "tâm", "ảnh", "hai", "bên", "nhạt"])
     if prioritize_literals:
         terms.update(
             match.group(0).casefold()
-            for match in _EXACT_IDENTIFIER_RE.finditer(query or "")
+            for match in _EXACT_IDENTIFIER_RE.finditer(query_str)
             if not _is_document_identifier_token(match.group(0))
         )
     return terms
@@ -2284,7 +2297,7 @@ def _claim_value_score(
     *,
     field_codes: Tuple[str, ...] = (),
     file_identifiers: Tuple[str, ...] = (),
-) -> tuple[int, int, int, int, int, int, int, int, int]:
+) -> tuple[int, int, int, int, int, int, int, int, int, int]:
     """Score a claim candidate by evidence value, not retrieval rank.
 
     Field codes (HOUSE_METHOD) and file identifiers (YY2-Z151.exe) named in the
@@ -2297,6 +2310,7 @@ def _claim_value_score(
     terms = set(extract_content_terms(fragment))
     return (
         _item_matches_query_source(item, query),
+        int(bool(item.matched_target_equivalent_variant_ids)),
         _token_overlap_count(fragment, field_codes),
         _definition_shaped_field_overlap(fragment, field_codes),
         _file_identifier_overlap(fragment, file_identifiers),

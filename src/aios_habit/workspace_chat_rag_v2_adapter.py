@@ -653,7 +653,18 @@ def sanitize_citation_title(title: str) -> str:
     if not title:
         return "unnamed-source"
     value = str(title)
-    return Path(value).name if "\\" in value or "/" in value else value
+    base = Path(value).name if "\\" in value or "/" in value else value
+    try:
+        from aios_habit.index_domain import load_domain_document_alias_map
+        alias_map = load_domain_document_alias_map()
+        if base in alias_map:
+            return alias_map[base]
+        stem = Path(base).stem
+        if stem in alias_map:
+            return alias_map[stem]
+    except Exception:
+        pass
+    return base
 
 
 def _runtime_key(config: WorkspaceChatRagV2CanaryConfig, profile: str) -> str:
