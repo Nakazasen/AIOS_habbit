@@ -2444,6 +2444,7 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
         MO_SO,
         TAO_SO,
         TAO_VU_DIEU_TRA,
+        DANH_GIA_DIEU_TRA,
         DANH_GIA_NHAN,
         VE_BIEU_DO,
         XEM_PHAN_HOI,
@@ -2559,7 +2560,30 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
                     van_ban += chart_md
             except Exception:
                 pass
-        return van_ban or None
+    if y_dinh == DANH_GIA_DIEU_TRA:
+        try:
+            from aios_habit.chat_action_create_case import get_active_case_id
+            from aios_habit.error_cases.investigation_feedback import record_investigation_feedback
+            rating_val = slots.get("rating", "đúng hướng")
+            note_val = slots.get("note")
+            cid = slots.get("case_id") or get_active_case_id()
+            conv_id = getattr(active_conversation, "id", "") or ""
+            record_investigation_feedback(
+                rating=rating_val,
+                user_note=note_val,
+                case_id=cid,
+                conversation_id=conv_id,
+            )
+            note_str = f"\n- **Ghi chú góp ý:** `{note_val}`" if note_val else ""
+            return (
+                f"### ✅ Đã ghi nhận đánh giá cây điều tra: `{rating_val}`\n\n"
+                f"- **Vụ điều tra:** `{cid or 'Ngữ cảnh phiên chat'}`\n"
+                f"- **Đánh giá:** `{rating_val}`"
+                f"{note_str}\n"
+                "- **Lưu trữ:** `local_cases/investigation_feedback.jsonl` (phục vụ giám sát chất lượng gợi ý Bước 3)."
+            )
+        except Exception as e:
+            return f"### ⚠️ Không thể lưu phản hồi điều tra: {e}"
     if y_dinh == DANH_GIA_NHAN:
         try:
             from aios_habit.chat_action_create_case import get_active_case_id
@@ -2589,6 +2613,9 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
             if slots.get("loai_phan_hoi") == "phan_loai":
                 from aios_habit.error_cases.autoclassify_feedback import format_autoclassify_review_summary
                 return format_autoclassify_review_summary()
+            if slots.get("loai_phan_hoi") == "dieu_tra":
+                from aios_habit.error_cases.investigation_feedback import format_investigation_review_summary
+                return format_investigation_review_summary()
             from aios_habit.feedback_review_home import format_feedback_review_summary
 
             return format_feedback_review_summary()

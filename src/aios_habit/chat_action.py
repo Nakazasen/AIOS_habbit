@@ -187,7 +187,9 @@ def unregister_action(name: str) -> None:
 
 
 def registered_actions() -> Tuple[ChatAction, ...]:
-    return tuple(_REGISTRY.values())
+    non_fallback = [a for a in _REGISTRY.values() if not a.fallback]
+    fallback = [a for a in _REGISTRY.values() if a.fallback]
+    return tuple(non_fallback + fallback)
 
 
 def reset_actions() -> None:

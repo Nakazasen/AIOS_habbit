@@ -27,11 +27,13 @@ MO_SO = "mo_so"                          # open a notebook
 HO_SO_DIEU_TRA = "ho_so_dieu_tra"        # open the investigation case workspace
 CONG_CU_NANG_CAO = "cong_cu_nang_cao"    # open the advanced JIG analysis tools
 DANH_GIA_NHAN = "danh_gia_nhan"          # inline rating for auto-classified labels (Step 5)
+DANH_GIA_DIEU_TRA = "danh_gia_dieu_tra"  # inline rating for investigation tree (Step 3)
 HOI_DAP_CHUNG = "hoi_dap_chung"          # small talk / greeting
 HOI_TAI_LIEU = "hoi_tai_lieu"            # document Q&A (RAG) fallback
 DU_LIEU_DAN = "du_lieu_dan"              # pasted CSV/log block in the message
 
 TAT_CA_Y_DINH = (
+    DANH_GIA_DIEU_TRA,
     DANH_GIA_NHAN,
     CANH_BAO_NGUONG,
     XU_HUONG_LOG_TINH,
@@ -65,7 +67,9 @@ def _la_lenh_xem_phan_hoi(clean: str, norm: str) -> bool:
     Lệnh không phá đường hỏi đáp thông thường - câu hỏi bình thường chứa từ khóa
     của lệnh vẫn đi đường RAG như cũ.
     """
-    if norm.startswith(("/xemphanhoi", "/feedback", "/phanhoi", "/autoclassify", "/phanloai", "lenh: xem phan hoi", "cmd: feedback")):
+    if norm.startswith(("/xemphanhoi", "/feedback", "/phanhoi", "/autoclassify", "/phanloai", "/investigation", "lenh: xem phan hoi", "cmd: feedback")):
+        return True
+    if any(c in norm for c in ("xem phan hoi dieu tra", "thong ke cay dieu tra", "thong ke dieu tra", "bao cao phan hoi dieu tra", "phan hoi cay dieu tra", "danh gia cay dieu tra")):
         return True
     # Chứa mã lỗi máy (VD: C7620, JAM4709, F000) -> câu hỏi tra cứu, không phải lệnh
     if re.search(r"\b(?:[cfj]\s*-?\d{3,4}|jam\s*-?\d{3,4})\b", norm, re.IGNORECASE):
@@ -97,21 +101,14 @@ def _la_lenh_xem_phan_hoi(clean: str, norm: str) -> bool:
         "xem cac phan hoi", "xem phan hoi gan day", "kiem tra phan hoi",
         "xem phan hoi phan loai", "thong ke phan loai", "bao cao phan loai",
         "danh gia phan loai", "phan hoi phan loai",
+        "xem phan hoi dieu tra", "thong ke cay dieu tra", "bao cao phan hoi dieu tra",
+        "danh gia cay dieu tra", "thong ke dieu tra",
     )
     return any(c in norm for c in cum_lenh)
 
 
 # Priority order: specific intents first, generic ones last.
 _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
-    (
-        DANH_GIA_NHAN,
-        (
-            "dung nhan", "sai nhan", "mot phan nhan",
-            "danh gia dung nhan", "danh gia sai nhan",
-            "sua nhan thanh", "sua nhan:", "sua nhan",
-            "/danhgianhan",
-        ),
-    ),
     (
         XEM_PHAN_HOI,
         (
@@ -122,8 +119,35 @@ _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
             "xem phan hoi gan day", "kiem tra phan hoi",
             "xem phan hoi phan loai", "thong ke phan loai",
             "bao cao phan loai", "danh gia phan loai",
+            "xem phan hoi dieu tra", "thong ke cay dieu tra",
+            "bao cao phan hoi dieu tra", "phan hoi cay dieu tra",
+            "danh gia cay dieu tra", "thong ke dieu tra",
             "/xemphanhoi", "/feedback", "/phanhoi",
             "/autoclassify-feedback", "/autoclassify-review",
+            "/investigation-feedback", "/investigation-review",
+        ),
+    ),
+    (
+        DANH_GIA_DIEU_TRA,
+        (
+            "cay dieu tra dung huong",
+            "dieu tra dung huong",
+            "cay dieu tra thieu nhanh",
+            "dieu tra thieu nhanh",
+            "cay dieu tra khong huu ich",
+            "dieu tra khong huu ich",
+            "phan hoi dieu tra:",
+            "gop y dieu tra:",
+            "/danhgiadieutra",
+        ),
+    ),
+    (
+        DANH_GIA_NHAN,
+        (
+            "dung nhan", "sai nhan", "mot phan nhan",
+            "danh gia dung nhan", "danh gia sai nhan",
+            "sua nhan thanh", "sua nhan:", "sua nhan",
+            "/danhgianhan",
         ),
     ),
     (
@@ -391,6 +415,23 @@ def extract_slots(text: str, intent: str) -> Dict[str, str]:
         m = mau.search(clean)
         if m:
             slots["ten_so"] = m.group(1).strip().strip("\"'")
+    elif intent == DANH_GIA_DIEU_TRA:
+        slots_dt: Dict[str, str] = {}
+        norm_c = _khong_dau(clean)
+        if "thieu" in norm_c or "nhanh" in norm_c:
+            slots_dt["rating"] = "thiếu nhánh"
+        elif "khong" in norm_c or "kem" in norm_c or "sai" in norm_c:
+            slots_dt["rating"] = "không hữu ích"
+        else:
+            slots_dt["rating"] = "đúng hướng"
+
+        m_note = re.search(r"phan\s*hoi\s*dieu\s*tra\s*:\s*(.+)$", clean, re.IGNORECASE)
+        if m_note:
+            slots_dt["note"] = m_note.group(1).strip()
+        cid = extract_case_id_from_text(clean)
+        if cid:
+            slots_dt["case_id"] = cid
+        return slots_dt
     elif intent == DANH_GIA_NHAN:
         slots_dg: Dict[str, str] = {}
         norm_c = _khong_dau(clean)
@@ -418,8 +459,10 @@ def extract_slots(text: str, intent: str) -> Dict[str, str]:
         return slots_dg
     elif intent == XEM_PHAN_HOI:
         norm_c = _khong_dau(clean)
-        if "phan loai" in norm_c:
+        if "phan loai" in norm_c or "autoclassify" in norm_c:
             return {"loai_phan_hoi": "phan_loai"}
+        if "dieu tra" in norm_c or "cay 4m" in norm_c or "investigation" in norm_c:
+            return {"loai_phan_hoi": "dieu_tra"}
         return {}
     elif intent == XU_HUONG_LOG_TINH:
         slots_trend: Dict[str, str] = {}
@@ -444,6 +487,7 @@ def route(text: str) -> Tuple[str, Dict[str, str]]:
 def giai_thich_y_dinh(intent: str) -> str:
     """Short Vietnamese note shown in chat so the user sees what the app understood."""
     return {
+        DANH_GIA_DIEU_TRA: "Tôi hiểu bạn muốn đánh giá gợi ý cây điều tra 4M.",
         DANH_GIA_NHAN: "Tôi hiểu bạn muốn đánh giá nhãn phân loại tự động.",
         CANH_BAO_NGUONG: "Tôi hiểu đây là yêu cầu cảnh báo ngưỡng.",
         XU_HUONG_LOG_TINH: "Tôi hiểu bạn muốn phân tích xu hướng SMA(20) trên log tĩnh.",
@@ -465,6 +509,7 @@ def giai_thich_y_dinh(intent: str) -> str:
 def nhan_y_dinh(intent: str) -> str:
     """Short Vietnamese label for one intent (section header in a merged reply)."""
     return {
+        DANH_GIA_DIEU_TRA: "Đánh giá cây điều tra",
         DANH_GIA_NHAN: "Đánh giá nhãn phân loại",
         CANH_BAO_NGUONG: "Cảnh báo ngưỡng",
         XU_HUONG_LOG_TINH: "Phân tích xu hướng SMA(20)",

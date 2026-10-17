@@ -138,22 +138,32 @@ def _render_chat(tree) -> str:
         code_line = f"{tree.code_family} {tree.code}".strip()
         L.append(f"**Mã lỗi:** {code_line}{name}")
     L.append("")
+    L.append(
+        f"> 📌 **Căn cứ phân tích (Bước 3):** Tổng cộng **{tree.total_items}** hạng mục | "
+        f"**{tree.grounded_items_count}** có căn cứ ca tương tự | "
+        f"**{tree.generic_items_count}** gợi ý chung."
+    )
+    L.append("")
     L.append("### Cây điều tra 4M")
     L.append("")
     for branch in tree.branch_order:
         label = BRANCH_LABELS_VI.get(branch, branch)
-        L.append(f"**{label}**")
+        basis = tree.branch_basis.get(branch, "Gợi ý chung")
+        L.append(f"**{label}** — *{basis}*")
         L.append("")
         for it in tree.branches.get(branch, []):
             star = " ⭐" if it.priority else ""
             L.append(f"- [ ] {it.question}{star}")
             L.append(f"  - *Thu thập:* {it.data_to_collect}")
+            L.append(f"  - *Căn cứ:* {it.can_cu}")
         L.append("")
     L.append("### Chuỗi Why-Why")
     L.append("")
     for node in tree.why_chain:
         L.append(f"{node.level}. {node.question}")
         L.append(f"   - *Gợi ý:* {node.hint}")
+        if node.can_cu:
+            L.append(f"   - *Căn cứ:* {node.can_cu}")
     L.append("")
     L.append("Điền câu trả lời từng bước khi điều tra; tick [ ] khi xong hạng mục.")
     return "\n".join(L)
@@ -177,16 +187,37 @@ def _handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
                 ),
             )
         code = extract_code_from_text(phenomenon) or ""
-        tree = build_tree(phenomenon, code=code)
+
+        conn = None
+        try:
+            from aios_habit.chat_action_error_lookup import resolve_db_path, _open_ro
+            db_p = resolve_db_path(request)
+            if db_p and db_p.is_file():
+                conn = _open_ro(db_p)
+        except Exception:
+            conn = None
+
+        try:
+            tree = build_tree(phenomenon, code=code, conn=conn)
+        finally:
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
         text = _render_chat(tree)
 
-        # Save company-format files (md + docx) for pasting into the report.
+        # Save company-format files (md + docx) for pasting straight into the report.
         saved: List[str] = []
         try:
             outdir = _local_runs_dir()
             stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
             base = outdir / f"{stamp}-{_slug(phenomenon)}"
-            meta = {"date": datetime.now().strftime("%Y-%m-%d")}
+            meta = {
+                "date": datetime.now().strftime("%Y-%m-%d"),
+                "report_id": f"KTD-{datetime.now().strftime('%Y-%m')}-{(tree.code or 'PLAN').upper()}",
+            }
             for suffix in (".md", ".docx"):
                 try:
                     p = export_report(tree, base.with_suffix(suffix), meta)
@@ -195,12 +226,39 @@ def _handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
                     continue  # one format failing must not kill the other
         except Exception:
             pass
+
+        # Log initial suggestion into local continuous improvement store
+        try:
+            from aios_habit.error_cases.investigation_feedback import log_investigation_tree
+            log_investigation_tree(
+                tree_id=tree.tree_id,
+                phenomenon=phenomenon,
+                code=code,
+                total_items=tree.total_items,
+                grounded_items=tree.grounded_items_count,
+                generic_items=tree.generic_items_count,
+                branch_basis=tree.branch_basis,
+                exported_files=saved,
+                conversation_id=request.conversation_id,
+            )
+        except Exception:
+            pass
+
         if saved:
-            text += ("\n\n---\n**File kế hoạch (đúng mẫu báo cáo công ty):**\n"
-                     + "\n".join(f"- `{p}`" for p in saved))
+            text += (
+                "\n\n---\n**Tệp kế hoạch điều tra (dán thẳng vào biểu mẫu báo cáo công ty):**\n"
+                + "\n".join(f"- `{p}`" for p in saved)
+            )
         else:
             text += ("\n\n---\n_Không lưu được file (thiếu python-docx hoặc lỗi "
                      "ghi đĩa) — kế hoạch vẫn đầy đủ ở trên._")
+
+        text += (
+            "\n\n---\n"
+            "**Đánh giá cây điều tra:** `cây điều tra đúng hướng` · `cây điều tra thiếu nhánh` · `cây điều tra không hữu ích`\n"
+            "_Gõ ngay trong ô chat để gửi phản hồi cải thiện liên tục (lưu kho cục bộ, không ghi kho tri thức)._"
+        )
+
         return ChatActionOutcome(
             action=ACTION_NAME,
             title=TITLE,

@@ -637,6 +637,50 @@ def execute_build_case_tree(
             except Exception:
                 pass
 
+    # Save company-format files (md + docx) for pasting straight into the report
+    saved_files: List[str] = []
+    try:
+        from aios_habit.error_cases.investigation_tree import export_report
+        root_dir = Path(__file__).resolve().parents[2]
+        outdir = root_dir / "local_runs" / "dieu_tra"
+        outdir.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        slug_phen = re.sub(r"[^a-z0-9]+", "-", phenomenon.lower())[:30].strip("-") or "case-tree"
+        base_p = outdir / f"{stamp}-{case.case_id}-{slug_phen}"
+        meta = {
+            "report_id": f"KTD-{case.case_id}",
+            "author": getattr(case, "assigned_to", "") or "Kỹ sư điều tra",
+            "date": datetime.now().strftime("%Y-%m-%d"),
+            "model": getattr(case, "machine_type", "") or "",
+            "line": getattr(case, "line", "") or "",
+        }
+        for sfx in (".md", ".docx"):
+            try:
+                p_out = export_report(tree, base_p.with_suffix(sfx), meta)
+                saved_files.append(str(p_out))
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    # Log suggestion to local continuous improvement loop
+    try:
+        from aios_habit.error_cases.investigation_feedback import log_investigation_tree
+        log_investigation_tree(
+            tree_id=tree.tree_id,
+            phenomenon=phenomenon,
+            code=code,
+            case_id=case.case_id,
+            total_items=tree.total_items,
+            grounded_items=tree.grounded_items_count,
+            generic_items=tree.generic_items_count,
+            branch_basis=tree.branch_basis,
+            exported_files=saved_files,
+            conversation_id=conversation_id,
+        )
+    except Exception:
+        pass
+
     status_label = format_case_status(case.status)
     header_lines = [
         f"### 🌳 Cây điều tra 4M & Chuỗi Why-Why (Bước 3) — Vụ `{case.case_id}`",
@@ -645,12 +689,29 @@ def execute_build_case_tree(
         f"- **Mã vụ:** `{case.case_id}`",
         f"- **Hiện tượng:** {phenomenon}",
         f"- **Trạng thái vụ:** {status_label}",
+        f"- **Chỉ số căn cứ:** **{tree.grounded_items_count}** có căn cứ ca tương tự / kho · **{tree.generic_items_count}** gợi ý chung",
         f"- **Engine phân tích:** `aios_habit.error_cases.investigation_tree.build_tree`",
         "",
         "---",
         "",
         rendered_md,
     ]
+
+    if saved_files:
+        header_lines.extend([
+            "",
+            "---",
+            "**Tệp kế hoạch điều tra (dán thẳng vào biểu mẫu báo cáo công ty):**",
+            *[f"- `{f}`" for f in saved_files],
+        ])
+
+    header_lines.extend([
+        "",
+        "---",
+        "**Đánh giá cây điều tra:** `cây điều tra đúng hướng` · `cây điều tra thiếu nhánh` · `cây điều tra không hữu ích`",
+        "_Gõ ngay trong ô chat để gửi phản hồi cải thiện liên tục (lưu kho cục bộ, không ghi kho tri thức)._",
+    ])
+
     return "\n".join(header_lines)
 
 
