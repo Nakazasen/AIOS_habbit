@@ -57,6 +57,17 @@ CAUSE_KEYWORDS: Dict[str, List[str]] = {
         "quên", "lắp sai", "chưa cắm", "chưa lắp", "chưa vặn", "chưa gắn",
         "chưa nối", "lắp ngược", "lỏng ốc", "tuột cáp", "chưa siết",
         "未挿入", "誤組付け", "欠品", "忘れ", "組付不良",
+        # DESKTOP-STEP5-LAPRAP-CLASS-IMPROVE-HOME: Nghiệp vụ thao tác & hướng dẫn lắp ráp xưởng sản xuất
+        "yêu cầu ntt", "hướng dẫn lại ntt", "đào tạo lại ntt", "ntt chú ý", "ntt tuân thủ",
+        "dừng thao tác", "thao tác của ntt", "nguyên nhân do thao tác", "lỗi do thao tác",
+        "vô tình làm", "vô tình để", "vít rơi", "do ntt đặt", "do ntt khi", "do ntt làm", "'do ntt",
+        # Cơ cấu cơ khí & lắp ráp hoàn thiện, kết nối cáp/tiếp điểm
+        "chưa hoàn chỉnh", "chưa hoàn chỉn", "lắp không hoàn chỉnh", "lắp nhầm", "lấy nhầm",
+        "chưa bôi mỡ", "chưa bôi", "chưa xửi lý", "kết nối nghiêng", "lắp lệch", "không ăn khớp", "kẹp dây",
+        # Thuật ngữ tiếng Nhật nghiệp vụ lỗi lắp ráp và sai sót thao tác (mounting & worker error)
+        "未塗布", "未接続", "組み付けされていない", "取付不良", "取付不完全",
+        "締め忘れ", "締め付け不良", "斜め挿入", "作業ミス", "作業不良",
+        "ポカヨケ", "逆付け", "逆挿入", "半挿入",
     ],
     "thiet_ke": ["設計要因", "bản vẽ", "lỗi thiết kế", "sai thiết kế"],
     "linh_kien": [

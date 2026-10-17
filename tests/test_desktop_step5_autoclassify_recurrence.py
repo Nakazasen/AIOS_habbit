@@ -191,14 +191,26 @@ def test_real_data_test_split_accuracy_at_least_80_percent():
         acc_str = f"{cor/tot*100:.1f}%" if tot else "N/A"
         print(f"[EVAL] - {grp}: Total {tot}, Predicted {predictions_counter[grp]}, Correct {cor} ({acc_str})")
 
-    # 1. Verification: overall accuracy >= 80%
-    assert overall_accuracy >= 0.80, (
-        f"Classification accuracy on real test set ({overall_accuracy*100:.2f}%) did not meet >= 80% threshold"
+    # 1. Verification: overall accuracy >= 82.29% (no regression from baseline 82.29%)
+    assert overall_accuracy >= 0.8229, (
+        f"Classification accuracy on real test set ({overall_accuracy*100:.2f}%) fell below baseline 82.29%"
     )
 
-    # 2. Verification: non-degenerate predictions (minority groups are actively predicted)
+    # 2. Verification: lap_rap accuracy >= 60.0% (quality requirement of ticket DESKTOP-STEP5-LAPRAP-CLASS-IMPROVE-HOME)
+    lap_rap_acc = per_class_correct["lap_rap"] / per_class_total["lap_rap"]
+    assert lap_rap_acc >= 0.60, (
+        f"lap_rap accuracy ({lap_rap_acc*100:.1f}%, {per_class_correct['lap_rap']}/{per_class_total['lap_rap']}) did not reach >= 60.0% target"
+    )
+
+    # 3. Verification: no class degrades > 3 percentage points from baseline (khac >= 86.8%, linh_kien >= 72.8%)
+    khac_acc = per_class_correct["khac"] / per_class_total["khac"]
+    linh_kien_acc = per_class_correct["linh_kien"] / per_class_total["linh_kien"]
+    assert khac_acc >= 0.868, f"khac degraded below 86.8%: {khac_acc*100:.1f}%"
+    assert linh_kien_acc >= 0.728, f"linh_kien degraded below 72.8%: {linh_kien_acc*100:.1f}%"
+
+    # 4. Verification: non-degenerate predictions (minority groups are actively predicted)
     assert predictions_counter["linh_kien"] > 50, "linh_kien minority group collapsed"
-    assert predictions_counter["lap_rap"] > 0, "lap_rap minority group collapsed"
+    assert predictions_counter["lap_rap"] >= 15, "lap_rap minority group collapsed"
 
 
 def test_auto_classification_with_concrete_provenance():
