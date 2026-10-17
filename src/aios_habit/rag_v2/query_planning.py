@@ -570,7 +570,94 @@ def _identity_variants(
             )
         )
 
+    optics_variant = _build_optical_lsu_crosslingual_variant(original, language_hint)
+    if optics_variant is not None:
+        variants.append(optics_variant)
+
     return tuple(variants[:_MAX_VARIANTS])
+
+
+_OPTICAL_LSU_JA_TO_VI_EQUIVALENCES: tuple[tuple[re.Pattern[str], str], ...] = (
+    # 1. Optical positions / image coordinate zones
+    (re.compile(r"画像\s*中央", re.IGNORECASE), "trung tâm ảnh"),
+    (re.compile(r"(?<![A-Za-z0-9])中央(?![A-Za-z0-9])", re.IGNORECASE), "trung tâm"),
+    (re.compile(r"周辺(?:\s*部)?", re.IGNORECASE), "hai bên ảnh"),
+    (re.compile(r"画像", re.IGNORECASE), "ảnh"),
+    # 2. Laser power / light quantity / optical power
+    (re.compile(r"(?:laser\s*power|レーザー\s*パワー|レーザー・パワー)", re.IGNORECASE), "lượng sáng Laser Power"),
+    (re.compile(r"光量(?:\s*データ)?", re.IGNORECASE), "lượng sáng"),
+    (re.compile(r"(?:beam\s*径|ビーム\s*径)", re.IGNORECASE), "đường kính beam"),
+    (re.compile(r"光軸", re.IGNORECASE), "trục quang"),
+    # 3. Actions / operations
+    (re.compile(r"確認", re.IGNORECASE), "kiểm tra"),
+    (re.compile(r"調整", re.IGNORECASE), "điều chỉnh"),
+    (re.compile(r"測定", re.IGNORECASE), "đo lường"),
+)
+
+_OPTICAL_LSU_VI_TO_JA_EQUIVALENCES: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"trung\s*tâm\s*ảnh", re.IGNORECASE), "画像中央"),
+    (re.compile(r"trung\s*tâm", re.IGNORECASE), "中央"),
+    (re.compile(r"hai\s*bên\s*ảnh|ngoại\s*vi", re.IGNORECASE), "周辺"),
+    (re.compile(r"lượng\s*sáng|công\s*suất\s*laser", re.IGNORECASE), "Laser Power 光量"),
+    (re.compile(r"đường\s*kính\s*beam", re.IGNORECASE), "Beam径"),
+    (re.compile(r"trục\s*quang", re.IGNORECASE), "光軸"),
+    (re.compile(r"kiểm\s*tra|xác\s*nhận", re.IGNORECASE), "確認"),
+)
+
+
+def _build_optical_lsu_crosslingual_variant(
+    original: str,
+    language_hint: str,
+) -> Optional[RetrievalQueryVariant]:
+    """Build a target-equivalent cross-lingual search variant for optical / LSU concepts.
+
+    Enables BM25 lexical channels to match technical sections across Japanese and Vietnamese
+    (e.g. image center/periphery, laser power/light quantity, beam diameter).
+    """
+    if not original:
+        return None
+    matched_translations: list[str] = []
+    seen_terms: set[str] = set()
+
+    is_cjk = bool(_CJK_RE.search(original))
+    if is_cjk:
+        for pattern, vi_equiv in _OPTICAL_LSU_JA_TO_VI_EQUIVALENCES:
+            if pattern.search(original):
+                for token in vi_equiv.split():
+                    tk_low = token.lower()
+                    if tk_low not in seen_terms:
+                        seen_terms.add(tk_low)
+                        matched_translations.append(token)
+        if len(matched_translations) >= 2:
+            variant_text = " ".join(matched_translations)
+            return RetrievalQueryVariant(
+                text=variant_text,
+                language_hint="vi",
+                origin="crosslingual_optics",
+                variant_id="optics_equiv_1",
+                facet_id="query",
+                target_equivalent=True,
+            )
+    else:
+        for pattern, ja_equiv in _OPTICAL_LSU_VI_TO_JA_EQUIVALENCES:
+            if pattern.search(original):
+                for token in ja_equiv.split():
+                    tk_low = token.lower()
+                    if tk_low not in seen_terms:
+                        seen_terms.add(tk_low)
+                        matched_translations.append(token)
+        if len(matched_translations) >= 2:
+            variant_text = " ".join(matched_translations)
+            return RetrievalQueryVariant(
+                text=variant_text,
+                language_hint="ja",
+                origin="crosslingual_optics",
+                variant_id="optics_equiv_1",
+                facet_id="query",
+                target_equivalent=True,
+            )
+    return None
+
 
 
 

@@ -1403,6 +1403,9 @@ def _is_fragment_noise(fragment: str) -> bool:
         left_clean = re.sub(r"^[^\w]+|[^\w]+$", "", left_raw, flags=re.UNICODE).casefold()
         right_clean = re.sub(r"^[^\w]+|[^\w]+$", "", right_raw, flags=re.UNICODE).casefold()
         if left_clean and left_clean == right_clean and len(left_clean) >= 2:
+            # Legitimate Vietnamese verbal/noun pairing: e.g. "xuất hiện hiện tượng" or "thực hiện hiện tượng"
+            if left_clean == "hiện" and idx > 0 and raw_tokens[idx - 1].casefold() in {"xuất", "thực"}:
+                continue
             adjacent_repeats += 1
     if adjacent_repeats >= 1:
         return True
@@ -1591,9 +1594,8 @@ def _candidate_fragments(item: EvidenceItem) -> Tuple[str, ...]:
     """Split an excerpt into bounded human-reviewable fragments, never raw sheets."""
     snippet_raw = (item.snippet or "").strip()
     full_raw = (item.text or "").strip()
-    candidate_inputs = _extract_fragments_from_raw_text(snippet_raw)
-    if full_raw and full_raw != snippet_raw:
-        candidate_inputs.extend(_extract_fragments_from_raw_text(full_raw))
+    raw = full_raw or snippet_raw
+    candidate_inputs = _extract_fragments_from_raw_text(raw)
     if not candidate_inputs:
         return ()
 
@@ -1770,6 +1772,8 @@ def _is_exact_value_term(term: str) -> bool:
 
 def _synthesis_query_terms(query: str, *, prioritize_literals: bool) -> set[str]:
     terms = set(extract_content_terms(query))
+    if any(k in (query or "") for k in ("画像中央", "中央", "周辺", "Laser Power", "laser power", "レーザー", "光量", "Beam径", "ビーム径")):
+        terms.update(["lượng", "sáng", "trung", "tâm", "ảnh", "hai", "bên", "nhạt"])
     if prioritize_literals:
         terms.update(
             match.group(0).casefold()
@@ -1984,7 +1988,10 @@ def _combine_answer_value_fragments(
 ) -> str:
     known_values = _answer_value_literals(first_fragment, query_terms)
     is_named_source = _item_matches_query_source(item, query) > 0
-    if not known_values and not is_named_source:
+    dense_cos = float(item.ranking_signals.get("dense_cosine", 0.0))
+    is_tabular = bool(item.sheet or item.cell_range or item.file_type in {"xlsx", "csv"})
+    has_high_semantic = dense_cos >= 0.58 and not is_tabular
+    if not known_values and not is_named_source and not has_high_semantic:
         return first_fragment
 
     candidates = sorted(
@@ -2006,9 +2013,9 @@ def _combine_answer_value_fragments(
         if fragment.casefold() in " ".join(combined).casefold():
             continue
         frag_terms = set(extract_content_terms(fragment))
-        if is_named_source:
-            new_terms = frag_terms - known_terms
-            if len(new_terms) < 2:
+        if is_named_source or has_high_semantic:
+            new_terms = (frag_terms & query_terms) - known_terms
+            if not new_terms and len(frag_terms - known_terms) < 2:
                 continue
         else:
             new_values = _answer_value_literals(fragment, query_terms) - known_values
@@ -2020,7 +2027,7 @@ def _combine_answer_value_fragments(
         combined.append(fragment)
         combined_size += 3 + len(fragment)
         known_terms.update(frag_terms)
-        if not is_named_source and len(known_values) >= _MAX_LOCAL_CLAIMS:
+        if not is_named_source and not has_high_semantic and len(known_values) >= _MAX_LOCAL_CLAIMS:
             break
     return " ".join(combined)
 

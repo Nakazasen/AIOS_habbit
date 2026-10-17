@@ -30,6 +30,7 @@ from .query_planning import (
 from .script_family import (
     MISMATCH_CHANNEL_WEIGHTS,
     plan_has_cjk_variants,
+    script_family,
     should_retry_thin_results,
     uses_script_mismatch_ranking,
 )
@@ -1115,13 +1116,26 @@ def fuse_ranked_channels(
             result.document_id,
         )
         signals = dict(result.ranking_signals)
+        dense_cos = float(signals.get("dense_cosine", 0.0))
+        sparse_rank = float(record["sparse_rank"])
+        is_crosslingual = (
+            script_family(query_text) != script_family(result.text)
+            and script_family(query_text) in {"cjk", "latin"}
+            and script_family(result.text) in {"cjk", "latin"}
+        )
+        crosslingual_dense_bonus = 0.0
+        if is_crosslingual and dense_cos >= 0.58:
+            if sparse_rank == 0.0 or dense_cos >= 0.59:
+                crosslingual_dense_bonus = 0.008
+
         signals.update({
             "lexical_channel_rank": float(record["lexical_rank"]),
             "dense_channel_rank": float(record["dense_rank"]),
             "sparse_channel_rank": float(record["sparse_rank"]),
+            "crosslingual_dense_bonus": float(crosslingual_dense_bonus),
             "fused_rrf": float(record["rrf"]),
             "entity_match_boost": float(entity_boost),
-            "boosted_rrf": float(record["rrf"] + entity_boost),
+            "boosted_rrf": float(record["rrf"] + entity_boost + crosslingual_dense_bonus),
         })
         fused.append(replace(result, ranking_signals=signals))
     fused.sort(key=lambda result: (
