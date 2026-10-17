@@ -1895,3 +1895,97 @@ def test_pptx_drawingml_cleanup_and_short_code_coalescing_preserves_db_and_proje
     assert "通函" in result.answer
     assert "新規通函" in result.answer
     assert "[1]" in result.citation_ids
+
+
+def test_measurement_table_consecutive_rows_range_computation():
+    query = "NG UNIT与OK UNIT的Bracket测量值大致在哪个范围？"
+    table_chunk = (
+        "Sheet: VN\n"
+        "Section: LDブラケット測定/ Đo độ lệch Bracket\n"
+        "Columns: Column A | ❶ | ❷ | ❸ | ❹ | ❺ | ❻ | ❼ | ❽ | ❾ | ❿ | Column L | Column M | Column N | Column O | Column P | Column Q\n"
+        "Row 83: _NG UNIT | 43.965 | 43.971 | 43.967 | 43.956 | 43.987 | 43.999 | 43.993 | 43.982 | 43.981 | 43.966 | 43.971 | 43.976 | 43.986 | 43.976 | 43.988 | 44\n"
+        "Row 84: _OK UNIT | 43.967 | 43.977 | 43.971 | 43.958 | 43.958 | 43.968 | 43.973 | 43.958 | 44.002 | 44.004 | 44.007 | 43.999 | 44.02 | 44.004 | 44.021 | 44.03"
+    )
+    results = [
+        SearchResult(
+            chunk_id="chunk-bracket-measurements",
+            score=25.0,
+            text=table_chunk,
+            document_id="doc-bracket-measure",
+            source_path="/docs/OKNGUNIT_bracket.xlsx",
+            source_name="OKNGUNIT_bracket.xlsx",
+            file_type="xlsx",
+            metadata={"sheet": "VN"},
+            privacy_labels=("internal",),
+            matched_terms=("bracket", "ng", "ok", "unit", "测量"),
+            term_coverage=0.9,
+        ),
+    ]
+    response = SearchResponse(
+        results=tuple(results),
+        summary=SearchSummary(
+            query=query,
+            indexed_chunk_count=1,
+            eligible_chunk_count=1,
+            candidate_count=1,
+            returned_count=1,
+        ),
+    )
+    pack = build_evidence_pack(query, response)
+    object.__setattr__(pack, "answer_mode", EvidenceAnswerMode.ANSWER)
+    object.__setattr__(pack, "insufficiency_reasons", ())
+    result = synthesize_evidence(pack, answer_shape="diagnosis", max_claims=5)
+
+    assert result.abstained is False
+    assert result.grounded is True
+    # Verifies all 3 expected range formats required by ticket Q0684
+    assert "43.95～44.03" in result.answer or "43.95~44.03" in result.answer
+    assert "43.956～43.999" in result.answer or "43.956~43.999" in result.answer
+    assert "44.030" in result.answer
+    assert "[1]" in result.citation_ids
+
+
+def test_non_measurement_table_behavior_unaffected():
+    query = "Mã lỗi E-01 và E-02 có ý nghĩa và hành động khắc phục như thế nào?"
+    non_measurement_chunk = (
+        "Columns: Mã lỗi | Tên lỗi | Mức độ | Hành động\n"
+        "Row 1: E-01 | Sensor disconnected | High | Kiểm tra cáp nối cảm biến\n"
+        "Row 2: E-02 | Motor overload | Critical | Tắt nguồn và kiểm tra kẹt cơ khí"
+    )
+    results = [
+        SearchResult(
+            chunk_id="chunk-err-table",
+            score=20.0,
+            text=non_measurement_chunk,
+            document_id="doc-error-spec",
+            source_path="/docs/error_spec.csv",
+            source_name="error_spec.csv",
+            file_type="csv",
+            metadata={},
+            privacy_labels=("internal",),
+            matched_terms=("e-01", "e-02", "lỗi", "hành", "động"),
+            term_coverage=0.8,
+        ),
+    ]
+    response = SearchResponse(
+        results=tuple(results),
+        summary=SearchSummary(
+            query=query,
+            indexed_chunk_count=1,
+            eligible_chunk_count=1,
+            candidate_count=1,
+            returned_count=1,
+        ),
+    )
+    pack = build_evidence_pack(query, response)
+    object.__setattr__(pack, "answer_mode", EvidenceAnswerMode.ANSWER)
+    object.__setattr__(pack, "insufficiency_reasons", ())
+    result = synthesize_evidence(pack, answer_shape="grounded_summary", max_claims=5)
+
+    assert result.abstained is False
+    assert result.grounded is True
+    # Non-measurement tables should NOT introduce "khoảng đo" or fake ranges
+    assert "khoảng đo" not in result.answer
+    assert "Sensor disconnected" in result.answer or "E-01" in result.answer
+    assert "[1]" in result.citation_ids
+

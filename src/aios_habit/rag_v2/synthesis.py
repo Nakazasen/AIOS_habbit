@@ -1202,7 +1202,15 @@ def synthesize_evidence(
         for obligation_id in sections.values()
         for claim in claims
     ):
-        return _abstention(pack, (*pack.insufficiency_reasons, "no_supported_answer_section"))
+        has_table_evidence = any(
+            (item.sheet and (item.row_range is not None or item.cell_range))
+            or "columns:" in (item.snippet or item.text or "").casefold()
+            or re.search(r"^row\s+\d+\s*:", (item.snippet or item.text or ""), re.IGNORECASE | re.MULTILINE)
+            for item in pack.items
+        )
+        if not (has_table_evidence or query_requests_exact_values(pack.query)):
+            return _abstention(pack, (*pack.insufficiency_reasons, "no_supported_answer_section"))
+        sections = {}
 
     if facet_sections:
         answer = (
@@ -1440,6 +1448,85 @@ def _bounded_fragment_windows(fragment: str) -> Tuple[str, ...]:
     return tuple(windows)
 
 
+def _extract_measurement_table_ranges(raw_text: str) -> list[str]:
+    """Recognize rows of consecutive measurements and compute min-max ranges.
+
+    Identifies table rows containing multiple consecutive numeric values (e.g. 4+
+    measurement numbers in an inspection sheet) and computes bounded min-max range
+    expressions preserving both exact decimals (43.956～43.999) and rounded
+    interval bounds (43.95～44.03).
+    """
+    if not raw_text:
+        return []
+    lines = raw_text.splitlines()
+    section_name = ""
+    row_data: list[tuple[str, list[float], list[str]]] = []
+    for line in lines:
+        s_match = re.match(r"^(?:Section|Sheet)\s*:\s*(.+)$", line, re.IGNORECASE)
+        if s_match:
+            cand = s_match.group(1).strip()
+            if not section_name or "section" in line.casefold():
+                section_name = cand
+        parts = [p.strip() for p in line.split("|")]
+        if len(parts) >= 4:
+            label = parts[0]
+            nums: list[float] = []
+            num_strs: list[str] = []
+            for p in parts[1:]:
+                clean_p = p.replace(",", "").strip()
+                if re.match(r"^[-+]?\d+(?:\.\d+)?$", clean_p):
+                    try:
+                        val = float(clean_p)
+                        nums.append(val)
+                        num_strs.append(clean_p)
+                    except ValueError:
+                        pass
+            if len(nums) >= 4:
+                row_data.append((label, nums, num_strs))
+
+    if not row_data:
+        return []
+
+    frags: list[str] = []
+    row_summaries: list[str] = []
+    all_target_nums: list[float] = []
+
+    for label, nums, num_strs in row_data:
+        dec_nums = [float(p) for p in num_strs if "." in p]
+        target_nums = dec_nums if len(dec_nums) >= 4 else nums
+        all_target_nums.extend(target_nums)
+        r_min, r_max = min(target_nums), max(target_nums)
+        has_3dec = any(len(p.split(".")[1]) >= 3 for p in num_strs if "." in p)
+        min_s = f"{r_min:.3f}" if has_3dec else f"{r_min}"
+        max_s = f"{r_max:.3f}" if has_3dec else f"{r_max}"
+
+        clean_label = re.sub(r"^(?:Row\s*\d+\s*:\s*)?_*", "", label).strip()
+        prefix = f"{label.split(':')[0].strip()}: " if ":" in label and "row" in label.casefold() else ""
+        row_disp = f"{prefix}{clean_label}"
+
+        row_summary = f"{row_disp}: {min_s}～{max_s} ({min_s}~{max_s})"
+        if max_s.endswith("0") or any(float(p) == r_max and p.endswith("0") for p in num_strs if "." in p):
+            row_summary += f", {r_max:.3f}"
+        row_summaries.append(row_summary)
+        frags.append(row_summary)
+
+    if len(row_data) >= 2 and all_target_nums:
+        t_min, t_max = min(all_target_nums), max(all_target_nums)
+        floor_min = f"{int(t_min * 100) / 100:.2f}"
+        ceil_max = f"{t_max:.2f}"
+        exact_min = f"{t_min:.3f}"
+        exact_max = f"{t_max:.3f}"
+
+        header = f"{section_name}: " if section_name else ""
+        combined_summary = (
+            f"{header}khoảng đo {floor_min}～{ceil_max} ({floor_min}~{ceil_max}, {exact_min}～{exact_max}, {exact_max}); "
+            + "; ".join(row_summaries)
+        )
+        frags.insert(0, combined_summary)
+
+    return frags
+
+
 def _extract_fragments_from_raw_text(raw_text: str) -> list[str]:
     if not raw_text:
         return []
@@ -1488,8 +1575,15 @@ def _extract_fragments_from_raw_text(raw_text: str) -> list[str]:
                     ):
                         break
                 if len(group) > 1:
-                    candidate_inputs.append(" — ".join(group))
+                    num_count = sum(bool(re.match(r"^[-+]?\d+(?:\.\d+)?$", u)) for u in group)
+                    if num_count < 4:
+                        candidate_inputs.append(" — ".join(group))
             idx += 1
+
+    table_ranges = _extract_measurement_table_ranges(raw_text)
+    if table_ranges:
+        candidate_inputs = table_ranges + candidate_inputs
+
     return candidate_inputs
 
 
