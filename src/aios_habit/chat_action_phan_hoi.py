@@ -211,26 +211,32 @@ CLOSE_TITLE = "Đóng phiếu lỗi"
 _CLOSE_LABELS: Dict[str, str] = {
     "ma phieu": "case_ref",
     "phieu": "case_ref",
+    "ma vu": "case_ref",
+    "vu": "case_ref",
+    "ca": "case_ref",
+    "ma ca": "case_ref",
     "nguyen nhan that": "actual_cause",
     "doi sach that": "actual_countermeasure",
+    "nguyen nhan": "actual_cause",
+    "doi sach": "actual_countermeasure",
     "hien tuong": "phenomenon",
     "cong doan": "process_stage",
 }
 
-_CLOSE_TEMPLATE = """### Đóng phiếu lỗi
+_CLOSE_TEMPLATE = """### Đóng phiếu lỗi / vụ điều tra
 
-Để đóng phiếu, gửi lại theo mẫu — dòng đầu là `đóng phiếu`:
+Để đóng phiếu hoặc vụ điều tra, gửi lại theo mẫu — dòng đầu là `đóng phiếu` hoặc `đóng vụ`:
 
 ```
 đóng phiếu
-mã phiếu: 2026/2422
+mã phiếu: ... (hoặc mã vụ: CASE-XXXX)
 nguyên nhân thật: ...
 đối sách thật: ...
 ```
 
 - **Bắt buộc:** nguyên nhân thật + đối sách thật (thiếu thì không đóng được).
 - **Phiếu mới (từ 2026):** bắt buộc thêm `hiện tượng:` và `công đoạn:`.
-- Nguyên nhân/đối sách thật được ghi ngược vào kho tri thức khi đóng.
+- Kết quả thật được ghi ngược vào hồ sơ vụ (kho `local_cases`, không ghi kho tri thức).
 """
 
 
@@ -245,7 +251,11 @@ def _parse_close_form(question: str) -> Dict[str, str]:
         if key and value.strip() and key not in parsed:
             parsed[key] = value.strip()
     ref = parsed.get("case_ref", "")
-    ref = re.sub(r"(?i)^phieu\s+", "", ref).strip()
+    ref = re.sub(r"(?i)^(?:phieu|vu|ca)\s+", "", ref).strip()
+    if not ref:
+        m_case = re.search(r"\b(CASE-[A-Za-z0-9_-]+)\b", str(question or ""), re.IGNORECASE)
+        if m_case:
+            ref = m_case.group(1).upper()
     if ref:
         parsed["case_ref"] = ref
     return parsed
@@ -254,18 +264,85 @@ def _parse_close_form(question: str) -> Dict[str, str]:
 class _CloseAction(ChatAction):
     def matches(self, request: ChatActionRequest) -> bool:
         q = _squash(request.question or "")
-        return q.startswith("dong phieu") or q.startswith("chot phieu")
+        return (
+            q.startswith("dong phieu")
+            or q.startswith("chot phieu")
+            or q.startswith("dong vu")
+            or q.startswith("chot vu")
+            or q.startswith("dong ca")
+            or q.startswith("chot ca")
+        )
 
 
 def _close_handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
-    db_path = resolve_db_path(request)
-    if db_path is None:
-        return None
     parsed = _parse_close_form(request.question or "")
     if not parsed.get("case_ref") or not (
         parsed.get("actual_cause") or parsed.get("actual_countermeasure")
     ):
         return _message(CLOSE_ACTION_NAME, CLOSE_TITLE, _CLOSE_TEMPLATE)
+
+    ref = parsed.get("case_ref", "")
+    if ref.startswith("CASE-"):
+        from aios_habit.case_store import (
+            InvestigationClosureBlockedError,
+            close_investigation_case,
+        )
+        try:
+            case = close_investigation_case(
+                ref,
+                actual_cause=parsed.get("actual_cause", ""),
+                actual_countermeasure=parsed.get("actual_countermeasure", ""),
+                closed_by="kỹ sư điều tra",
+            )
+            return _message(
+                CLOSE_ACTION_NAME,
+                CLOSE_TITLE,
+                f"### Đã đóng vụ `{case.case_id}`\n\n"
+                f"- Nguyên nhân thật: **{case.actual_cause}**\n"
+                f"- Đối sách thật: **{case.actual_countermeasure}**\n"
+                "- Kết quả thật đã ghi ngược vào hồ sơ vụ (kho `local_cases/cases.jsonl`, không ghi kho tri thức).\n"
+                "- Vụ được đánh dấu đã giải quyết (`resolved`).",
+            )
+        except InvestigationClosureBlockedError as err:
+            return _message(
+                CLOSE_ACTION_NAME,
+                CLOSE_TITLE,
+                f"### Chưa đóng được phiếu\n\n{err}",
+            )
+
+    db_path = resolve_db_path(request)
+    if db_path is None:
+        # Fallback check if case exists in local_cases
+        from aios_habit.case_store import (
+            InvestigationClosureBlockedError,
+            close_investigation_case,
+            load_cases,
+        )
+        cases = load_cases()
+        if any(c.case_id == ref for c in cases):
+            try:
+                case = close_investigation_case(
+                    ref,
+                    actual_cause=parsed.get("actual_cause", ""),
+                    actual_countermeasure=parsed.get("actual_countermeasure", ""),
+                    closed_by="kỹ sư điều tra",
+                )
+                return _message(
+                    CLOSE_ACTION_NAME,
+                    CLOSE_TITLE,
+                    f"### Đã đóng vụ `{case.case_id}`\n\n"
+                    f"- Nguyên nhân thật: **{case.actual_cause}**\n"
+                    f"- Đối sách thật: **{case.actual_countermeasure}**\n"
+                    "- Kết quả thật đã ghi ngược vào hồ sơ vụ (kho `local_cases/cases.jsonl`, không ghi kho tri thức).\n"
+                    "- Vụ được đánh dấu đã giải quyết (`resolved`).",
+                )
+            except InvestigationClosureBlockedError as err:
+                return _message(
+                    CLOSE_ACTION_NAME,
+                    CLOSE_TITLE,
+                    f"### Chưa đóng được phiếu\n\n{err}",
+                )
+        return None
     try:
         conn = _store.connect(db_path)
     except Exception:

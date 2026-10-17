@@ -41,3 +41,8 @@ class Case:
     source_origin: str = "unknown"  # unknown, manual, notebooklm_import, sample
     verification_status: str = "unknown"  # unknown, draft, unverified, reviewed, verified, confirmed
     route_summary: Dict[str, Any] = field(default_factory=dict)
+    actual_cause: str = ""
+    actual_countermeasure: str = ""
+    closed_at: str = ""
+
+

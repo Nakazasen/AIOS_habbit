@@ -2438,6 +2438,7 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
     from aios_habit.chat_intent_router import (
         CANH_BAO_NGUONG,
         CONG_CU_NANG_CAO,
+        DONG_VU,
         DU_LIEU_DAN,
         HO_SO_DIEU_TRA,
         LAP_CAY_4M_VU,
@@ -2459,6 +2460,21 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
         preview_data = st.session_state.pop("wsc_pending_case_preview")
         conv_id = getattr(active_conversation, "id", "") or ""
         return execute_confirm_case(preview_data, conversation_id=conv_id)
+
+    if y_dinh == DONG_VU:
+        from aios_habit.chat_action_create_case import execute_close_case
+
+        conv_id = getattr(active_conversation, "id", "") or ""
+        explicit_cid = slots.get("case_id") if isinstance(slots, dict) else ""
+        cause_val = slots.get("actual_cause", "") if isinstance(slots, dict) else ""
+        remedy_val = slots.get("actual_countermeasure", "") if isinstance(slots, dict) else ""
+        return execute_close_case(
+            case_id=explicit_cid,
+            actual_cause=cause_val,
+            actual_countermeasure=remedy_val,
+            conversation_id=conv_id,
+            raw_text=q_text,
+        )
 
     if y_dinh == XEM_TIEN_DO_VU:
         from aios_habit.chat_action_create_case import execute_view_case_progress

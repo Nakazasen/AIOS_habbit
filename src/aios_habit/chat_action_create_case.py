@@ -527,13 +527,27 @@ def execute_view_case_progress(
         "",
         "#### 3. Các trường còn trống cho các bước tiếp theo",
         f"- **Bước 2 (Giả thuyết nguyên nhân):** {hypo_text}",
-        f"- **Bước 3 (Cây điều tra 4M & Why-Why):** Chưa lập (bạn có thể gõ `Lập cây 4M cho vụ này`)",
         f"- **Bước 4 (Hành động & Quyết định):** {actions_text} / {decisions_text}",
         f"- **Bước 5 (Kết quả điều tra & Bài học):** {outcome_text} / {lessons_text}",
+    ]
+
+    cause_val = getattr(case, "actual_cause", "")
+    remedy_val = getattr(case, "actual_countermeasure", "")
+    closed_val = getattr(case, "closed_at", "")
+    if cause_val or remedy_val or case.status == "resolved":
+        lines.extend([
+            "",
+            "#### 🔒 Kết quả đóng vụ (Cổng hoàn thành Bước 2)",
+            f"- **Nguyên nhân thật:** {cause_val if cause_val else 'Chưa có'}",
+            f"- **Đối sách thật:** {remedy_val if remedy_val else 'Chưa có'}",
+            f"- **Thời điểm đóng:** {closed_val if closed_val else 'Chưa đóng'}",
+        ])
+
+    lines.extend([
         "",
         "---",
-        "💡 *Gợi ý lệnh tiếp nối:* Gõ **`Lập cây 4M cho vụ này`** để tự động tạo cây phân tích 4M và chuỗi Why-Why Bước 3.",
-    ]
+        "💡 *Gợi ý lệnh tiếp nối:* Gõ **`Lập cây 4M cho vụ này`** để tạo cây phân tích 4M, hoặc gõ **`Đóng vụ`** kèm nguyên nhân và đối sách thật để hoàn tất hồ sơ.",
+    ])
     return "\n".join(lines)
 
 
@@ -713,6 +727,122 @@ def execute_build_case_tree(
     ])
 
     return "\n".join(header_lines)
+
+
+def execute_close_case(
+    case_id: Optional[str] = None,
+    actual_cause: str = "",
+    actual_countermeasure: str = "",
+    conversation_id: str = "",
+    raw_text: str = "",
+    closed_by: str = "user",
+) -> str:
+    """Handle intent DONG_VU: Enforce Close Gate (Step 2).
+
+    Blocks closing if actual_cause or actual_countermeasure is missing.
+    When valid, writes actual cause and remedy back into local_cases/cases.jsonl.
+    Zero modifications to the knowledge store (library.sqlite / vector db).
+    """
+    from aios_habit.case_store import (
+        close_investigation_case,
+        InvestigationClosureBlockedError,
+        load_cases,
+    )
+    from aios_habit.chat_intent_router import extract_case_id_from_text
+
+    target_case_id = str(case_id or "").strip()
+    if not target_case_id and raw_text:
+        target_case_id = extract_case_id_from_text(raw_text)
+    if not target_case_id:
+        target_case_id = get_active_case_id()
+    if not target_case_id and conversation_id:
+        try:
+            from aios_habit.workspace_chat_store import load_messages
+
+            msgs = load_messages(conversation_id)
+            for m in reversed(msgs):
+                cid = extract_case_id_from_text(m.content)
+                if cid:
+                    target_case_id = cid
+                    break
+        except Exception:
+            pass
+    if not target_case_id:
+        cases = load_cases()
+        if cases:
+            target_case_id = cases[-1].case_id
+
+    if not target_case_id:
+        return (
+            "### ⚠️ Chưa xác định được vụ điều tra cần đóng\n\n"
+            "Vui lòng chỉ định rõ mã vụ điều tra cần đóng (Ví dụ: `CASE-XXXXXXXX`).\n\n"
+            "**Cú pháp chuẩn:**\n"
+            "- `Đóng vụ CASE-XXXXXXXX: nguyên nhân: <nguyên nhân thật>, đối sách: <đối sách thật>`\n"
+            "- Hoặc chọn xem tiến độ vụ trước: `Xem tiến độ vụ CASE-XXXXXXXX`"
+        )
+
+    cause_val = str(actual_cause or "").strip()
+    remedy_val = str(actual_countermeasure or "").strip()
+
+    if (not cause_val or not remedy_val) and raw_text:
+        if not cause_val:
+            m_c = re.search(
+                r"(?:nguyên\s*nhân(?:\s*thật)?|nguyen\s*nhan(?:\s*that)?|lý\s*do(?:\s*thật)?|ly\s*do(?:\s*that)?|root\s*cause|cause)\s*[:=-]\s*(.*?)(?=(?:,\s*|\s*;\s*|\n)(?:đối\s*sách|doi\s*sach|biện\s*pháp|bien\s*phap|remedy|countermeasure)|$)",
+                raw_text,
+                re.IGNORECASE,
+            )
+            if m_c:
+                cause_val = m_c.group(1).strip()
+        if not remedy_val:
+            m_r = re.search(
+                r"(?:đối\s*sách(?:\s*thật)?|doi\s*sach(?:\s*that)?|biện\s*pháp(?:\s*thật)?|bien\s*phap(?:\s*that)?|phòng\s*ngừa|phong\s*ngua|hướng\s*xử\s*lý|countermeasure|remedy)\s*[:=-]\s*(.*?)(?=(?:,\s*|\s*;\s*|\n)(?:nguyên\s*nhân|nguyen\s*nhan|root\s*cause)|$)",
+                raw_text,
+                re.IGNORECASE,
+            )
+            if m_r:
+                remedy_val = m_r.group(1).strip()
+
+    try:
+        closed_case = close_investigation_case(
+            case_id=target_case_id,
+            actual_cause=cause_val,
+            actual_countermeasure=remedy_val,
+            closed_by=closed_by,
+        )
+        set_active_case_id(target_case_id)
+        return (
+            f"### ✅ ĐÃ ĐÓNG VỤ ĐIỀU TRA THÀNH CÔNG (Cổng Bước 2 Đạt)\n\n"
+            f"📌 **Hồ sơ:** Vụ **`{closed_case.case_id}`**\n"
+            f"- **Tiêu đề:** {closed_case.title}\n"
+            f"- **Trạng thái:** **Đã giải quyết (`resolved`)**\n"
+            f"- **Nguyên nhân thật:** **{closed_case.actual_cause}**\n"
+            f"- **Đối sách thật:** **{closed_case.actual_countermeasure}**\n"
+            f"- **Thời điểm đóng:** `{closed_case.closed_at}`\n"
+            f"- **Kho lưu trữ:** Đã cập nhật hồ sơ vào `local_cases/cases.jsonl` và ghi nhật ký đóng tại `local_cases/case_closures.jsonl`.\n"
+            f"- **Kho tri thức RAG:** *Bảo toàn độc lập tuyệt đối (không ghi đè cơ sở dữ liệu tri thức tĩnh `library.sqlite`).*\n"
+        )
+    except InvestigationClosureBlockedError as err:
+        missing_fmt = " và ".join(f"**{f}**" for f in err.missing_fields)
+        return (
+            f"### 🚫 CỔNG CHẶN ĐÓNG VỤ (Điều kiện hoàn thành Bước 2)\n\n"
+            f"**Không thể đóng vụ điều tra `{target_case_id}` vì thiếu thông tin bắt buộc!**\n\n"
+            f"- **Trường còn thiếu:** {missing_fmt}\n"
+            f"- **Trạng thái hiện tại:** Vẫn giữ nguyên trạng thái mở/điều tra, không cho phép đóng hồ sơ.\n\n"
+            f"> ⚠️ **Quy tắc tất định Bước 2:** Để đảm bảo chất lượng dữ liệu cải tiến liên tục, "
+            f"mọi vụ điều tra sự cố bắt buộc phải xác định rõ **nguyên nhân thật** và **đối sách thật** "
+            f"trước khi đóng hồ sơ.\n\n"
+            f"**Vui lòng bổ sung đầy đủ theo cú pháp:**\n"
+            f"```text\n"
+            f"Đóng vụ {target_case_id}: nguyên nhân: <nguyên nhân thật>, đối sách: <đối sách thật>\n"
+            f"```"
+        )
+    except KeyError:
+        return (
+            f"### ⚠️ Không tìm thấy hồ sơ vụ điều tra `{target_case_id}`\n\n"
+            f"Vụ điều tra `{target_case_id}` không tồn tại trong kho lưu trữ `local_cases/cases.jsonl`."
+        )
+    except Exception as exc:
+        return f"### ❌ Lỗi khi đóng vụ điều tra: {exc}"
 
 
 def render_case_preview_widget(

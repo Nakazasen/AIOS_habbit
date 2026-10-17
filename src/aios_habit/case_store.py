@@ -2,9 +2,10 @@ import json
 import os
 from pathlib import Path
 from dataclasses import asdict
-from typing import List
+from typing import List, Optional, Dict, Any
 
 from .case_models import Case, EvidenceItem
+
 
 LOCAL_CASES_DIR = Path.cwd() / "local_cases"
 CASES_FILE = LOCAL_CASES_DIR / "cases.jsonl"
@@ -234,3 +235,131 @@ def create_quick_case_with_evidence(
         "case": case,
         "evidences_count": evidences_added
     }
+
+
+class InvestigationClosureBlockedError(ValueError):
+    """Raised when closing an investigation case is blocked by the close gate."""
+
+    def __init__(self, message: str, missing_fields: List[str]):
+        super().__init__(message)
+        self.message = message
+        self.missing_fields = missing_fields
+
+
+_BLANK_PLACEHOLDERS = {
+    "",
+    "-",
+    "--",
+    "---",
+    "none",
+    "null",
+    "n/a",
+    "na",
+    "chua co",
+    "chưa có",
+    "chua ro",
+    "chưa rõ",
+    "...",
+    "todo",
+    "// todo",
+    "pass",
+}
+
+
+def is_blank_value(value: Optional[str]) -> bool:
+    """Check if value is blank, empty, whitespace, or a placeholder."""
+    if value is None:
+        return True
+    s = str(value).strip().lower()
+    return not s or s in _BLANK_PLACEHOLDERS
+
+
+def close_investigation_case(
+    case_id: str,
+    actual_cause: str,
+    actual_countermeasure: str,
+    closed_by: str = "user",
+) -> Case:
+    """Step 2 Close Gate: Close an investigation case.
+
+    Enforces mandatory actual root cause and actual countermeasure.
+    Blocks closing if either field is missing, specifying missing fields.
+    When valid, writes results back to local_cases/cases.jsonl without
+    touching the knowledge store (library.sqlite / vector store).
+    """
+    cid = str(case_id or "").strip()
+    if not cid:
+        raise ValueError("Mã vụ điều tra (case_id) không được để trống.")
+
+    cases = load_cases()
+    target_idx = -1
+    for i, c in enumerate(cases):
+        if c.case_id == cid:
+            target_idx = i
+            break
+
+    if target_idx < 0:
+        raise KeyError(f"Không tìm thấy hồ sơ vụ điều tra '{cid}' trong hệ thống local_cases.")
+
+    case = cases[target_idx]
+
+    # Validate mandatory gate fields
+    missing_fields: List[str] = []
+    if is_blank_value(actual_cause):
+        missing_fields.append("nguyên nhân thật (actual_cause)")
+    if is_blank_value(actual_countermeasure):
+        missing_fields.append("đối sách thật (actual_countermeasure)")
+
+    if missing_fields:
+        missing_str = " và ".join(f"'{f}'" for f in missing_fields)
+        msg = (
+            f"🚫 **CỔNG CHẶN ĐÓNG VỤ (Bước 2):** Không thể đóng vụ điều tra `{cid}` "
+            f"vì chưa nhập {missing_str}. Vui lòng nhập đầy đủ nguyên nhân thật và "
+            f"đối sách thật trước khi đóng."
+        )
+        raise InvestigationClosureBlockedError(msg, missing_fields=missing_fields)
+
+    # Valid: apply closure updates
+    from datetime import datetime
+
+    now_iso = datetime.now().isoformat()
+    clean_cause = str(actual_cause).strip()
+    clean_remedy = str(actual_countermeasure).strip()
+
+    case.status = "resolved"
+    case.actual_cause = clean_cause
+    case.actual_countermeasure = clean_remedy
+    case.outcome = f"Đã giải quyết. Nguyên nhân thật: {clean_cause} | Đối sách thật: {clean_remedy}"
+    case.lessons_learned = f"Nguyên nhân cốt lõi: {clean_cause} -> Đối sách phòng ngừa: {clean_remedy}"
+    case.closed_at = now_iso
+    case.updated_at = now_iso
+
+    case.timeline_events.append({
+        "timestamp": now_iso,
+        "type": "case_closed",
+        "description": f"Đóng vụ điều tra thành công. Nguyên nhân thật: {clean_cause} | Đối sách thật: {clean_remedy}",
+        "author": closed_by or "user",
+    })
+
+    # Persist case to local_cases/cases.jsonl
+    save_case(case)
+
+    # Persist audit record to local_cases/case_closures.jsonl (strictly local_cases)
+    closure_audit_file = LOCAL_CASES_DIR / "case_closures.jsonl"
+    try:
+        audit_record = {
+            "case_id": case.case_id,
+            "title": case.title,
+            "actual_cause": clean_cause,
+            "actual_countermeasure": clean_remedy,
+            "closed_at": now_iso,
+            "closed_by": closed_by or "user",
+            "status": case.status,
+        }
+        with open(closure_audit_file, "a", encoding="utf-8") as f:
+            f.write(json.dumps(audit_record, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+
+    return case
+

@@ -21,6 +21,7 @@ XEM_PHAN_HOI = "xem_phan_hoi"            # feedback review summary request (DESK
 VE_BIEU_DO = "ve_bieu_do"                # chart request (runs the JIG chart branch)
 XEM_TIEN_DO_VU = "xem_tien_do_vu"        # view progress of active case
 LAP_CAY_4M_VU = "lap_cay_4m_vu"          # build 4M + Why-Why tree for active case
+DONG_VU = "dong_vu"                      # close investigation case with mandatory cause & remedy gate (Step 2)
 TAO_VU_DIEU_TRA = "tao_vu_dieu_tra"      # create an investigation case via chat
 TAO_SO = "tao_so"                        # create a notebook
 MO_SO = "mo_so"                          # open a notebook
@@ -41,6 +42,7 @@ TAT_CA_Y_DINH = (
     VE_BIEU_DO,
     XEM_TIEN_DO_VU,
     LAP_CAY_4M_VU,
+    DONG_VU,
     TAO_VU_DIEU_TRA,
     TAO_SO,
     MO_SO,
@@ -50,6 +52,7 @@ TAT_CA_Y_DINH = (
     HOI_TAI_LIEU,
     DU_LIEU_DAN,
 )
+
 
 
 def _khong_dau(text: str) -> str:
@@ -202,6 +205,28 @@ _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
             "why why",
             "lap cay why why",
             "cay why why",
+        ),
+    ),
+    (
+        DONG_VU,
+        (
+            "dong vu dieu tra",
+            "dong vu",
+            "dong ca loi",
+            "dong ca",
+            "dong phieu loi",
+            "dong phieu",
+            "dong ho so dieu tra",
+            "dong ho so",
+            "chot vu dieu tra",
+            "chot vu",
+            "chot ca",
+            "ket thuc vu",
+            "ket thuc ca",
+            "/dongvu",
+            "/dong-vu",
+            "/close-case",
+            "/closecase",
         ),
     ),
     (
@@ -402,6 +427,30 @@ def extract_slots(text: str, intent: str) -> Dict[str, str]:
     elif intent in (XEM_TIEN_DO_VU, LAP_CAY_4M_VU):
         cid = extract_case_id_from_text(clean)
         return {"case_id": cid} if cid else {}
+    elif intent == DONG_VU:
+        slots_dv: Dict[str, str] = {}
+        cid = extract_case_id_from_text(clean)
+        if cid:
+            slots_dv["case_id"] = cid
+
+        m_cause = re.search(
+            r"(?:nguyên\s*nhân(?:\s*thật)?|nguyen\s*nhan(?:\s*that)?|lý\s*do(?:\s*thật)?|ly\s*do(?:\s*that)?|root\s*cause|cause)\s*[:=-]\s*(.*?)(?=(?:,\s*|\s*;\s*|\n)(?:đối\s*sách|doi\s*sach|biện\s*pháp|bien\s*phap|remedy|countermeasure)|$)",
+            clean,
+            re.IGNORECASE,
+        )
+        if m_cause:
+            slots_dv["actual_cause"] = m_cause.group(1).strip()
+
+        m_remedy = re.search(
+            r"(?:đối\s*sách(?:\s*thật)?|doi\s*sach(?:\s*that)?|biện\s*pháp(?:\s*thật)?|bien\s*phap(?:\s*that)?|phòng\s*ngừa|phong\s*ngua|hướng\s*xử\s*lý|countermeasure|remedy)\s*[:=-]\s*(.*?)(?=(?:,\s*|\s*;\s*|\n)(?:nguyên\s*nhân|nguyen\s*nhan|root\s*cause)|$)",
+            clean,
+            re.IGNORECASE,
+        )
+        if m_remedy:
+            slots_dv["actual_countermeasure"] = m_remedy.group(1).strip()
+
+        return slots_dv
+
     elif intent == TAO_SO:
         mau = re.compile(
             r"(?:tạo|tao)\s+sổ(?:\s+tài\s+liệu)?\s+(.+)$",
@@ -495,6 +544,7 @@ def giai_thich_y_dinh(intent: str) -> str:
         VE_BIEU_DO: "Tôi hiểu bạn muốn vẽ biểu đồ.",
         XEM_TIEN_DO_VU: "Tôi hiểu bạn muốn xem tiến độ vụ điều tra.",
         LAP_CAY_4M_VU: "Tôi hiểu bạn muốn lập cây điều tra 4M và chuỗi Why-Why.",
+        DONG_VU: "Tôi hiểu bạn muốn đóng vụ điều tra lỗi.",
         TAO_VU_DIEU_TRA: "Tôi hiểu bạn muốn tạo vụ điều tra lỗi mới.",
         TAO_SO: "Tôi hiểu bạn muốn tạo sổ tài liệu mới.",
         MO_SO: "Tôi hiểu bạn muốn mở một sổ tài liệu.",
@@ -517,8 +567,10 @@ def nhan_y_dinh(intent: str) -> str:
         VE_BIEU_DO: "Vẽ biểu đồ",
         XEM_TIEN_DO_VU: "Tiến độ vụ điều tra",
         LAP_CAY_4M_VU: "Cây điều tra 4M & Why-Why",
+        DONG_VU: "Đóng vụ điều tra",
         TAO_VU_DIEU_TRA: "Tạo vụ điều tra",
         TAO_SO: "Tạo sổ",
+
         MO_SO: "Mở sổ",
         HO_SO_DIEU_TRA: "Hồ sơ điều tra",
         CONG_CU_NANG_CAO: "Công cụ JIG",
