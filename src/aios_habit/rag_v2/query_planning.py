@@ -583,6 +583,8 @@ _OPTICAL_LSU_JA_TO_VI_EQUIVALENCES: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"(?<![A-Za-z0-9])中央(?![A-Za-z0-9])", re.IGNORECASE), "trung tâm"),
     (re.compile(r"周辺(?:\s*部)?", re.IGNORECASE), "hai bên ảnh"),
     (re.compile(r"画像", re.IGNORECASE), "ảnh"),
+    (re.compile(r"基準軸", re.IGNORECASE), "trục tiêu chuẩn trục chuẩn"),
+    (re.compile(r"左右", re.IGNORECASE), "độ lệch trái phải"),
     # 2. Laser power / light quantity / optical power
     (re.compile(r"(?:laser\s*power|レーザー\s*パワー|レーザー・パワー)", re.IGNORECASE), "lượng sáng Laser Power"),
     (re.compile(r"光量(?:\s*データ)?", re.IGNORECASE), "lượng sáng"),
@@ -594,18 +596,22 @@ _OPTICAL_LSU_JA_TO_VI_EQUIVALENCES: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"測定", re.IGNORECASE), "đo lường"),
     (re.compile(r"SIM\s*貼付|貼付け", re.IGNORECASE), "dán SIM tape"),
     (re.compile(r"補正順番|手順", re.IGNORECASE), "trình tự thao tác"),
+    (re.compile(r"相関|correlation", re.IGNORECASE), "tương quan"),
 )
 
 _OPTICAL_LSU_VI_TO_JA_EQUIVALENCES: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"trung\s*tâm\s*ảnh", re.IGNORECASE), "画像中央"),
     (re.compile(r"trung\s*tâm", re.IGNORECASE), "中央"),
     (re.compile(r"hai\s*bên\s*ảnh|ngoại\s*vi", re.IGNORECASE), "周辺"),
+    (re.compile(r"trục\s*(?:tiêu\s*)?chuẩn", re.IGNORECASE), "基準軸"),
+    (re.compile(r"độ\s*lệch\s*trái\s*[-–]?\s*phải|lệch\s*trái\s*[-–]?\s*phải", re.IGNORECASE), "左右 基準軸"),
     (re.compile(r"lượng\s*sáng|công\s*suất\s*laser", re.IGNORECASE), "Laser Power 光量"),
     (re.compile(r"đường\s*kính\s*beam", re.IGNORECASE), "Beam径"),
     (re.compile(r"trục\s*quang", re.IGNORECASE), "光軸"),
     (re.compile(r"kiểm\s*tra|xác\s*nhận", re.IGNORECASE), "確認"),
     (re.compile(r"dán\s*(?:sim|tape)|sim\s*tape", re.IGNORECASE), "SIM 貼付 貼付け"),
     (re.compile(r"trình\s*tự(?:\s*thao\s*tác)?|thứ\s*tự\s*thao\s*tác", re.IGNORECASE), "補正順番 手順"),
+    (re.compile(r"tương\s*quan", re.IGNORECASE), "相関 Correlation"),
 )
 
 

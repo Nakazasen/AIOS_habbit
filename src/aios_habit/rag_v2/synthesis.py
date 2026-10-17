@@ -1320,6 +1320,13 @@ def _normalize_slide_line_artifacts(text: str) -> str:
     cleaned = _SINGLE_KANJI_LEFT_SPACE_RE.sub(r"\1", cleaned)
     cleaned = _SINGLE_KANJI_RIGHT_SPACE_RE.sub(r"\1", cleaned)
     cleaned = re.sub(r"(?<![\w])([A-Za-z0-9_-]{2,})(?:\s+\1)+(?![\w])", r"\1", cleaned)
+    cleaned = re.sub(r"\bEmbedded\s+media/images:\s*\d+", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(
+        r"(Jig\s+Bow_Skew\s+\d+.*?tương\s*quan\s*lại\s+)(\d{3,4})",
+        r"\1Jig Bow_Skew \2",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
     return cleaned
 
 
@@ -1471,6 +1478,8 @@ def _extract_measurement_table_ranges(raw_text: str) -> list[str]:
     section_name = ""
     row_data: list[tuple[str, list[float], list[str]]] = []
     for line in lines:
+        if "±" in line or "+/-" in line or "＋／－" in line:
+            continue
         s_match = re.match(r"^(?:Section|Sheet)\s*:\s*(.+)$", line, re.IGNORECASE)
         if s_match:
             cand = s_match.group(1).strip()
@@ -1536,6 +1545,40 @@ def _extract_measurement_table_ranges(raw_text: str) -> list[str]:
     return frags
 
 
+def _extract_tolerance_specifications(raw_text: str) -> list[str]:
+    """Extract engineering specification rows pairing nominal values with tolerances.
+
+    Handles inspection and drawing tables containing nominal coordinates with explicit
+    tolerances (e.g. 12A | 123.5 | ± 0.2 -> 12A 123.5 ±0.2 (123.5 ± 0.2)).
+    """
+    if not raw_text or ("±" not in raw_text and "+/-" not in raw_text and "＋／－" not in raw_text):
+        return []
+    lines = raw_text.splitlines()
+    specs: list[str] = []
+    for line in lines:
+        if "±" not in line and "+/-" not in line and "＋／－" not in line:
+            continue
+        clean = _CELL_REFERENCE_RE.sub("", line).strip()
+        parts = [p.strip() for p in clean.split("|") if p.strip()]
+        tol_idx = -1
+        for i, p in enumerate(parts):
+            if "±" in p or "+/-" in p or "＋／－" in p:
+                tol_idx = i
+                break
+        if tol_idx > 0:
+            nom_cand = parts[tol_idx - 1]
+            if re.match(r"^[-+]?\d+(?:\.\d+)?$", nom_cand):
+                tol_val = parts[tol_idx]
+                tol_norm = re.sub(r"[±＋／－+/-]+\s*", "±", tol_val)
+                label_parts = parts[:tol_idx - 1]
+                clean_labels = [re.sub(r"^(?:Row\s*\d+\s*:\s*)?_*", "", lp).strip() for lp in label_parts]
+                lbl = " ".join(lp for lp in clean_labels if lp)
+                prefix = f"{label_parts[0].split(':')[0].strip()}: " if ":" in label_parts[0] and "row" in label_parts[0].casefold() else ""
+                spec_text = f"{prefix}{lbl}: {nom_cand} {tol_norm} ({nom_cand} {tol_val})"
+                specs.append(spec_text)
+    return specs
+
+
 def _extract_fragments_from_raw_text(raw_text: str) -> list[str]:
     if not raw_text:
         return []
@@ -1589,6 +1632,34 @@ def _extract_fragments_from_raw_text(raw_text: str) -> list[str]:
                         candidate_inputs.append(" — ".join(group))
             idx += 1
 
+    _CONSEQUENTIAL_LEAD_RE = re.compile(
+        r"^(?:Vì vậy|Do đó|Như vậy|Theo đó|Tuy nhiên|Cho nên)\b\s*[,:]?",
+        re.IGNORECASE,
+    )
+    if len(cleaned_units) >= 2:
+        for c_idx in range(1, len(cleaned_units)):
+            curr_unit, curr_is_heading = cleaned_units[c_idx]
+            if curr_is_heading or not _CONSEQUENTIAL_LEAD_RE.match(curr_unit):
+                continue
+            chain = [curr_unit]
+            total_len = len(curr_unit)
+            back_idx = c_idx - 1
+            while back_idx >= 0:
+                prev_unit, prev_is_heading = cleaned_units[back_idx]
+                if prev_is_heading:
+                    break
+                if total_len + len(prev_unit) + 1 <= _MAX_CLAIM_CHARS:
+                    chain.insert(0, prev_unit)
+                    total_len += len(prev_unit) + 1
+                    candidate_inputs.append(" ".join(chain))
+                    back_idx -= 1
+                else:
+                    break
+
+    specs = _extract_tolerance_specifications(raw_text)
+    if specs:
+        candidate_inputs = specs + candidate_inputs
+
     table_ranges = _extract_measurement_table_ranges(raw_text)
     if table_ranges:
         candidate_inputs = table_ranges + candidate_inputs
@@ -1637,6 +1708,8 @@ _TYPED_VALUE_RE = re.compile(
     r"(?<!\w)[A-Za-z][A-Za-z0-9_]*\s*\(\s*\d+\s*\)(?!\w)"
 )
 _LONG_NUMERIC_VALUE_RE = re.compile(r"(?<!\w)\d{3,}(?!\w)")
+_NUMERIC_DECIMAL_RE = re.compile(r"(?<!\w)\d+\.\d+(?!\w)")
+_DRAWING_CODE_RE = re.compile(r"(?<!\w)(?:\d+[A-Za-z]{1,2}|[A-Za-z]{1,2}\d+)(?!\w)")
 _QUOTED_VALUE_RE = re.compile(
     r"""(?:(?P<quote>['"])(?P<value>[^'"“”]{1,32})(?P=quote)|“(?P<curly_value>[^“”]{1,32})”)"""
 )
@@ -1897,7 +1970,7 @@ def _answer_value_literals(text: str, query_terms: set[str]) -> set[str]:
         return set()
     values = {
         match.group(0).casefold()
-        for pattern in (_EXACT_IDENTIFIER_RE, _LONG_NUMERIC_VALUE_RE)
+        for pattern in (_EXACT_IDENTIFIER_RE, _LONG_NUMERIC_VALUE_RE, _NUMERIC_DECIMAL_RE, _DRAWING_CODE_RE)
         for match in pattern.finditer(text or "")
     }
     values.update(
@@ -1922,7 +1995,7 @@ def _fragment_score(
     prioritize_literals: bool = False,
     field_codes: Tuple[str, ...] = (),
     file_identifiers: Tuple[str, ...] = (),
-) -> tuple[int, int, int, int, int, int, int]:
+) -> tuple[int, int, int, int, int, int, int, int]:
     terms = set(extract_content_terms(fragment))
     typed_value_count = (
         _typed_answer_value_count(fragment, query_terms) if prioritize_literals else 0
@@ -1935,10 +2008,10 @@ def _fragment_score(
         _token_overlap_count(fragment, field_codes),
         _definition_shaped_field_overlap(fragment, field_codes),
         _file_identifier_overlap(fragment, file_identifiers),
-        typed_value_count,
-        answer_value_count,
         literal_overlap,
         len(terms & query_terms),
+        typed_value_count,
+        answer_value_count,
         -len(fragment),
     )
 
