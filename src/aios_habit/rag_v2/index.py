@@ -59,28 +59,33 @@ _CJK_RE = re.compile(r"[\u3040-\u30ff\u3400-\u9fff]+")
 _EXACT_IDENTIFIER_RE = re.compile(
     r"(?<!\w)[A-Za-z][A-Za-z0-9]*(?:[_-][A-Za-z0-9]+)+(?!\w)"
 )
-_SPECIAL_ENTITY_RES = (
+# Generic identifier patterns retained in core library
+_CORE_GENERIC_ENTITY_RES: tuple[re.Pattern, ...] = (
     re.compile(r"(?<![A-Za-z0-9])C\d{2,5}(?![A-Za-z0-9])", re.IGNORECASE),
-    re.compile(r"(?<![A-Za-z0-9])(?:JIG\s*|LINE\s*)?C\d{2,3}(?:[/\-–]\d{2,3}|[/\-–]C\d{2,3})", re.IGNORECASE),
-    re.compile(r"(?<![A-Za-z0-9])[A-Za-z]\s*距離", re.IGNORECASE),
     re.compile(r"(?<!\w)[0-9][A-Z0-9]{5,}(?!\w)", re.IGNORECASE),
-    re.compile(r"\b(?:Sirius(?:\s*2)?|OKNGUNIT|Camera(?:\s*140)?|MOUNT(?:\s*LD)?\s*BLOCK|NanoScan|Bow_Skew)\b", re.IGNORECASE),
-    re.compile(r"\b(?:SIM(?:\s*tape)?|LSU(?:\s*Line)?|COVER\s*GLASS)\b", re.IGNORECASE),
-    re.compile(r"\b(?:g1|g2|OHP)\b", re.IGNORECASE),
-    re.compile(r"\b(?:1035|1004)\b"),
     re.compile(r"(?<!\w)[A-Za-z][A-Za-z0-9]*(?:[_-][A-Za-z0-9]+)+(?!\w)"),
     re.compile(r"(?<!\w)\d{2,4}-\d{3,4}(?!\w)", re.IGNORECASE),
     re.compile(r"(?<!\w)[A-Z0-9]{3,4}\d{4,}[A-Z0-9]*(?!\w)", re.IGNORECASE),
 )
-# Structured CSV log documents that operate on the dedicated structured query lane (CSV-STRUCTURED-LANE-HOME)
-# rather than dense semantic embeddings. Dense embedding was explicitly cancelled by user & coordinator decision.
-# DESKTOP-SPEED-LSU-COVERAGE-EXEMPTION-FIX-HOME: bo sung 3 tep CSV anh em cua 2026_08_Error_BowOverAdjust.csv
-STRUCTURED_LANE_DOCUMENT_IDS: frozenset[str] = frozenset({
-    "wsc-8eb2a5d21b75fa88307223b1",  # 2026_08_Error_BowOverAdjust.csv
-    "wsc-03bf475fc208c02f741d4013",  # 2026_08_Error.csv
-    "wsc-4bd2e353e19864fe786358c5",  # 2026_08_UnitTest.csv
-    "wsc-d4df39c14101e40ebad88a91",  # 2026_08_Spec.csv
-})
+
+
+def _load_domain_entity_patterns() -> tuple[re.Pattern, ...]:
+    """Load declarative factory entity regexes from the domain config module (QD-11)."""
+    try:
+        from aios_habit.domain_config import get_factory_entity_patterns
+        return get_factory_entity_patterns()
+    except Exception:
+        return ()
+
+
+# Combined patterns: generic identifier patterns + declarative domain factory entities (QD-11)
+_SPECIAL_ENTITY_RES: tuple[re.Pattern, ...] = _CORE_GENERIC_ENTITY_RES + _load_domain_entity_patterns()
+
+# Re-export structured lane document IDs and domain patterns from domain configuration (QD-02, QD-11)
+from aios_habit.domain_config import (
+    STRUCTURED_LANE_DOCUMENT_IDS,
+    get_maintenance_context_pattern,
+)
 
 MAX_ENTITY_BOOST = 0.060
 _EXACT_IDENTIFIER_QUOTA = 16
@@ -181,13 +186,7 @@ def _has_maintenance_date_or_column_range(query: str) -> bool:
     clean_query = query.replace("`", "")
     # 1. Maintenance date pattern (e.g. 14/2, 2/14) with maintenance/component terms
     has_date = bool(re.search(r"\b\d{1,2}/\d{1,2}\b", clean_query))
-    has_maint_ctx = bool(
-        re.search(
-            r"(?:bảo\s*dưỡng|bao\s*duong|khuôn|khuon|maintenance|金型|housing|màu|mau)",
-            clean_query,
-            re.IGNORECASE,
-        )
-    )
+    has_maint_ctx = bool(get_maintenance_context_pattern().search(clean_query))
     if has_date and has_maint_ctx:
         return True
 

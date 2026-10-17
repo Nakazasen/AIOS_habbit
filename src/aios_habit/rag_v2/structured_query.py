@@ -1020,7 +1020,11 @@ def parse_llm_excel_plan(data: dict) -> StructuredQueryPlan | None:
 # =============================================================================
 
 def find_structured_source_path(filename: str, sources: Sequence[Any] | None = None) -> Path | None:
-    """Safely locate structured CSV/XLSX data files in designated workspace staging areas."""
+    """Safely locate structured CSV/XLSX data files in designated workspace staging areas (QD-02)."""
+    if not filename:
+        return None
+
+    # 1. Match from explicit provided source sequence
     if sources:
         for s in sources:
             p_str = getattr(s, "managed_path", None) or getattr(s, "path", None)
@@ -1028,20 +1032,55 @@ def find_structured_source_path(filename: str, sources: Sequence[Any] | None = N
                 p = Path(p_str)
                 if p.name.casefold() == filename.casefold() and p.is_file():
                     return p
-    candidates = [
-        Path(r"D:/Sandbox/AIOS_habbit/local_runs/structured_staging") / filename,
-        Path(r"C:/tmp/missing5_staging") / filename,
-        Path(r"D:/Sandbox/AIOS_habbit/local_runs/workspace_chat_rag_v2_canary/materialized_sources") / filename,
-        Path(filename),
+                if p.stem.casefold() == Path(filename).stem.casefold() and p.is_file():
+                    return p
+
+    # 2. Check candidate staging directories relative to repository root
+    repo_root = Path(__file__).resolve().parents[3]
+    staging_dirs = [
+        repo_root / "local_runs" / "structured_staging",
+        repo_root / "local_runs" / "workspace_chat_rag_v2_canary" / "materialized_sources",
+        Path("C:/tmp/missing5_staging"),
+        repo_root / "tmp" / "missing5_staging",
     ]
-    for c in candidates:
-        if c.is_file():
-            return c
-    # Fallback for materialized text if original xlsx not stored directly as xlsx
-    if filename.lower().endswith(".xlsx") or "3v2nd19040" in filename.lower():
-        alt = Path(r"D:/Sandbox/AIOS_habbit/local_runs/workspace_chat_rag_v2_canary/materialized_sources/wsc-0ac3ea307df810908f4446a5.txt")
-        if alt.is_file():
-            return alt
+
+    # Direct filename match in staging directories or current path
+    for d in staging_dirs:
+        candidate = d / filename
+        if candidate.is_file():
+            return candidate
+        # Direct stem match with .txt or .csv
+        for ext in (".txt", ".csv", ".xlsx"):
+            stem_candidate = d / f"{Path(filename).stem}{ext}"
+            if stem_candidate.is_file():
+                return stem_candidate
+
+    raw_path = Path(filename)
+    if raw_path.is_file():
+        return raw_path
+
+    # 3. Dynamic stem/token search across materialized sources (no hardcoded hashes or machine IDs)
+    stem_tokens = [tok for tok in re.findall(r"[A-Za-z0-9]+", Path(filename).stem) if len(tok) >= 4]
+    if stem_tokens:
+        primary_token = stem_tokens[0].lower()
+        for d in staging_dirs:
+            if not d.is_dir():
+                continue
+            for item in d.iterdir():
+                if not item.is_file():
+                    continue
+                # Match token in file name
+                if primary_token in item.name.lower():
+                    return item
+                # Match primary token in file header/content
+                if item.suffix.lower() in (".txt", ".csv"):
+                    try:
+                        header = item.read_text(encoding="utf-8", errors="ignore")[:1000].lower()
+                        if primary_token in header:
+                            return item
+                    except Exception:
+                        continue
+
     return None
 
 

@@ -625,13 +625,10 @@ def _rerank_bilingual_tri_thuc(
             doc_has_vi[did] = True
         if _CJK_RE.search(text):
             doc_has_cjk[did] = True
-        if "wsc-6f049" in did or "wsc-6f049" in (r.source_name or ""):
-            doc_has_vi[did] = True
-            doc_has_cjk[did] = True
 
     bilingual_docs = {
         did for did in doc_has_vi
-        if doc_has_cjk.get(did, False) or is_tri_thuc or "wsc-6f049" in did
+        if doc_has_cjk.get(did, False) or is_tri_thuc
     }
     if not bilingual_docs:
         return response
@@ -699,13 +696,16 @@ def _balance_lsu_machine_series(
     if has_sirius or has_iris:
         return response
 
+    from aios_habit.domain_config import get_machine_series_patterns
+
+    series_map = get_machine_series_patterns()
+
     def _get_machine_line(res: SearchResult) -> str:
         name = (res.source_name or "").lower()
         path = (res.source_path or "").lower()
-        if "sirius" in name or "siriud" in name or "sirius" in path:
-            return "sirius"
-        if "iris" in name or "y_beamh" in name or "iris" in path:
-            return "iris"
+        for series, patterns in series_map.items():
+            if any(pat in name or pat in path for pat in patterns):
+                return series
         return "other"
 
     results = list(response.results)

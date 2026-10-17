@@ -662,6 +662,12 @@ def sanitize_citation_title(title: str) -> str:
         stem = Path(base).stem
         if stem in alias_map:
             return alias_map[stem]
+        from aios_habit.document_canonical_keys import normalize_document_key
+        base_canon = normalize_document_key(base)
+        if base_canon:
+            for target in alias_map.values():
+                if normalize_document_key(target) == base_canon:
+                    return target
     except Exception:
         pass
     return base

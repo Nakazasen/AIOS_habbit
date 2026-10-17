@@ -376,23 +376,40 @@ _DOMAIN_DOCUMENT_ALIAS_MAP_CACHE: Optional[dict[str, str]] = None
 
 
 def load_domain_document_alias_map() -> dict[str, str]:
-    """Load the mapping of document_id / wsc filename -> original filename alias."""
+    """Load the mapping of document_id / wsc filename -> original filename alias.
+    
+    Supports both legacy {k: v} and structured {k: {"target": v, "ly_do": ...}} formats,
+    and automatically indexes both stem and .txt variants so explicit file extensions match.
+    """
     global _DOMAIN_DOCUMENT_ALIAS_MAP_CACHE
     if _DOMAIN_DOCUMENT_ALIAS_MAP_CACHE is not None:
         return _DOMAIN_DOCUMENT_ALIAS_MAP_CACHE
 
     map_path = Path(__file__).resolve().parent / "domain_document_alias_map.json"
+    result: dict[str, str] = {}
     if map_path.is_file():
         try:
             import json
 
             with open(map_path, "r", encoding="utf-8") as f:
-                _DOMAIN_DOCUMENT_ALIAS_MAP_CACHE = json.load(f)
-                return _DOMAIN_DOCUMENT_ALIAS_MAP_CACHE
+                raw_data = json.load(f)
+                for k, v in raw_data.items():
+                    if k.startswith("_"):
+                        continue
+                    if isinstance(v, dict):
+                        target = str(v.get("target") or v.get("ten_goc") or "")
+                    else:
+                        target = str(v)
+                    if target:
+                        result[k] = target
+                        if k.endswith(".txt"):
+                            result[k[:-4]] = target
+                        else:
+                            result[f"{k}.txt"] = target
         except Exception:
             pass
 
-    _DOMAIN_DOCUMENT_ALIAS_MAP_CACHE = {}
+    _DOMAIN_DOCUMENT_ALIAS_MAP_CACHE = result
     return _DOMAIN_DOCUMENT_ALIAS_MAP_CACHE
 
 
@@ -400,7 +417,7 @@ _SPEC_ALIAS_CACHE: dict[str, Optional[str]] = {}
 
 
 def _get_spec_original_alias(spec: Any) -> Optional[str]:
-    """Extract original filename alias from domain alias map or materialized source header."""
+    """Extract original filename alias from domain alias map, canonical algorithm, or source header."""
     p = getattr(spec, "path", None)
     doc_id = getattr(spec, "document_id", "") or getattr(spec, "source_id", "")
     fname = p.name if p else str(getattr(spec, "source_name", ""))
@@ -419,7 +436,17 @@ def _get_spec_original_alias(spec: Any) -> Optional[str]:
     elif p and getattr(p, "stem", "") in alias_map:
         alias = alias_map[p.stem]
 
-    # 2. If not found in alias map, scan source file header on disk
+    # 2. Algorithmic matching for mechanical filename variations (QD-04: middle dots, spaces, extension omission)
+    if not alias:
+        from aios_habit.document_canonical_keys import normalize_document_key
+        cand_key = normalize_document_key(fname or getattr(p, "name", ""))
+        if cand_key:
+            for target_name in alias_map.values():
+                if normalize_document_key(target_name) == cand_key:
+                    alias = target_name
+                    break
+
+    # 3. If not found in alias map, scan source file header on disk
     if not alias:
         target_path: Optional[Path] = p if isinstance(p, Path) and p.is_file() else None
         if target_path is None and fname:
@@ -483,13 +510,15 @@ def match_named_documents(
 
     q_norm = _normalize_named_doc_text(question)
     q_norm_noc = _strip_model_code_prefix(q_norm)
+    from aios_habit.document_canonical_keys import normalize_document_key
+    q_canon = normalize_document_key(question)
 
     matched_specs: list[Any] = []
     matched_spec_ids: set[str] = set()
     matched_candidate_strings: set[str] = set()
 
-    # Pre-calculate normalized names and aliases for all specs
-    spec_info: list[tuple[Any, str, Optional[str], str, str, Optional[str], Optional[str]]] = []
+    # Pre-calculate normalized names, canonical keys, and aliases for all specs
+    spec_info: list[tuple[Any, str, Optional[str], str, str, Optional[str], Optional[str], str, Optional[str]]] = []
     for s in all_specs:
         p = getattr(s, "path", None)
         fname = p.name if p else str(getattr(s, "source_name", ""))
@@ -498,10 +527,12 @@ def match_named_documents(
         norm_name_noc = _strip_model_code_prefix(norm_name)
         norm_alias = _normalize_named_doc_text(alias) if alias else None
         norm_alias_noc = _strip_model_code_prefix(norm_alias) if norm_alias else None
-        spec_info.append((s, fname, alias, norm_name, norm_name_noc, norm_alias, norm_alias_noc))
+        canon_name = normalize_document_key(fname)
+        canon_alias = normalize_document_key(alias) if alias else None
+        spec_info.append((s, fname, alias, norm_name, norm_name_noc, norm_alias, norm_alias_noc, canon_name, canon_alias))
 
     # 1. Exact or verbatim match of spec filenames or aliases in question
-    for s, fname, alias, norm_name, norm_name_noc, norm_alias, norm_alias_noc in spec_info:
+    for s, fname, alias, norm_name, norm_name_noc, norm_alias, norm_alias_noc, canon_name, canon_alias in spec_info:
         spec_key = getattr(s, "document_id", id(s))
         if len(norm_name) >= 4 and (norm_name in q_norm or norm_name_noc in q_norm_noc):
             if spec_key not in matched_spec_ids:
@@ -513,6 +544,21 @@ def match_named_documents(
                 matched_specs.append(s)
                 matched_spec_ids.add(spec_key)
                 matched_candidate_strings.add(norm_alias)
+
+    # 1b. Algorithmic canonical match fallback (QD-04) if no verbatim match found
+    if not matched_specs:
+        for s, fname, alias, norm_name, norm_name_noc, norm_alias, norm_alias_noc, canon_name, canon_alias in spec_info:
+            spec_key = getattr(s, "document_id", id(s))
+            if len(canon_name) >= 4 and canon_name in q_canon:
+                if spec_key not in matched_spec_ids:
+                    matched_specs.append(s)
+                    matched_spec_ids.add(spec_key)
+                    matched_candidate_strings.add(norm_name)
+            elif canon_alias and len(canon_alias) >= 4 and canon_alias in q_canon:
+                if spec_key not in matched_spec_ids:
+                    matched_specs.append(s)
+                    matched_spec_ids.add(spec_key)
+                    matched_candidate_strings.add(norm_alias or "")
 
     # 2. Candidate-based matching with longest suffix priority and tolerance
     candidates = extract_named_document_candidates(question)
@@ -536,7 +582,7 @@ def match_named_documents(
                 continue
 
             matches_for_suffix: list[tuple[int, Any]] = []
-            for s, fname, alias, norm_name, norm_name_noc, norm_alias, norm_alias_noc in spec_info:
+            for s, fname, alias, norm_name, norm_name_noc, norm_alias, norm_alias_noc, canon_name, canon_alias in spec_info:
                 matched = False
                 if norm_name == suf_norm or norm_name.endswith(suf_norm) or norm_name_noc.endswith(suf_norm_noc):
                     matched = True
@@ -550,6 +596,24 @@ def match_named_documents(
                         if len(part) >= 3 and (part in q_norm or part in q_norm_noc):
                             score += 5
                     matches_for_suffix.append((score, s))
+
+            # Fallback to algorithmic canonical suffix match if no verbatim suffix matched
+            if not matches_for_suffix:
+                suf_canon = normalize_document_key(suffix)
+                if len(suf_canon) >= 4:
+                    for s, fname, alias, norm_name, norm_name_noc, norm_alias, norm_alias_noc, canon_name, canon_alias in spec_info:
+                        matched = False
+                        if canon_name == suf_canon or canon_name.endswith(suf_canon):
+                            matched = True
+                        elif canon_alias and (canon_alias == suf_canon or canon_alias.endswith(suf_canon)):
+                            matched = True
+
+                        if matched:
+                            score = len(suf_canon)
+                            for part in re.split(r"[-_\s]+", norm_name):
+                                if len(part) >= 3 and (part in q_norm or part in q_norm_noc):
+                                    score += 5
+                            matches_for_suffix.append((score, s))
 
             if matches_for_suffix:
                 if len(matches_for_suffix) > 1:
@@ -600,7 +664,7 @@ def match_named_documents(
             if len(cand_tokens) >= 2:
                 best_overlap = 0.0
                 best_spec = None
-                for s, fname, alias, norm_name, norm_name_noc, norm_alias, norm_alias_noc in spec_info:
+                for s, fname, alias, norm_name, norm_name_noc, norm_alias, norm_alias_noc, canon_name, canon_alias in spec_info:
                     names_to_check: list[tuple[str, str]] = [(norm_name, norm_name_noc)]
                     if norm_alias and norm_alias_noc:
                         names_to_check.append((norm_alias, norm_alias_noc))
