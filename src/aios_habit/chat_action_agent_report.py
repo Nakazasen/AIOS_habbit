@@ -36,6 +36,7 @@ from aios_habit.chat_action import (
     ChatActionBlock,
     ChatActionOutcome,
     ChatActionRequest,
+    is_document_lookup_query,
     normalize_text,
     register_action,
 )
@@ -200,6 +201,11 @@ def parse_report_command(question: str) -> ReportCommand:
     """Phan tich lenh loi thanh ReportCommand (khong cham file he thong)."""
     raw = str(question or "").strip()
     norm = normalize_text(raw)
+    if is_document_lookup_query(raw):
+        return ReportCommand(
+            kind="decline",
+            decline_reason_vi="Câu hỏi tra cứu tài liệu — nhường cho RAG.",
+        )
     if any(marker in norm for marker in _DECLINE_MARKERS):
         return ReportCommand(
             kind="decline",

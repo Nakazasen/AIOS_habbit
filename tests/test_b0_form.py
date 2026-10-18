@@ -471,6 +471,7 @@ def test_action_no_db_returns_none_and_creates_nothing(tmp_path, monkeypatch):
     import aios_habit.chat_action_case_form as case_form_action
 
     monkeypatch.setattr(case_form_action, "_DEFAULT_DB_CANDIDATES", ())
+    monkeypatch.delenv("AIOS_ERROR_CASES_DB", raising=False)
     missing = tmp_path / "khong-co-db.db"
     chat_action.reset_actions()
     register()

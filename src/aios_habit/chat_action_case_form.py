@@ -49,14 +49,12 @@ TITLE = "Nhập báo cáo lỗi (form Bước 0)"
 _HINTS = (
     "nhap bao cao",
     "nop bao cao",
-    "gui bao cao",
-    "luu bao cao",
-    "them bao cao",
-    "bao cao loi moi",
     "form nhap",
     "nhap ca loi",
     "them ca loi",
+    "bao cao loi moi",
     "phieu bao cao",
+    "mau bao cao loi",
 )
 
 # Well-known deploy locations (home machine first).
@@ -182,7 +180,10 @@ def _handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
             finally:
                 conn.close()
             return _render_result(result)
-        return _template_outcome()
+        norm = normalize_text(request.question)
+        if any(h in norm for h in _HINTS if h != "nop bao cao"):
+            return _template_outcome()
+        return None
     except Exception:
         return None
 

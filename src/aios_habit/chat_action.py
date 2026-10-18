@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import base64
 import importlib
+import re
 import unicodedata
 from dataclasses import dataclass, field
 from typing import Any, Callable, Mapping, Optional, Sequence, Tuple
@@ -79,6 +80,124 @@ def normalize_text(text: str) -> str:
     decomposed = unicodedata.normalize("NFD", str(text or "").casefold())
     without_marks = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
     return " ".join(without_marks.replace("đ", "d").split())
+
+
+DOC_REF_RE = re.compile(
+    r"\b(?:trong|theo|tai|xem\s+trong|trich\s+tu|tham\s+khao)\s+(?:email|tai\s+lieu|file|tep|van\s+ban|bao\s+cao|bien\s+ban|quy\s+trinh|tieu\s+chuan|huong\s+dan|so\s+tay|bang|sheet)\b|"
+    r"\b[\w\-\.À-ỹ\(\) ]+\.(?:msg|pdf|docx|pptx|xlsx|csv|txt|doc|xls)\b|"
+    r"\b(?:fw|fwd|re)\s*[:\s]|\b週報\b",
+    re.IGNORECASE,
+)
+
+QUESTION_MARK_RE = re.compile(r"[\?？]")
+
+INTERROGATIVE_RE = re.compile(
+    r"\b(?:la\s+ai|ai\s+la|ai\s+da|ai\s+gui|ai\s+nhan|ai\s+lam|thuoc\s+ai|do\s+ai|cho\s+ai|ve\s+ai|cua\s+ai|ai\s+phu\s+trach|duoc\s+ai|ai)\b|"
+    r"\b(?:la\s+gi|cai\s+gi|la\s+sao)\b|"
+    r"\b(?:nhu\s+the\s+nao|the\s+nao|ra\s+sao|tai\s+sao|vi\s+sao|lam\s+sao)\b|"
+    r"\b(?:o\s+dau|cho\s+nao|noi\s+nao|dau\s+ra)\b|"
+    r"\b(?:khi\s+nao|bao\s+gio|ngay\s+nao|nam\s+nao|thang\s+nao|thoi\s+gian\s+nao|luc\s+nao)\b|"
+    r"\bbao\s+nhieu\b|"
+    r"\b(?:co\s+.*\s+khong\??|khong\?|phai\s+khong\??|dung\s+khong\??|chua\??)\b|"
+    r"\b(?:bo\s+phan|phong\s+ban|don\s+vi|cong\s+doan|chuyen|line|model|loi|tai\s+lieu|file|tep|bao\s+cao|muc|khoan|dieu|trang|dong|buoc|phan|loai)\s+nao\b|"
+    r"\bnao\s*[\?？]",
+    re.IGNORECASE,
+)
+
+SYSTEM_WORKFLOW_HINTS = (
+    "tiep theo nen lam gi",
+    "buoc tiep theo nen lam gi",
+    "goi y viec nen lam",
+    "viec nen lam tiep",
+    "nen lam gi tiep",
+    "lam gi tiep theo",
+)
+
+COMMAND_ACTION_START_RE = re.compile(
+    # Case form (Step 0)
+    r"^(?:nhap\s+bao\s+cao|form\s+nhap|nhap\s+ca\s+loi|them\s+ca\s+loi|mau\s+bao\s+cao|phieu\s+bao\s+cao|bao\s+cao\s+loi\s+moi)\b|"
+    # Knowledge intake / clipboard
+    r"^(?:mo\s+phien\s+thu\s+tri\s+thuc|thu\s+tri\s+thuc|nap\s+tri\s+thuc|dan\s+tri\s+thuc|nhap\s+tri\s+thuc|xem\s+muc\s+cho\s+nap)\b|"
+    # Investigation
+    r"^(?:tao\s+vu\s+dieu\s+tra|mo\s+vu\s+dieu\s+tra|dieu\s+tra\s+loi)\b|"
+    # Feedback
+    r"^(?:xem\s+phan\s+hoi|gui\s+phan\s+hoi|y\s+kien\s+phan\s+hoi)\b|"
+    # Expert interview
+    r"^(?:phong\s+van\s+chuyen\s+gia|bat\s+dau\s+phong\s+van)\b|"
+    # Agent report create/edit: supports tao/sua/chinh/cap nhat/thay/them vao slide/bao cao or specific file extension
+    r"^(?:tao|lap|viet|sua|chinh|cap\s+nhat|thay|them\s+vao|bo\s+sung|xoa)\s+(?:bao\s+cao|slide|trinh\s+chieu|[\w\-\.À-ỹ\(\) ]+\.(?:docx|pptx|md|txt))\b|"
+    r"^(?:them\s+slide|them\s+vao\s+slide)\b",
+    re.IGNORECASE,
+)
+
+SOURCE_DOC_INQUIRY_RE = re.compile(
+    r"\b(?:trong|theo|tai|xem\s+trong|trich\s+tu|tham\s+khao)\s+(?:email|tai\s+lieu|file|tep|van\s+ban|bao\s+cao|bien\s+ban|quy\s+trinh|tieu\s+chuan|huong\s+dan|so\s+tay|bang|sheet)\b|"
+    r"\b(?:fw|fwd|re)\s*[:\s]|\b週報\b|\.msg\b",
+    re.IGNORECASE,
+)
+
+POLITE_PREFIXES = (
+    "hay ",
+    "vui long ",
+    "cho toi ",
+    "chay ",
+    "xin ",
+    "giup toi ",
+    "lam on ",
+    "nho ban ",
+)
+
+
+def strip_command_prefix(norm_text: str) -> str:
+    t = norm_text.strip()
+    for prefix in POLITE_PREFIXES:
+        if t.startswith(prefix):
+            t = t[len(prefix) :].strip()
+            break
+    return t
+
+
+def is_document_lookup_query(text: str) -> bool:
+    """Xác định liệu câu chat có phải là câu hỏi tra cứu tài liệu (RAG query) hay không.
+
+    Quy tắc cách ly định tuyến (DESKTOP-ROUTER-INTENT-KEYWORD-ISOLATION-HOME):
+    - Câu hỏi tra cứu tài liệu thông thường có chứa các từ khóa hành động
+      (vd 'gửi báo cáo', 'báo cáo tuần', 'tạo báo cáo', 'thu tri thức')
+      PHẢI đi đường RAG như câu hỏi thường, không bao giờ bị chat_action chặn.
+    """
+    raw = str(text or "").strip()
+    norm = normalize_text(raw)
+
+    # 1. Nộp form đã điền (có >= 3 trường nhãn hoặc bắt đầu bằng 'nộp báo cáo')
+    try:
+        from aios_habit.error_cases.case_form import looks_like_filled_form
+
+        if looks_like_filled_form(raw) or norm.startswith(("nop bao cao", "gui bao cao:")):
+            return False
+    except Exception:
+        pass
+
+    # 2. Câu hỏi quy trình hệ thống (vd: 'tiếp theo nên làm gì') do goi_y_viec_tiep_theo xử lý
+    if any(h in norm for h in SYSTEM_WORKFLOW_HINTS):
+        return False
+
+    # 3. Lệnh thao tác thật trong ứng dụng (tạo case, mở phiên nạp, tạo/sửa báo cáo, xem phản hồi...)
+    clean_norm = strip_command_prefix(norm)
+    has_qmark = bool(QUESTION_MARK_RE.search(raw))
+    has_interrogative = bool(INTERROGATIVE_RE.search(norm))
+    has_source_inquiry = bool(SOURCE_DOC_INQUIRY_RE.search(raw))
+
+    if COMMAND_ACTION_START_RE.match(clean_norm):
+        if not has_qmark and not has_interrogative and not has_source_inquiry:
+            return False
+
+    # 4. Dẫn nguồn tài liệu (tệp, email .msg, .pdf, 'trong email', 'theo tài liệu'...)
+    has_doc_ref = bool(DOC_REF_RE.search(raw))
+
+    if has_doc_ref or has_qmark or has_interrogative or has_source_inquiry:
+        return True
+
+    return False
 
 
 @dataclass(frozen=True)
@@ -169,6 +288,12 @@ class ChatAction:
         object.__setattr__(self, "hints", normalized_hints)
 
     def matches(self, request: ChatActionRequest) -> bool:
+        if is_document_lookup_query(request.question):
+            if self.name == "goi_y_viec_tiep_theo" and any(
+                hint in request.normalized_question for hint in self.hints
+            ):
+                return True
+            return False
         normalized = request.normalized_question
         return any(hint in normalized for hint in self.hints)
 
