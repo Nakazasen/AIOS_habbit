@@ -200,7 +200,7 @@ def test_cjk_prefilter_drops_short_term_only_matches(tmp_path: Path) -> None:
     chunks = _cjk_chunks() + [
         make_chunk(
             "short-only",
-            "Iris LSU の lỗi について説明します",
+            "Iris の lỗi について説明します",
             source_name="short.txt",
         ),
     ]
@@ -264,9 +264,10 @@ def test_cjk_prefilter_falls_back_on_sql_error(tmp_path: Path) -> None:
         assert index._cjk_like_prefilter_rows([], ("径",)) is None
 
 
-def test_cjk_prefilter_flag_off_falls_back_to_full_scan(
+def test_cjk_prefilter_flag_decommissioned(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """QD-10: AIOS_RAG_V2_CJK_PREFILTER=0 no longer disables prefiltering."""
     monkeypatch.setenv("AIOS_RAG_V2_CJK_PREFILTER", "0")
     with index_with_chunks(tmp_path, _cjk_chunks()) as index:
         rows = list(
@@ -275,7 +276,9 @@ def test_cjk_prefilter_flag_off_falls_back_to_full_scan(
                 " FROM chunks"
             ).fetchall()
         )
-        assert index._cjk_like_prefilter_rows(rows, ("beam径", "nguyên")) is None
+        filtered = index._cjk_like_prefilter_rows(rows, ("beam径", "nguyên"))
+        assert filtered is not None
+        assert len(filtered) > 0
         response = index.search_with_summary(
             "Lỗi Beam径 NG trên Iris LSU là gì, nguyên nhân và hướng xử lý?",
             limit=10,

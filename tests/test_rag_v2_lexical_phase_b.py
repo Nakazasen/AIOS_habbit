@@ -102,9 +102,9 @@ def index_path(tmp_path, template_db_path):
     return str(db_path)
 
 
-def _open_index(db_path):
+def _open_index(db_path, **kwargs):
     backend = DeterministicEmbeddingBackend(dimension=16)
-    return LocalChunkIndex(db_path, embedding_backend=backend)
+    return LocalChunkIndex(db_path, embedding_backend=backend, **kwargs)
 
 
 def _result_signature(response):
@@ -112,21 +112,20 @@ def _result_signature(response):
 
 
 def _build_trigram_table(db_path):
-    """Build the OMP-owned trigram table the CJK_TRIGRAM path reads."""
+    """Build the trigram table with standard 4-column schema."""
     conn = sqlite3.connect(db_path)
+    conn.execute("DROP TABLE IF EXISTS chunks_fts_trigram")
     conn.execute(
         "CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts_trigram"
-        " USING fts5(chunk_id UNINDEXED, text, tokenize='trigram')"
+        " USING fts5(chunk_id UNINDEXED, normalized_text, source_name, source_path, metadata_json, tokenize='trigram')"
     )
     rows = conn.execute(
-        "SELECT chunk_id,"
-        " COALESCE(normalized_text,'') || ' ' || COALESCE(source_name,'')"
-        " || ' ' || COALESCE(source_path,'')"
-        " || ' ' || COALESCE(metadata_json,'')"
+        "SELECT chunk_id, normalized_text, source_name, source_path, metadata_json"
         " FROM chunks WHERE retrievable = 1"
     ).fetchall()
     conn.executemany(
-        "INSERT INTO chunks_fts_trigram(chunk_id, text) VALUES (?, ?)", rows
+        "INSERT INTO chunks_fts_trigram(chunk_id, normalized_text, source_name, source_path, metadata_json) VALUES (?, ?, ?, ?, ?)",
+        rows,
     )
     conn.commit()
     conn.close()
@@ -169,14 +168,17 @@ def test_v2_each_toggle_independent_parity(index_path, query, toggle, monkeypatc
 
 @pytest.mark.parametrize("query", [q for q in QUERIES if any(ord(c) > 127 for c in q)])
 def test_v2_trigram_agrees_with_like_prefilter(index_path, query, monkeypatch):
-    """With the trigram table present, CJK_TRIGRAM=1 must match the LIKE path."""
-    _build_trigram_table(index_path)
+    """With the trigram table present, trigram path matches the LIKE fallback path."""
     monkeypatch.setenv(MASTER_ENV, "1")
-    monkeypatch.setenv("AIOS_RAGV2_LEX_V2_CJK_TRIGRAM", "0")
-    with _open_index(index_path) as index:
+    # Drop trigram table to exercise the LIKE fallback path on simulated legacy index
+    with sqlite3.connect(index_path) as conn:
+        conn.execute("DROP TABLE IF EXISTS chunks_fts_trigram")
+        conn.commit()
+    with _open_index(index_path, read_only=True) as index:
         like_path = _result_signature(index.search_with_summary(query, limit=15))
-    monkeypatch.setenv("AIOS_RAGV2_LEX_V2_CJK_TRIGRAM", "1")
-    with _open_index(index_path) as index:
+    # Restore/build trigram table to exercise the trigram path
+    _build_trigram_table(index_path)
+    with _open_index(index_path, read_only=True) as index:
         trigram_path = _result_signature(index.search_with_summary(query, limit=15))
         breakdown = dict(
             index.search_with_summary(query, limit=15).summary.lexical_breakdown_ms
@@ -189,10 +191,12 @@ def test_v2_trigram_agrees_with_like_prefilter(index_path, query, monkeypatch):
 
 
 def test_v2_trigram_missing_table_falls_back_to_like(index_path, monkeypatch):
-    """CJK_TRIGRAM=1 without the table must silently use the LIKE path."""
+    """Missing trigram table (legacy index) must silently fall back to LIKE."""
+    with sqlite3.connect(index_path) as conn:
+        conn.execute("DROP TABLE IF EXISTS chunks_fts_trigram")
+        conn.commit()
     monkeypatch.setenv(MASTER_ENV, "1")
-    monkeypatch.setenv("AIOS_RAGV2_LEX_V2_CJK_TRIGRAM", "1")
-    with _open_index(index_path) as index:
+    with _open_index(index_path, read_only=True) as index:
         response = index.search_with_summary("サーボモータ 過負荷エラー", limit=15)
     breakdown = dict(response.summary.lexical_breakdown_ms)
     assert len(response.results) > 0

@@ -276,14 +276,12 @@ CJK_PREFILTER_FLAG = "AIOS_RAG_V2_CJK_PREFILTER"
 
 
 def cjk_prefilter_enabled() -> bool:
-    """Return whether the V1-A2 CJK LIKE prefilter is enabled.
+    """Return whether CJK lexical prefiltering is active.
 
-    Kill-switch for OPT-RAGV2-PYLOOPS V1-A2: set to "0" to fall back to the
-    full deterministic scan if the prefilter's top-15 ever diverges from the
-    baseline on production (the prefilter drops chunks that match only
-    shorter variant terms, so divergence is possible by design).
+    QD-10: Standardized as deterministic default engine. Always returns True.
+    The environment flag AIOS_RAG_V2_CJK_PREFILTER has been decommissioned.
     """
-    return os.environ.get(CJK_PREFILTER_FLAG, "1") != "0"
+    return True
 
 
 # --- OPT-RAGV2-LEXICAL Phase B2: optional lexical hot-path optimizations ---
@@ -298,6 +296,8 @@ def _lexical_v2_flags() -> Optional[Dict[str, bool]]:
 
     Returns None when the master switch is off; otherwise a dict of
     sub-toggle name -> enabled.
+    QD-10: Standardized FTS5 Trigram as deterministic default engine.
+    AIOS_RAGV2_LEX_V2_CJK_TRIGRAM and AIOS_RAGV2_LEX_V2_TEMP_TABLE are decommissioned.
     """
     if os.environ.get(_LEX_V2_MASTER_ENV, "1") != "1":
         return None
@@ -321,11 +321,9 @@ def _lexical_v2_flags() -> Optional[Dict[str, bool]]:
         "SCORE_HOIST": _opt("SCORE_HOIST"),
         # (c) cache term-independent per-row work across query variants.
         "SCORE_CACHE": _opt("SCORE_CACHE"),
-        # CJK: trigram-FTS prefilter instead of LIKE; needs a
-        # chunks_fts_trigram table built by OMP (index write lane).
-        # Default 0: falls back to the LIKE prefilter when the table is
-        # missing, so enabling it early is harmless but useless.
-        "CJK_TRIGRAM": _opt("CJK_TRIGRAM", "0"),
+        # QD-10: CJK trigram-FTS prefilter is the deterministic default engine.
+        # AIOS_RAGV2_LEX_V2_CJK_TRIGRAM is decommissioned and always enabled.
+        "CJK_TRIGRAM": True,
         # (d) Selective FTS terms: prune high-frequency Vietnamese stopwords from FTS match query
         "SELECTIVE_TERMS": _opt("SELECTIVE_TERMS"),
     }
@@ -1591,6 +1589,9 @@ class LocalChunkIndex:
             self._fts5_available = bool(enable_fts5 and self._conn.execute(
                 "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'chunks_fts'"
             ).fetchone())
+            self._has_chunks_fts_trigram = bool(enable_fts5 and self._conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'chunks_fts_trigram'"
+            ).fetchone())
             has_src_idx = bool(
                 self._conn.execute(
                     "SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = 'idx_chunks_retrievable_source_name'"
@@ -1608,6 +1609,7 @@ class LocalChunkIndex:
                     pass
         else:
             self._fts5_available = False
+            self._has_chunks_fts_trigram = False
             self._create_schema()
             if (
                 ensure_embeddings_on_open
@@ -1782,8 +1784,60 @@ class LocalChunkIndex:
                         """
                     )
                 self._fts5_available = True
+                # QD-10: Standardize FTS5 Trigram table as deterministic default lexical CJK engine
+                try:
+                    self._conn.execute(
+                        """
+                        CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts_trigram USING fts5(
+                            chunk_id UNINDEXED,
+                            normalized_text,
+                            source_name,
+                            source_path,
+                            metadata_json,
+                            tokenize='trigram'
+                        )
+                        """
+                    )
+                    self._conn.executescript(
+                        """
+                        DROP TRIGGER IF EXISTS chunks_fts_trigram_insert;
+                        DROP TRIGGER IF EXISTS chunks_fts_trigram_delete;
+                        DROP TRIGGER IF EXISTS chunks_fts_trigram_update;
+                        CREATE TRIGGER chunks_fts_trigram_insert AFTER INSERT ON chunks
+                        WHEN new.retrievable = 1 BEGIN
+                            INSERT INTO chunks_fts_trigram(chunk_id, normalized_text, source_name, source_path, metadata_json)
+                            VALUES (new.chunk_id, new.normalized_text, new.source_name, new.source_path, new.metadata_json);
+                        END;
+                        CREATE TRIGGER chunks_fts_trigram_delete AFTER DELETE ON chunks BEGIN
+                            DELETE FROM chunks_fts_trigram WHERE chunk_id = old.chunk_id;
+                        END;
+                        CREATE TRIGGER chunks_fts_trigram_update AFTER UPDATE ON chunks BEGIN
+                            DELETE FROM chunks_fts_trigram WHERE chunk_id = old.chunk_id;
+                            INSERT INTO chunks_fts_trigram(chunk_id, normalized_text, source_name, source_path, metadata_json)
+                            SELECT new.chunk_id, new.normalized_text, new.source_name, new.source_path, new.metadata_json
+                            WHERE new.retrievable = 1;
+                        END;
+                        """
+                    )
+                    trigram_count = int(
+                        self._conn.execute("SELECT COUNT(*) FROM chunks_fts_trigram").fetchone()[0]
+                    )
+                    if chunk_count != trigram_count:
+                        self._conn.execute("DELETE FROM chunks_fts_trigram")
+                        self._conn.execute(
+                            """
+                            INSERT INTO chunks_fts_trigram(chunk_id, normalized_text, source_name, source_path, metadata_json)
+                            SELECT chunk_id, normalized_text, source_name, source_path, metadata_json
+                            FROM chunks WHERE retrievable = 1
+                            """
+                        )
+                    self._has_chunks_fts_trigram = True
+                except sqlite3.OperationalError:
+                    LOGGER.warning("FTS5 trigram tokenizer not available; CJK prefilter will fall back to LIKE")
+                    self._has_chunks_fts_trigram = False
             except sqlite3.OperationalError:
                 self._fts5_available = False
+                self._has_chunks_fts_trigram = False
         self._conn.commit()
 
     def upsert_chunks(self, chunks: Iterable[DocumentChunk]) -> int:
@@ -5862,24 +5916,9 @@ class LocalChunkIndex:
             term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         )
 
-    def _cjk_like_prefilter_ids(
-        self,
-        eligible_ids: List[str],
-        terms: tuple[str, ...],
-        timings: Optional[Dict[str, float]] = None,
-        *,
-        lex_cache: Optional[_LexicalStructureCache] = None,
-        eligible_id_set: Optional[frozenset[str]] = None,
-    ) -> Optional[List[str]]:
-        """Ids version of the V1-A2 CJK LIKE prefilter (OPT-RAGV2-LEXICAL B2).
-
-        Returns the eligible chunk ids (in eligible order) whose searchable
-        text contains one of the 1-2 longest query terms, or None under the
-        same conditions as _cjk_like_prefilter_rows. Same match set and order
-        as the row version; lets the V2 path avoid materializing full rows.
-        """
-        if not cjk_prefilter_enabled():
-            return None
+    @staticmethod
+    def _extract_cjk_usable_terms(terms: tuple[str, ...]) -> list[str]:
+        """Extract and prioritize usable query terms for CJK lexical prefiltering (QD-10)."""
         entities = _extract_query_entities(" ".join(terms))
         from .query_planning import CJK_GRAMMAR_STOPWORDS
         generic_stop = {"data", "file", "sheet", "line", "view", "part", "this", "from", "unit"} | set(CJK_GRAMMAR_STOPWORDS)
@@ -5887,8 +5926,6 @@ class LocalChunkIndex:
             term for term in terms
             if term and term.lower() not in generic_stop and (len(term) <= 6 or not _CJK_RE.search(term))
         ]
-        # Entities are candidates, not the whole filter: a narrow entity
-        # such as a lone short code must not hide the longest content terms.
         entity_set = set(entities)
         candidates = {term for term in filtered if term} | entity_set
         doc_id_candidates = {
@@ -5896,7 +5933,7 @@ class LocalChunkIndex:
             if re.fullmatch(r"(?:wsc-[0-9a-f]{12,}|[0-9a-f]{20,})", term, re.IGNORECASE)
         }
         content_candidates = candidates - doc_id_candidates
-        usable_terms = (
+        return (
             sorted(
                 content_candidates,
                 key=lambda term: (
@@ -5908,6 +5945,26 @@ class LocalChunkIndex:
             )[:2]
             + sorted(doc_id_candidates, key=lambda term: (-len(term), term))[:1]
         )
+
+    def _cjk_like_prefilter_ids(
+        self,
+        eligible_ids: List[str],
+        terms: tuple[str, ...],
+        timings: Optional[Dict[str, float]] = None,
+        *,
+        lex_cache: Optional[_LexicalStructureCache] = None,
+        eligible_id_set: Optional[frozenset[str]] = None,
+    ) -> Optional[List[str]]:
+        """Ids version of the CJK LIKE prefilter fallback (QD-10).
+
+        Returns the eligible chunk ids (in eligible order) whose searchable
+        text contains one of the longest query terms, or None under the
+        same conditions as _cjk_like_prefilter_rows.
+        Safety fallback path when chunks_fts_trigram is not available.
+        """
+        if not cjk_prefilter_enabled():
+            return None
+        usable_terms = self._extract_cjk_usable_terms(terms)
 
         if not usable_terms or not eligible_ids:
             return None
@@ -6139,7 +6196,14 @@ class LocalChunkIndex:
         # rows is unchanged while chunks that cannot match skip the expensive
         # per-row Python tokenization.
         if _CJK_RE.search(query):
-            # OPT-RAGV2-LEXICAL B1: time the CJK LIKE prefilter separately.
+            # QD-10: FTS5 Trigram prefilter is the deterministic default engine
+            trigram_ids = self._cjk_trigram_candidate_ids(
+                terms, [str(r["chunk_id"]) for r in eligible_rows], timings
+            )
+            if trigram_ids is not None:
+                trigram_set = set(trigram_ids)
+                return [r for r in eligible_rows if str(r["chunk_id"]) in trigram_set], "deterministic_scan"
+            # Safety fallback (used only when chunks_fts_trigram is missing on legacy indexes or short CJK < 3)
             prefilter_start = perf_counter()
             prefiltered = self._cjk_like_prefilter_rows(eligible_rows, terms)
             if timings is not None:
@@ -6271,21 +6335,16 @@ class LocalChunkIndex:
         eligible_ids: List[str],
         timings: Optional[Dict[str, float]] = None,
     ) -> Optional[List[str]]:
-        """Trigram-FTS replacement for the CJK LIKE prefilter (B2, opt-in).
+        """FTS5 Trigram prefilter for CJK queries (QD-10 default engine).
 
-        Returns None when the ``chunks_fts_trigram`` table does not exist --
-        the caller then falls back to the LIKE prefilter, so enabling
-        ``AIOS_RAGV2_LEX_V2_CJK_TRIGRAM=1`` before OMP builds the table is
-        harmless. Otherwise returns eligible ids (in eligible order) whose
-        trigram-indexed text contains one of the 1-2 longest terms.
-
-        Expected table (built by OMP in the index-write lane; read-only here):
-        ``CREATE VIRTUAL TABLE chunks_fts_trigram USING
-        fts5(chunk_id UNINDEXED, text, tokenize='trigram')`` where ``text`` is
-        the same concatenated searchable expression the LIKE prefilter uses:
-        ``COALESCE(normalized_text,'') || ' ' || COALESCE(source_name,'') ||
-        ' ' || COALESCE(source_path,'') || ' ' || COALESCE(metadata_json,'')``.
+        Returns None when the ``chunks_fts_trigram`` table does not exist or FTS5
+        trigram matching is unavailable -- the caller then safely falls back to
+        the LIKE prefilter to preserve read compatibility with legacy indexes.
+        Otherwise returns eligible ids (in eligible order) whose trigram-indexed
+        text contains one of the longest usable terms.
         """
+        if not getattr(self, "_has_chunks_fts_trigram", True):
+            return None
         try:
             table = self._conn.execute(
                 "SELECT name FROM sqlite_master"
@@ -6295,20 +6354,20 @@ class LocalChunkIndex:
             return None
         if table is None:
             return None
-        non_empty_terms = {term for term in terms if term}
-        doc_id_terms = {
-            term for term in non_empty_terms
-            if re.fullmatch(r"(?:wsc-[0-9a-f]{12,}|[0-9a-f]{20,})", term, re.IGNORECASE)
-        }
-        content_terms = non_empty_terms - doc_id_terms
-        usable_terms = (
-            sorted(content_terms, key=lambda term: (-len(term), term))[:2]
-            + sorted(doc_id_terms, key=lambda term: (-len(term), term))[:1]
-        )
+        usable_terms = self._extract_cjk_usable_terms(terms)
         if not usable_terms or not eligible_ids:
             return None
+        # FTS5 trigram requires tokens with length >= 3 to produce 3-grams.
+        # If the query contains CJK terms but none have length >= 3 (e.g. single kanji like 径),
+        # trigram cannot match them; return None to safely fall back to LIKE prefilter (QD-10).
+        cjk_terms = [t for t in usable_terms if _CJK_RE.search(t)]
+        if cjk_terms and not any(len(t) >= 3 for t in cjk_terms):
+            return None
+        trigram_terms = [t for t in usable_terms if len(t) >= 3]
+        if not trigram_terms:
+            return None
         match_query = " OR ".join(
-            f'"{term.replace(chr(34), chr(34) * 2)}"' for term in usable_terms
+            f'"{term.replace(chr(34), chr(34) * 2)}"' for term in trigram_terms
         )
         start = perf_counter()
         try:
@@ -6437,15 +6496,16 @@ class LocalChunkIndex:
         if not terms:
             return [], "fts5_bm25"
         if _CJK_RE.search(query):
-            if lex_v2["CJK_TRIGRAM"]:
-                trigram_ids = self._cjk_trigram_candidate_ids(
-                    terms, eligible_ids, timings
+            # QD-10: FTS5 Trigram prefilter is the deterministic default engine
+            trigram_ids = self._cjk_trigram_candidate_ids(
+                terms, eligible_ids, timings
+            )
+            if trigram_ids is not None:
+                return (
+                    self._fetch_chunk_rows(trigram_ids),
+                    "deterministic_scan",
                 )
-                if trigram_ids is not None:
-                    return (
-                        self._fetch_chunk_rows(trigram_ids),
-                        "deterministic_scan",
-                    )
+            # Safety fallback for legacy databases missing chunks_fts_trigram or short CJK (< 3)
             like_ids = self._cjk_like_prefilter_ids(
                 eligible_ids,
                 terms,
