@@ -64,6 +64,8 @@ BUILTIN_ACTION_MODULES: Tuple[str, ...] = (
     # UX-INTERVIEW-FEEDBACK (UI): mo phien phong van chuyen gia ngay trong
     # khung chat (hoi tung cau, dap an thieu y bi nhac, xong luu nhap).
     "aios_habit.chat_action_interview_chat",
+    # DESKTOP-KNOWLEDGE-INTAKE-ENGINE-HOME: bo may thu tri thuc chuyen gia cho moi kho
+    "aios_habit.chat_action_knowledge_intake",
     # LOG-STREAM: nap file log lon theo stream, khong cat 50k dong.
     "aios_habit.chat_action_log_stream",
     "aios_habit.chat_action_draft_approval",

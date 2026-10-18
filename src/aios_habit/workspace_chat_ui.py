@@ -688,8 +688,10 @@ def render_chat_bubble(
             if not render_interactive:
                 from aios_habit import chat_interview_ui as _chat_interview_ui
                 from aios_habit import chat_action_create_case as _chat_create_case
+                from aios_habit import chat_intake_ui as _chat_intake_ui
                 clean_content = _chat_interview_ui.strip_interactive_markers(raw_content)
                 clean_content = _chat_create_case.strip_case_preview_marker(clean_content)
+                clean_content = _chat_intake_ui.strip_intake_markers(clean_content)
                 clean_content = re.sub(r"<!--\s*aios_chat_artifact:.*?-->", "", clean_content, flags=re.DOTALL)
                 clean_content = re.sub(r"<!--\s*aios_realtime_alert:.*?-->", "", clean_content, flags=re.DOTALL).strip()
                 st.markdown(clean_content)
@@ -787,9 +789,13 @@ def render_chat_bubble(
 
             # Interactive markers (interview session / suggestion feedback / case preview) are
             # rendered as widgets below; strip them from the markdown body.
+            from aios_habit import chat_intake_ui as _chat_intake_ui
             display_content = _chat_interview_ui.strip_interactive_markers(raw_content)
             display_content = _chat_create_case.strip_case_preview_marker(display_content)
+            display_content = _chat_intake_ui.strip_intake_markers(display_content)
             interview_session_id = _chat_interview_ui.extract_interview_session_id(raw_content)
+            intake_session_info = _chat_intake_ui.extract_intake_session_marker(raw_content)
+            intake_review_info = _chat_intake_ui.extract_intake_review_marker(raw_content)
             suggestion_cards = _chat_interview_ui.extract_suggestion_markers(raw_content)
             case_preview_data = _chat_create_case.extract_case_preview_marker(raw_content)
             artifact_meta = extract_chat_artifact_metadata(raw_content)
@@ -1034,6 +1040,10 @@ def render_chat_bubble(
             # (hoi/dap tung cau ngay duoi cau hoi) + nut cham tung goi y.
             if interview_session_id:
                 _chat_interview_ui.render_interview_widget(st, interview_session_id)
+            if intake_session_info:
+                _chat_intake_ui.render_intake_session_widget(st, intake_session_info["session_id"])
+            if intake_review_info:
+                _chat_intake_ui.render_intake_review_widget(st, intake_review_info["session_id"])
             for _card in suggestion_cards:
                 _chat_interview_ui.render_suggestion_widget(
                     st,
