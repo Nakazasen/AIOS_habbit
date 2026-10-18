@@ -480,6 +480,8 @@ def execute_view_case_progress(
     hypo_count = len(case.hypotheses)
     hypo_text = f"Đã có {hypo_count} giả thuyết" if hypo_count > 0 else "Chưa có (còn trống)"
 
+    tree_text = "Chưa lập cây (còn trống)"
+
     actions_count = len(case.next_actions)
     actions_text = (
         f"Đã có {actions_count} hành động" if actions_count > 0 else "Chưa có (còn trống)"
@@ -527,6 +529,7 @@ def execute_view_case_progress(
         "",
         "#### 3. Các trường còn trống cho các bước tiếp theo",
         f"- **Bước 2 (Giả thuyết nguyên nhân):** {hypo_text}",
+        f"- **Bước 3 (Cây điều tra 4M & Why-Why):** {tree_text}",
         f"- **Bước 4 (Hành động & Quyết định):** {actions_text} / {decisions_text}",
         f"- **Bước 5 (Kết quả điều tra & Bài học):** {outcome_text} / {lessons_text}",
     ]

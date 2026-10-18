@@ -19,7 +19,7 @@ Wires the Buoc 0-5 error-case store into the Workspace Chat through the
 
 DB location (first hit wins): the request context key ``error_cases_db``,
 the ``AIOS_ERROR_CASES_DB`` env var, then the well-known deploy path
-``C:/tmp/buoc0-deploy/error_cases_deploy.db`` on the home machine.
+``C:/tmp/kdtps_standard/error_cases_reconciled.db`` (hoặc DB cũ ``error_cases_dict.db``) on the home machine.
 """
 
 from __future__ import annotations
@@ -87,7 +87,10 @@ _STOPWORDS = frozenset(
 )
 
 # Well-known deploy locations (home machine first).
+# MERGED-DB-SWITCH-HOME (2026-10-18): Uu tien DB gop chuan 30.075 ca, giu DB cu lam fallback duong lui.
 _DEFAULT_DB_CANDIDATES = (
+    Path("C:/tmp/kdtps_standard/error_cases_reconciled.db"),
+    Path("C:/tmp/kdtps_standard/error_cases_dict.db"),
     Path("C:/tmp/buoc0-deploy/error_cases_deploy.db"),
     Path.home() / "tmp" / "buoc0-deploy" / "error_cases_deploy.db",
 )

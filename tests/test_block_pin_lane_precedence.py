@@ -75,8 +75,9 @@ def test_error_lookup_preserved_in_auto_mode():
     )
     # When deployed error cases db is present on machine, it answers 5 cases
     # If db is present, handled is True and has 5 cases
-    db_path = Path("C:/tmp/buoc0-deploy/error_cases_deploy.db")
-    if db_path.is_file():
+    from aios_habit.chat_action_error_lookup import resolve_db_path, ChatActionRequest
+    db_path = resolve_db_path(ChatActionRequest(q))
+    if db_path and db_path.is_file():
         assert handled_auto is True
         assert len(user_msgs) == 1
         assert len(asst_msgs) == 1
@@ -93,7 +94,7 @@ def test_error_lookup_preserved_in_auto_mode():
         save_user=lambda c: user_msgs.append(c),
         save_assistant=lambda c: asst_msgs.append(c),
     )
-    if db_path.is_file():
+    if db_path and db_path.is_file():
         assert handled_none is True
         assert asst_msgs[0].count("### ") == 5
 

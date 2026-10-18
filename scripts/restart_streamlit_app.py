@@ -41,6 +41,9 @@ def start_streamlit() -> subprocess.Popen:
     env["AIOS_RAGV2_WORKER_PERSIST"] = "1"
     env["AIOS_FEATURE_CHAT_ACTION"] = "1"
     env["AIOS_DOMAIN_ROUTING_ENABLED"] = "1"
+    env["AIOS_ERROR_CASES_DB"] = os.environ.get(
+        "AIOS_ERROR_CASES_DB", r"C:\tmp\kdtps_standard\error_cases_reconciled.db"
+    )
     env["STREAMLIT_BROWSER_GATHER_USAGE_STATS"] = "false"
     env["STREAMLIT_SERVER_FILE_WATCHER_TYPE"] = "none"
     env["STREAMLIT_SERVER_RUN_ON_SAVE"] = "false"
