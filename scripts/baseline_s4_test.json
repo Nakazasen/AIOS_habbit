@@ -1,0 +1,568 @@
+{
+  "Q0662": {
+    "qid": "Q0662",
+    "query": "Các mục tham khảo số 13–16 có nominal và dung sai thế nào?",
+    "domain": "lsu",
+    "count": 15,
+    "top6": [
+      {
+        "rank": 1,
+        "title": "3V2ND19040-MOUNT LD BLOCK  LOT 18.8.2026.xlsx",
+        "score": 10.5,
+        "chunk_id": null,
+        "doc_id": "wsc-0ac3ea307df810908f4446a5"
+      },
+      {
+        "rank": 2,
+        "title": "3V2ND19040-MOUNT LD BLOCK  LOT 18.8.2026.xlsx",
+        "score": 11.5,
+        "chunk_id": null,
+        "doc_id": "wsc-0ac3ea307df810908f4446a5"
+      },
+      {
+        "rank": 3,
+        "title": "3V2ND19040-MOUNT LD BLOCK  LOT 18.8.2026.xlsx",
+        "score": 9.5,
+        "chunk_id": null,
+        "doc_id": "wsc-0ac3ea307df810908f4446a5"
+      },
+      {
+        "rank": 4,
+        "title": "Dữ_liệu_tổng_hợp_CaV2__1241_.xlsx",
+        "score": 0.5447803735733032,
+        "chunk_id": null,
+        "doc_id": "wsc-c21a49defc899499fff0797a"
+      },
+      {
+        "rank": 5,
+        "title": "bowskew_nano_6AE10ZXA9910_2510221.xlsm",
+        "score": 0.5280644297599792,
+        "chunk_id": null,
+        "doc_id": "wsc-d033c2b9d2357d76e850dc05"
+      },
+      {
+        "rank": 6,
+        "title": "3V2ND19040-MOUNT_LD_BLOCK__LOT_18.8.2026.xlsx",
+        "score": 3.0,
+        "chunk_id": null,
+        "doc_id": "wsc-582a992dc46566ab198dabe2"
+      }
+    ]
+  },
+  "Q0680": {
+    "qid": "Q0680",
+    "query": "Phương pháp tính độ lệch trái–phải của LENS CO trong file là gì?",
+    "domain": "lsu",
+    "count": 20,
+    "top6": [
+      {
+        "rank": 1,
+        "title": "OKNGUNITのCO・BRACKETの倒れ・傾き確認結果.xlsx",
+        "score": 44.5,
+        "chunk_id": null,
+        "doc_id": "wsc-edb642314890bccb9fbd61c9"
+      },
+      {
+        "rank": 2,
+        "title": "OKNGUNITのCO・BRACKETの倒れ・傾き確認結果.xlsx",
+        "score": 28.5,
+        "chunk_id": null,
+        "doc_id": "wsc-edb642314890bccb9fbd61c9"
+      },
+      {
+        "rank": 3,
+        "title": "OKNGUNITのCO・BRACKETの倒れ・傾き確認結果.xlsx",
+        "score": 12.5,
+        "chunk_id": null,
+        "doc_id": "wsc-edb642314890bccb9fbd61c9"
+      },
+      {
+        "rank": 4,
+        "title": "Tài liệu đào tạo LSU_2019.01.18_K.pptx",
+        "score": 7.0,
+        "chunk_id": null,
+        "doc_id": "wsc-cfe180f30fae3c031ffd5951"
+      },
+      {
+        "rank": 5,
+        "title": "Tài liệu đào tạo LSU_2019.01.18_K.pptx",
+        "score": 12.75,
+        "chunk_id": null,
+        "doc_id": "wsc-cfe180f30fae3c031ffd5951"
+      },
+      {
+        "rank": 6,
+        "title": "Sirius2_7620.xlsx",
+        "score": 20.0,
+        "chunk_id": null,
+        "doc_id": "wsc-cd81e7da2748a7e06c215ea5"
+      }
+    ]
+  },
+  "Q0685": {
+    "qid": "Q0685",
+    "query": "Bracketの測定値を見るだけで斜め光NG原因を確定できますか。",
+    "domain": "lsu",
+    "count": 20,
+    "top6": [
+      {
+        "rank": 1,
+        "title": "OKNGUNITのCO・BRACKETの倒れ・傾き確認結果.xlsx",
+        "score": 8.5,
+        "chunk_id": null,
+        "doc_id": "wsc-edb642314890bccb9fbd61c9"
+      },
+      {
+        "rank": 2,
+        "title": "OKNGUNITのCO・BRACKETの倒れ・傾き確認結果.xlsx",
+        "score": 2.5,
+        "chunk_id": null,
+        "doc_id": "wsc-edb642314890bccb9fbd61c9"
+      },
+      {
+        "rank": 3,
+        "title": "RE_ Iris LSU Beam径NG多発　異常品質会議2回目.msg",
+        "score": 10.0,
+        "chunk_id": null,
+        "doc_id": "wsc-75d716e930e8ddf3fc591e5a"
+      },
+      {
+        "rank": 4,
+        "title": "sirius2_beam径確認_240202.xlsx",
+        "score": 0.5272559523582458,
+        "chunk_id": null,
+        "doc_id": "wsc-c292106969b26cfd6269485b"
+      },
+      {
+        "rank": 5,
+        "title": "sirius2_beam径確認_240202.xlsx",
+        "score": 0.5272559523582458,
+        "chunk_id": null,
+        "doc_id": "wsc-c292106969b26cfd6269485b"
+      },
+      {
+        "rank": 6,
+        "title": "Bong TAPE COVER GLASS Rev.00 VN.pptx",
+        "score": 3.0,
+        "chunk_id": null,
+        "doc_id": "wsc-cc13a93c2c2cd621a8487e05"
+      }
+    ]
+  },
+  "Q0693": {
+    "qid": "Q0693",
+    "query": "NanoScan比较后，需要重新Correlation的是哪台Jig？",
+    "domain": "lsu",
+    "count": 21,
+    "top6": [
+      {
+        "rank": 1,
+        "title": "Y_BeamH_Camera 140_to bất thường.pptx",
+        "score": 6.0,
+        "chunk_id": null,
+        "doc_id": "wsc-de63ca1244089877827b62aa"
+      },
+      {
+        "rank": 2,
+        "title": "RE_ Iris LSU Beam径NG多発　異常品質会議5回目.msg",
+        "score": 7.0,
+        "chunk_id": null,
+        "doc_id": "wsc-bd829b64ef52a3d76ff1747c"
+      },
+      {
+        "rank": 3,
+        "title": "Y_BeamH_Camera 140_to bất thường.pptx",
+        "score": 6.0,
+        "chunk_id": null,
+        "doc_id": "wsc-597d95c4a4f36f4bbef26750"
+      },
+      {
+        "rank": 4,
+        "title": "AI cảnh báo lỗi LSU.pptx",
+        "score": 1.75,
+        "chunk_id": null,
+        "doc_id": "wsc-f6782ff77c152a5c9a416ad8"
+      },
+      {
+        "rank": 5,
+        "title": "sirius2_beam径確認_240202.xlsx",
+        "score": 26.0,
+        "chunk_id": null,
+        "doc_id": "wsc-c292106969b26cfd6269485b"
+      },
+      {
+        "rank": 6,
+        "title": "sirius2_beam径確認_240202.xlsx",
+        "score": 24.0,
+        "chunk_id": null,
+        "doc_id": "wsc-c292106969b26cfd6269485b"
+      }
+    ]
+  },
+  "Q0703": {
+    "qid": "Q0703",
+    "query": "B距離が長くなる想定状態は何ですか。",
+    "domain": "lsu",
+    "count": 20,
+    "top6": [
+      {
+        "rank": 1,
+        "title": "Sirius 2 _ C7620_報告版 4.pptx",
+        "score": 6.25,
+        "chunk_id": null,
+        "doc_id": "wsc-3862a76468aee5575cd502c5"
+      },
+      {
+        "rank": 2,
+        "title": "Sirius 2 _ C7620_報告版 4.pptx",
+        "score": 0.5291093587875366,
+        "chunk_id": null,
+        "doc_id": "wsc-3862a76468aee5575cd502c5"
+      },
+      {
+        "rank": 3,
+        "title": "sirius2_beam径確認_240202.xlsx",
+        "score": 0.49717915058135986,
+        "chunk_id": null,
+        "doc_id": "wsc-c292106969b26cfd6269485b"
+      },
+      {
+        "rank": 4,
+        "title": "3V2ND19040-MOUNT_LD_BLOCK__LOT_18.8.2026.xlsx",
+        "score": 0.5086182355880737,
+        "chunk_id": null,
+        "doc_id": "wsc-582a992dc46566ab198dabe2"
+      },
+      {
+        "rank": 5,
+        "title": "DATA_Matome.xlsx",
+        "score": 0.4861486256122589,
+        "chunk_id": null,
+        "doc_id": "wsc-fb4f4f8ff43f9f96c9c6ade4"
+      },
+      {
+        "rank": 6,
+        "title": "Dữ_liệu_tổng_hợp_CaV3__1242_.xlsx",
+        "score": 0.4906380772590637,
+        "chunk_id": null,
+        "doc_id": "wsc-d1e06540cd149c697de19519"
+      }
+    ]
+  },
+  "Q0707": {
+    "qid": "Q0707",
+    "query": "SIM tape được dán ở đâu, dày bao nhiêu và trình tự thao tác thế nào?",
+    "domain": "lsu",
+    "count": 20,
+    "top6": [
+      {
+        "rank": 1,
+        "title": "Sirius 2 _ C7620_報告版 4.pptx",
+        "score": 22.5,
+        "chunk_id": null,
+        "doc_id": "wsc-3862a76468aee5575cd502c5"
+      },
+      {
+        "rank": 2,
+        "title": "Sirius 2 _ C7620_報告版 4.pptx",
+        "score": 11.5,
+        "chunk_id": null,
+        "doc_id": "wsc-3862a76468aee5575cd502c5"
+      },
+      {
+        "rank": 3,
+        "title": "RE_ Iris LSU Beam径NG多発　異常品質会議3回目.msg",
+        "score": 4.5,
+        "chunk_id": null,
+        "doc_id": "wsc-5bb2e1327274e578dd2c71f4"
+      },
+      {
+        "rank": 4,
+        "title": "tổng hợp dữ liệu dán tape.xlsx",
+        "score": 16.5,
+        "chunk_id": null,
+        "doc_id": "wsc-921d7a6025bee08cedda051d"
+      },
+      {
+        "rank": 5,
+        "title": "tổng_hợp_dữ_liệu_dán_tape.xlsx",
+        "score": 6.0,
+        "chunk_id": null,
+        "doc_id": "wsc-a1a89391eee709a956a46130"
+      },
+      {
+        "rank": 6,
+        "title": "Sirius 2 _ C7620_報告版 4.pptx",
+        "score": 8.5,
+        "chunk_id": null,
+        "doc_id": "wsc-3862a76468aee5575cd502c5"
+      }
+    ]
+  },
+  "ALIAS_OKNG_XLSX": {
+    "qid": "ALIAS_OKNG_XLSX",
+    "query": "Theo tài liệu OKNGUNITのCO_BRACKETの倒れ_傾き確認結果.xlsx kết quả kiểm tra thế nào?",
+    "domain": "lsu",
+    "count": 4,
+    "top6": [
+      {
+        "rank": 1,
+        "title": "OKNGUNITのCO・BRACKETの倒れ・傾き確認結果.xlsx",
+        "score": 32.0,
+        "chunk_id": null,
+        "doc_id": "wsc-ee5a4f6d3c263185fe6ff10b"
+      },
+      {
+        "rank": 2,
+        "title": "OKNGUNITのCO・BRACKETの倒れ・傾き確認結果.xlsx",
+        "score": 32.0,
+        "chunk_id": null,
+        "doc_id": "wsc-ee5a4f6d3c263185fe6ff10b"
+      },
+      {
+        "rank": 3,
+        "title": "OKNGUNITのCO・BRACKETの倒れ・傾き確認結果.xlsx",
+        "score": 32.0,
+        "chunk_id": null,
+        "doc_id": "wsc-ee5a4f6d3c263185fe6ff10b"
+      },
+      {
+        "rank": 4,
+        "title": "OKNGUNITのCO・BRACKETの倒れ・傾き確認結果.xlsx",
+        "score": 2.0,
+        "chunk_id": null,
+        "doc_id": "wsc-ee5a4f6d3c263185fe6ff10b"
+      }
+    ]
+  },
+  "ALIAS_OKNG_NOEXT": {
+    "qid": "ALIAS_OKNG_NOEXT",
+    "query": "Theo tài liệu OKNGUNITのCO_BRACKETの倒れ_傾き確認結果 kết quả kiểm tra thế nào?",
+    "domain": "lsu",
+    "count": 4,
+    "top6": [
+      {
+        "rank": 1,
+        "title": "OKNGUNITのCO・BRACKETの倒れ・傾き確認結果.xlsx",
+        "score": 2.0,
+        "chunk_id": null,
+        "doc_id": "wsc-ee5a4f6d3c263185fe6ff10b"
+      },
+      {
+        "rank": 2,
+        "title": "OKNGUNITのCO・BRACKETの倒れ・傾き確認結果.xlsx",
+        "score": 30.0,
+        "chunk_id": null,
+        "doc_id": "wsc-ee5a4f6d3c263185fe6ff10b"
+      },
+      {
+        "rank": 3,
+        "title": "OKNGUNITのCO・BRACKETの倒れ・傾き確認結果.xlsx",
+        "score": 30.0,
+        "chunk_id": null,
+        "doc_id": "wsc-ee5a4f6d3c263185fe6ff10b"
+      },
+      {
+        "rank": 4,
+        "title": "OKNGUNITのCO・BRACKETの倒れ・傾き確認結果.xlsx",
+        "score": 30.0,
+        "chunk_id": null,
+        "doc_id": "wsc-ee5a4f6d3c263185fe6ff10b"
+      }
+    ]
+  },
+  "ALIAS_YBEAM_PPTX": {
+    "qid": "ALIAS_YBEAM_PPTX",
+    "query": "Theo tài liệu Y_BeamH_Camera_140_to_bất_thường.pptx nguyên nhân là gì?",
+    "domain": "lsu",
+    "count": 4,
+    "top6": [
+      {
+        "rank": 1,
+        "title": "Y_BeamH_Camera 140_to bất thường.pptx",
+        "score": 8.5,
+        "chunk_id": null,
+        "doc_id": "wsc-de63ca1244089877827b62aa"
+      },
+      {
+        "rank": 2,
+        "title": "Y_BeamH_Camera 140_to bất thường.pptx",
+        "score": 4.0,
+        "chunk_id": null,
+        "doc_id": "wsc-de63ca1244089877827b62aa"
+      },
+      {
+        "rank": 3,
+        "title": "Y_BeamH_Camera 140_to bất thường.pptx",
+        "score": 8.5,
+        "chunk_id": null,
+        "doc_id": "wsc-de63ca1244089877827b62aa"
+      },
+      {
+        "rank": 4,
+        "title": "Y_BeamH_Camera 140_to bất thường.pptx",
+        "score": 4.0,
+        "chunk_id": null,
+        "doc_id": "wsc-de63ca1244089877827b62aa"
+      }
+    ]
+  },
+  "ALIAS_YBEAM_NOEXT": {
+    "qid": "ALIAS_YBEAM_NOEXT",
+    "query": "Theo tài liệu Y_BeamH_Camera_140_to_bất_thường nguyên nhân là gì?",
+    "domain": "lsu",
+    "count": 2,
+    "top6": [
+      {
+        "rank": 1,
+        "title": "Y_BeamH_Camera 140_to bất thường.pptx",
+        "score": 6.5,
+        "chunk_id": null,
+        "doc_id": "wsc-de63ca1244089877827b62aa"
+      },
+      {
+        "rank": 2,
+        "title": "Y_BeamH_Camera 140_to bất thường.pptx",
+        "score": 6.5,
+        "chunk_id": null,
+        "doc_id": "wsc-de63ca1244089877827b62aa"
+      }
+    ]
+  },
+  "ALIAS_TT11": {
+    "qid": "ALIAS_TT11",
+    "query": "Trong tài liệu 生産履歴登録システム_変更確認チェックリスト_20260914.xlsx, server mới (máy chủ Linux) có tên máy là gì?",
+    "domain": "mom",
+    "count": 8,
+    "top6": [
+      {
+        "rank": 1,
+        "title": "生産履歴登録システム_変更確認チェックリスト_20260914.xlsx",
+        "score": 37.0,
+        "chunk_id": null,
+        "doc_id": "wsc-573a0a68739534ed9860dcec"
+      },
+      {
+        "rank": 2,
+        "title": "生産履歴登録システム_変更確認チェックリスト_20260914.xlsx",
+        "score": 1.0,
+        "chunk_id": null,
+        "doc_id": "wsc-573a0a68739534ed9860dcec"
+      },
+      {
+        "rank": 3,
+        "title": "生産履歴登録システム_変更確認チェックリスト_20260914.xlsx",
+        "score": 3.0,
+        "chunk_id": null,
+        "doc_id": "wsc-573a0a68739534ed9860dcec"
+      },
+      {
+        "rank": 4,
+        "title": "生産履歴登録システム_変更確認チェックリスト_20260914.xlsx",
+        "score": 2.0,
+        "chunk_id": null,
+        "doc_id": "wsc-573a0a68739534ed9860dcec"
+      },
+      {
+        "rank": 5,
+        "title": "生産履歴登録システム_変更確認チェックリスト_20260914.xlsx",
+        "score": 0.5699406862258911,
+        "chunk_id": null,
+        "doc_id": "wsc-573a0a68739534ed9860dcec"
+      },
+      {
+        "rank": 6,
+        "title": "生産履歴登録システム_変更確認チェックリスト_20260914.xlsx",
+        "score": 0.5506734848022461,
+        "chunk_id": null,
+        "doc_id": "wsc-573a0a68739534ed9860dcec"
+      }
+    ]
+  },
+  "ALIAS_TANABAN": {
+    "qid": "ALIAS_TANABAN",
+    "query": "Theo tài liệu TANABAN_Master.xlsx thông tin là gì?",
+    "domain": "mom",
+    "count": 4,
+    "top6": [
+      {
+        "rank": 1,
+        "title": "TANABAN_Master.xlsx",
+        "score": 3.5,
+        "chunk_id": null,
+        "doc_id": "wsc-ef0d393c086c7f07627ca8b8"
+      },
+      {
+        "rank": 2,
+        "title": "TANABAN_Master.xlsx",
+        "score": 0.5547393560409546,
+        "chunk_id": null,
+        "doc_id": "wsc-ef0d393c086c7f07627ca8b8"
+      },
+      {
+        "rank": 3,
+        "title": "TANABAN_Master.xlsx",
+        "score": 0.3947845995426178,
+        "chunk_id": null,
+        "doc_id": "wsc-ef0d393c086c7f07627ca8b8"
+      },
+      {
+        "rank": 4,
+        "title": "TANABAN_Master.xlsx",
+        "score": 0.3942035436630249,
+        "chunk_id": null,
+        "doc_id": "wsc-ef0d393c086c7f07627ca8b8"
+      }
+    ]
+  },
+  "ALIAS_CTU0330": {
+    "qid": "ALIAS_CTU0330",
+    "query": "Theo tài liệu CTUマップ再検討20260330.xlsx layout thế nào?",
+    "domain": "mom",
+    "count": 20,
+    "top6": [
+      {
+        "rank": 1,
+        "title": "ACR_CTU製品仕様書Ver1_20251205.xlsx",
+        "score": 0.6201530694961548,
+        "chunk_id": null,
+        "doc_id": "wsc-84b2db45574ff975b7f3d674"
+      },
+      {
+        "rank": 2,
+        "title": "CTU_3階の通路レイアウト_251211.xlsx",
+        "score": 0.682449221611023,
+        "chunk_id": null,
+        "doc_id": "wsc-73a54cee764eda5d635dadbd"
+      },
+      {
+        "rank": 3,
+        "title": "補足資料_要件内容反映版_20231110.xlsx",
+        "score": 0.5342053174972534,
+        "chunk_id": null,
+        "doc_id": "wsc-ab150f1186115f64ca93a65d"
+      },
+      {
+        "rank": 4,
+        "title": "wsc-2d528c22ed8a8466fba9c9bd.txt",
+        "score": 0.5282426476478577,
+        "chunk_id": null,
+        "doc_id": "wsc-2d528c22ed8a8466fba9c9bd"
+      },
+      {
+        "rank": 5,
+        "title": "wsc-60f9c5ab578c69f2e474f5d9.txt",
+        "score": 0.4967997074127197,
+        "chunk_id": null,
+        "doc_id": "wsc-60f9c5ab578c69f2e474f5d9"
+      },
+      {
+        "rank": 6,
+        "title": "wsc-2d528c22ed8a8466fba9c9bd.txt",
+        "score": 0.539597749710083,
+        "chunk_id": null,
+        "doc_id": "wsc-2d528c22ed8a8466fba9c9bd"
+      }
+    ]
+  }
+}

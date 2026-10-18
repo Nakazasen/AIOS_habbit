@@ -272,7 +272,6 @@ LOGGER = logging.getLogger(__name__)
 NUMPY_DENSE_FLAG = "AIOS_RAG_V2_NUMPY_DENSE"
 NUMPY_DENSE_MAX_BYTES_FLAG = "AIOS_RAG_V2_NUMPY_DENSE_MAX_BYTES"
 DEFAULT_NUMPY_DENSE_MAX_BYTES = 2 * 1024 * 1024 * 1024
-CJK_PREFILTER_FLAG = "AIOS_RAG_V2_CJK_PREFILTER"
 
 
 def cjk_prefilter_enabled() -> bool:
@@ -6084,8 +6083,10 @@ class LocalChunkIndex:
         scan cheaper. Rows matching *only* shorter variant terms are dropped
         by the prefilter. The ticket's acceptance bar is top-15 agreement
         with the full scan on the six sample questions (L1-L3/E1-E3),
-        verified by test. If the prefilter ever diverges from the baseline
-        on production, set ``AIOS_RAG_V2_CJK_PREFILTER=0`` to disable it.
+        verified by test. Note: Under QD-10 (S4), FTS5 Trigram is the
+        deterministic default prefilter, with this LIKE prefilter retained
+        solely as a safe fallback when chunks_fts_trigram is absent or CJK
+        terms are < 3 characters; AIOS_RAG_V2_CJK_PREFILTER has been decommissioned.
         """
         ids = self._cjk_like_prefilter_ids(
             [str(row["chunk_id"]) for row in eligible_rows], terms
