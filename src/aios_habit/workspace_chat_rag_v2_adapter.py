@@ -34,6 +34,7 @@ from aios_habit.rag_v2.adaptive_retrieval import (
 )
 from aios_habit.rag_v2.bge_subprocess_client import (
     BgeSubprocessWorkerClient,
+    _is_worker_pid_alive,
     _pipe_instance_available,
     default_init_timeout_seconds,
     default_query_timeout_seconds,
@@ -1610,7 +1611,16 @@ def is_workspace_chat_worker_warmed(
             flight_key = pipe_name_for_config(target_pipe_config)
             status_probe = _SUBPROCESS_CLIENT._read_persistent_status_file(target_pipe_config)
             if status_probe is not None:
-                return bool(status_probe.get("ready", False))
+                if not status_probe.get("ready", False):
+                    return False
+                if not status_probe.get("dense_resident", True):
+                    return False
+                pid = status_probe.get("pid")
+                if pid and not _is_worker_pid_alive(pid):
+                    return False
+                if not _pipe_instance_available(flight_key):
+                    return False
+                return True
             with _WARMUP_LOCK:
                 warming_active = (
                     flight_key in _WARMUP_RUNNING_KEYS

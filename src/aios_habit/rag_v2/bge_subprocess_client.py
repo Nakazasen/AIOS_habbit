@@ -199,8 +199,10 @@ def get_system_memory_info() -> tuple[float, float]:
 def get_max_persistent_workers() -> int:
     """Return maximum allowed concurrent persistent BGE workers based on host RAM.
 
-    Rules (Ticket DESKTOP-QD-S2-GLOSSARY-WORKER-LIFECYCLE-HOME - QD-06):
-    - On 16 GB machines (total <= 18 GB): max 1 resident worker, or 2 workers only if available RAM > 4 GB.
+    Rules (Ticket DESKTOP-RAG-PREFLIGHT-RESIDENT-WARMUP-HOME):
+    - Machines with >= 12 GB RAM: allow 4 resident workers to keep all core collections
+      (lsu, dieu_tra_loi, tong_hop, tri_thuc) simultaneously resident throughout the session.
+    - Machines with >= 8 GB RAM: allow 2 resident workers (if available RAM > 2 GB) or 1.
     - Can be overridden via AIOS_MAX_PERSISTENT_WORKERS env var.
     """
     env_override = os.environ.get("AIOS_MAX_PERSISTENT_WORKERS", "").strip()
@@ -212,9 +214,11 @@ def get_max_persistent_workers() -> int:
         except ValueError:
             pass
     total_gb, avail_gb = get_system_memory_info()
-    if total_gb <= 18.0:
-        return 2 if avail_gb > 4.0 else 1
-    return 2 if avail_gb > 6.0 else 1
+    if total_gb >= 12.0:
+        return 4
+    if total_gb >= 8.0:
+        return 2 if avail_gb > 2.0 else 1
+    return 1
 
 
 def _current_interpreter_supports_bge_runtime() -> bool:
@@ -1131,21 +1135,30 @@ class BgeSubprocessWorkerClient:
             return None
         expected_fp = config_fingerprint_for_worker(config)
         matches = bool(initialized and actual_fp == expected_fp)
-        ready = bool(initialized and matches)
+        readiness_dict = data.get("readiness") if isinstance(data.get("readiness"), dict) else {}
+        dense_resident = bool(readiness_dict.get("dense_resident", True))
+        resolved_pipe = data.get("pipe_name") or pipe_name_for_config(config)
+        pipe_alive = _pipe_instance_available(resolved_pipe)
+        ready = bool(initialized and matches and dense_resident and pipe_alive)
+        reason = ""
+        if not ready:
+            if not initialized:
+                reason = "worker_not_initialized"
+            elif not matches:
+                reason = "bge_worker_configuration_mismatch"
+            elif not dense_resident:
+                reason = "dense_vectors_not_resident"
+            elif not pipe_alive:
+                reason = "bge_worker_persist_unavailable"
         return {
             "ready": ready,
             "alive": True,
             "configuration_matches": matches,
-            "reason": (
-                ""
-                if ready
-                else (
-                    "worker_not_initialized"
-                    if not initialized
-                    else "bge_worker_configuration_mismatch"
-                )
-            ),
+            "dense_resident": dense_resident,
+            "dense_chunks": int(readiness_dict.get("dense_chunks", 0)),
+            "reason": reason,
             "pid": raw_pid,
+            "readiness": readiness_dict,
         }
 
     def _persistent_readiness(self, config: RagV2DevConfig) -> dict[str, Any]:
@@ -1292,12 +1305,12 @@ class BgeSubprocessWorkerClient:
                                 self._last_failure_reason = ""
                                 return
 
-                            full_init_timeout = float(default_init_timeout_seconds())
+                            full_init_timeout = max(float(default_init_timeout_seconds()), float(timeout_s or 0.0))
                             response = self._persistent_exchange(
                                 config,
                                 {"command": "init", "config": _config_to_dict(config)},
                                 timeout_s=full_init_timeout,
-                                connect_timeout_s=min(full_init_timeout, _PERSIST_SPAWN_WAIT_SECONDS),
+                                connect_timeout_s=min(full_init_timeout, max(_PERSIST_SPAWN_WAIT_SECONDS, float(timeout_s or 0.0))),
                                 allow_spawn=True,
                             )
                             if response.get("status") != "ok":

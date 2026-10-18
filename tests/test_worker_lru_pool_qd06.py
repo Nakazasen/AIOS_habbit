@@ -72,7 +72,7 @@ def test_qd06_memory_limits_and_env_override(monkeypatch):
 
     monkeypatch.delenv("AIOS_MAX_PERSISTENT_WORKERS", raising=False)
     computed = get_max_persistent_workers()
-    assert computed in (1, 2)
+    assert computed in (1, 2, 4)
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Named Pipe transport is Windows-only")

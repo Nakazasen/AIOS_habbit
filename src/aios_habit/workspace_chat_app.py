@@ -5592,10 +5592,13 @@ else:
                         query_block = str(get_query_param("block") or "").strip().lower()
                         if query_block in block_choices:
                             st.session_state[knowledge_block_key] = query_block
+                            if query_block != "auto":
+                                trigger_collection_warming_on_demand(query_block, notebook_id=active_nb_id)
                         else:
                             _nb_col_default = str(getattr(notebook, "collection_id", "") or "").strip().lower()
                             if _nb_col_default in block_choices and _nb_col_default != "auto":
                                 st.session_state[knowledge_block_key] = _nb_col_default
+                                trigger_collection_warming_on_demand(_nb_col_default, notebook_id=active_nb_id)
                     knowledge_block_value = str(
                         st.session_state.get(knowledge_block_key, "auto") or "auto"
                     )
@@ -5845,6 +5848,27 @@ else:
                         and pending_submission.get("conversation_id") == active_conversation.id
                         and pending_state == "waiting"
                     )
+                    _target_composer_col = (
+                        knowledge_block_value
+                        if knowledge_block_value != "auto"
+                        else (
+                            getattr(notebook, "collection_id", None)
+                            or getattr(active_conversation, "collection_id", None)
+                            or "tri_thuc"
+                        )
+                    )
+                    _target_worker_resident = is_workspace_chat_worker_warmed(
+                        collection_id=_target_composer_col
+                    )
+                    if not _target_worker_resident:
+                        try:
+                            trigger_collection_warming_on_demand(
+                                _target_composer_col,
+                                notebook_id=active_nb_id,
+                            )
+                        except Exception:
+                            pass
+
                     with toolbar_action_col:
                         with st.container(key=f"wsc-action-{active_conversation.id}"):
                             if is_answering or is_waiting_for_sources:
@@ -5868,12 +5892,22 @@ else:
                                         )
                                     safe_rerun()
                             else:
+                                _ask_disabled = (not _target_worker_resident)
+                                _ask_tooltip = (
+                                    format_worker_warming_status_line(
+                                        _target_composer_col, locale=current_ui_locale
+                                    )
+                                    or "Đang nạp mô hình & chỉ mục kho vào bộ nhớ..."
+                                    if _ask_disabled
+                                    else labels["ai_action"]
+                                )
                                 ask_submitted = st.button(
                                     labels["ai_action"],
                                     key=f"wsc_ask_{active_conversation.id}",
                                     icon=":material/arrow_upward:",
                                     type="primary",
-                                    help=labels["ai_action"],
+                                    disabled=_ask_disabled,
+                                    help=_ask_tooltip,
                                 )
 
                     st.html(
@@ -5928,6 +5962,9 @@ else:
                     + f"{_lane_label(selected_ai_backend)} ({lane_mode_str}) · {search_status_str}"
                 )
 
+                if _ask_disabled:
+                    st.caption(f"⏳ {_ask_tooltip}")
+
                 if ask_submitted and pending_submission:
                     # A fresh submit intentionally replaces an older waiting
                     # question; this avoids a surprising late answer.
@@ -5946,6 +5983,21 @@ else:
                     user_attached_image = None
 
                 if ask_submitted:
+                    if not is_workspace_chat_worker_warmed(collection_id=_target_composer_col):
+                        try:
+                            trigger_collection_warming_on_demand(
+                                _target_composer_col, notebook_id=active_nb_id
+                            )
+                        except Exception:
+                            pass
+                        st.warning(
+                            format_worker_warming_status_line(
+                                _target_composer_col, locale=current_ui_locale
+                            )
+                            or "Mô hình và dữ liệu kho đang được nạp vào bộ nhớ. Vui lòng chờ trong giây lát..."
+                        )
+                        safe_rerun()
+
                     q_text = user_input.strip()
                     if q_text and get_workspace_memory_enabled_preference():
                         from aios_habit.workspace_memory_ui import queue_memory_command_if_present

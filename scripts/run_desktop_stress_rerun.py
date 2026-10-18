@@ -95,6 +95,9 @@ from playwright.sync_api import sync_playwright
 PORT = 8570
 URL = f"http://localhost:{PORT}"
 
+os.environ["AIOS_MAX_PERSISTENT_WORKERS"] = os.environ.get("AIOS_MAX_PERSISTENT_WORKERS") or "4"
+os.environ["AIOS_RAGV2_WORKER_PERSIST"] = "1"
+
 OUT_DIR = Path(r"D:\Sandbox\aios-dieu-phoi\hop-thu\lan-desktop\ket-qua")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -473,22 +476,19 @@ class WorkerTimelineTracker:
 
 
 def wait_for_all_resident(tracker: WorkerTimelineTracker, timeout_s: float = 600) -> bool:
-    """Cho den khi ca 4 kho deu dat trang thai resident / san sang (hoac qua is_workspace_chat_worker_warmed)."""
+    """Cho den khi ca 4 kho deu dat trang thai resident / san sang."""
     log("Cho den khi CA 4 KHOI DEU DAT RESIDENT (lsu, dieu_tra_loi, tong_hop, tri_thuc)...")
     deadline = time.time() + timeout_s
     while time.time() < deadline:
         all_ready = True
-        with tracker.lock:
-            for c in DAEMON_LOGS:
-                has_ready_ts = (tracker.timeline[c]["ready_ts"] is not None)
-                if not has_ready_ts:
-                    if not is_workspace_chat_worker_warmed(collection_id=c):
-                        all_ready = False
-                        break
+        for c in ("lsu", "dieu_tra_loi", "tong_hop", "tri_thuc"):
+            if not is_workspace_chat_worker_warmed(collection_id=c):
+                all_ready = False
+                break
         if all_ready:
             log("[WAIT_RESIDENT] >>> XAC NHAN: CA 4 KHOI DEU DA DAT TRANG THAI RESIDENT/SAN SANG! <<<")
             return True
-        time.sleep(0.5)
+        time.sleep(1.0)
     log("[WAIT_RESIDENT] [WARN] Het thoi gian cho tat ca 4 khoi resident!")
     return False
 
@@ -722,6 +722,15 @@ def execute_ui_turn(
             wait_remain = target_fire_delay_s - elapsed_from_ready
             log(f"[T{turn_idx:03d}] Cho them {wait_remain:.3f}s de dat moc +{target_fire_delay_s:.1f}s sau server ready...")
             time.sleep(wait_remain)
+
+    # 2(a) Cho den khi worker cua khoi dich dat trang thai resident va nut gui duoc bat (not disabled)
+    deadline_warm = time.time() + 180.0
+    while time.time() < deadline_warm:
+        if is_workspace_chat_worker_warmed(collection_id=target_block):
+            btn_probe = page.locator(f'[class*="st-key-wsc_ask_{conv_id}"] button, [class*="st-key-wsc-action-"] button').first
+            if btn_probe.count() > 0 and not btn_probe.is_disabled():
+                break
+        page.wait_for_timeout(500)
 
     server_log_offset = server_log_file.stat().st_size if server_log_file.exists() else 0
     daemon_snap = tracker.snapshot_line_counts()
@@ -1194,6 +1203,7 @@ def run_stress_suite(
     skip_preflight: bool = False,
     override_backend: str | None = None,
     run_tag: str | None = None,
+    question_ids: str | None = None,
 ) -> dict[str, Any]:
     tag_suffix = f"_{run_tag.lower()}" if run_tag else ""
     tag_dash = f"-{run_tag.lower()}" if run_tag else ""
@@ -1227,7 +1237,11 @@ def run_stress_suite(
         for line in QUESTIONS_JSONL.read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
-    if limit is not None and limit > 0:
+    if question_ids:
+        qid_set = {q.strip().upper() for q in question_ids.split(",") if q.strip()}
+        questions = [q for q in all_raw_questions if str(q.get("question_id", "")).strip().upper() in qid_set]
+        log(f"[SUITE] Da loc {len(questions)} cau hoi theo danh sach --question-ids: {question_ids}")
+    elif limit is not None and limit > 0:
         questions = all_raw_questions[:limit]
         log(f"[SUITE] Da lay {len(questions)} / {len(all_raw_questions)} cau hoi (theo gioi han --limit {limit})")
     else:
@@ -1610,6 +1624,7 @@ def main() -> None:
     parser.add_argument("--skip-preflight", action="store_true", help="Bo qua buoc tien tram lam am worker")
     parser.add_argument("--ai-backend", type=str, default=None, help="Ghi de AI backend (local, cagent_api, ...)")
     parser.add_argument("--tag", "--run-tag", dest="run_tag", type=str, default=None, help="Hau to phan biet dot chay (vi du: r2)")
+    parser.add_argument("--question-ids", type=str, default=None, help="Danh sach ma cau hoi can chay, cach nhau boi dau phay (vi du: Q0699,DTL02,DTL01,DTL03)")
     args = parser.parse_args()
 
     run_stress_suite(
@@ -1618,6 +1633,7 @@ def main() -> None:
         skip_preflight=args.skip_preflight,
         override_backend=args.ai_backend,
         run_tag=args.run_tag,
+        question_ids=args.question_ids,
     )
 
 

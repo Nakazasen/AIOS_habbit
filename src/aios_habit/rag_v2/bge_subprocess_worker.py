@@ -240,11 +240,16 @@ def _safe_readiness(pipeline: RagV2DevPipeline) -> dict[str, Any]:
     """Expose only protocol and model identity, never source or filesystem state."""
     capability = pipeline.index.semantic_capability
     descriptor = capability.model.to_safe_dict() if capability and capability.model else None
+    dense_cache = getattr(pipeline.index, "_dense_matrix_cache", None)
+    dense_chunk_count = len(getattr(dense_cache, "chunk_ids", ())) if dense_cache is not None else 0
+    dense_resident = bool(dense_chunk_count > 0 or not getattr(pipeline.index, "numpy_dense_search_enabled", lambda: True)())
     return {
         "pid": os.getpid(),
         "protocol_version": "1",
         "retrieval_profile": pipeline.config.retrieval_profile,
         "model": descriptor,
+        "dense_resident": dense_resident,
+        "dense_chunks": dense_chunk_count,
     }
 
 
@@ -461,6 +466,9 @@ class _WorkerSession:
                         # first-load inside its query timeout. A preload failure
                         # never fails init: the lazy query-time load still applies.
                         init_phase = "cache_preload"
+                        dense_chunks = 0
+                        sparse_chunks = 0
+                        lexical_chunks = 0
                         try:
                             dense_chunks, dense_ms = (
                                 pipeline.index.preload_dense_matrix_cache()
@@ -501,6 +509,10 @@ class _WorkerSession:
                         "phases_ms": dict(phases_ms),
                     }
                 else:
+                    dense_resident = bool(
+                        dense_chunks > 0
+                        or not getattr(pipeline.index, "numpy_dense_search_enabled", lambda: True)()
+                    )
                     readiness_payload = {
                         **_safe_readiness(pipeline),
                         "bge_backend": backend_name,
@@ -508,6 +520,10 @@ class _WorkerSession:
                             (time.perf_counter() - started) * 1000.0, 3
                         ),
                         "phases_ms": dict(phases_ms),
+                        "dense_resident": dense_resident,
+                        "dense_chunks": int(dense_chunks),
+                        "sparse_chunks": int(sparse_chunks),
+                        "lexical_chunks": int(lexical_chunks),
                     }
                     self._write_status_file(config, readiness_payload)
                     response = {
