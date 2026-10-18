@@ -730,3 +730,197 @@ def test_marker_helpers_extract_and_strip():
     assert "aios_intake_review" not in clean
     assert "Văn bản mở đầu" in clean
     assert "Văn bản kết thúc" in clean
+
+
+# ===========================================================================
+# 6. Kiểm thử hồi quy độ chính xác phát hiện khía cạnh & nhãn ghi_chu
+#    (Ticket DESKTOP-KNOWLEDGE-INTAKE-PROBE-LABEL-FIX-HOME)
+# ===========================================================================
+
+
+def test_regression_c7620_opening_with_qua_nhiet_triggers_early_signs_probe():
+    """Hồi quy 1: Câu trả lời mở đầu chứa 'quá nhiệt' vẫn kích hoạt câu đào sâu dấu hiệu sớm.
+
+    Từ 'nhiệt' trong 'quá nhiệt' hoặc 'lô sấy' không được coi là đã có dấu hiệu sớm.
+    Cả 5 nhóm khía cạnh không được đánh dấu 'đã có' chỉ vì một từ ngẫu nhiên.
+    """
+    answer_c7620 = "Mã lỗi C7620, hiện tượng máy báo quá nhiệt lô sấy trên model Sirius."
+    missing = detect_missing_aspects_interview(answer_c7620)
+    assert PROBE_DAU_HIEU_SOM in missing
+    assert PROBE_PHAN_BIET_LOI in missing
+
+    # Khi nạp câu trả lời vào engine, câu đào sâu tiếp theo phải là dấu hiệu nhận biết sớm
+    engine = KnowledgeIntakeEngine()
+    session = engine.start_session(
+        store_id=STORE_ID_LSU,
+        mode=MODE_PHONG_VAN,
+        topic="Lỗi C7620",
+        expert_name="Kỹ sư Test",
+    )
+    is_done, msg, next_turn = engine.submit_answer(session, answer_c7620)
+    assert not is_done
+    assert next_turn is not None
+    assert next_turn.probe_type == PROBE_DAU_HIEU_SOM
+    assert "Dấu hiệu nhận biết sớm" in next_turn.question_text
+
+    # Kiểm tra thêm 4 nhóm còn lại không bị đánh lừa bởi từ đơn ngẫu nhiên:
+    # - "dòng điện 220V" không bị tính là model/line (chữ "dòng")
+    # - "không được tắt máy" không bị tính là xử lý không hiệu quả (chữ "không được")
+    # - "nhiệt độ sấy tăng" không bị tính là điều kiện phát sinh (chữ "nhiệt độ")
+    # - "nhảm nhí" không bị tính là phân biệt lỗi gần giống (chữ "nham")
+    tricky_text = "Hiện tượng dòng điện 220V sụt áp, nhiệt độ sấy tăng, công nhân không được thao tác nhảm nhí."
+    tricky_missing = detect_missing_aspects_interview(tricky_text)
+    assert PROBE_MODEL_LINE in tricky_missing
+    assert PROBE_XU_LY_KHONG_HIEU_QUA in tricky_missing
+    assert PROBE_DIEU_KIEN_PHAT_SINH in tricky_missing
+    assert PROBE_PHAN_BIET_LOI in tricky_missing
+    assert PROBE_DAU_HIEU_SOM in tricky_missing
+
+
+def test_regression_interview_simulation_aligns_answers_to_actual_probes(tmp_path: Path):
+    """Hồi quy 2: Chạy phiên phỏng vấn mô phỏng cấp câu trả lời theo ĐÚNG thứ tự câu hỏi
+
+    bộ máy đặt ra, kiểm tra từng đoạn ghi_chu mang nhãn của đúng câu hỏi đã mời ra câu trả lời đó.
+    """
+    staging = IntakeStagingStore(tmp_path / "staging_regr_interview.sqlite")
+    engine = KnowledgeIntakeEngine(staging_store=staging)
+
+    session = engine.start_session(
+        store_id=STORE_ID_LSU,
+        mode=MODE_PHONG_VAN,
+        topic="Lỗi C7620 quá nhiệt cụm sấy",
+        expert_name="Kỹ sư Nguyễn Văn An",
+    )
+
+    # Từ điển câu trả lời chuẩn theo probe_type thật sự của câu hỏi được máy đặt ra
+    responses_by_probe = {
+        "hien_tuong_ma_loi": "Mã lỗi C7620, hiện tượng máy báo quá nhiệt lô sấy trên model Sirius.",
+        PROBE_DAU_HIEU_SOM: "Dấu hiệu nhận biết sớm là rơ-le nhiệt nhảy lạch cạch và giấy ra hơi cong mép.",
+        PROBE_PHAN_BIET_LOI: "Phân biệt với lỗi C7610 (đứt cầu chì nhiệt): C7620 nhiệt tăng vọt trên 215 độ C trước khi ngắt.",
+        PROBE_4M_WHY: "Theo 4M + Why-Why: nguyên nhân do bụi mực đóng cặn trên bề mặt cảm biến thermistor làm đọc nhiệt độ thấp hơn thực tế nên mạch cấp nguồn đun liên tục.",
+        PROBE_XU_LY_HIEU_QUA: "Đối sách hiệu quả là vệ sinh đầu dò thermistor bằng cồn IPA và thay miếng đệm cách nhiệt tại công đoạn Lắp ráp cụm sấy trên Line 2.",
+        PROBE_XU_LY_KHONG_HIEU_QUA: "Đã thử chỉnh offset phần mềm nhưng không hiệu quả.",
+        PROBE_DIEU_KIEN_PHAT_SINH: "Điều kiện phát sinh: nhiệt độ môi trường phòng máy trên 35 độ C hoặc chạy liên tục nhiều ca.",
+        PROBE_MODEL_LINE: "Xảy ra trên model Sirius tại Line 2.",
+        "cong_doan_line": "Thuộc công đoạn Lắp ráp cụm sấy trên Line 2.",
+    }
+
+    # Đọc câu hỏi THẬT bộ máy đặt ra rồi mới trả lời theo đúng câu hỏi đó (Luật Mục 5 của vé)
+    max_turns = 10
+    turn_count = 0
+    while not session.is_completed and turn_count < max_turns:
+        turn_count += 1
+        current_turn = session.turns[-1]
+        pt = current_turn.probe_type
+        ans = responses_by_probe.get(
+            pt,
+            "Thông tin bổ sung cho khía cạnh %s." % pt,
+        )
+        is_done, msg, next_turn = engine.submit_answer(session, ans)
+        if is_done:
+            break
+
+    drafts = engine.end_and_synthesize(session)
+    assert len(drafts) == 1
+    draft = drafts[0]
+    fields = draft.fields
+
+    # Kiểm tra 5 trường bắt buộc
+    assert fields["ma_loi"] == "C7620"
+    assert "quá nhiệt" in fields["hien_tuong"]
+    assert "thermistor" in fields["nguyen_nhan"]
+    assert "vệ sinh đầu dò thermistor" in fields["doi_sach"]
+    assert fields["cong_doan"] == "Lắp Ráp Cụm Sấy"
+
+    # Kiểm tra các trường phụ
+    assert fields["model"] == "Sirius"
+    assert fields["line"] == "Line 2"
+    assert "rơ-le nhiệt nhảy lạch cạch" in fields["dau_hieu_som"]
+
+    # KIỂM TRA ĐỘ CHÍNH XÁC NHÃN GHI CHÚ:
+    # Tách các đoạn trong ghi_chu để kiểm chứng từng nhãn khớp chính xác với nội dung câu hỏi
+    ghi_chu = fields["ghi_chu"]
+    assert "[phan_biet_loi_gan_giong]:" in ghi_chu
+    assert "[dieu_kien_phat_sinh]:" in ghi_chu
+    assert "[xu_ly_khong_hieu_qua]:" in ghi_chu
+
+    # 1. phan_biet_loi_gan_giong PHẢI mang nội dung so sánh với C7610, KHÔNG mang nội dung dấu hiệu sớm
+    part_phan_biet = ghi_chu.split("[phan_biet_loi_gan_giong]:")[1].split("[")[0]
+    assert "C7610" in part_phan_biet
+    assert "rơ-le nhiệt nhảy lạch cạch" not in part_phan_biet
+
+    # 2. dieu_kien_phat_sinh PHẢI mang nội dung điều kiện môi trường, TUYỆT ĐỐI KHÔNG mang nội dung C7610
+    part_dieu_kien = ghi_chu.split("[dieu_kien_phat_sinh]:")[1].split("[")[0]
+    assert "nhiệt độ môi trường" in part_dieu_kien
+    assert "C7610" not in part_dieu_kien
+
+    # 3. xu_ly_khong_hieu_qua PHẢI mang nội dung chỉnh offset phần mềm
+    part_khong_hieu_qua = ghi_chu.split("[xu_ly_khong_hieu_qua]:")[1].split("[")[0]
+    assert "chỉnh offset phần mềm" in part_khong_hieu_qua
+    assert "C7610" not in part_khong_hieu_qua
+
+
+def test_regression_teaching_simulation_preserves_pham_vi_and_ngoai_le_labels(tmp_path: Path):
+    """Hồi quy 3: Chế độ dạy với cặp phạm vi áp dụng / trường hợp ngoại lệ.
+
+    Đọc câu hỏi thật của bộ máy và trả lời đúng theo câu hỏi, đảm bảo nhãn
+    [pham_vi_ap_dung] và [truong_hop_ngoai_le] không bị tráo đổi.
+    """
+    staging = IntakeStagingStore(tmp_path / "staging_regr_teaching.sqlite")
+    engine = KnowledgeIntakeEngine(staging_store=staging)
+
+    session = engine.start_session(
+        store_id=STORE_ID_LSU,
+        mode=MODE_DAY,
+        topic="Cân chỉnh chùm tia cụm quang LSU C3501",
+        expert_name="Chuyên gia Trần Minh Đức",
+    )
+
+    responses_by_probe = {
+        "mo_dau_bai_giang": (
+            "Khi lắp cụm LSU cho dòng máy Iris, nếu lệch trục gương đa giác sẽ gây mã lỗi C3501 "
+            "lệch đồng bộ tia laser đầu dòng (BD sensor error) tại công đoạn Kiểm tra quang học trên Line 1."
+        ),
+        CLARIFY_PHAM_VI: (
+            "Áp dụng cho toàn bộ dòng máy Iris và Sirius tại công đoạn Kiểm tra quang học."
+        ),
+        CLARIFY_NGOAI_LE: (
+            "Trường hợp ngoại lệ: khi nhiệt độ phòng dưới 18 độ C cần chạy làm ấm motor 5 phút trước khi căn chỉnh bằng dưỡng JIG-LSU-04."
+        ),
+        CLARIFY_VI_DU_THAT: (
+            "Ví dụ thật ở nhà máy: tháng trước Line 1 bị 12 máy báo C3501 liên tiếp do kỹ thuật viên mới siết ốc gương theo chiều kim đồng hồ làm trượt giá đỡ."
+        ),
+        CLARIFY_HIEU_SAI: (
+            "Chỗ người mới hay hiểu sai: người mới hay hiểu sai là chỉnh chiết áp công suất laser sẽ hết nhưng thực ra phải chỉnh cơ khí gương phản xạ."
+        ),
+    }
+
+    # Đọc câu hỏi THẬT bộ máy đặt ra rồi mới trả lời theo đúng câu hỏi đó (Mục 5 của vé)
+    max_turns = 10
+    turn_count = 0
+    while not session.is_completed and turn_count < max_turns:
+        turn_count += 1
+        current_turn = session.turns[-1]
+        pt = current_turn.probe_type
+        ans = responses_by_probe.get(
+            pt,
+            "Giải thích bổ sung về bài giảng cho khía cạnh %s." % pt,
+        )
+        is_done, msg, next_turn = engine.submit_answer(session, ans)
+        if is_done:
+            break
+
+    drafts = engine.end_and_synthesize(session)
+    assert len(drafts) == 1
+    draft = drafts[0]
+    ghi_chu = draft.fields["ghi_chu"]
+
+    # Kiểm tra nhãn [pham_vi_ap_dung] mang ĐÚNG nội dung phạm vi máy
+    assert "[pham_vi_ap_dung]: Áp dụng cho toàn bộ dòng máy Iris và Sirius tại công đoạn Kiểm tra quang học." in ghi_chu
+    # Kiểm tra nhãn [truong_hop_ngoai_le] mang ĐÚNG nội dung ngoại lệ nhiệt độ < 18 độ C
+    assert "[truong_hop_ngoai_le]: Trường hợp ngoại lệ: khi nhiệt độ phòng dưới 18 độ C cần chạy làm ấm motor 5 phút" in ghi_chu
+
+    # KHÔNG BỊ TRÁO ĐỔI:
+    assert "[pham_vi_ap_dung]: Trường hợp ngoại lệ" not in ghi_chu
+    assert "[truong_hop_ngoai_le]: Áp dụng cho toàn bộ dòng máy" not in ghi_chu
+

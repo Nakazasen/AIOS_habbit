@@ -164,28 +164,126 @@ class KnowledgeIntakeSession:
 
 
 def detect_missing_aspects_interview(answer_text: str) -> List[str]:
-    """Phát hiện các khía cạnh còn thiếu hoặc chung chung trong câu trả lời phỏng vấn."""
+    """Phát hiện các khía cạnh còn thiếu hoặc chung chung trong câu trả lời phỏng vấn.
+
+    Quy chuẩn nhận diện khía cạnh đã có:
+    - Chỉ tính là 'đã có' khi chứa cụm từ đặc hiệu (ngữ cảnh rõ ràng),
+      tuyệt đối không đánh dấu đã có chỉ vì một từ đơn lẻ / chuỗi con ngẫu nhiên
+      (ví dụ: từ 'nhiệt' trong 'quá nhiệt' không được tính là dấu hiệu sớm;
+       từ 'dòng' trong 'dòng điện' không được tính là model/line;
+       từ 'không được' trong mệnh lệnh cấm không được tính là xử lý không hiệu quả).
+    """
     clean = str(answer_text or "").strip().lower()
     missing: List[str] = []
 
-    # Kiểm tra dấu hiệu sớm
-    if not any(k in clean for k in ("dấu hiệu", "dau hieu", "nhận biết sớm", "truoc khi", "báo trước", "tiếng kêu", "mùi", "nhiệt")):
+    # 1. Kiểm tra dấu hiệu sớm: cụm từ chỉ dấu hiệu / cảnh báo trước
+    dau_hieu_keywords = (
+        "dấu hiệu",
+        "dau hieu",
+        "nhận biết sớm",
+        "nhan biet som",
+        "báo trước",
+        "bao truoc",
+        "trước khi",
+        "truoc khi",
+        "triệu chứng sớm",
+        "trieu chung som",
+        "dấu hiệu sớm",
+        "dau hieu som",
+    )
+    if not any(k in clean for k in dau_hieu_keywords):
         missing.append(PROBE_DAU_HIEU_SOM)
 
-    # Kiểm tra phân biệt lỗi gần giống
-    if not any(k in clean for k in ("khác với", "phân biệt", "nhầm", "gần giống", "khac voi", "phan biet", "nham")):
+    # 2. Kiểm tra phân biệt lỗi gần giống: cụm từ so sánh / phân biệt / tránh nhầm lẫn
+    phan_biet_keywords = (
+        "khác với",
+        "khac voi",
+        "phân biệt",
+        "phan biet",
+        "dễ nhầm",
+        "de nham",
+        "nhầm lẫn",
+        "nham lan",
+        "gần giống",
+        "gan giong",
+        "tránh nhầm",
+        "tranh nham",
+        "so với lỗi",
+        "so voi loi",
+    )
+    if not any(k in clean for k in phan_biet_keywords):
         missing.append(PROBE_PHAN_BIET_LOI)
 
-    # Kiểm tra xử lý đã thử mà không hiệu quả
-    if not any(k in clean for k in ("không hiệu quả", "khong hieu qua", "không được", "thất bại", "da thu nhung", "thử nhưng")):
+    # 3. Kiểm tra xử lý đã thử mà không hiệu quả: cụm từ nêu rõ thử nghiệm thất bại
+    khong_hieu_qua_keywords = (
+        "không hiệu quả",
+        "khong hieu qua",
+        "chưa hiệu quả",
+        "chua hieu qua",
+        "không có tác dụng",
+        "khong co tac dung",
+        "đã thử nhưng",
+        "da thu nhung",
+        "thử nhưng không",
+        "thu nhung khong",
+        "thử nhưng chưa",
+        "thu nhung chua",
+        "xử lý không hết",
+        "xu ly khong het",
+        "thay thử nhưng vẫn",
+        "thay thu nhung van",
+    )
+    if not any(k in clean for k in khong_hieu_qua_keywords):
         missing.append(PROBE_XU_LY_KHONG_HIEU_QUA)
 
-    # Kiểm tra điều kiện phát sinh
-    if not any(k in clean for k in ("điều kiện", "dieu kien", "nhiệt độ", "độ ẩm", "môi trường", "tốc độ", "thời tiết")):
+    # 4. Kiểm tra điều kiện phát sinh: cụm từ chỉ điều kiện môi trường / bối cảnh cụ thể
+    dieu_kien_keywords = (
+        "điều kiện",
+        "dieu kien",
+        "thời tiết",
+        "thoi tiet",
+        "môi trường làm việc",
+        "moi truong lam viec",
+        "môi trường xung quanh",
+        "nhiệt độ môi trường",
+        "nhiet do moi truong",
+        "nhiệt độ phòng",
+        "nhiet do phong",
+        "độ ẩm môi trường",
+        "do am moi truong",
+        "độ ẩm cao",
+        "do am cao",
+        "chạy liên tục",
+        "chay lien tuc",
+        "hoàn cảnh phát sinh",
+        "thời điểm phát sinh",
+        "khi vào ca",
+        "sau khi thay",
+        "mùa đông",
+        "mua dong",
+        "mùa hè",
+        "mua he",
+        "trời nồm",
+        "sau khi bảo dưỡng",
+        "sau khi bao duong",
+    )
+    if not any(k in clean for k in dieu_kien_keywords):
         missing.append(PROBE_DIEU_KIEN_PHAT_SINH)
 
-    # Kiểm tra model/line
-    if not any(k in clean for k in ("model", "dòng", "line", "chỉ bị", "toàn bộ", "line 1", "line 2", "line 3")):
+    # 5. Kiểm tra model/line: cụm từ hoặc mẫu định danh model / dây chuyền cụ thể
+    model_line_phrases = (
+        "model",
+        "dòng máy",
+        "dong may",
+        "dây chuyền",
+        "day chuyen",
+        "line sản xuất",
+        "line san xuat",
+    )
+    has_model_phrase = any(k in clean for k in model_line_phrases)
+    has_line_num = bool(re.search(r"\b(line\s*\d+|dây chuyền\s*\d+)\b", clean))
+    has_known_model = bool(re.search(r"\b(sirius|iris|6tha3|a3|a4|dmt|pmt)\b", clean))
+    if not (has_model_phrase or has_line_num or has_known_model):
         missing.append(PROBE_MODEL_LINE)
 
     return missing
@@ -335,12 +433,11 @@ def synthesize_draft_items(session: KnowledgeIntakeSession) -> List[IntakeDraftI
         detected_line = _extract_line(combined_text)
         detected_cong_doan = _extract_cong_doan(combined_text)
 
-        # Trích dẫn hiện tượng từ câu trả lời đầu tiên hoặc tổng hợp
         hien_tuong_val = ""
         nguyen_nhan_val = ""
         doi_sach_val = ""
         dau_hieu_val = ""
-        ghi_chu_val = ""
+        ghi_chu_pieces: List[str] = []
 
         for t in answers:
             pt = t.probe_type
@@ -363,7 +460,7 @@ def synthesize_draft_items(session: KnowledgeIntakeSession) -> List[IntakeDraftI
                 CLARIFY_NGOAI_LE,
                 CLARIFY_PHAM_VI,
             ):
-                ghi_chu_val += (" [%s]: %s" % (pt, ans)).strip()
+                ghi_chu_pieces.append("[%s]: %s" % (pt, ans))
 
             # Nếu trong câu trả lời bất kỳ chuyên gia đã nêu rõ nguyên nhân / đối sách / dấu hiệu sớm
             if (
@@ -400,7 +497,9 @@ def synthesize_draft_items(session: KnowledgeIntakeSession) -> List[IntakeDraftI
         fields["model"] = detected_model if detected_model else "chưa xác nhận"
         fields["line"] = detected_line if detected_line else "chưa xác nhận"
         fields["dau_hieu_som"] = dau_hieu_val if dau_hieu_val else "chưa xác nhận"
-        fields["ghi_chu"] = ghi_chu_val.strip() if ghi_chu_val.strip() else "chưa xác nhận"
+        fields["ghi_chu"] = (
+            " ".join(ghi_chu_pieces).strip() if ghi_chu_pieces else "chưa xác nhận"
+        )
     else:
         # Kho thông thường khác: điền theo field specs
         for f in profile.fields:
