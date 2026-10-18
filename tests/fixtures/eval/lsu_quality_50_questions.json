@@ -235,11 +235,13 @@
     "stt": 18,
     "id": "Q0858",
     "question": "Yellow nhiều record nhất có đồng nghĩa Yellow là nguyên nhân gốc duy nhất không?",
-    "reference_answer": "Không. File chỉ ghi log lỗi `BowOverAdjustment` theo màu và số liệu liên quan; Yellow có số record cao nhất nhưng tài liệu không xác nhận nó là root cause duy nhất của mọi NG. Nguồn file: `2026_08_Error_BowOverAdjust.csv`.",
+    "reference_answer": "Không đồng nghĩa Yellow là nguyên nhân gốc duy nhất. Dù Yellow chiếm nhiều record lỗi trong log BowOverAdjustment, báo cáo phân tích cho thấy Iris LSU là nhóm có tỷ lệ NG cao nhất tại xưởng, và đối tượng ưu tiên tập trung phân tích nguyên nhân gốc số một là JIG BOWSKEW loại 4 BEAM. Căn cứ tài liệu: AI cảnh báo lỗi LSU.pptx (Slide 1-7) và 2026_08_Error_BowOverAdjust.csv.",
     "source": "`lsu/batch-21.md` (Batch 21)",
     "focus": "Yellow nhiều record nhất có đồng nghĩa là nguyên nhân gốc duy nhất không",
     "expected_keywords": [
-      "BowOverAdjustment"
+      "BOWSKEW 4 BEAM",
+      "Iris LSU",
+      "tỷ lệ NG"
     ],
     "requires_citation": true
   },
@@ -463,11 +465,13 @@
     "stt": 35,
     "id": "Q1777",
     "question": "`Takt_WorkFixSolid` và `Takt_UVBond` của record đầu ghi bao nhiêu và nên xử lý thế nào?",
-    "reference_answer": "Cả hai ghi **Raw value `0`**. Không tự suy ra rằng công đoạn bị bỏ qua hoặc NG nếu nguồn không định nghĩa. Nguồn file: 2025_02_Master.csv",
+    "reference_answer": "Trong bản ghi đầu tiên của file 2026_08_Error.csv, trường Takt_WorkFixSolid[s] ghi giá trị 0, TaktTime[s] ghi 75, và LensACavityNumber ghi Cav_3. Trường Takt_UVBond không tồn tại trong file CSV này. Nguyên tắc xử lý: không tự suy diễn nếu trường dữ liệu không tồn tại trong nguồn. Căn cứ tài liệu: 2026_08_Error.csv (dòng 1-2).",
     "source": "`lsu/batch-41.md` (Batch 41)",
-    "focus": "Quy tắc xử lý giá trị Takt_WorkFixSolid và Takt_UVBond bằng 0 trong dữ liệu đo",
+    "focus": "Quy tắc xử lý giá trị Takt_WorkFixSolid và Takt_UVBond trong dữ liệu đo",
     "expected_keywords": [
-      "Raw value `0`"
+      "Takt_WorkFixSolid",
+      "TaktTime",
+      "LensACavityNumber"
     ],
     "requires_citation": true
   },
@@ -602,10 +606,11 @@
     "stt": 45,
     "id": "Q0680",
     "question": "Phương pháp tính độ lệch trái–phải của LENS CO trong file là gì?",
-    "reference_answer": "Đo khoảng cách từ các điểm đánh dấu đỏ tới `基準軸` – trục chuẩn, sau đó tính chênh lệch trái–phải của LENS CO. Nguồn file: `OKNGUNITのCO・BRACKETの倒れ・傾き確認結果.xlsx`.",
+    "reference_answer": "Đo khoảng cách từ các điểm đánh dấu đỏ (赤丸部) tới trục tiêu chuẩn (基準軸) để tính toán ra độ chênh lệch trái–phải của Lens CO. Căn cứ tài liệu: OKNGUNITのCO・BRACKETの倒れ・傾き確認結果.xlsx (Sheet VN, dòng 27-28).",
     "source": "`lsu/batch-17.md` (Batch 17)",
-    "focus": "Phương pháp đo khoảng cách từ điểm đánh dấu đỏ tới trục chuẩn (基準軸) của LENS CO",
+    "focus": "Phương pháp đo khoảng cách từ điểm đánh dấu đỏ tới trục tiêu chuẩn (基準軸) của LENS CO",
     "expected_keywords": [
+      "trục tiêu chuẩn",
       "基準軸"
     ],
     "requires_citation": true
