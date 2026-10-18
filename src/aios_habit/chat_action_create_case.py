@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import re
 import uuid
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from aios_habit.chat_action import (
@@ -429,6 +430,131 @@ def execute_confirm_case(
         return "\n".join(header_lines)
 
 
+def find_case_investigation_tree(
+    case_id: str,
+    case: Optional[Any] = None,
+) -> Optional[Dict[str, Any]]:
+    """Lookup Step 3 investigation tree status/summary for a case.
+
+    Searches in:
+    1. case.timeline_events (if case object is passed or loadable).
+    2. local_cases/investigation_feedback.jsonl (Step 3 continuous improvement store).
+    3. Alternative LOCAL_CASES_DIR / investigation_feedback.jsonl (for test isolation).
+    """
+    clean_id = str(case_id or "").strip().upper()
+    if not clean_id:
+        return None
+
+    # 1. Check timeline events on case object
+    if case is not None:
+        events = getattr(case, "timeline_events", []) or []
+        for ev in reversed(events):
+            if isinstance(ev, dict) and (
+                ev.get("type") in ("investigation_tree_built", "tree_built")
+                or ev.get("tree_id")
+            ):
+                return {
+                    "tree_id": str(ev.get("tree_id") or ""),
+                    "total_items": int(ev.get("total_items") or 0),
+                    "grounded_items": int(ev.get("grounded_items") or 0),
+                    "generic_items": int(ev.get("generic_items") or 0),
+                    "created_at": str(ev.get("timestamp") or ""),
+                    "source": "timeline_events",
+                }
+
+    # 2. Check local_cases/investigation_feedback.jsonl via load_all_investigation_feedback
+    try:
+        from aios_habit.error_cases.investigation_feedback import (
+            load_all_investigation_feedback,
+        )
+
+        records = load_all_investigation_feedback()
+        matched = [
+            r
+            for r in records
+            if isinstance(r, dict)
+            and str(r.get("case_id") or "").strip().upper() == clean_id
+        ]
+        if matched:
+            latest = matched[-1]
+            return {
+                "tree_id": str(latest.get("tree_id") or ""),
+                "total_items": int(latest.get("total_items") or 0),
+                "grounded_items": int(latest.get("grounded_items") or 0),
+                "generic_items": int(latest.get("generic_items") or 0),
+                "rating": str(latest.get("rating") or ""),
+                "exported_files": list(latest.get("exported_files") or []),
+                "created_at": str(latest.get("created_at") or ""),
+                "source": "investigation_feedback",
+            }
+    except Exception:
+        pass
+
+    # 3. Check if aios_habit.case_store.LOCAL_CASES_DIR has its own investigation_feedback.jsonl
+    try:
+        from aios_habit.case_store import LOCAL_CASES_DIR
+
+        alt_fb = Path(LOCAL_CASES_DIR) / "investigation_feedback.jsonl"
+        if alt_fb.is_file():
+            matched_lines = []
+            with alt_fb.open("r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        data = json.loads(line)
+                        if (
+                            isinstance(data, dict)
+                            and str(data.get("case_id") or "").strip().upper()
+                            == clean_id
+                        ):
+                            matched_lines.append(data)
+                    except Exception:
+                        continue
+            if matched_lines:
+                latest = matched_lines[-1]
+                return {
+                    "tree_id": str(latest.get("tree_id") or ""),
+                    "total_items": int(latest.get("total_items") or 0),
+                    "grounded_items": int(latest.get("grounded_items") or 0),
+                    "generic_items": int(latest.get("generic_items") or 0),
+                    "rating": str(latest.get("rating") or ""),
+                    "exported_files": list(latest.get("exported_files") or []),
+                    "created_at": str(latest.get("created_at") or ""),
+                    "source": "alt_investigation_feedback",
+                }
+    except Exception:
+        pass
+
+    return None
+
+
+def format_case_tree_status(tree_info: Optional[Dict[str, Any]]) -> str:
+    """Format the Step 3 investigation tree display string for case progress view."""
+    if not tree_info:
+        return "Chưa lập cây (còn trống)"
+
+    tree_id = tree_info.get("tree_id") or ""
+    total_items = tree_info.get("total_items", 0)
+    grounded_items = tree_info.get("grounded_items", 0)
+
+    details: List[str] = []
+    if total_items > 0:
+        details.append(f"{total_items} mục")
+    if grounded_items > 0:
+        details.append(f"{grounded_items} có căn cứ")
+    elif total_items > 0:
+        details.append("gợi ý chung")
+
+    summary_str = f": {', '.join(details)}" if details else ""
+    if tree_id:
+        return f"Đã lập cây ({tree_id}{summary_str})"
+    elif details:
+        return f"Đã lập cây ({', '.join(details)})"
+    return "Đã lập cây"
+
+
 def execute_view_case_progress(
     case_id: Optional[str] = None,
     conversation_id: str = "",
@@ -480,7 +606,9 @@ def execute_view_case_progress(
     hypo_count = len(case.hypotheses)
     hypo_text = f"Đã có {hypo_count} giả thuyết" if hypo_count > 0 else "Chưa có (còn trống)"
 
-    tree_text = "Chưa lập cây (còn trống)"
+    tree_info = find_case_investigation_tree(target_case_id, case)
+    tree_text = format_case_tree_status(tree_info)
+
 
     actions_count = len(case.next_actions)
     actions_text = (
@@ -695,6 +823,23 @@ def execute_build_case_tree(
             exported_files=saved_files,
             conversation_id=conversation_id,
         )
+    except Exception:
+        pass
+
+    # Record timeline event on case and persist to cases.jsonl
+    try:
+        from aios_habit.case_store import save_case
+
+        case.timeline_events.append({
+            "timestamp": datetime.now().isoformat(),
+            "type": "investigation_tree_built",
+            "tree_id": tree.tree_id,
+            "total_items": str(tree.total_items),
+            "grounded_items": str(tree.grounded_items_count),
+            "generic_items": str(tree.generic_items_count),
+            "description": f"Đã lập cây điều tra 4M & Why-Why ({tree.tree_id}): {tree.total_items} mục ({tree.grounded_items_count} có căn cứ, {tree.generic_items_count} gợi ý chung).",
+        })
+        save_case(case)
     except Exception:
         pass
 

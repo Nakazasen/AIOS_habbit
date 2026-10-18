@@ -98,6 +98,14 @@ def test_view_case_progress_and_build_tree(tmp_path, monkeypatch):
     monkeypatch.setattr("aios_habit.case_store.CASES_FILE", test_cases_dir / "cases.jsonl")
     monkeypatch.setattr("aios_habit.case_store.EVIDENCE_FILE", test_cases_dir / "evidence.jsonl")
     monkeypatch.setattr("aios_habit.case_store.ASSETS_DIR", test_cases_dir / "assets")
+    monkeypatch.setattr(
+        "aios_habit.error_cases.investigation_feedback.LOCAL_INVESTIGATION_FEEDBACK_FILE",
+        test_cases_dir / "investigation_feedback.jsonl",
+    )
+    monkeypatch.setattr(
+        "aios_habit.error_cases.investigation_feedback.LOCAL_CASES_DIR",
+        test_cases_dir,
+    )
 
     c = Case(
         case_id="CASE-TEST9999",
@@ -109,14 +117,14 @@ def test_view_case_progress_and_build_tree(tmp_path, monkeypatch):
     save_case(c)
     set_active_case_id(c.case_id)
 
-    # 1. Test execute_view_case_progress
+    # 1. Test execute_view_case_progress before building tree (Chưa lập cây)
     progress_res = execute_view_case_progress(case_id=c.case_id)
     assert "Tiến độ vụ điều tra `CASE-TEST9999`" in progress_res
     assert "Mở (`open`)" in progress_res
     assert "máy in báo lỗi kẹt giấy" in progress_res
     assert "Các trường còn trống cho các bước tiếp theo" in progress_res
     assert "Bước 2 (Giả thuyết nguyên nhân)" in progress_res
-    assert "Bước 3 (Cây điều tra 4M & Why-Why)" in progress_res
+    assert "- **Bước 3 (Cây điều tra 4M & Why-Why):** Chưa lập cây (còn trống)" in progress_res
 
     # 2. Test execute_build_case_tree
     tree_res = execute_build_case_tree(case_id=c.case_id)
@@ -127,6 +135,109 @@ def test_view_case_progress_and_build_tree(tmp_path, monkeypatch):
     assert "Vật liệu (Material)" in tree_res
     assert "Phương pháp (Method)" in tree_res
     assert "Chuỗi Why-Why" in tree_res
+
+    # 3. Test execute_view_case_progress after building tree (Đã lập cây thật)
+    progress_res_after = execute_view_case_progress(case_id=c.case_id)
+    assert "- **Bước 3 (Cây điều tra 4M & Why-Why):** Đã lập cây (" in progress_res_after
+    assert "Chưa lập cây (còn trống)" not in progress_res_after
+    assert "TREE-" in progress_res_after
+
+
+def test_find_case_investigation_tree_and_formatting(tmp_path, monkeypatch):
+    from aios_habit.case_models import Case
+    from aios_habit.case_store import save_case
+    from aios_habit.chat_action_create_case import (
+        find_case_investigation_tree,
+        format_case_tree_status,
+        execute_view_case_progress,
+    )
+
+    test_cases_dir = tmp_path / "test_cases"
+    test_cases_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr("aios_habit.case_store.LOCAL_CASES_DIR", test_cases_dir)
+    monkeypatch.setattr("aios_habit.case_store.CASES_FILE", test_cases_dir / "cases.jsonl")
+    monkeypatch.setattr("aios_habit.case_store.EVIDENCE_FILE", test_cases_dir / "evidence.jsonl")
+    monkeypatch.setattr("aios_habit.case_store.ASSETS_DIR", test_cases_dir / "assets")
+
+    # Case A: Chưa có cây
+    case_no_tree = Case(
+        case_id="CASE-NO-TREE",
+        title="Lỗi kẹt giấy chưa lập cây",
+        current_situation="Kẹt giấy line 1",
+        status="open",
+    )
+    save_case(case_no_tree)
+
+    assert find_case_investigation_tree("CASE-NO-TREE", case_no_tree) is None
+    assert format_case_tree_status(None) == "Chưa lập cây (còn trống)"
+    view_no_tree = execute_view_case_progress(case_id="CASE-NO-TREE")
+    assert "- **Bước 3 (Cây điều tra 4M & Why-Why):** Chưa lập cây (còn trống)" in view_no_tree
+
+    # Case B: Đã có cây qua timeline_events
+    case_with_tree = Case(
+        case_id="CASE-WITH-TREE",
+        title="Lỗi sấy đã có cây",
+        current_situation="C4001 sấy quá nhiệt",
+        status="investigating",
+        timeline_events=[
+            {
+                "timestamp": "2026-10-18T12:00:00",
+                "type": "investigation_tree_built",
+                "tree_id": "TREE-ABC12345",
+                "total_items": "16",
+                "grounded_items": "4",
+                "generic_items": "12",
+            }
+        ],
+    )
+    save_case(case_with_tree)
+
+    info = find_case_investigation_tree("CASE-WITH-TREE", case_with_tree)
+    assert info is not None
+    assert info["tree_id"] == "TREE-ABC12345"
+    assert info["total_items"] == 16
+    assert info["grounded_items"] == 4
+    formatted = format_case_tree_status(info)
+    assert formatted == "Đã lập cây (TREE-ABC12345: 16 mục, 4 có căn cứ)"
+
+    view_with_tree = execute_view_case_progress(case_id="CASE-WITH-TREE")
+    assert "- **Bước 3 (Cây điều tra 4M & Why-Why):** Đã lập cây (TREE-ABC12345: 16 mục, 4 có căn cứ)" in view_with_tree
+    assert "Chưa lập cây (còn trống)" not in view_with_tree
+
+    # Case C: Đã có cây nhưng toàn bộ là gợi ý chung (grounded_items == 0)
+    info_generic = {
+        "tree_id": "TREE-GENERIC",
+        "total_items": 16,
+        "grounded_items": 0,
+        "generic_items": 16,
+    }
+    assert format_case_tree_status(info_generic) == "Đã lập cây (TREE-GENERIC: 16 mục, gợi ý chung)"
+
+    # Case D: Đã có cây qua investigation_feedback.jsonl (không có timeline event)
+    from aios_habit.error_cases.investigation_feedback import log_investigation_tree
+    case_fb = Case(
+        case_id="CASE-FROM-FB",
+        title="Lỗi tra cứu từ feedback store",
+        current_situation="Lỗi kẹt giấy sensor sấy",
+        status="investigating",
+    )
+    save_case(case_fb)
+    log_investigation_tree(
+        tree_id="TREE-FB1234",
+        phenomenon="Lỗi kẹt giấy sensor sấy",
+        case_id="CASE-FROM-FB",
+        total_items=18,
+        grounded_items=6,
+        generic_items=12,
+    )
+    info_fb = find_case_investigation_tree("CASE-FROM-FB", case_fb)
+    assert info_fb is not None
+    assert info_fb["tree_id"] == "TREE-FB1234"
+    assert info_fb["total_items"] == 18
+    assert info_fb["grounded_items"] == 6
+    view_fb = execute_view_case_progress(case_id="CASE-FROM-FB")
+    assert "- **Bước 3 (Cây điều tra 4M & Why-Why):** Đã lập cây (TREE-FB1234: 18 mục, 6 có căn cứ)" in view_fb
+
 
 
 def test_missing_case_context():
@@ -140,3 +251,4 @@ def test_missing_case_context():
 
     tree = execute_build_case_tree(case_id="CASE-NONEXISTENT")
     assert "Không tìm thấy vụ `CASE-NONEXISTENT`" in tree
+
