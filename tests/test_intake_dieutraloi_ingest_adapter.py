@@ -40,6 +40,7 @@ from aios_habit.intake_dieutraloi_ingest_adapter import (
     get_default_dieutraloi_interview_cases,
     ingest_staged_dieutraloi_items,
     rollback_dieutraloi_interview_ingest,
+    seed_sample_dieutraloi_interview_items,
     split_error_code,
     stage_dieutraloi_interview_cases,
     verify_dieutraloi_interview_retrieval,
@@ -370,3 +371,46 @@ def test_step1_retrieval_verification_and_rollback(tmp_path: Path):
         assert [r[0] for r in orig_rows] == ["DVD-ORIG-001", "DVD-ORIG-002"]
     finally:
         conn.close()
+
+
+def test_sample_seeding_hard_guard_against_production_staging(tmp_path: Path):
+    """Cơ chế chặn cứng: Từ chối chạy dữ liệu mẫu khi staging đích là staging thật hoặc None."""
+    # 1. Gọi không truyền staging_store -> phải từ chối chạy
+    with pytest.raises(RuntimeError, match="Chặn cứng an toàn"):
+        stage_dieutraloi_interview_cases()
+
+    with pytest.raises(RuntimeError, match="Chặn cứng an toàn"):
+        seed_sample_dieutraloi_interview_items()
+
+    # 2. Gọi với default staging store (staging thật) -> phải từ chối chạy
+    real_store = IntakeStagingStore()
+    with pytest.raises(RuntimeError, match="Chặn cứng an toàn"):
+        stage_dieutraloi_interview_cases(staging_store=real_store)
+
+    with pytest.raises(RuntimeError, match="Chặn cứng an toàn"):
+        seed_sample_dieutraloi_interview_items(staging_store=real_store)
+
+    # 3. Chỉ cho phép chạy trên staging_store kiểm thử (tmp_path)
+    isolated_staging = IntakeStagingStore(db_path=tmp_path / "fixture_staging.sqlite")
+    staged = stage_dieutraloi_interview_cases(staging_store=isolated_staging)
+    assert len(staged) == 5
+
+    staged_alias = seed_sample_dieutraloi_interview_items(staging_store=isolated_staging)
+    assert len(staged_alias) == 5
+
+
+def test_ingest_empty_staging_store(tmp_path: Path):
+    """Khi staging không có mục CHO_NAP nào của Kho điều tra lỗi, adapter nạp an toàn 0 ca."""
+    db_file = _init_mock_error_cases_db(tmp_path / "empty_test.db")
+    empty_staging = IntakeStagingStore(db_path=tmp_path / "empty_staging.sqlite")
+
+    res = ingest_staged_dieutraloi_items(db_path=db_file, staging_store=empty_staging, backup=False)
+    assert res["status"] == "success"
+    assert res["total_ready_items"] == 0
+    assert res["ingested_count"] == 0
+    assert res["skipped_count"] == 0
+    assert res["delta"] == 0
+    assert res["count_before"] == 2
+    assert res["count_after"] == 2
+    assert res["integrity_ok"] is True
+

@@ -41,6 +41,7 @@ from aios_habit.intake_staging import (
     IntakeSessionRecord,
     IntakeStagingStore,
     IntakeTurnRecord,
+    get_staging_db_path,
 )
 from aios_habit.intake_target_profiles import (
     STORE_ID_DIEU_TRA_LOI,
@@ -191,12 +192,37 @@ def get_default_dieutraloi_interview_cases() -> List[DieuTraLoiInterviewCase]:
     ]
 
 
+def _assert_test_staging_only(staging_store: Optional[IntakeStagingStore]) -> IntakeStagingStore:
+    """Chặn cứng an toàn: Dữ liệu mẫu chỉ được dùng trong test fixture, tuyệt đối từ chối chạy trên Staging thật."""
+    if staging_store is None:
+        raise RuntimeError(
+            "Chặn cứng an toàn: Không được phép gieo dữ liệu mẫu khi chưa chỉ định staging_store kiểm thử "
+            "(dữ liệu mẫu phỏng vấn chỉ được nằm trong test fixture, cấm gieo vào staging thật)."
+        )
+    try:
+        real_staging = get_staging_db_path().resolve()
+        target_staging = Path(staging_store.db_path).resolve()
+        if target_staging == real_staging:
+            raise RuntimeError(
+                f"Chặn cứng an toàn: Từ chối gieo dữ liệu mẫu vào staging thật ({target_staging}). "
+                "Dữ liệu mẫu phỏng vấn chỉ được phép dùng trong test fixture!"
+            )
+    except (OSError, RuntimeError) as exc:
+        if "Chặn cứng an toàn" in str(exc):
+            raise
+    return staging_store
+
+
 def stage_dieutraloi_interview_cases(
     cases: Optional[Sequence[DieuTraLoiInterviewCase]] = None,
     staging_store: Optional[IntakeStagingStore] = None,
 ) -> List[IntakeDraftItemRecord]:
-    """Lưu các ca phỏng vấn điều tra lỗi vào Staging store với trạng thái CHO NAP."""
-    store = staging_store or IntakeStagingStore()
+    """Lưu các ca phỏng vấn điều tra lỗi vào Staging store với trạng thái CHO NAP.
+
+    CHÚ Ý BẢO MẬT: Hàm này chỉ phục vụ môi trường kiểm thử (test fixture) và có cơ chế
+    chặn cứng từ chối chạy trên staging thật (`knowledge_intake_staging.sqlite`).
+    """
+    store = _assert_test_staging_only(staging_store)
     case_list = list(cases) if cases is not None else get_default_dieutraloi_interview_cases()
     now_iso = datetime.now().isoformat()
 
@@ -301,6 +327,17 @@ def stage_dieutraloi_interview_cases(
         staged_records.append(draft_item)
 
     return staged_records
+
+
+def seed_sample_dieutraloi_interview_items(
+    staging_store: Optional[IntakeStagingStore] = None,
+    cases: Optional[Sequence[DieuTraLoiInterviewCase]] = None,
+) -> List[IntakeDraftItemRecord]:
+    """Hàm gieo dữ liệu mẫu phục vụ test fixture (Ticket DESKTOP-KNOWLEDGE-INTAKE-DIEUTRALOI-DATA-FIX-HOME).
+
+    Đã được chặn cứng để từ chối chạy khi staging đích là staging thật.
+    """
+    return stage_dieutraloi_interview_cases(cases=cases, staging_store=staging_store)
 
 
 def check_sqlite_integrity(db_path: Path | str) -> Tuple[bool, str]:
@@ -516,6 +553,26 @@ def ingest_staged_dieutraloi_items(
         d for d in all_drafts
         if d.ingest_status == INGEST_CHO_NAP and d.review_status in (STATUS_DUNG, "da_sua")
     ]
+    if not ready_items:
+        conn = sqlite3.connect(str(target_db))
+        try:
+            count = int(conn.execute("SELECT COUNT(*) AS n FROM error_cases;").fetchone()[0])
+            ok_after, msg_after = check_sqlite_integrity(target_db)
+            return {
+                "status": "success",
+                "db_path": str(target_db),
+                "backup": backup_info,
+                "count_before": count,
+                "count_after": count,
+                "delta": 0,
+                "total_ready_items": 0,
+                "ingested_count": 0,
+                "skipped_count": 0,
+                "inserted_case_ids": [],
+                "integrity_ok": ok_after,
+            }
+        finally:
+            conn.close()
 
     conn = sqlite3.connect(str(target_db))
     conn.row_factory = sqlite3.Row

@@ -317,11 +317,6 @@ def _score_row(
     immediate = str(raw.get("M") or "").strip() or str(raw.get("O") or "").strip()
     if (ab and ab not in ("-", "—", "ー")) or immediate:
         score += 10
-    if score > 0 and (
-        ("error_code_i_src" in row_keys and row["error_code_i_src"] == "phong-van-chuyen-gia")
-        or raw.get("source") == "phong-van-chuyen-gia"
-    ):
-        score += 25
     return score
 
 
