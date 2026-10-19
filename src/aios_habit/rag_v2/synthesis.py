@@ -198,6 +198,35 @@ _MAX_LIMITATION_CHARS = 420
 # overview text at the head of a pack cannot starve concrete body evidence.
 _MAX_SUMMARY_CLAIMS = 2
 
+_VALUE_QUERY_INTENT_RE = re.compile(
+    r"(?:kích\s*thước|dung\s*sai|giá\s*trị|số\s*liệu|giới\s*hạn|độ\s*lệch|khoảng\s*đo|thông\s*số|bao\s*nhiêu|chỉ\s*số|"
+    r"phiên\s*bản|ngày\s*tạo|tạo\s*bởi|người\s*tạo|tác\s*giả|bởi\s*ai|ai\s*tạo|do\s*ai|người\s*sáng\s*tạo|"
+    r"測定値|測定項目|測定|公差|寸法|数値|上限|下限|規格|限界|幾ら|いくら|範囲|"
+    r"バージョン|作成者|作成日|作成部門|作成|誰|版|"
+    r"\b(?:measurement|tolerance|dimension|value|limit|range|spec|specification|size|author|creator|created\s*by|version)\b)",
+    re.IGNORECASE,
+)
+_ASYMMETRIC_TOL_RE = re.compile(
+    r"[+-]\s*\d+(?:\.\d+)?\s*(?:/|~|-|\s+)\s*[-−]?\s*\d+(?:\.\d+)?",
+    re.IGNORECASE,
+)
+_HEADER_PREFIX_RE = re.compile(
+    r"^(?:Section|Columns|Sheet|Trang tính|Header row|Tiêu đề|Bảng|Mục)\b",
+    re.IGNORECASE,
+)
+_HEADER_FIELD_NAMES_RE = re.compile(
+    r"^(?:kích thước đo|kích thước|giá trị đo|giá trị|điểm đo|dung sai|dung sai trên|dung sai dưới|vị trí bản vẽ|phán định kết quả|"
+    r"no|column\s+[a-z0-9]|tên tài liệu|tiêu đề|chuỗi tiêu đề|văn bản chân trang|bảo mật|"
+    r"測定値|測定項目|測定|公差|上限|下限|項目|備考|"
+    r"section|columns|sheet|row|header)",
+    re.IGNORECASE,
+)
+_CREATOR_NAME_RE = re.compile(
+    r"(?:người\s*sáng\s*tạo|người\s*tạo|tạo\s*bởi|tác\s*giả|作成者|created\s*by|author)\s*[:=–—\s]+\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)",
+    re.IGNORECASE,
+)
+_SIGNED_DECIMAL_RE = re.compile(r"(?<!\w)[-+]?\d+\.\d+(?!\w)")
+
 
 
 def _critical_literals(text: str) -> Tuple[str, ...]:
@@ -1426,7 +1455,8 @@ def _is_fragment_noise(fragment: str) -> bool:
         pair_counts = {}
         for pair in zip(tokens, tokens[1:]):
             pair_counts[pair] = pair_counts.get(pair, 0) + 1
-        if len(normalized) <= 300 and max(pair_counts.values(), default=0) >= 3:
+        max_pair = max(pair_counts.values(), default=0)
+        if len(normalized) <= 300 and (max_pair >= 4 or (max_pair >= 3 and (max_pair / max(len(pair_counts), 1)) >= 0.25)):
             return True
     if len(tokens) >= 8:
         counts = {token: tokens.count(token) for token in set(tokens)}
@@ -1438,7 +1468,13 @@ def _is_fragment_noise(fragment: str) -> bool:
         ):
             return True
     terms = set(extract_content_terms(normalized))
-    return len(terms) < 3
+    if len(terms) < 3:
+        if re.match(r"^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+$", normalized):
+            return False
+        if re.search(r"(?:tạo bởi|người tạo|người sáng tạo|tác giả|作成者|created\s*by|author|version|phiên bản)\b", normalized, re.IGNORECASE):
+            return False
+        return True
+    return False
 
 
 def _bounded_fragment_windows(fragment: str) -> Tuple[str, ...]:
@@ -1478,7 +1514,7 @@ def _extract_measurement_table_ranges(raw_text: str) -> list[str]:
     section_name = ""
     row_data: list[tuple[str, list[float], list[str]]] = []
     for line in lines:
-        if "±" in line or "+/-" in line or "＋／－" in line:
+        if "±" in line or "+/-" in line or "＋／－" in line or bool(_ASYMMETRIC_TOL_RE.search(line)):
             continue
         s_match = re.match(r"^(?:Section|Sheet)\s*:\s*(.+)$", line, re.IGNORECASE)
         if s_match:
@@ -1549,34 +1585,114 @@ def _extract_tolerance_specifications(raw_text: str) -> list[str]:
     """Extract engineering specification rows pairing nominal values with tolerances.
 
     Handles inspection and drawing tables containing nominal coordinates with explicit
-    tolerances (e.g. 12A | 123.5 | ± 0.2 -> 12A 123.5 ±0.2 (123.5 ± 0.2)).
+    tolerances (e.g. 12A | 123.5 | ± 0.2 -> 12A 123.5 ±0.2 (123.5 ± 0.2), or
+    Row 24: 48 | 21C | | 39 | +0.08 -0.05 | 0.08 | 0.05 | Y73 ->
+    Row 24: điểm đo 21C/Y73: kích thước 39, dung sai +0.08 / -0.05 (+0.08 -0.05), giới hạn 38.95 ~ 39.08 (39.08, 38.95)).
     """
-    if not raw_text or ("±" not in raw_text and "+/-" not in raw_text and "＋／－" not in raw_text):
+    if not raw_text:
+        return []
+    has_sym = "±" in raw_text or "+/-" in raw_text or "＋／－" in raw_text
+    has_asym = bool(_ASYMMETRIC_TOL_RE.search(raw_text))
+    if not has_sym and not has_asym:
         return []
     lines = raw_text.splitlines()
     specs: list[str] = []
     for line in lines:
-        if "±" not in line and "+/-" not in line and "＋／－" not in line:
+        if "±" not in line and "+/-" not in line and "＋／－" not in line and not _ASYMMETRIC_TOL_RE.search(line):
             continue
         clean = _CELL_REFERENCE_RE.sub("", line).strip()
         parts = [p.strip() for p in clean.split("|") if p.strip()]
         tol_idx = -1
+        tol_val = ""
+        is_asym = False
         for i, p in enumerate(parts):
             if "±" in p or "+/-" in p or "＋／－" in p:
                 tol_idx = i
+                tol_val = p
+                break
+            if re.match(r"^[+-]\s*\d+(?:\.\d+)?\s*(?:/|~|-|\s+)\s*[-−]?\s*\d+(?:\.\d+)?$", p):
+                tol_idx = i
+                tol_val = p
+                is_asym = True
                 break
         if tol_idx > 0:
             nom_cand = parts[tol_idx - 1]
             if re.match(r"^[-+]?\d+(?:\.\d+)?$", nom_cand):
-                tol_val = parts[tol_idx]
-                tol_norm = re.sub(r"[±＋／－+/-]+\s*", "±", tol_val)
+                nom = float(nom_cand)
+                point_tags = []
+                for p in parts:
+                    if re.match(r"^[A-Za-z]+\d+$", p) or re.match(r"^\d+[A-Za-z]+$", p):
+                        if p.casefold() not in {"row", "shot", "lot"} and not p.startswith("="):
+                            point_tags.append(p)
+                point_str = f"điểm đo {'/'.join(point_tags)}: " if point_tags else ""
                 label_parts = parts[:tol_idx - 1]
                 clean_labels = [re.sub(r"^(?:Row\s*\d+\s*:\s*)?_*", "", lp).strip() for lp in label_parts]
                 lbl = " ".join(lp for lp in clean_labels if lp)
                 prefix = f"{label_parts[0].split(':')[0].strip()}: " if ":" in label_parts[0] and "row" in label_parts[0].casefold() else ""
-                spec_text = f"{prefix}{lbl}: {nom_cand} {tol_norm} ({nom_cand} {tol_val})"
-                specs.append(spec_text)
+
+                if is_asym:
+                    nums = re.findall(r"[-+]?\d+(?:\.\d+)?", tol_val)
+                    if len(nums) >= 2:
+                        u_val = abs(float(nums[0]))
+                        l_val = abs(float(nums[1]))
+                        u_lim = f"{nom + u_val:.2f}"
+                        l_lim = f"{nom - l_val:.2f}"
+                        norm_tol = f"+{u_val:g} / -{l_val:g}"
+                        nom_disp = f"{int(nom)}" if nom.is_integer() else f"{nom}"
+                        spec_text = f"{prefix}{point_str}kích thước {nom_disp}, dung sai {norm_tol} ({tol_val}), giới hạn {l_lim} ~ {u_lim} ({u_lim}, {l_lim})"
+                        specs.append(spec_text)
+                else:
+                    tol_norm = re.sub(r"[±＋／－+/-]+\s*", "±", tol_val)
+                    spec_text = f"{prefix}{lbl}: {nom_cand} {tol_norm} ({nom_cand} {tol_val})"
+                    specs.append(spec_text)
     return specs
+
+
+def _extract_table_data_row_claims(raw_text: str) -> list[str]:
+    """Extract structured data rows from markdown/delimited tables pairing columns with data values."""
+    if not raw_text or "Row " not in raw_text:
+        return []
+    lines = raw_text.splitlines()
+    col_line = ""
+    for line in lines:
+        if line.strip().lower().startswith("columns:"):
+            col_line = line
+            break
+    cols = []
+    if col_line:
+        cols = [c.strip() for c in col_line.split(":", 1)[1].split("|") if c.strip()]
+
+    row_claims = []
+    for line in lines:
+        if not re.match(r"^\s*Row\s*\d+\s*:", line, re.IGNORECASE):
+            continue
+        clean = _CELL_REFERENCE_RE.sub("", line).strip()
+        parts = [p.strip() for p in clean.split("|")]
+        non_empty = [p for p in parts if p]
+        if len(non_empty) < 2:
+            continue
+        label = non_empty[0]
+        vals = non_empty[1:]
+        has_numeric = any(re.match(r"^[-+]?\d+(?:\.\d+)?$", v) for v in vals)
+        if not has_numeric:
+            continue
+        paired = []
+        col_idx = 1
+        for v in vals:
+            if re.match(r"^[-+]?\d+(?:\.\d+)?$", v):
+                cname = cols[col_idx] if col_idx < len(cols) else ""
+                if cname and not cname.lower().startswith("column"):
+                    paired.append(f"{cname}: {v}")
+                else:
+                    paired.append(v)
+                col_idx += 1
+                if len(paired) >= 6:
+                    break
+        if paired:
+            row_claims.append(f"{label} ({', '.join(paired)})")
+        else:
+            row_claims.append(f"{label}: {', '.join(vals[:4])}")
+    return row_claims
 
 
 def _extract_fragments_from_raw_text(raw_text: str) -> list[str]:
@@ -1602,11 +1718,16 @@ def _extract_fragments_from_raw_text(raw_text: str) -> list[str]:
     # consecutive short non-heading units with their neighboring context so short
     # technical identifiers are preserved in a self-contained claim fragment.
     candidate_inputs: list[str] = [unit for unit, _ in cleaned_units]
+    _METADATA_LABEL_TRAILING_RE = re.compile(
+        r"(?:tạo bởi|người tạo|người sáng tạo|tác giả|phiên bản|作成者|作成部門|作成|author|creator|created\s*by|version)\s*[:=–—]?$",
+        re.IGNORECASE,
+    )
     if len(cleaned_units) >= 2:
         idx = 0
         while idx < len(cleaned_units):
             unit, is_heading = cleaned_units[idx]
-            if not is_heading and (len(unit) < 40 or len(set(extract_content_terms(unit))) < 3):
+            is_metadata_lead = bool(_METADATA_LABEL_TRAILING_RE.search(unit))
+            if not is_heading and (len(unit) < 40 or len(set(extract_content_terms(unit))) < 3 or is_metadata_lead):
                 group = [unit]
                 total_len = len(unit)
                 next_idx = idx + 1
@@ -1628,7 +1749,7 @@ def _extract_fragments_from_raw_text(raw_text: str) -> list[str]:
                         break
                 if len(group) > 1:
                     num_count = sum(bool(re.match(r"^[-+]?\d+(?:\.\d+)?$", u)) for u in group)
-                    if num_count < 4:
+                    if num_count < 4 or any(re.match(r"^Row\s*\d+\s*:", u, re.IGNORECASE) for u in group):
                         candidate_inputs.append(" — ".join(group))
             idx += 1
 
@@ -1656,6 +1777,10 @@ def _extract_fragments_from_raw_text(raw_text: str) -> list[str]:
                 else:
                     break
 
+    table_row_claims = _extract_table_data_row_claims(raw_text)
+    if table_row_claims:
+        candidate_inputs = table_row_claims + candidate_inputs
+
     specs = _extract_tolerance_specifications(raw_text)
     if specs:
         candidate_inputs = specs + candidate_inputs
@@ -1664,7 +1789,87 @@ def _extract_fragments_from_raw_text(raw_text: str) -> list[str]:
     if table_ranges:
         candidate_inputs = table_ranges + candidate_inputs
 
+    date_variants = []
+    for cand in candidate_inputs:
+        if re.search(r"\b\d{4}-\d{2}-\d{2}\b", cand):
+            date_variants.append(re.sub(r"\b(\d{4})-(\d{2})-(\d{2})\b", r"\1/\2/\3 (\1-\2-\3)", cand))
+    if date_variants:
+        candidate_inputs = date_variants + candidate_inputs
+
     return candidate_inputs
+
+
+def _expand_excel_header_only_item(raw_text: str, source_path: str, sheet_name: str = "") -> str:
+    """If a spreadsheet table excerpt holds only column headers, append immediate data rows."""
+    if not source_path or not os.path.exists(source_path) or not source_path.lower().endswith((".xlsx", ".xlsm")):
+        return raw_text
+    header_match = re.search(r"Header\s*row\s*(\d+)", raw_text, re.IGNORECASE)
+    has_data_rows = bool(re.search(r"(?<!Header\s)Row\s*\d+\s*:", raw_text, re.IGNORECASE))
+    if header_match and not has_data_rows:
+        h_row = int(header_match.group(1))
+        s_match = re.search(r"Sheet\s*:\s*([^\r\n]+)", raw_text, re.IGNORECASE)
+        sname = s_match.group(1).strip() if s_match else sheet_name
+        import openpyxl
+        try:
+            wb = openpyxl.load_workbook(source_path, read_only=True, data_only=True)
+            target_sheet = sname if sname in wb.sheetnames else wb.sheetnames[0]
+            ws = wb[target_sheet]
+            new_lines = []
+            max_r = ws.max_row or (h_row + 10)
+            max_c = min(ws.max_column or 15, 15)
+            for r in range(h_row + 1, min(h_row + 6, max_r + 1)):
+                vals = []
+                for c in range(1, max_c + 1):
+                    v = ws.cell(r, c).value
+                    if v is not None:
+                        if isinstance(v, float):
+                            val_str = f"{v:.4f}".rstrip("0").rstrip(".") if abs(v) < 10 else f"{v:.2f}"
+                        else:
+                            val_str = str(v).strip()
+                        vals.append(val_str)
+                    else:
+                        vals.append("")
+                non_empty = [v for v in vals if v]
+                if non_empty:
+                    while vals and not vals[-1]:
+                        vals.pop()
+                    new_lines.append(f"Row {r}: {' | '.join(vals)}")
+            wb.close()
+            if new_lines:
+                return raw_text + "\n" + "\n".join(new_lines)
+        except Exception:
+            pass
+    return raw_text
+
+
+_EXCEL_PATH_CACHE: dict[str, str] = {}
+
+
+def _resolve_document_file_path(source_path: str, source_name: str) -> str:
+    """Resolve physical document file path on disk, searching known roots if needed."""
+    if source_path and os.path.exists(source_path):
+        return source_path
+    if not source_name:
+        return source_path
+    if not source_name.lower().endswith((".xlsx", ".xlsm")):
+        return source_path
+    if source_name in _EXCEL_PATH_CACHE:
+        return _EXCEL_PATH_CACHE[source_name]
+
+    known_roots = [
+        r"D:\Sandbox\AIOS_habbit\Tài liệu của tất cả dòng máy",
+        r"C:\AIOS_workspace_chat_rag_v2_production\Tài liệu của tất cả dòng máy",
+    ]
+    for root in known_roots:
+        if os.path.exists(root):
+            for dirpath, dirnames, filenames in os.walk(root):
+                dirnames[:] = [d for d in dirnames if not d.startswith(".") and d not in ("venv", ".venv", "__pycache__")]
+                for fname in filenames:
+                    if fname.lower().endswith((".xlsx", ".xlsm")):
+                        _EXCEL_PATH_CACHE[fname] = os.path.join(dirpath, fname)
+                if source_name in _EXCEL_PATH_CACHE:
+                    return _EXCEL_PATH_CACHE[source_name]
+    return source_path
 
 
 def _candidate_fragments(item: EvidenceItem) -> Tuple[str, ...]:
@@ -1672,6 +1877,13 @@ def _candidate_fragments(item: EvidenceItem) -> Tuple[str, ...]:
     snippet_raw = (item.snippet or "").strip()
     full_raw = (item.text or "").strip()
     raw = full_raw or snippet_raw
+    source_name = getattr(item, "source_name", "") or ""
+    source_p = getattr(item, "source_path", None) or (item.metadata.get("source_path") if hasattr(item, "metadata") and item.metadata else "")
+    if "header row" in raw.lower() and not re.search(r"(?<!Header\s)Row\s*\d+\s*:", raw, re.IGNORECASE):
+        if source_name.lower().endswith((".xlsx", ".xlsm")) or (source_p and str(source_p).lower().endswith((".xlsx", ".xlsm"))):
+            resolved_p = _resolve_document_file_path(source_p, source_name)
+            if resolved_p:
+                raw = _expand_excel_header_only_item(raw, resolved_p, getattr(item, "sheet", "") or "")
     candidate_inputs = _extract_fragments_from_raw_text(raw)
     if not candidate_inputs:
         return ()
@@ -1846,6 +2058,8 @@ def _is_document_identifier_token(token: str) -> bool:
 def _is_exact_value_term(term: str) -> bool:
     if not term or _is_document_identifier_token(term):
         return False
+    if term == "__value_intent__":
+        return True
     return any(character.isdigit() for character in term) or "_" in term or "-" in term
 
 
@@ -1860,6 +2074,10 @@ def _synthesis_query_terms(query: str, *, prioritize_literals: bool) -> set[str]
             terms.update(extract_content_terms(equiv))
     if any(k in query_str for k in ("画像中央", "中央", "周辺", "Laser Power", "laser power", "レーザー", "光量", "Beam径", "ビーム径")):
         terms.update(["lượng", "sáng", "trung", "tâm", "ảnh", "hai", "bên", "nhạt"])
+    if bool(_VALUE_QUERY_INTENT_RE.search(query_str)):
+        terms.add("__value_intent__")
+    for m in re.finditer(r"\b\d{4}[-/]\d{1,2}[-/]\d{1,2}\b", query_str):
+        terms.add(m.group(0).casefold())
     if prioritize_literals:
         terms.update(
             match.group(0).casefold()
@@ -1902,7 +2120,7 @@ def _item_matches_query_source(item: EvidenceItem, query: str) -> int:
 
 
 def query_requests_exact_values(query: str) -> bool:
-    """Return True when the question carries an identifier, code, or number.
+    """Return True when the question carries an identifier, code, or number, or asks for values/specs/authors.
 
     Used to default ``prioritize_body_evidence`` on for lookup-style questions
     without requiring every caller to compute synthesis query terms first.
@@ -1911,6 +2129,8 @@ def query_requests_exact_values(query: str) -> bool:
         _is_document_identifier_token(match.group(0))
         for match in _EXACT_IDENTIFIER_RE.finditer(query or "")
     ):
+        return True
+    if bool(_VALUE_QUERY_INTENT_RE.search(query or "")):
         return True
     return _query_has_exact_values(
         _synthesis_query_terms(query or "", prioritize_literals=True)
@@ -1935,7 +2155,7 @@ def _query_literal_overlap(text: str, query_terms: set[str]) -> int:
     return sum(
         bool(re.search(rf"(?<!\w){re.escape(term)}(?!\w)", normalized))
         for term in query_terms
-        if _is_exact_value_term(term)
+        if _is_exact_value_term(term) and not term.startswith("__")
     )
 
 
@@ -1970,7 +2190,13 @@ def _answer_value_literals(text: str, query_terms: set[str]) -> set[str]:
         return set()
     values = {
         match.group(0).casefold()
-        for pattern in (_EXACT_IDENTIFIER_RE, _LONG_NUMERIC_VALUE_RE, _NUMERIC_DECIMAL_RE, _DRAWING_CODE_RE)
+        for pattern in (
+            _EXACT_IDENTIFIER_RE,
+            _LONG_NUMERIC_VALUE_RE,
+            _NUMERIC_DECIMAL_RE,
+            _SIGNED_DECIMAL_RE,
+            _DRAWING_CODE_RE,
+        )
         for match in pattern.finditer(text or "")
     }
     values.update(
@@ -1979,11 +2205,47 @@ def _answer_value_literals(text: str, query_terms: set[str]) -> set[str]:
         for value in (match.group("value") or match.group("curly_value"),)
         if value and value.strip()
     )
+    for match in _ASYMMETRIC_TOL_RE.finditer(text or ""):
+        values.add(match.group(0).strip().casefold())
+    for match in _CREATOR_NAME_RE.finditer(text or ""):
+        values.add(match.group(1).strip().casefold())
     return values
 
 
 def _answer_value_count(text: str, query_terms: set[str]) -> int:
     return len(_answer_value_literals(text, query_terms))
+
+
+def _is_pure_header(fragment: str) -> bool:
+    """Return True if fragment is a pure table/section header without measurement data."""
+    if not fragment:
+        return False
+    frag = fragment.strip()
+    if bool(_ASYMMETRIC_TOL_RE.search(frag)) or "giới hạn" in frag.lower() or "dung sai +" in frag.lower():
+        return False
+    if not re.match(r"^\s*Header\s*row", frag, re.IGNORECASE):
+        if bool(re.search(r"(?<!Header\s)\bRow\s*\d+\s*:", frag, re.IGNORECASE)) and any(c.isdigit() for c in frag):
+            return False
+    if bool(_CREATOR_NAME_RE.search(frag)) or bool(re.search(r"\b\d{4}[-/]\d{2}[-/]\d{2}\b", frag)):
+        return False
+    if bool(_SIGNED_DECIMAL_RE.search(frag)):
+        return False
+    if bool(_HEADER_PREFIX_RE.search(frag)):
+        return True
+    clean_frag = re.sub(r"[—\-–|:;/,]", " ", frag).strip()
+    clean_frag = re.sub(r"\s+", " ", clean_frag)
+    if bool(_HEADER_FIELD_NAMES_RE.search(clean_frag)):
+        return True
+    terms = extract_content_terms(frag)
+    header_keywords = {
+        "section", "columns", "sheet", "row", "header", "tiêu", "đề", "bảng", "mục",
+        "kích", "thước", "đo", "điểm", "dung", "sai", "trên", "dưới", "vị", "trí",
+        "phán", "định", "kết", "quả", "tên", "tài", "liệu", "chuỗi", "chân", "trang",
+        "bảo", "mật", "độ", "lệch", "bracket", "ld", "ng", "unit", "giá", "trị",
+    }
+    if terms and set(terms).issubset(header_keywords):
+        return True
+    return False
 
 
 def _fragment_score(
@@ -1995,7 +2257,7 @@ def _fragment_score(
     prioritize_literals: bool = False,
     field_codes: Tuple[str, ...] = (),
     file_identifiers: Tuple[str, ...] = (),
-) -> tuple[int, int, int, int, int, int, int, int]:
+) -> tuple[int, int, int, int, int, int, int, int, int]:
     terms = set(extract_content_terms(fragment))
     typed_value_count = (
         _typed_answer_value_count(fragment, query_terms) if prioritize_literals else 0
@@ -2004,10 +2266,12 @@ def _fragment_score(
         _answer_value_count(fragment, query_terms) if prioritize_literals else 0
     )
     literal_overlap = _query_literal_overlap(fragment, query_terms) if prioritize_literals else 0
+    header_rank = 0 if (prioritize_literals and _is_pure_header(fragment)) else 1
     return (
         _token_overlap_count(fragment, field_codes),
         _definition_shaped_field_overlap(fragment, field_codes),
         _file_identifier_overlap(fragment, file_identifiers),
+        header_rank,
         literal_overlap,
         len(terms & query_terms),
         typed_value_count,
@@ -2077,7 +2341,8 @@ def _combine_answer_value_fragments(
     dense_cos = float(item.ranking_signals.get("dense_cosine", 0.0))
     is_tabular = bool(item.sheet or item.cell_range or item.file_type in {"xlsx", "csv"})
     has_high_semantic = dense_cos >= 0.58 and not is_tabular
-    if not known_values and not is_named_source and not has_high_semantic:
+    is_value_intent = bool(_VALUE_QUERY_INTENT_RE.search(query or "")) or _query_has_exact_values(query_terms)
+    if not known_values and not is_named_source and not has_high_semantic and not is_value_intent:
         return first_fragment
 
     candidates = sorted(
@@ -2099,9 +2364,10 @@ def _combine_answer_value_fragments(
         if fragment.casefold() in " ".join(combined).casefold():
             continue
         frag_terms = set(extract_content_terms(fragment))
-        if is_named_source or has_high_semantic:
+        if is_named_source or has_high_semantic or is_value_intent:
             new_terms = (frag_terms & query_terms) - known_terms
-            if not new_terms and len(frag_terms - known_terms) < 2:
+            new_values = _answer_value_literals(fragment, query_terms) - known_values
+            if not new_terms and len(frag_terms - known_terms) < 2 and not new_values:
                 continue
         else:
             new_values = _answer_value_literals(fragment, query_terms) - known_values
@@ -2113,7 +2379,7 @@ def _combine_answer_value_fragments(
         combined.append(fragment)
         combined_size += 3 + len(fragment)
         known_terms.update(frag_terms)
-        if not is_named_source and not has_high_semantic and len(known_values) >= _MAX_LOCAL_CLAIMS:
+        if not is_named_source and not has_high_semantic and not is_value_intent and len(known_values) >= _MAX_LOCAL_CLAIMS:
             break
     return " ".join(combined)
 
@@ -2344,12 +2610,15 @@ def _ordered_synthesis_items(
     if not prioritize_body_evidence:
         return evidence_items
 
+    is_value_query = bool(_VALUE_QUERY_INTENT_RE.search(query or "")) or _query_has_exact_values(query_terms)
+
     def priority(item: EvidenceItem) -> tuple[bool, int, int, int, int, int, int, int]:
         text = _clean_raw_fragment_markup(item.text or item.snippet or "")
         identifier_priority = _query_identifier_overlap(text, query)
         source_match = _item_matches_query_source(item, query)
+        summary_penalty = False if is_value_query else _is_summary_evidence(item)
         return (
-            _is_summary_evidence(item),
+            summary_penalty,
             -source_match,
             -identifier_priority[0],
             -identifier_priority[1],
@@ -2370,7 +2639,7 @@ def _claim_value_score(
     *,
     field_codes: Tuple[str, ...] = (),
     file_identifiers: Tuple[str, ...] = (),
-) -> tuple[int, int, int, int, int, int, int, int, int, float, int]:
+) -> tuple[int, int, int, int, int, int, int, int, int, int, float, int]:
     """Score a claim candidate by evidence value and retrieval confidence (QD-12).
 
     Field codes (HOUSE_METHOD) and file identifiers (YY2-Z151.exe) named in the
@@ -2383,16 +2652,21 @@ def _claim_value_score(
     """
     terms = set(extract_content_terms(fragment))
     retrieval_priority = round(float(getattr(item, "score", 0.0) or 0.0), 4)
+    is_value_query = bool(_VALUE_QUERY_INTENT_RE.search(query or "")) or _query_has_exact_values(query_terms)
+    header_rank = 0 if (is_value_query and _is_pure_header(fragment)) else 1
+    summary_penalty = 0 if is_value_query else -int(_is_summary_evidence(item))
+    variant_rank = 0 if is_value_query else int(bool(item.matched_target_equivalent_variant_ids))
     return (
         _item_matches_query_source(item, query),
-        int(bool(item.matched_target_equivalent_variant_ids)),
+        variant_rank,
         _token_overlap_count(fragment, field_codes),
         _definition_shaped_field_overlap(fragment, field_codes),
         _file_identifier_overlap(fragment, file_identifiers),
+        header_rank,
         _query_literal_overlap(fragment, query_terms),
         _answer_value_count(fragment, query_terms),
         _query_identifier_overlap(fragment, query)[1],
-        -int(_is_summary_evidence(item)),
+        summary_penalty,
         retrieval_priority,
         len(terms & query_terms),
     )
@@ -2453,13 +2727,15 @@ def _compose_grounded_claims(
         )
         if not fragment:
             return False
-        if prioritize_body_evidence or _item_matches_query_source(item, pack.query) > 0:
+        if answer_shape != "lookup" and (prioritize_body_evidence or _item_matches_query_source(item, pack.query) > 0):
             fragment = _combine_answer_value_fragments(
                 item,
                 fragment,
                 query_terms=query_terms,
                 query=pack.query,
             )
+        if claims and (sum(len(c.text) for c in claims) + len(fragment) + 100 > _MAX_LOCAL_ANSWER_CHARS - _MAX_LIMITATION_CHARS):
+            return False
         claims.append(GroundedClaim(
             text=fragment,
             citation_ids=(item.citation_id,),
