@@ -228,6 +228,10 @@ class IntakeStagingStore:
                     status, created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(session_id) DO UPDATE SET
+                    store_id=excluded.store_id,
+                    mode=excluded.mode,
+                    expert_name=excluded.expert_name,
+                    topic=excluded.topic,
                     status=excluded.status,
                     updated_at=excluded.updated_at;
                 """,
@@ -385,7 +389,15 @@ class IntakeStagingStore:
                     edited_fields_json, created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(draft_id) DO UPDATE SET
+                    session_id=excluded.session_id,
+                    store_id=excluded.store_id,
+                    mode=excluded.mode,
+                    expert_name=excluded.expert_name,
+                    topic=excluded.topic,
+                    source_tag=excluded.source_tag,
                     fields_json=excluded.fields_json,
+                    source_quote=excluded.source_quote,
+                    source_turn_ids_json=excluded.source_turn_ids_json,
                     review_status=excluded.review_status,
                     ingest_status=excluded.ingest_status,
                     reviewed_by=excluded.reviewed_by,
