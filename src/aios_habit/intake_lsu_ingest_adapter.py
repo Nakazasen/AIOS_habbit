@@ -61,7 +61,7 @@ DEFAULT_LSU_LIBRARY_PATH = Path(r"D:\Sandbox\AIOS_index_split_new\lsu\library.sq
 
 # Định danh và nhãn nguồn
 SOURCE_TAG_EXPERT_INTERVIEW = "phong-van-chuyen-gia"
-EXPERT_NAME_DEFAULT = "Nguyễn Trọng Khiêm"
+EXPERT_NAME_DEFAULT = "Nguyễn Ích Khiêm"
 INTERVIEW_DATE_DEFAULT = "2026-10-18"
 SESSION_ID_LSU_INTERVIEW = "session-lsu-expert-interview-20261018"
 
@@ -458,6 +458,8 @@ def format_interview_chunk_text(
         ngay_phat_sinh = fields.get("ngay_phat_sinh", "")
         link_bao_cao = fields.get("link_bao_cao", "")
 
+    expert_name = getattr(row, "expert_name", None) or EXPERT_NAME_DEFAULT
+
     header = (
         "[Nguồn tri thức]: Phỏng vấn chuyên gia LSU\n"
         "[Chuyên gia]: %s\n"
@@ -470,7 +472,7 @@ def format_interview_chunk_text(
         "[Công đoạn]: %s\n"
         "[Mã lỗi]: %s\n"
     ) % (
-        EXPERT_NAME_DEFAULT,
+        expert_name,
         INTERVIEW_DATE_DEFAULT,
         SOURCE_TAG_EXPERT_INTERVIEW,
         stt,

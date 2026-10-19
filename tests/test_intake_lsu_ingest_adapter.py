@@ -225,8 +225,11 @@ def test_format_interview_chunk_text():
     rows = parse_lsu_review_pack(DEFAULT_REVIEW_PACK_PATH)
     r1 = rows[0]  # STT 1 (cho bo sung)
     text1 = format_interview_chunk_text(r1)
+    assert EXPERT_NAME_DEFAULT == "Nguyễn Ích Khiêm"
     assert "[Nguồn tri thức]: Phỏng vấn chuyên gia LSU" in text1
     assert "[Chuyên gia]: %s" % EXPERT_NAME_DEFAULT in text1
+    assert "[Chuyên gia]: Nguyễn Ích Khiêm" in text1
+    assert "Nguyễn Trọng Khiêm" not in text1
     assert "[STT gốc]: 1" in text1
     assert "[Mã lỗi]: %s" % MISSING_CODE_VALUE in text1
     assert "[Cờ trạng thái]: %s" % CHO_BO_SUNG_FLAG in text1
