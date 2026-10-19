@@ -1692,6 +1692,7 @@ def _run_chat_turn_async(
     ai_mode: str = "grounded",
     anchored_context: Optional[str] = None,
     stream_state: Optional[dict[str, Any]] = None,
+    allowed_source_ids: Any = None,
 ) -> tuple[bool, str, dict[str, Any] | None, str | None]:
     """Execute evidence retrieval and model answer routing inside background thread pool."""
     from aios_habit.antigravity_bridge import route_workspace_chat_submission
@@ -2095,6 +2096,7 @@ def _run_chat_turn_async(
         on_chunk=on_chunk,
         ai_mode=ai_mode,
         anchored_context=anchored_context,
+        allowed_source_ids=allowed_source_ids,
     )
     t_turn_end = time.time()
     turn_total_s = t_turn_end - t_turn_start
@@ -3910,13 +3912,28 @@ else:
         enabled_notebook_count = sum(1 for sel in selections if sel.source_scope == SOURCE_SCOPE_NOTEBOOK and sel.enabled and sel.source_id in notebook_ids)
         enabled_temp_count = sum(1 for sel in selections if sel.source_scope == SOURCE_SCOPE_TEMPORARY and sel.enabled and sel.source_id in temp_ids)
 
+        def _is_turn_answering(conv_id: str) -> bool:
+            try:
+                req = st.session_state.get(f"wsc_ai_request_{conv_id}")
+                if req and isinstance(req, dict):
+                    fut = req.get("future")
+                    if fut is not None and not fut.done():
+                        return True
+            except Exception:
+                pass
+            return False
+
         def on_toggle_notebook(source_id: str, enabled: bool):
-            set_source_enabled(active_conversation.id, SOURCE_SCOPE_NOTEBOOK, source_id, enabled)
+            if _is_turn_answering(active_conversation.id):
+                return
+            set_source_enabled(active_conversation.id, SOURCE_SCOPE_NOTEBOOK, source_id, enabled, owner_note="user_action")
             st.session_state.wsc_action_message = "Đã cập nhật nguồn cho cuộc trò chuyện này."
             safe_rerun()
 
         def on_toggle_temporary(source_id: str, enabled: bool):
-            set_source_enabled(active_conversation.id, SOURCE_SCOPE_TEMPORARY, source_id, enabled)
+            if _is_turn_answering(active_conversation.id):
+                return
+            set_source_enabled(active_conversation.id, SOURCE_SCOPE_TEMPORARY, source_id, enabled, owner_note="user_action")
             st.session_state.wsc_action_message = "Đã cập nhật nguồn cho cuộc trò chuyện này."
             safe_rerun()
 
@@ -4210,7 +4227,9 @@ else:
                 st.session_state.wsc_action_error = None
 
             def on_toggle_source(scope: str, source_id: str, enabled: bool):
-                set_source_enabled(active_conversation.id, scope, source_id, enabled)
+                if _is_turn_answering(active_conversation.id):
+                    return
+                set_source_enabled(active_conversation.id, scope, source_id, enabled, owner_note="user_action")
                 st.session_state.wsc_action_message = "Đã cập nhật trạng thái bật/tắt nguồn."
 
             def on_privacy_save(scope: str, source_id: str, choice: str):
@@ -5869,6 +5888,8 @@ else:
                         except Exception:
                             pass
 
+                    _ask_disabled = False
+                    _ask_tooltip = ""
                     with toolbar_action_col:
                         with st.container(key=f"wsc-action-{active_conversation.id}"):
                             if is_answering or is_waiting_for_sources:
@@ -5962,7 +5983,7 @@ else:
                     + f"{_lane_label(selected_ai_backend)} ({lane_mode_str}) · {search_status_str}"
                 )
 
-                if _ask_disabled:
+                if _ask_disabled and not (is_answering or is_waiting_for_sources):
                     st.caption(f"⏳ {_ask_tooltip}")
 
                 if ask_submitted and pending_submission:
@@ -6649,6 +6670,10 @@ else:
                                             )
                                         stream_state["text"] += delta
 
+                                from aios_habit.antigravity_bridge import resolve_allowed_source_ids
+                                snap_selections = load_conversation_source_selections(active_conversation.id)
+                                turn_allowed_source_ids = resolve_allowed_source_ids(active_conversation.id, snap_selections)
+
                                 request_future = _WORKSPACE_AI_REQUEST_EXECUTOR.submit(
                                     _run_chat_turn_async,
                                     q_text=q_text,
@@ -6676,6 +6701,7 @@ else:
                                     ai_mode=getattr(active_conversation, "ai_mode", "grounded"),
                                     anchored_context=anchored_context,
                                     stream_state=stream_state,
+                                    allowed_source_ids=turn_allowed_source_ids,
                                 )
                                 st.session_state[ai_request_key] = {
                                     "future": request_future,

@@ -1418,6 +1418,7 @@ def set_source_enabled(
     source_scope: str,
     source_id: str,
     enabled: bool,
+    owner_note: str = "",
 ) -> ConversationSourceSelection:
     selections = load_conversation_source_selections(conversation_id)
     existing = None
@@ -1433,6 +1434,8 @@ def set_source_enabled(
             existing.enabled_at = now_iso
         else:
             existing.disabled_at = now_iso
+        if owner_note:
+            existing.owner_note = owner_note
         save_conversation_source_selection(existing)
         return existing
     else:
@@ -1443,7 +1446,8 @@ def set_source_enabled(
             source_scope=source_scope,
             enabled=enabled,
             enabled_at=now_iso if enabled else None,
-            disabled_at=None if enabled else now_iso
+            disabled_at=None if enabled else now_iso,
+            owner_note=owner_note,
         )
         save_conversation_source_selection(new_sel)
         return new_sel

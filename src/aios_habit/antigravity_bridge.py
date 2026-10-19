@@ -131,6 +131,46 @@ def is_local_endpoint(endpoint_url: str) -> bool:
         return False
 
 
+_DEFAULT_UNSET = object()
+
+
+def resolve_allowed_source_ids(
+    conversation_id: str,
+    selections: Optional[Sequence[Any]] = None,
+) -> Optional[List[str]]:
+    """Determine allowed source IDs for evidence trace.
+
+    Strict semantic resolution:
+    - If user explicitly enabled one or more sources: return list of enabled source_ids.
+    - If user actively and explicitly disabled all sources (e.g. disable_all or unchecking):
+      return [] (empty list: strictly zero sources allowed).
+    - If no selections recorded, or selections contain only default/unselected entries
+      without active user action (e.g. widget GC artifacts where enabled_at is None and owner_note is not user_action):
+      return None (unrestricted: RAG warehouse / all retrieved evidence items permitted).
+    """
+    if selections is None:
+        from aios_habit.workspace_chat_store import load_conversation_source_selections
+        selections = load_conversation_source_selections(conversation_id)
+    if not selections:
+        return None
+
+    enabled = [s.source_id for s in selections if getattr(s, "enabled", False)]
+    if enabled:
+        return enabled
+
+    # No enabled sources in selections.
+    # Distinguish active user disabling vs no choice recorded / widget garbage collection:
+    has_active_user_action = any(
+        getattr(s, "owner_note", "") in ("user_action", "explicit_disable_all")
+        or (getattr(s, "enabled_at", None) is not None)
+        for s in selections
+    )
+    if has_active_user_action:
+        return []
+
+    return None
+
+
 def resolve_router_attempt_timeout(env: Mapping[str, Any] | None = None) -> int:
     """Resolve a unified timeout for Nakazasen Router attempt.
 
@@ -856,7 +896,7 @@ def commit_local_grounded_answer(
     assistant_msg_id = f"MSG-{uuid.uuid4().hex[:8].upper()}"
 
     selections = load_conversation_source_selections(conversation_id)
-    allowed_source_ids = [item.source_id for item in selections if item.enabled] if selections else None
+    allowed_source_ids = resolve_allowed_source_ids(conversation_id, selections)
     conversation = load_conversation(conversation_id)
     ui_locale = getattr(conversation, "ui_locale", "vi") if conversation else "vi"
 
@@ -1147,6 +1187,7 @@ def route_workspace_chat_submission(
     anchored_context: Optional[str] = None,
     duration_sec: float | None = None,
     ttft_sec: float | None = None,
+    allowed_source_ids: Any = _DEFAULT_UNSET,
 ) -> tuple[bool, str, dict[str, Any] | None, str | None]:
     """Route a submission through the explicitly selected Workspace Chat backend.
 
@@ -1288,7 +1329,7 @@ def route_workspace_chat_submission(
         from aios_habit.evidence_trace import build_evidence_trace_from_citations
 
         selections = load_conversation_source_selections(conversation_id)
-        allowed_source_ids = [item.source_id for item in selections if item.enabled] if selections else None
+        allowed_source_ids = resolve_allowed_source_ids(conversation_id, selections)
         conversation = load_conversation(conversation_id)
         ui_locale = getattr(conversation, "ui_locale", "vi") if conversation else "vi"
         provider_name = "C-AGENT API"
@@ -1583,7 +1624,7 @@ def route_workspace_chat_submission(
             from aios_habit.evidence_trace import build_evidence_trace_from_citations
 
             selections = load_conversation_source_selections(conversation_id)
-            allowed_source_ids = [] if (is_ext or is_draft) else ([item.source_id for item in selections if item.enabled] if selections else None)
+            allowed_source_ids = [] if (is_ext or is_draft) else resolve_allowed_source_ids(conversation_id, selections)
             conversation = load_conversation(conversation_id)
             ui_locale = getattr(conversation, "ui_locale", "vi") if conversation else "vi"
             effective_prov = getattr(result, "effective_provider", "")
@@ -1837,8 +1878,11 @@ def route_workspace_chat_submission(
                     save_evidence_trace,
                 )
                 from aios_habit.evidence_trace import build_evidence_trace_from_citations
-                all_selections = load_conversation_source_selections(conversation_id)
-                allowed_source_ids = [s.source_id for s in all_selections if s.enabled] if all_selections else None
+                if allowed_source_ids is not _DEFAULT_UNSET:
+                    eff_allowed_source_ids = allowed_source_ids
+                else:
+                    all_selections = load_conversation_source_selections(conversation_id)
+                    eff_allowed_source_ids = resolve_allowed_source_ids(conversation_id, all_selections)
                 conv = load_conversation(conversation_id)
                 ui_locale = getattr(conv, "ui_locale", "vi") if conv else "vi"
                 provenance = {
@@ -1850,7 +1894,7 @@ def route_workspace_chat_submission(
                     query=question,
                     answer_text=direct_res.answer_text,
                     evidence_items=evidence_items,
-                    allowed_source_ids=allowed_source_ids,
+                    allowed_source_ids=eff_allowed_source_ids,
                     notebook_id=notebook_id,
                     conversation_id=conversation_id,
                     user_message_id=user_msg.id,
@@ -1975,8 +2019,11 @@ def route_workspace_chat_submission(
         )
         from aios_habit.evidence_trace import build_evidence_trace_from_citations
 
-        selections = load_conversation_source_selections(conversation_id)
-        allowed_source_ids = [item.source_id for item in selections if item.enabled] if selections else None
+        if allowed_source_ids is not _DEFAULT_UNSET:
+            eff_allowed_source_ids = allowed_source_ids
+        else:
+            selections = load_conversation_source_selections(conversation_id)
+            eff_allowed_source_ids = resolve_allowed_source_ids(conversation_id, selections)
         conversation = load_conversation(conversation_id)
         ui_locale = getattr(conversation, "ui_locale", "vi") if conversation else "vi"
 
@@ -1984,7 +2031,7 @@ def route_workspace_chat_submission(
             query=question,
             answer_text=local_answer,
             evidence_items=[] if is_draft else cited_items,
-            allowed_source_ids=[] if is_draft else allowed_source_ids,
+            allowed_source_ids=[] if is_draft else eff_allowed_source_ids,
             notebook_id=notebook_id,
             conversation_id=conversation_id,
             user_message_id=user_msg.id,

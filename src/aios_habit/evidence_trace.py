@@ -114,6 +114,8 @@ def build_evidence_trace_from_citations(
 
     Strictly verifies citations:
     - Only sources enabled in allowed_source_ids (if specified) are allowed.
+      If allowed_source_ids is None, all candidate evidence sources are considered allowed.
+      If allowed_source_ids is an empty sequence ([]), no evidence sources are allowed.
     - Only evidence cited in answer_text is included in the graph.
     - If no valid citations from enabled sources are present, sets status to 'insufficient_evidence'.
     """

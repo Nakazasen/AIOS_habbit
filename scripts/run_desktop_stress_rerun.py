@@ -164,7 +164,7 @@ def get_git_head() -> str:
 def backup_chat_store() -> list[str]:
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
     backed_up = []
-    for fname in ("conversations.jsonl", "messages.jsonl", "traces.jsonl", "evidence_traces.jsonl"):
+    for fname in ("conversations.jsonl", "messages.jsonl", "traces.jsonl", "evidence_traces.jsonl", "conversation_source_selections.jsonl"):
         src = store.LOCAL_CHAT_DIR / fname
         dst = BACKUP_DIR / fname
         if src.exists():
@@ -175,7 +175,7 @@ def backup_chat_store() -> list[str]:
 
 
 def restore_chat_store(backed_up: list[str]) -> None:
-    for fname in ("conversations.jsonl", "messages.jsonl", "traces.jsonl", "evidence_traces.jsonl"):
+    for fname in ("conversations.jsonl", "messages.jsonl", "traces.jsonl", "evidence_traces.jsonl", "conversation_source_selections.jsonl"):
         src = BACKUP_DIR / fname
         dst = store.LOCAL_CHAT_DIR / fname
         if fname in backed_up and src.exists():
@@ -1391,6 +1391,12 @@ def run_stress_suite(
                     log(f"[PRESERVE] Da sao chep messages.jsonl ({curr_messages.stat().st_size} bytes) vao {OUT_DIR / 'messages.jsonl'}")
             else:
                 log(f"[PRESERVE_WARN] Tep messages.jsonl khong ton tai tai {curr_messages}!")
+            curr_selections = store.LOCAL_CHAT_DIR / "conversation_source_selections.jsonl"
+            if curr_selections.exists():
+                shutil.copy2(curr_selections, OUT_DIR / "conversation_source_selections.jsonl")
+                if run_tag:
+                    shutil.copy2(curr_selections, OUT_DIR / f"conversation_source_selections{tag_suffix}.jsonl")
+                    log(f"[PRESERVE] Da sao chep conversation_source_selections.jsonl vao {OUT_DIR / f'conversation_source_selections{tag_suffix}.jsonl'}")
         except Exception as pres_exc:
             log(f"[PRESERVE_ERR] Loi khi sao chep traces/messages truoc restore: {pres_exc}")
 
