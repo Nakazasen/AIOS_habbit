@@ -220,19 +220,28 @@ def _candidate_rows(
 ) -> List[sqlite3.Row]:
     clauses: List[str] = []
     params: List[Any] = []
+    order_clause = ""
+    order_params: List[Any] = []
     has_i = _has_error_code_i(conn)
     if codes:
         ors: List[str] = []
+        exact_ors: List[str] = []
         for code in codes:
             ors.append("UPPER(ec.error_code_c) = ?")
             params.append(code)
+            exact_ors.append("UPPER(ec.error_code_c) = ?")
+            order_params.append(code)
             ors.append("UPPER(ec.error_code_h) = ?")
             params.append(code)
+            exact_ors.append("UPPER(ec.error_code_h) = ?")
+            order_params.append(code)
             if has_i:
                 # B0-DICT: the real code lives in error_code_i for history
                 # rows whose column H only holds the group ('C CALL').
                 ors.append("UPPER(ec.error_code_i) = ?")
                 params.append(code)
+                exact_ors.append("UPPER(ec.error_code_i) = ?")
+                order_params.append(code)
             ors.append("ec.raw_json LIKE ?")
             params.append(f"%{code}%")
             fam = _CODE_FAMILY.get(code[0])
@@ -240,33 +249,43 @@ def _candidate_rows(
                 ors.append("REPLACE(UPPER(ec.error_code_h), ' ', '') = ?")
                 params.append(fam[1].replace(" ", ""))
         clauses.append("(" + " OR ".join(ors) + ")")
+        if exact_ors:
+            order_clause = (
+                f" ORDER BY CASE WHEN ({' OR '.join(exact_ors)}) THEN 0 ELSE 1 END, ec.id DESC"
+            )
     elif keywords:
         ors = []
         for kw in keywords[:4]:
             ors.append("ec.raw_json LIKE ?")
             params.append(f"%{kw}%")
         clauses.append("(" + " OR ".join(ors) + ")")
+        order_clause = " ORDER BY ec.id DESC"
     else:
         return []
     sql = (
         "SELECT ec.*, b.source_file, b.sheet_name FROM error_cases ec "
         "LEFT JOIN import_batches b ON b.id = ec.batch_id "
-        f"WHERE {' AND '.join(clauses)} LIMIT {_MAX_CANDIDATES}"
+        f"WHERE {' AND '.join(clauses)}{order_clause} LIMIT {_MAX_CANDIDATES}"
     )
-    return list(conn.execute(sql, params).fetchall())
+    return list(conn.execute(sql, params + order_params).fetchall())
 
 
 def _score_row(
     row: sqlite3.Row, codes: Sequence[str], keywords: Sequence[str]
 ) -> int:
     score = 0
+    row_keys = row.keys() if hasattr(row, "keys") else []
     ecc = (row["error_code_c"] or "").upper().replace(" ", "")
     ech = (row["error_code_h"] or "").upper().replace(" ", "")
+    eci = (
+        (row["error_code_i"] or "").upper().replace(" ", "")
+        if "error_code_i" in row_keys
+        else ""
+    )
     for code in codes:
-        if code == ecc or code == ech:
+        if code == ecc or code == ech or code == eci:
             score += 100
-        fam = _CODE_FAMILY.get(code[0])
-        if fam and fam[1].replace(" ", "") == ech:
+        elif code[0] in _CODE_FAMILY and _CODE_FAMILY[code[0]][1].replace(" ", "") == ech:
             score += 40
     raw = _raw_json(row)
     text = normalize_text(
@@ -280,6 +299,7 @@ def _score_row(
                 raw.get("AB"),
                 row["error_code_c"],
                 row["error_code_h"],
+                eci,
             )
             if v
         )
@@ -297,6 +317,11 @@ def _score_row(
     immediate = str(raw.get("M") or "").strip() or str(raw.get("O") or "").strip()
     if (ab and ab not in ("-", "—", "ー")) or immediate:
         score += 10
+    if score > 0 and (
+        ("error_code_i_src" in row_keys and row["error_code_i_src"] == "phong-van-chuyen-gia")
+        or raw.get("source") == "phong-van-chuyen-gia"
+    ):
+        score += 25
     return score
 
 
@@ -416,9 +441,25 @@ def _phenomenon_flag(row: sqlite3.Row, raw: Dict[str, Any]) -> Tuple[bool, str, 
 
 def _case_dict(row: sqlite3.Row, has_missing_col: bool = False) -> Dict[str, Any]:
     raw = _raw_json(row)
-    hien_tuong = raw.get("I") or row["investigation"] or raw.get("O") or ""
-    nguyen_nhan = raw.get("AA") or row["investigation"] or ""
-    doi_sach = raw.get("AB") or ""
+    row_keys = row.keys() if hasattr(row, "keys") else []
+    hien_tuong = (
+        raw.get("I")
+        or (row["phenomenon"] if "phenomenon" in row_keys and row["phenomenon"] else "")
+        or row["investigation"]
+        or raw.get("O")
+        or ""
+    )
+    nguyen_nhan = (
+        raw.get("AA")
+        or (row["cause"] if "cause" in row_keys and row["cause"] else "")
+        or row["investigation"]
+        or ""
+    )
+    doi_sach = (
+        raw.get("AB")
+        or (row["countermeasure"] if "countermeasure" in row_keys and row["countermeasure"] else "")
+        or ""
+    )
     if str(doi_sach).strip() in ("", "-", "—", "ー"):
         # QD2: an empty countermeasure cell whose row records an immediate
         # action (M/O) means "no formal countermeasure needed".

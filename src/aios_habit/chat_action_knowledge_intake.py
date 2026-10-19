@@ -33,6 +33,7 @@ from aios_habit.chat_intake_ui import (
 from aios_habit.intake_metrics import format_review_surface_markdown
 from aios_habit.intake_staging import IntakeStagingStore
 from aios_habit.intake_target_profiles import (
+    STORE_ID_DIEU_TRA_LOI,
     STORE_ID_LSU,
     get_target_profile,
     list_target_profiles,
@@ -77,7 +78,7 @@ def _parse_store_id(norm_text: str) -> str:
         return STORE_ID_LSU
     # Các kho trong tương lai
     if "dieu tra" in norm_text:
-        return "kho_dieu_tra"
+        return STORE_ID_DIEU_TRA_LOI
     if "mom" in norm_text or "opcenter" in norm_text:
         return "kho_mom"
     if "tong hop" in norm_text:

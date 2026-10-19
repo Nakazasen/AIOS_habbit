@@ -94,7 +94,7 @@ class TargetProfile:
 
 
 # ---------------------------------------------------------------------------
-# Hồ sơ mẫu: Kho LSU (5 trường bắt buộc Bước 0 + trường phụ)
+# Hồ sơ mẫu 1: Kho LSU (5 trường bắt buộc Bước 0 + trường phụ)
 # ---------------------------------------------------------------------------
 
 STORE_ID_LSU = "kho_lsu"
@@ -175,6 +175,93 @@ KHO_LSU_PROFILE = TargetProfile(
     ingest_route=INGEST_ROUTE_LSU,
     source_prefix="kho_lsu",
     fields=KHO_LSU_FIELDS,
+)
+
+
+# ---------------------------------------------------------------------------
+# Hồ sơ mẫu 2: Kho điều tra lỗi (DESKTOP-KNOWLEDGE-INTAKE-DIEUTRALOI-HOME)
+# Khuôn ca gồm 5 trường bắt buộc (mã lỗi, hiện tượng, nguyên nhân, đối sách,
+# công đoạn) cộng các trường phụ (model, line, bộ phận phụ trách, ngày).
+# ---------------------------------------------------------------------------
+
+STORE_ID_DIEU_TRA_LOI = "kho_dieu_tra_loi"
+INGEST_ROUTE_DIEU_TRA_LOI = "DESKTOP-KNOWLEDGE-INTAKE-DIEUTRALOI-HOME"
+
+KHO_DIEU_TRA_LOI_FIELDS: Tuple[TargetFieldSpec, ...] = (
+    # 5 trường bắt buộc theo vé DESKTOP-KNOWLEDGE-INTAKE-DIEUTRALOI-HOME
+    TargetFieldSpec(
+        name="ma_loi",
+        label_vi="Mã lỗi",
+        is_mandatory=True,
+        description_vi="Mã lỗi tiêu chuẩn (ví dụ C7620, C2340, C4001, F000, J0411)",
+        guidance_vi="Mã lỗi kỹ thuật quan sát được trên máy hoặc hệ thống",
+    ),
+    TargetFieldSpec(
+        name="hien_tuong",
+        label_vi="Hiện tượng",
+        is_mandatory=True,
+        description_vi="Hiện tượng vật lý / dấu hiệu phát sinh lỗi",
+        guidance_vi="Mô tả cụ thể hiện tượng lỗi xảy ra như thế nào",
+    ),
+    TargetFieldSpec(
+        name="nguyen_nhan",
+        label_vi="Nguyên nhân",
+        is_mandatory=True,
+        description_vi="Nguyên nhân gốc rễ theo phân tích kỹ thuật 4M / Why-Why",
+        guidance_vi="Căn nguyên kỹ thuật trực tiếp gây ra lỗi",
+    ),
+    TargetFieldSpec(
+        name="doi_sach",
+        label_vi="Đối sách",
+        is_mandatory=True,
+        description_vi="Biện pháp xử lý / đối sách khắc phục đã kiểm chứng",
+        guidance_vi="Hành động cụ thể đã làm để giải quyết triệt để lỗi",
+    ),
+    TargetFieldSpec(
+        name="cong_doan",
+        label_vi="Công đoạn",
+        is_mandatory=True,
+        description_vi="Công đoạn sản xuất / vị trí phát sinh lỗi trong dây chuyền",
+        guidance_vi="Tên công đoạn sản xuất nơi xảy ra sự cố",
+    ),
+    # 4 trường phụ theo vé
+    TargetFieldSpec(
+        name="model",
+        label_vi="Model",
+        is_mandatory=False,
+        description_vi="Dòng máy / model sản phẩm liên quan",
+        guidance_vi="Tên model máy (ví dụ Sirius, Iris, 02XC)",
+    ),
+    TargetFieldSpec(
+        name="line",
+        label_vi="Line",
+        is_mandatory=False,
+        description_vi="Line sản xuất nơi xảy ra sự việc",
+        guidance_vi="Số hoặc tên line (ví dụ Line 1, Line 2, C33-A2)",
+    ),
+    TargetFieldSpec(
+        name="bo_phan_phu_trach",
+        label_vi="Bộ phận phụ trách",
+        is_mandatory=False,
+        description_vi="Bộ phận chuyên môn phụ trách điều tra hoặc khắc phục",
+        guidance_vi="Tên bộ phận (ví dụ PE, QA, EE, MT, LSU)",
+    ),
+    TargetFieldSpec(
+        name="ngay",
+        label_vi="Ngày",
+        is_mandatory=False,
+        description_vi="Ngày phát sinh hoặc ngày phỏng vấn chuyên gia (YYYY-MM-DD)",
+        guidance_vi="Ngày tháng theo định dạng chuẩn ISO YYYY-MM-DD",
+    ),
+)
+
+KHO_DIEU_TRA_LOI_PROFILE = TargetProfile(
+    store_id=STORE_ID_DIEU_TRA_LOI,
+    display_name="Kho điều tra lỗi",
+    description="Kho tri thức ca điều tra lỗi (5 trường bắt buộc + 4 trường phụ)",
+    ingest_route=INGEST_ROUTE_DIEU_TRA_LOI,
+    source_prefix="kho_dieu_tra_loi",
+    fields=KHO_DIEU_TRA_LOI_FIELDS,
 )
 
 
@@ -266,9 +353,10 @@ class TargetProfileRegistry:
         self._profiles.clear()
 
     def reset(self) -> None:
-        """Khôi phục lại cấu hình mặc định (hồ sơ mẫu Kho LSU)."""
+        """Khôi phục lại cấu hình mặc định (hồ sơ mẫu Kho LSU và Kho điều tra lỗi)."""
         self._profiles.clear()
         self.register(KHO_LSU_PROFILE)
+        self.register(KHO_DIEU_TRA_LOI_PROFILE)
 
 
 # Global registry instance
