@@ -99,6 +99,47 @@ def _fold(value: str) -> str:
 
 def _tokenize(value: str) -> List[str]:
     return [t for t in re.findall(r"[\w]+", _fold(value), re.UNICODE) if len(t) > 1]
+# Vietnamese functional / stop words: particles, auxiliary words, prepositions, conjunctions.
+# These words must never count toward draft relevance matching.
+VIETNAMESE_STOPWORDS = frozenset({
+    "la", "gi", "cua", "tai", "cho", "voi", "cac", "nay", "do", "khi",
+    "the", "mot", "co", "khong", "duoc", "nhu", "nao", "giup", "trong",
+    "ve", "va", "hay", "nhung", "ra", "sao", "ai", "dau", "bao",
+    "nhieu", "den", "tu", "theo", "boi", "de", "thi", "se", "da",
+    "dang", "roi", "chua", "hoi", "dap", "xin", "dung", "biet",
+    "ban", "toi", "minh", "em", "anh", "chi", "hoac", "lai", "len",
+    "xuong", "vao", "qua", "bi", "vi", "neu", "rat", "lam", "cung",
+    "luon", "nhu", "vay", "day", "kia",
+})
+
+# English common stopwords for technical queries.
+ENGLISH_STOPWORDS = frozenset({
+    "what", "is", "the", "a", "an", "how", "why", "where", "when",
+    "in", "on", "at", "for", "to", "of", "and", "or", "by", "from",
+    "with", "which", "who", "whom", "this", "that", "these", "those",
+    "are", "was", "were", "be", "been", "being", "have", "has", "had",
+    "do", "does", "did", "can", "could", "should", "would",
+})
+
+STOPWORDS = VIETNAMESE_STOPWORDS | ENGLISH_STOPWORDS
+
+# Threshold rationale:
+# In industrial technical Q&A, short queries like "erp router la gi?" contain 2 substantive words ("erp", "router").
+# A 50% threshold would erroneously accept 1-word hits (e.g. matching an unrelated draft mentioning only "erp" or "router").
+# Requiring at least 1 significant token AND coverage ratio (matched / total query significant tokens) >= 0.6 (60%)
+# guarantees that:
+#   - 1-word queries ("ctrlMode"): 1/1 = 100% >= 60% -> accepted.
+#   - 2-word queries ("erp router"): requires 2/2 = 100% >= 60% -> partial 1-word match (50%) is rejected.
+#   - 3-word queries: requires 2/3 = 66.7% >= 60% -> majority substantive match.
+#   - Below 60%, the question safely falls back to honest NOT_FOUND_MESSAGE.
+DEFAULT_MIN_COVERAGE: float = 0.6
+DEFAULT_MIN_SIGNIFICANT_MATCH: int = 1
+
+
+def extract_significant_tokens(value: str) -> List[str]:
+    """Extract substantive tokens excluding stopwords and 1-char tokens."""
+    return [t for t in _tokenize(value) if t not in STOPWORDS]
+
 
 
 def is_rag_usable(
@@ -208,30 +249,52 @@ def search_drafts(
     entries: Sequence[DraftEntry],
     *,
     top_k: int = 1,
-    min_overlap: int = 2,
+    min_overlap: int = 1,
+    min_sig_match: int = DEFAULT_MIN_SIGNIFICANT_MATCH,
+    min_coverage: float = DEFAULT_MIN_COVERAGE,
 ) -> List[DraftEntry]:
-    """Find draft entries sharing the most content tokens with the question."""
-    query_tokens = set(_tokenize(question))
-    if not query_tokens:
+    """Find draft entries sharing significant content tokens with the question.
+
+    Filters out functional words (Vietnamese & English) and requires:
+    1. At least `effective_min_match` substantive token(s) match between question and draft question.
+    2. Significant token coverage ratio (matched / total query significant tokens) >= `min_coverage`.
+    Below threshold, returns an empty list, allowing fallback to honest NOT_FOUND_MESSAGE.
+    """
+    query_sig_tokens = set(extract_significant_tokens(question))
+    if not query_sig_tokens:
         return []
+
+    effective_min_match = max(min_sig_match, 1)
+    total_query_sig = len(query_sig_tokens)
     folded_query = _fold(question)
-    scored: List[tuple[int, int, DraftEntry]] = []
+    scored: List[tuple[float, int, int, DraftEntry]] = []
+
     for entry in entries:
-        entry_tokens = set(_tokenize(entry.question))
-        overlap = len(query_tokens & entry_tokens)
-        bonus = 0
+        entry_sig_tokens = set(extract_significant_tokens(entry.question))
+        matched_tokens = query_sig_tokens & entry_sig_tokens
+        num_matched = len(matched_tokens)
+
+        if num_matched < effective_min_match:
+            continue
+
+        coverage = num_matched / total_query_sig
+        if coverage < min_coverage:
+            continue
+
+        bonus = 0.0
         folded_entry = _fold(entry.question)
         if folded_query and folded_query in folded_entry:
-            bonus += 3
+            bonus += 3.0
         elif folded_entry and folded_entry in folded_query:
-            bonus += 2
-        score = overlap + bonus
-        if overlap >= min_overlap or bonus >= 2:
-            scored.append((score, entry.position, entry))
-    scored.sort(key=lambda item: (-item[0], item[1]))
+            bonus += 2.0
+
+        score = float(num_matched) + coverage + bonus
+        scored.append((score, num_matched, entry.position, entry))
+
+    scored.sort(key=lambda item: (-item[0], -item[1], item[2]))
     if top_k <= 0:
         return []
-    return [entry for _, _, entry in scored[:top_k]]
+    return [entry for _, _, _, entry in scored[:top_k]]
 
 
 @dataclass(frozen=True)
