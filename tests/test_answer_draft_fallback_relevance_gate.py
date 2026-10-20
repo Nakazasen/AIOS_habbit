@@ -134,3 +134,50 @@ def test_real_draft_store_positive_control_jig_accepted():
     assert decision.has_draft_label is True
     assert fallback.DRAFT_LABEL in decision.answer_text
     assert "AI_LSU_du_doan_loi.xlsx" in decision.answer_text
+
+def test_extract_significant_tokens_filters_vietnamese_stopwords():
+    """Verify that all prompt-specified Vietnamese functional words are filtered out."""
+    query = (
+        "la gi cua co khong the nao vi sao tai sao cho va o trong duoc bi "
+        "nhung cac mot nay do khi neu thi ma hay de theo ve sau truoc lam can muon "
+        "thiet bi router cong nghiep"
+    )
+    tokens = fallback.extract_significant_tokens(query)
+    # Only substantive domain tokens should remain
+    assert set(tokens) == {"thiet", "bi", "router", "cong", "nghiep"} or set(tokens) == {"thiet", "router", "cong", "nghiep"}
+    # Verify each prompt-specified stopword is excluded
+    prompt_stopwords = [
+        "la", "gi", "cua", "co", "khong", "the", "nao", "vi", "sao", "tai",
+        "cho", "va", "o", "trong", "duoc", "nhung", "cac", "mot", "nay", "do",
+        "khi", "neu", "thi", "ma", "hay", "de", "theo", "ve", "sau", "truoc",
+        "lam", "can", "muon"
+    ]
+    for sw in prompt_stopwords:
+        assert sw not in tokens, f"Stopword '{sw}' was unexpectedly retained"
+
+
+def test_search_drafts_ranks_by_distinctive_token_overlap_first():
+    """Verify that entries with more matching distinctive tokens rank ahead of fewer matches."""
+    entries = [
+        fallback.DraftEntry(
+            question="Cấu hình router mạng cho dây chuyền sản xuất",
+            answer="Cấu hình IP và gateway cho router mạng.",
+            source_file="mang/batch-01.md",
+            position=1,
+        ),
+        fallback.DraftEntry(
+            question="Hướng dẫn thiết lập erp router đồng bộ dữ liệu hệ thống",
+            answer="Chi tiết cổng kết nối erp router.",
+            source_file="erp/batch-02.md",
+            position=2,
+        ),
+    ]
+    # Query: 'erp router cong nghiep' (3 substantive tokens: 'erp', 'router', 'cong', 'nghiep')
+    # Entry 1 matches 1 token ('router')
+    # Entry 2 matches 2 tokens ('erp', 'router')
+    hits = fallback.search_drafts("erp router cong nghiep hoat dong the nao?", entries, min_coverage=0.1, top_k=2)
+    assert len(hits) == 2
+    # Entry 2 must be ranked first due to having 2 matched distinctive tokens vs 1
+    assert hits[0].source_file == "erp/batch-02.md"
+    assert hits[1].source_file == "mang/batch-01.md"
+

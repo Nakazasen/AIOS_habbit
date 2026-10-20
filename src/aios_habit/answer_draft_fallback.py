@@ -109,7 +109,7 @@ VIETNAMESE_STOPWORDS = frozenset({
     "dang", "roi", "chua", "hoi", "dap", "xin", "dung", "biet",
     "ban", "toi", "minh", "em", "anh", "chi", "hoac", "lai", "len",
     "xuong", "vao", "qua", "bi", "vi", "neu", "rat", "lam", "cung",
-    "luon", "nhu", "vay", "day", "kia",
+    "luon", "vay", "day", "kia", "o", "ma", "sau", "truoc", "can", "muon",
 })
 
 # English common stopwords for technical queries.
@@ -291,7 +291,7 @@ def search_drafts(
         score = float(num_matched) + coverage + bonus
         scored.append((score, num_matched, entry.position, entry))
 
-    scored.sort(key=lambda item: (-item[0], -item[1], item[2]))
+    scored.sort(key=lambda item: (-item[1], -item[0], item[2]))
     if top_k <= 0:
         return []
     return [entry for _, _, _, entry in scored[:top_k]]
