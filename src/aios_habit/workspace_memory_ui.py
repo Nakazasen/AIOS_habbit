@@ -69,10 +69,18 @@ def correction_action_label() -> str:
 def format_why_memory_lines(items: Sequence[WorkspaceMemoryRecallItem]) -> tuple[str, ...]:
     lines: list[str] = []
     for item in items:
-        lines.append(f"{item.title} — nguồn {item.source_kind}, đã xác nhận.")
-        if item.applies_when:
-            lines.append(f"Áp dụng khi: {item.applies_when}")
-        lines.append(f"Căn cứ: {len(item.evidence_refs)} mục bằng chứng.")
+        if item.source_kind in ("skill", "local_skill"):
+            lines.append(f"Áp dụng kỹ năng: {item.title} — người dùng đã xác nhận.")
+            if item.statement:
+                lines.append(f"Quy trình kỹ năng: {item.statement}")
+            if item.applies_when:
+                lines.append(f"Áp dụng khi: {item.applies_when}")
+            lines.append(f"Căn cứ quy trình: local_cases/skills/{item.source_id}/SKILL.md ({len(item.evidence_refs)} mục bằng chứng).")
+        else:
+            lines.append(f"{item.title} — nguồn {item.source_kind}, đã xác nhận.")
+            if item.applies_when:
+                lines.append(f"Áp dụng khi: {item.applies_when}")
+            lines.append(f"Căn cứ: {len(item.evidence_refs)} mục bằng chứng.")
     return tuple(lines)
 
 
@@ -440,6 +448,15 @@ def _render_correction_form(*, message_id: str, trace_id: str | None, workspace_
     )
 
     with st.expander(correction_action_label(), expanded=bool(pending_conflict or has_form_draft)):
+        drafts_data = load_pending_drafts()
+        auto_draft_info = (drafts_data.get("auto_drafts") or {}).get(str(message_id))
+        if auto_draft_info:
+            kind_lbl = "Kỹ năng" if auto_draft_info.get("kind") == "skill" else "Bài học"
+            st.info(
+                f"🤖 **Bản nháp {kind_lbl} do AI tự soạn sau phiên** (Chuẩn Sổ Thói Quen). "
+                "Bạn chỉ cần kiểm tra rồi bấm **[Xác nhận bài học]**, **[Sửa thêm]** hoặc **[Hủy bài học]**."
+            )
+
         if isinstance(pending_conflict, dict):
             st.warning("Đã có bài học gần trùng hoặc mâu thuẫn. Hãy chọn cách xử lý trước khi lưu.")
             labels = conflict_choice_labels()
@@ -488,7 +505,7 @@ def _render_correction_form(*, message_id: str, trace_id: str | None, workspace_
         statement = st.text_area(
             "Phần sửa cần nhớ",
             key=st_key,
-            height=80,
+            height=120 if auto_draft_info else 80,
         )
         applies_when = st.text_input(
             "Áp dụng khi",
@@ -519,7 +536,16 @@ def _render_correction_form(*, message_id: str, trace_id: str | None, workspace_
                 trace_ref=trace_id,
             )
             st.caption(correction_preview_text(candidate))
-        confirm_col, cancel_col = st.columns(2)
+        cols = st.columns(3 if auto_draft_info else 2)
+        if len(cols) >= 3:
+            confirm_col, edit_col, cancel_col = cols[0], cols[1], cols[2]
+        elif len(cols) == 2:
+            confirm_col, edit_col, cancel_col = cols[0], None, cols[1]
+        else:
+            confirm_col = cols[0]
+            edit_col = None
+            cancel_col = cols[0]
+
         with confirm_col:
             if st.button("Xác nhận bài học", key=f"wsc_corr_confirm_{message_id}"):
                 if not statement.strip():
@@ -562,8 +588,36 @@ def _render_correction_form(*, message_id: str, trace_id: str | None, workspace_
                             ),
                             path=path,
                         )
+                        # Second Brain habit vault persistence
+                        try:
+                            from aios_habit.post_session_review import (
+                                SecondBrainNote,
+                                save_note_to_vault,
+                            )
+                            if statement.strip().startswith("---"):
+                                note = SecondBrainNote.from_markdown(statement.strip())
+                                note.trang_thai = "confirmed"
+                                save_note_to_vault(note)
+                            elif auto_draft_info and isinstance(auto_draft_info.get("note_dict"), dict):
+                                note = SecondBrainNote.from_dict(auto_draft_info["note_dict"])
+                                note.content_body = statement.strip()
+                                note.applies_when = applies_when.strip()
+                                note.does_not_apply_when = does_not_apply.strip()
+                                note.trang_thai = "confirmed"
+                                save_note_to_vault(note)
+                        except Exception:
+                            pass
+
+                        # Clear form and auto_draft
                         clear_pending_correction_form(message_id)
                         clear_pending_correction_conflict(message_id)
+                        try:
+                            d = load_pending_drafts()
+                            if "auto_drafts" in d and str(message_id) in d["auto_drafts"]:
+                                d["auto_drafts"].pop(str(message_id), None)
+                                save_pending_drafts(d)
+                        except Exception:
+                            pass
                         st.session_state.pop(st_key, None)
                         st.session_state.pop(app_key, None)
                         st.session_state.pop(neg_key, None)
@@ -571,14 +625,27 @@ def _render_correction_form(*, message_id: str, trace_id: str | None, workspace_
                     st.rerun()
                 except Exception as exc:
                     st.session_state.wsc_action_error = _safe_error(exc)
+        if edit_col is not None:
+            with edit_col:
+                if st.button("Sửa thêm", key=f"wsc_corr_edit_{message_id}"):
+                    st.session_state[f"wsc_corr_editing_{message_id}"] = True
+                    st.info("Bạn có thể chỉnh sửa trực tiếp nội dung ở trên rồi bấm [Xác nhận bài học].")
         with cancel_col:
             if st.button("Hủy bài học", key=f"wsc_corr_cancel_{message_id}"):
                 st.session_state.pop(corr_conflict_key, None)
                 st.session_state.pop(st_key, None)
                 st.session_state.pop(app_key, None)
                 st.session_state.pop(neg_key, None)
+                st.session_state.pop(f"wsc_corr_editing_{message_id}", None)
                 clear_pending_correction_form(message_id)
                 clear_pending_correction_conflict(message_id)
+                try:
+                    d = load_pending_drafts()
+                    if "auto_drafts" in d and str(message_id) in d["auto_drafts"]:
+                        d["auto_drafts"].pop(str(message_id), None)
+                        save_pending_drafts(d)
+                except Exception:
+                    pass
                 st.session_state.wsc_action_message = confirm_cancelled_message()
                 st.rerun()
 
@@ -594,6 +661,8 @@ _SOURCE_KIND_LABELS = {
     "senior_learning_card": "Thẻ học",
     "case_lesson": "Bài học vụ việc",
     "published_artifact": "Tài liệu xuất bản",
+    "skill": "Kỹ năng",
+    "local_skill": "Kỹ năng cục bộ",
 }
 
 
@@ -744,3 +813,75 @@ def render_ledger_panel(collection_id: str) -> None:
             elif st.button("Quên bài này", key=f"wsc_ledger_forget_{item.get('memory_key')}"):
                 st.session_state[LEDGER_FORGET_KEY] = item.get("memory_key")
                 st.rerun()
+
+
+def master_self_learn_toggle_label() -> str:
+    return "Công tắc tổng tự học thói quen (Master Switch)"
+
+
+def master_self_learn_toggle_help() -> str:
+    return "Bật/tắt toàn bộ hệ thống tự học, tự động rà soát sau phiên và tự soạn bản nháp."
+
+
+def wipe_habit_profiles_button_label() -> str:
+    return "Xóa sạch hồ sơ thói quen cá nhân"
+
+
+def wipe_habit_profiles_help() -> str:
+    return "Xóa toàn bộ bài học, kỹ năng và bản nháp cục bộ trên máy này. Không ảnh hưởng kho tri thức công ty."
+
+
+def render_master_self_learn_controls() -> None:
+    """Render Master Switch and Wipe Habit Profiles button in settings sidebar."""
+    import streamlit as st
+    from aios_habit.workspace_memory_service import (
+        get_master_self_learn_preference,
+        set_master_self_learn_preference,
+        wipe_all_habit_profiles,
+    )
+
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("🧠 Quản trị Tự học Thói quen")
+    current_master = get_master_self_learn_preference()
+    new_master = st.sidebar.checkbox(
+        master_self_learn_toggle_label(),
+        value=current_master,
+        key="wsc_master_self_learn_setting",
+        help=master_self_learn_toggle_help(),
+    )
+    if new_master != current_master:
+        set_master_self_learn_preference(new_master)
+        st.session_state.wsc_action_message = (
+            "Đã bật công tắc tổng tự học thói quen."
+            if new_master
+            else "Đã tắt công tắc tổng tự học thói quen."
+        )
+        st.rerun()
+
+    # Wipe habit profile button with safe 2-step confirmation
+    wipe_confirm_key = "wsc_wipe_habit_confirming"
+    if st.session_state.get(wipe_confirm_key):
+        st.sidebar.warning("⚠️ Bạn có chắc chắn muốn xóa sạch toàn bộ hồ sơ thói quen cá nhân trên máy này?")
+        y_col, n_col = st.sidebar.columns(2)
+        with y_col:
+            if st.button("Xác nhận xóa", key="wsc_wipe_habit_yes"):
+                stats = wipe_all_habit_profiles()
+                st.session_state.pop(wipe_confirm_key, None)
+                st.session_state.wsc_action_message = (
+                    f"Đã xóa sạch hồ sơ thói quen ({stats.get('decisions_removed', 0)} quyết định, "
+                    f"{stats.get('notes_removed', 0)} ghi chú, {stats.get('skills_removed', 0)} kỹ năng)."
+                )
+                st.rerun()
+        with n_col:
+            if st.button("Hủy", key="wsc_wipe_habit_no"):
+                st.session_state.pop(wipe_confirm_key, None)
+                st.rerun()
+    else:
+        if st.sidebar.button(
+            wipe_habit_profiles_button_label(),
+            key="wsc_wipe_habit_btn",
+            help=wipe_habit_profiles_help(),
+            use_container_width=True,
+        ):
+            st.session_state[wipe_confirm_key] = True
+            st.rerun()

@@ -26,6 +26,7 @@ from aios_habit.workspace_memory_models import (
     SOURCE_KIND_MEMORY_UNIT,
     SOURCE_KIND_PUBLISHED_ARTIFACT,
     SOURCE_KIND_SENIOR_LEARNING_CARD,
+    SOURCE_KIND_SKILL,
     SOURCE_KIND_USER_MEMORY,
     CorrectionLessonCandidate,
     MemoryDecision,
@@ -141,6 +142,8 @@ def _normalize_status(raw: str, source_kind: str) -> str | None:
     if source_kind == SOURCE_KIND_CASE_LESSON and status == "approved":
         return "confirmed"
     if source_kind == SOURCE_KIND_PUBLISHED_ARTIFACT and status == "published":
+        return "confirmed"
+    if source_kind in (SOURCE_KIND_SKILL, "skill", "local_skill") and status in ("confirmed", "verified"):
         return "confirmed"
     if source_kind == SOURCE_KIND_USER_MEMORY and status in ELIGIBLE_STATUSES:
         return status
@@ -463,6 +466,39 @@ def _read_case_lesson_records() -> list[dict[str, Any]]:
         return []
 
 
+def _read_skill_records(skills_dir: Path | None = None) -> list[dict[str, Any]]:
+    try:
+        from aios_habit.post_session_review import get_skills_dir, list_local_skills
+
+        s_dir = skills_dir if skills_dir is not None else get_skills_dir()
+        if not s_dir.exists():
+            return []
+        records: list[dict[str, Any]] = []
+        for note in list_local_skills(s_dir):
+            if note.trang_thai != "confirmed":
+                continue
+            records.append(
+                {
+                    "memory_key": f"skill:{note.id}:v1",
+                    "source_kind": SOURCE_KIND_SKILL,
+                    "source_id": note.id,
+                    "title": note.title,
+                    "statement": note.content_body[:500] if note.content_body else note.title,
+                    "applies_when": note.applies_when,
+                    "does_not_apply_when": note.does_not_apply_when,
+                    "scope": f"workspace:{note.mien}" if note.mien != "general" else "general",
+                    "status": "confirmed",
+                    "evidence_refs": tuple(note.evidence_refs) if note.evidence_refs else ("skill_verified",),
+                    "privacy_classification": PRIVACY_LOCAL_ONLY,
+                    "export_allowed": False,
+                    "updated_at": note.updated,
+                }
+            )
+        return records
+    except Exception:
+        return []
+
+
 def load_live_catalog(
     collection_id: str,
     *,
@@ -474,6 +510,7 @@ def load_live_catalog(
     catalog.extend(_read_memory_unit_records())
     catalog.extend(_read_learning_card_records())
     catalog.extend(_read_case_lesson_records())
+    catalog.extend(_read_skill_records())
     try:
         catalog.extend(
             list_eligible_published_memory_candidates(collection_id, base_dir=published_base_dir)
@@ -666,8 +703,35 @@ def get_workspace_memory_enabled_preference(path: Path | None = None) -> bool:
         return is_feature_enabled(FEATURE_ADAPTIVE_WORK_MEMORY)
     if not isinstance(payload, Mapping):
         return is_feature_enabled(FEATURE_ADAPTIVE_WORK_MEMORY)
+    if payload.get("master_self_learn_enabled") is False:
+        return False
     enabled = payload.get(MEMORY_SETTINGS_ENABLED_KEY)
     return enabled if isinstance(enabled, bool) else is_feature_enabled(FEATURE_ADAPTIVE_WORK_MEMORY)
+
+
+def get_master_self_learn_preference(path: Path | None = None) -> bool:
+    """Return whether master self-learning is enabled."""
+    from aios_habit.post_session_review import get_master_self_learn_preference as _get_master
+
+    settings_path = Path(path) if path is not None else (_SETTINGS_OVERRIDE.get() or default_memory_settings_path())
+    return _get_master(settings_path)
+
+
+def set_master_self_learn_preference(enabled: bool, path: Path | None = None) -> None:
+    """Persist master self-learning setting."""
+    from aios_habit.post_session_review import set_master_self_learn_preference as _set_master
+
+    settings_path = Path(path) if path is not None else (_SETTINGS_OVERRIDE.get() or default_memory_settings_path())
+    _set_master(enabled, settings_path)
+
+
+def wipe_all_habit_profiles(root: Path | None = None) -> dict[str, int]:
+    """Safely wipe all local habit memories, skills, drafts, and notes."""
+    from aios_habit.post_session_review import wipe_all_habit_profiles as _wipe
+
+    dec_override = _DECISIONS_OVERRIDE.get()
+    base = Path(root) if root is not None else (dec_override.parent.parent if dec_override is not None else None)
+    return _wipe(base)
 
 
 def set_workspace_memory_enabled_preference(enabled: bool, path: Path | None = None) -> None:
@@ -746,8 +810,9 @@ def save_pending_drafts(payload: Mapping[str, Any], path: Path | None = None) ->
     has_command_conflict = bool(payload.get("command_conflict"))
     has_corr_conflict = bool(payload.get("correction_conflicts"))
     has_corr_forms = bool(payload.get("correction_forms"))
+    has_auto_drafts = bool(payload.get("auto_drafts"))
 
-    if not (has_command or has_command_conflict or has_corr_conflict or has_corr_forms):
+    if not (has_command or has_command_conflict or has_corr_conflict or has_corr_forms or has_auto_drafts):
         try:
             if drafts_path.exists():
                 drafts_path.unlink()
@@ -776,6 +841,11 @@ def save_pending_drafts(payload: Mapping[str, Any], path: Path | None = None) ->
                 "correction_forms": {
                     str(k): dict(v)
                     for k, v in dict(payload.get("correction_forms") or {}).items()
+                    if isinstance(v, Mapping)
+                },
+                "auto_drafts": {
+                    str(k): dict(v)
+                    for k, v in dict(payload.get("auto_drafts") or {}).items()
                     if isinstance(v, Mapping)
                 },
                 "updated_at": _now_iso(),

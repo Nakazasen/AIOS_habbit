@@ -2158,6 +2158,26 @@ def _run_chat_turn_async(
     _safe_print_streaming_marker(
         f"[STREAMING_QA_COMPLETE] conv={conversation_id} total_s={turn_total_s:.3f} total_ms={turn_total_s * 1000:.1f} backend={eff_backend} ok={res[0]} timestamp={ts_complete}"
     )
+
+    try:
+        from aios_habit.post_session_review import spawn_post_session_review
+        asst_id = badge.get("message_id") if isinstance(badge, dict) else ""
+        asst_trace = badge.get("trace_id") if isinstance(badge, dict) else None
+        spawn_post_session_review(
+            conversation_id=conversation_id,
+            messages_snapshot=list(chat_history) + [
+                {"role": "user", "content": q_text, "id": user_message_id},
+                {"role": "assistant", "content": res[1] if len(res) > 1 else "", "id": asst_id, "trace_id": asst_trace},
+            ],
+            notebook_id=notebook_id,
+            domain=forced_domain if (forced_domain and forced_domain != "auto") else None,
+            last_assistant_id=asst_id or "",
+            last_trace_id=asst_trace,
+            async_mode=True,
+        )
+    except Exception as review_err:
+        LOGGER.debug("Post-session review daemon trigger ignored: %s", review_err)
+
     return res
 
 
@@ -3825,6 +3845,9 @@ else:
     render_ledger_toggle()
     if st.session_state.get("wsc_ledger_open"):
         render_ledger_panel(getattr(notebook, "collection_id", "") or DEFAULT_COLLECTION_ID)
+
+    from aios_habit.workspace_memory_ui import render_master_self_learn_controls
+    render_master_self_learn_controls()
 
     st.sidebar.write("---")
     st.sidebar.subheader(f"💬 {t('conversations', locale=current_ui_locale)}")
@@ -6081,6 +6104,11 @@ else:
                     user_attached_image = None
 
                 if ask_submitted:
+                    try:
+                        from aios_habit.post_session_review import cancel_active_review
+                        cancel_active_review()
+                    except Exception:
+                        pass
                     q_text = user_input.strip()
                     if q_text and get_workspace_memory_enabled_preference():
                         from aios_habit.workspace_memory_ui import queue_memory_command_if_present
