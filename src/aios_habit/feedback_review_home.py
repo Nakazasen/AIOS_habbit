@@ -730,6 +730,14 @@ def format_feedback_review_summary(
             f"(sơ bộ, chưa đủ cửa sổ {span} ngày)."
         )
 
+    try:
+        from aios_habit.feedback_sma_pipeline import compute_feedback_sma_pipeline, format_sma_pipeline_summary_markdown
+        sma_rep = compute_feedback_sma_pipeline(records=items, window_size=span)
+        lines.append("")
+        lines.append(format_sma_pipeline_summary_markdown(sma_rep))
+    except Exception:
+        pass
+
     lines.append("")
     lines.append("#### 🕒 Phản hồi gần đây")
     limit_show = min(len(items), max(1, recent_limit))
