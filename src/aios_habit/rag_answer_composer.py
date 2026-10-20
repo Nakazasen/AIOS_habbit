@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Sequence, Optional
 
 from aios_habit.rag_evidence import RAGEvidencePack
 from aios_habit.citation_answer import build_citation_index, compose_citation_first_answer
@@ -92,7 +92,7 @@ def stable_answer_draft_id(pack: RAGEvidencePack) -> str:
     return "ANS-" + hashlib.sha256(raw.encode("utf-8")).hexdigest()[:12].upper()
 
 
-def compose_local_answer(pack: RAGEvidencePack, max_items: int = 5, mode: str = "local_evidence_draft") -> LocalAnswerDraft | FinalOwnerAnswer:
+def compose_local_answer(pack: RAGEvidencePack, max_items: int = 5, mode: str = "local_evidence_draft", draft_results: Sequence[Any] | None = None) -> LocalAnswerDraft | FinalOwnerAnswer:
     if mode == "final_owner_answer":
         return compose_final_owner_answer(pack, max_items=max_items)
     if mode != "local_evidence_draft":
@@ -178,6 +178,51 @@ def compose_local_answer(pack: RAGEvidencePack, max_items: int = 5, mode: str = 
         )
         citation_ids = [ref.ref_id for ref in refs]
 
+    # Tích hợp tầng nguồn bản thảo song song mặc định
+    draft_meta: Dict[str, str] = {}
+    effective_drafts = draft_results
+    if effective_drafts is None:
+        try:
+            from aios_habit.draft_source_layer import get_draft_search_index
+            idx = get_draft_search_index()
+            found_drafts, _ = idx.search(pack.query, top_k=2)
+            effective_drafts = found_drafts
+        except Exception:
+            effective_drafts = ()
+
+    if effective_drafts:
+        from aios_habit.draft_source_layer import (
+            MANDATORY_DRAFT_LABEL,
+            reconcile_draft_with_standard,
+            format_draft_answer_body,
+            record_draft_invocation,
+        )
+        top_draft = effective_drafts[0]
+        top_item = getattr(top_draft, 'item', top_draft)
+        record_draft_invocation(
+            top_item.item_id,
+            question=pack.query,
+            source_file=top_item.source_file,
+        )
+        if valid_items:
+            std_title = refs[0].source_title if refs else 'Tài liệu chuẩn'
+            reconciled = reconcile_draft_with_standard(
+                standard_text=final_answer_text,
+                draft_text=top_item.answer,
+                standard_source_title=std_title,
+                draft_source_title=top_item.source_file,
+            )
+            final_answer_text = reconciled.reconciled_text
+            draft_meta['has_conflict'] = str(reconciled.has_conflict)
+            draft_meta['draft_source'] = top_item.source_file
+            draft_meta['has_draft_label'] = 'True'
+        else:
+            labeled_draft = format_draft_answer_body(top_item.answer, source_name=top_item.source_file)
+            final_answer_text = f"{final_answer_text}\n\n{labeled_draft}"
+            warnings.append(f"Trả lời bổ trợ từ tầng nguồn bản thảo ({MANDATORY_DRAFT_LABEL})")
+            draft_meta['draft_source'] = top_item.source_file
+            draft_meta['has_draft_label'] = 'True'
+
     return LocalAnswerDraft(
         draft_id=stable_answer_draft_id(pack),
         pack_id=pack.pack_id,
@@ -193,13 +238,14 @@ def compose_local_answer(pack: RAGEvidencePack, max_items: int = 5, mode: str = 
         answer_kind="local_evidence_draft",
         final_answer=False,
         requires_strong_model_or_human_review=True,
+        metadata=draft_meta,
     )
 
 
 def local_answer_draft_to_dict(draft: LocalAnswerDraft) -> Dict[str, Any]:
     return asdict(draft)
 
-def compose_answer(pack: RAGEvidencePack, mode: str = "final_owner_answer", max_items: int = 5) -> LocalAnswerDraft | FinalOwnerAnswer:
+def compose_answer(pack: RAGEvidencePack, mode: str = "final_owner_answer", max_items: int = 5, draft_results: Sequence[Any] | None = None) -> LocalAnswerDraft | FinalOwnerAnswer:
     if mode == "final_owner_answer":
         return compose_final_owner_answer(pack, max_items=max_items)
     return compose_local_answer(pack, max_items=max_items, mode="local_evidence_draft")

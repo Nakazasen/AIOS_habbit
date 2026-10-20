@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Sequence
 
 # Mandatory label shown inside every draft-sourced answer (non-negotiable).
-DRAFT_LABEL = "Bản thảo — chưa qua chuyên gia duyệt"
+DRAFT_LABEL = "[Bản thảo - chưa kiểm chứng qua chuyên gia]"
 
 # Honest answer when neither RAG nor the draft store can help.
 NOT_FOUND_MESSAGE = (

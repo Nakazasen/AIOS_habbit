@@ -767,6 +767,8 @@ def deliver_5tier_ladder_answer(
     """
     intent_res = classify_question_intent(question)
     tier = TIER_3_AMBIGUOUS if intent_res.intent == INTENT_MO_HO else TIER_4_INFERRED
+    draft_used_title = ""
+    draft_body_found = ""
 
     if tier == TIER_3_AMBIGUOUS:
         rephrasings = intent_res.suggested_rephrasings or suggest_rephrasings(question)
@@ -782,7 +784,28 @@ def deliver_5tier_ladder_answer(
         )
         has_banner = False
     else:
-        inferred_body = inferred_reasoning or (
+        if not inferred_reasoning:
+            try:
+                from aios_habit.draft_source_layer import (
+                    get_draft_search_index,
+                    format_draft_answer_body,
+                    record_draft_invocation,
+                )
+                idx = get_draft_search_index()
+                draft_hits, _ = idx.search(question, top_k=1)
+                if draft_hits:
+                    best_draft = draft_hits[0]
+                    draft_used_title = best_draft.item.source_file
+                    draft_body_found = format_draft_answer_body(best_draft.item.answer, source_name=best_draft.item.source_file)
+                    record_draft_invocation(
+                        best_draft.item.item_id,
+                        question=question,
+                        source_file=best_draft.item.source_file,
+                        base_cases_dir=base_cases_dir,
+                    )
+            except Exception:
+                pass
+        inferred_body = inferred_reasoning or draft_body_found or (
             f"Về câu hỏi *'{question.strip()}'*, hệ thống chưa tìm thấy dữ liệu đối chiếu trực tiếp trong các tài liệu nội bộ đã bật. "
             "Theo nguyên lý kỹ thuật chung: Hãy xác định rõ mã thiết bị/model, kiểm tra trạng thái hoạt động trên màn hình điều khiển, "
             "đối chiếu bảng mã lỗi chuẩn và thu thập nhật ký vận hành tại thời điểm xảy ra sự cố."
@@ -819,6 +842,8 @@ def deliver_5tier_ladder_answer(
         "answer_mode": "5tier_ladder",
         "ladder_active": True,
         "cold_refusal_avoided": True,
+        "draft_source": draft_used_title,
+        "has_draft_label": bool(draft_used_title),
     }
 
     try:
@@ -889,15 +914,19 @@ def deliver_5tier_ladder_answer(
 
     badge = {
         "type": "ai_answered",
-        "ai_source": "AIOS 5-Tier Ladder",
+        "ai_source": "AIOS 5-Tier Ladder" if not draft_used_title else "AIOS 5-Tier Ladder (Draft Parallel)",
         "model_tool_name": f"Ladder Tier {tier}",
         "operational_mode": "5tier_ladder",
-        "source_count": 0,
-        "source_titles": [],
+        "source_count": 1 if draft_used_title else 0,
+        "source_titles": [draft_used_title] if draft_used_title else [],
         "retrieval_summary": (
-            "💡 Câu trả lời suy luận kỹ thuật kèm nhãn cảnh báo (Tier 4)"
-            if tier == TIER_4_INFERRED
-            else "❓ Làm rõ câu hỏi mơ hồ & gợi ý diễn đạt lại (Tier 3)"
+            f"⚠️ [Bản thảo - chưa kiểm chứng qua chuyên gia] từ {draft_used_title}"
+            if draft_used_title
+            else (
+                "💡 Câu trả lời suy luận kỹ thuật kèm nhãn cảnh báo (Tier 4)"
+                if tier == TIER_4_INFERRED
+                else "❓ Làm rõ câu hỏi mơ hồ & gợi ý diễn đạt lại (Tier 3)"
+            )
         ),
         "tier": tier,
         "tier_name": TIER_NAMES.get(tier, ""),
@@ -906,6 +935,8 @@ def deliver_5tier_ladder_answer(
         "has_warning_banner": has_banner,
         "action_items": TIER_5_DEFAULT_ACTIONS,
         "cold_refusal_avoided": True,
+        "draft_source": draft_used_title,
+        "has_draft_label": bool(draft_used_title),
     }
 
     return (True, "Đã phản hồi theo Nấc thang 5 bậc.", badge, None)

@@ -5,7 +5,7 @@ import json
 import re
 import time
 import unicodedata
-from typing import Any, Dict, Optional, Protocol, Tuple
+from typing import Any, Dict, List, Optional, Protocol, Sequence, Tuple, Union
 
 from aios_habit.i18n import get_ai_language_instruction, normalize_locale
 from aios_habit.brain_gateway import (
@@ -68,6 +68,8 @@ class WorkspaceAIAnswerRequest:
     anchored_context: Optional[str] = None
     timeout_seconds: Optional[int] = None
     router_deadline_monotonic: Optional[float] = None
+    draft_search_results: Tuple[Any, ...] = ()
+    disable_draft_layer: bool = False
 
 
 @dataclass(frozen=True)
@@ -91,6 +93,8 @@ class WorkspaceAIAnswerResult:
     memory_consent_fingerprint: str = ""
     effective_provider: str = ""
     effective_model: str = ""
+    draft_source_titles: Tuple[str, ...] = ()
+    has_draft_label: bool = False
 
 
 _LIMITATION_MARKERS = (
@@ -424,6 +428,26 @@ def memory_consent_requires_reconfirmation(
     return not confirmed or confirmed != current
 
 
+def recall_draft_layer_for_answer(
+    request: "WorkspaceAIAnswerRequest",
+    top_k: int = 3,
+) -> Tuple[Any, ...]:
+    """Truy hồi tầng nguồn bản thảo song song mặc định cùng kho chính quy.
+
+    Gọi đồng thời cùng kho chính quy, không phải chờ RAG chết mới gọi.
+    Tốc độ tìm kiếm tầng draft dưới 30ms.
+    """
+    if getattr(request, "disable_draft_layer", False):
+        return ()
+    try:
+        from aios_habit.draft_source_layer import get_draft_search_index
+        index = get_draft_search_index()
+        results, _ = index.search(request.question, top_k=top_k)
+        return tuple(results)
+    except Exception:
+        return ()
+
+
 def build_workspace_ai_prompt(
     question: str,
     context_sources: Tuple[WorkspaceAIContextSource, ...],
@@ -431,6 +455,7 @@ def build_workspace_ai_prompt(
     answer_language: str = "vi",
     memory_result: object | None = None,
     anchored_context: Optional[str] = None,
+    draft_results: Sequence[Any] = (),
 ) -> Tuple[str, str]:
     norm_lang = normalize_locale(answer_language)
     lang_instruction = get_ai_language_instruction(norm_lang)
@@ -447,6 +472,14 @@ def build_workspace_ai_prompt(
         "Nhắc owner kiểm tra lại trước khi sử dụng.\n\n"
         f"{lang_instruction}"
     )
+    if draft_results:
+        system_prompt += (
+            "\n--- QUY TẮC SỬ DỤNG TẦNG NGUỒN BẢN THẢO ---\n"
+            "Hệ thống đã truy hồi song song một số mục từ TẦNG NGUỒN BẢN THẢO (chưa qua chuyên gia kiểm chứng).\n"
+            "1. Nếu sử dụng thông tin từ mục bản thảo, BẮT BUỘC phải ghi kèm nhãn: '[Bản thảo - chưa kiểm chứng qua chuyên gia]' trong thân câu trả lời.\n"
+            "2. Tuyệt đối không phối số liệu mâu thuẫn giữa bản thảo và tài liệu chuẩn: Tài liệu chuẩn luôn thắng tuyệt đối; "
+            "nếu bản thảo có số liệu khác, chỉ được ghi chú đối chiếu và ưu tiên số liệu chuẩn.\n"
+        )
     if memory_items:
         system_prompt += (
             "\nCâu hỏi hiện tại và nguồn đang bật có quyền lực hơn trí nhớ cũ. "
@@ -553,6 +586,19 @@ def build_workspace_ai_prompt(
         if block:
             user_parts.append(block)
             user_parts.append("")
+
+    if draft_results:
+        from aios_habit.draft_source_layer import MANDATORY_DRAFT_LABEL
+        user_parts.append("--- TẦNG NGUỒN BẢN THẢO (TRUY HỒI SONG SONG - CHƯA KIỂM CHỨNG) ---")
+        user_parts.append(f"Lưu ý: Mọi trích dẫn từ khối này bắt buộc dán nhãn: {MANDATORY_DRAFT_LABEL}")
+        for idx, dr in enumerate(draft_results, 1):
+            item = getattr(dr, "item", dr)
+            s_file = getattr(item, "source_file", "")
+            s_ans = getattr(item, "answer", "")
+            user_parts.append(f"[Mục bản thảo {idx} - Nguồn: {s_file}]")
+            user_parts.append(s_ans)
+        user_parts.append("-------------------------------------------------------------------")
+        user_parts.append("")
 
     return system_prompt, "\n".join(user_parts)
 
@@ -1135,6 +1181,7 @@ def generate_workspace_ai_answer(
             externally_sent=False,
             error_message=MEMORY_CONSENT_RECONFIRM_MESSAGE,
         )
+    draft_results = tuple(request.draft_search_results) if request.draft_search_results else tuple(recall_draft_layer_for_answer(request))
     system_prompt, user_prompt = build_workspace_ai_prompt(
         q_text,
         prompt_sources,
@@ -1142,6 +1189,7 @@ def generate_workspace_ai_answer(
         answer_language=getattr(request, "answer_language", "vi"),
         memory_result=memory_result,
         anchored_context=getattr(request, "anchored_context", None),
+        draft_results=draft_results,
     )
 
     try:
@@ -1166,6 +1214,9 @@ def generate_workspace_ai_answer(
             provider_success=True,
             evidence_supplied=bool(prompt_sources),
         )
+        from aios_habit.draft_source_layer import has_mandatory_draft_label
+        draft_titles = tuple(getattr(getattr(dr, 'item', dr), 'source_file', '') for dr in draft_results)
+        has_dl = has_mandatory_draft_label(answer_text)
         memory_meta = memory_badge_fields(memory_result)
         return WorkspaceAIAnswerResult(
             ok=True,
@@ -1179,6 +1230,8 @@ def generate_workspace_ai_answer(
             outcome_status=outcome_status,
             memory_titles=memory_meta["memory_titles"],
             memory_consent_fingerprint=memory_meta["memory_consent_fingerprint"],
+            draft_source_titles=draft_titles,
+            has_draft_label=has_dl,
         )
 
     except Exception as e:
