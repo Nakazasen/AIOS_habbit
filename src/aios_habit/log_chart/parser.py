@@ -379,6 +379,47 @@ def classify_column_role(col_name: str, sample_values: Sequence[Any]) -> str:
     return ROLE_CATEGORICAL
 
 
+def _fast_parse_val(tok: Any) -> Any:
+    """Chuyen doi nhanh gia tri o du lieu sang float/None/str ma khong qua regex cham."""
+    if tok is None:
+        return None
+    if isinstance(tok, (int, float)):
+        return float(tok) if not (isinstance(tok, float) and (math.isnan(tok) or math.isinf(tok))) else None
+    s = str(tok).strip()
+    if not s:
+        return None
+    low = s.lower()
+    if low in ("null", "none", "nan", "-"):
+        return None
+    c0 = s[0]
+    if c0 in "-+0123456789.":
+        try:
+            return float(s)
+        except ValueError:
+            if "," in s and "." not in s:
+                try:
+                    return float(s.replace(",", "."))
+                except ValueError:
+                    pass
+    return s
+
+
+def _detect_file_encoding(path_obj: Path) -> str:
+    """Thu cac bang ma pho bien dua tren mau dau tep (64KB)."""
+    with open(path_obj, "rb") as f:
+        sample = f.read(65536)
+    if not sample:
+        return "utf-8"
+    encodings = ["utf-8-sig", "utf-8", "cp1252", "latin-1", "shift_jis"]
+    for enc in encodings:
+        try:
+            sample.decode(enc)
+            return enc
+        except (UnicodeDecodeError, LookupError):
+            continue
+    return "utf-8"
+
+
 def parse_log_file(
     file_source: Union[str, Path, bytes],
     file_name: str = "log_data",
@@ -386,7 +427,6 @@ def parse_log_file(
     sample_for_stats: int = 100,
 ) -> ParsedLogTable:
     """Doc va phan tich cau truc bat ky file log nao (CSV, Excel, Text log)."""
-    raw_bytes: bytes = b""
     path_obj: Optional[Path] = None
 
     if isinstance(file_source, (str, Path)):
@@ -395,30 +435,44 @@ def parse_log_file(
             raise LogParseError(f"Tep khong ton tai tai duong dan: {path_obj}")
         if file_name == "log_data" or not file_name:
             file_name = path_obj.name
-        try:
+        file_size = path_obj.stat().st_size
+        if file_size == 0:
+            raise LogParseError(f'Tep "{file_name}" rong, khong co du lieu de tao bieu do.')
+
+        ext = path_obj.suffix.lower()
+        if ext in (".xlsx", ".xls"):
             raw_bytes = path_obj.read_bytes()
+            return _parse_excel(raw_bytes, file_name, max_rows=max_rows, sample_for_stats=sample_for_stats)
+
+        # Doc text stream truc tiep de kiem soat RAM va ap dung cat tran max_rows som (DESKTOP-HOME-LOGCHART-CAP-RAISE)
+        enc = _detect_file_encoding(path_obj)
+        try:
+            with open(path_obj, "r", encoding=enc, errors="replace") as f:
+                return _parse_stream_table(f, file_name, max_rows=max_rows, sample_for_stats=sample_for_stats)
         except Exception as e:
-            raise LogParseError(f"Khong the doc tep \"{file_name}\": {e}")
+            if isinstance(e, LogParseError):
+                raise
+            raise LogParseError(f'Khong the doc tep "{file_name}": {e}')
+
     elif isinstance(file_source, bytes):
-        raw_bytes = file_source
+        if len(file_source) == 0:
+            raise LogParseError(f'Tep "{file_name}" rong, khong co du lieu de tao bieu do.')
+        ext = Path(file_name).suffix.lower()
+        if ext in (".xlsx", ".xls"):
+            return _parse_excel(file_source, file_name, max_rows=max_rows, sample_for_stats=sample_for_stats)
+
+        text_content = _decode_bytes(file_source)
+        return _parse_stream_table(io.StringIO(text_content), file_name, max_rows=max_rows, sample_for_stats=sample_for_stats)
     else:
         raise LogParseError("Nguon tep khong hop le (can duong dan hoac bytes).")
 
-    if len(raw_bytes) == 0:
-        raise LogParseError(f"Tep \"{file_name}\" rong, khong co du lieu de tao bieu do.")
 
-    ext = Path(file_name).suffix.lower()
-
-    # Xu ly file Excel
-    if ext in (".xlsx", ".xls"):
-        return _parse_excel(raw_bytes, file_name, max_rows=max_rows)
-
-    # Xu ly file Text / CSV / Log
-    text_content = _decode_bytes(raw_bytes)
-    return _parse_text_table(text_content, file_name, max_rows=max_rows, sample_for_stats=sample_for_stats)
-
-
-def _parse_excel(raw_bytes: bytes, file_name: str, max_rows: int = 30000) -> ParsedLogTable:
+def _parse_excel(
+    raw_bytes: bytes,
+    file_name: str,
+    max_rows: int = 30000,
+    sample_for_stats: int = 100,
+) -> ParsedLogTable:
     """Doc file Excel an toan bang openpyxl (tranh crash C-extension)."""
     if openpyxl is None:
         raise LogParseError("Thu vien openpyxl chua duoc cai dat de doc tep Excel.")
@@ -504,19 +558,25 @@ def _parse_excel(raw_bytes: bytes, file_name: str, max_rows: int = 30000) -> Par
     if not data_rows:
         raise LogParseError(f"Tep Excel \"{file_name}\" chi co tieu de, khong co du lieu.")
 
-    # Phan loai cot
+    # Phan loai cot toi uu
+    stats_sample_size = min(len(data_rows), max(sample_for_stats, 1000))
+    sample_rows = data_rows[:stats_sample_size]
+
+    null_counts: Dict[str, int] = {c: 0 for c in col_names}
+    for r in data_rows:
+        for c, v in r.items():
+            if v is None:
+                null_counts[c] += 1
+
     columns_meta: List[ColumnMeta] = []
     for c_name in col_names:
-        sample_vals = [r[c_name] for r in data_rows[:100] if r[c_name] is not None]
-        role = classify_column_role(c_name, sample_vals)
-        all_vals = [r[c_name] for r in data_rows]
-        null_count = sum(1 for v in all_vals if v is None)
-        uniques = len(set(str(v) for v in all_vals if v is not None))
+        sample_vals = [r[c_name] for r in sample_rows if r[c_name] is not None]
+        role = classify_column_role(c_name, sample_vals[:sample_for_stats])
+        uniques = len(set(sample_vals))
 
         min_v, max_v, mean_v = None, None, None
         if role == ROLE_NUMERIC:
-            nums = [_to_float(v) for v in all_vals if _is_numeric(v)]
-            nums = [n for n in nums if n is not None]
+            nums = [v for v in sample_vals if isinstance(v, (int, float))]
             if nums:
                 min_v = min(nums)
                 max_v = max(nums)
@@ -527,7 +587,7 @@ def _parse_excel(raw_bytes: bytes, file_name: str, max_rows: int = 30000) -> Par
                 name=c_name,
                 role=role,
                 sample_values=[str(v) for v in sample_vals[:5]],
-                null_count=null_count,
+                null_count=null_counts.get(c_name, 0),
                 unique_count=uniques,
                 min_val=min_v,
                 max_val=max_v,
@@ -546,60 +606,106 @@ def _parse_excel(raw_bytes: bytes, file_name: str, max_rows: int = 30000) -> Par
     )
 
 
-def _parse_text_table(
-    text_content: str,
+# Tang gioi han kich thuoc field cua csv de tranh loi field larger than field limit (131072)
+try:
+    csv.field_size_limit(2147483647)
+except Exception:
+    pass
+
+
+def _parse_stream_table(
+    stream: Any,
     file_name: str,
     max_rows: int = 30000,
     sample_for_stats: int = 100,
 ) -> ParsedLogTable:
-    """Doc bang du lieu tu van ban (CSV, TSV, pipe-delimited, space-delimited)."""
-    lines = [l for l in text_content.splitlines() if l.strip()]
-    if not lines:
-        raise LogParseError(f"Tep \"{file_name}\" khong chua noi dung van ban hop le.")
+    """Doc bang du lieu tu stream van ban theo luong (CSV, TSV, pipe-delimited, space-delimited)."""
+    # 1. Doc truoc mau 40 dong de phan doan delimiter va tieu de
+    sample_lines: List[str] = []
+    for line in stream:
+        if line.strip():
+            sample_lines.append(line)
+        if len(sample_lines) >= 40:
+            break
 
-    delimiter = sniff_delimiter(lines[:30])
-    header_idx, col_names = detect_header_row(lines, delimiter)
+    if not sample_lines:
+        raise LogParseError(f'Tep "{file_name}" khong chua noi dung van ban hop le.')
+
+    delimiter = sniff_delimiter(sample_lines[:30])
+    header_idx, col_names = detect_header_row(sample_lines, delimiter)
+    num_cols = len(col_names)
+
+    # 2. Xau chuoi luong dong: loc bo chu thich (#, //) ngay tu generator de tiet kiem bo dem
+    def _data_lines_gen():
+        for l in sample_lines[header_idx + 1:]:
+            s = l.strip()
+            if s and not s.startswith(("#", "//")):
+                yield l
+        for l in stream:
+            s = l.strip()
+            if s and not s.startswith(("#", "//")):
+                yield l
 
     data_rows: List[Dict[str, Any]] = []
-    lines_to_read = lines[header_idx + 1: header_idx + 1 + max_rows]
 
-    for raw_line in lines_to_read:
-        line = raw_line.strip()
-        if not line or line.startswith(("#", "//")):
-            continue
-        tokens = _split_line(line, delimiter)
-        if not tokens:
-            continue
-        row_dict: Dict[str, Any] = {}
-        for i, c_name in enumerate(col_names):
-            if i < len(tokens):
-                tok = tokens[i].strip()
-                if tok == "" or tok.lower() in ("null", "none", "nan", "-"):
-                    row_dict[c_name] = None
-                elif _is_numeric(tok):
-                    row_dict[c_name] = _to_float(tok)
-                else:
-                    row_dict[c_name] = tok
-            else:
-                row_dict[c_name] = None
-        data_rows.append(row_dict)
+    if delimiter in (",", "\t", ";", "|"):
+        csv_reader = csv.reader(_data_lines_gen(), delimiter=delimiter)
+        for row in csv_reader:
+            if not row or not any(row):
+                continue
+            row_dict: Dict[str, Any] = {}
+            has_any = False
+            for i in range(num_cols):
+                raw_tok = row[i] if i < len(row) else ""
+                val = _fast_parse_val(raw_tok)
+                if val is not None:
+                    has_any = True
+                row_dict[col_names[i]] = val
+            if has_any:
+                data_rows.append(row_dict)
+            if len(data_rows) >= max_rows:
+                break
+    else:
+        for raw_line in _data_lines_gen():
+            line = raw_line.strip()
+            tokens = _split_line(line, delimiter)
+            if not tokens:
+                continue
+            row_dict = {}
+            has_any = False
+            for i in range(num_cols):
+                raw_tok = tokens[i] if i < len(tokens) else ""
+                val = _fast_parse_val(raw_tok)
+                if val is not None:
+                    has_any = True
+                row_dict[col_names[i]] = val
+            if has_any:
+                data_rows.append(row_dict)
+            if len(data_rows) >= max_rows:
+                break
 
     if not data_rows:
         raise LogParseError(f"Khong tim thay dong du lieu nao sau dong tieu de trong tep \"{file_name}\".")
 
-    # Phan loai cot
+    # 3. Tinh toan thong tin cot toi uu (khong quet toan bo bo nho 30k dong x 572 cot nhieu lan)
+    stats_sample_size = min(len(data_rows), max(sample_for_stats, 1000))
+    sample_rows = data_rows[:stats_sample_size]
+
+    null_counts: Dict[str, int] = {c: 0 for c in col_names}
+    for r in data_rows:
+        for c, v in r.items():
+            if v is None:
+                null_counts[c] += 1
+
     columns_meta: List[ColumnMeta] = []
     for c_name in col_names:
-        sample_vals = [r[c_name] for r in data_rows[:sample_for_stats] if r[c_name] is not None]
-        role = classify_column_role(c_name, sample_vals)
-        all_vals = [r[c_name] for r in data_rows]
-        null_count = sum(1 for v in all_vals if v is None)
-        uniques = len(set(str(v) for v in all_vals if v is not None))
+        sample_vals = [r[c_name] for r in sample_rows if r[c_name] is not None]
+        role = classify_column_role(c_name, sample_vals[:sample_for_stats])
+        uniques = len(set(sample_vals))
 
         min_v, max_v, mean_v = None, None, None
         if role == ROLE_NUMERIC:
-            nums = [_to_float(v) for v in all_vals if _is_numeric(v)]
-            nums = [n for n in nums if n is not None]
+            nums = [v for v in sample_vals if isinstance(v, (int, float))]
             if nums:
                 min_v = min(nums)
                 max_v = max(nums)
@@ -610,7 +716,7 @@ def _parse_text_table(
                 name=c_name,
                 role=role,
                 sample_values=[str(v) for v in sample_vals[:5]],
-                null_count=null_count,
+                null_count=null_counts.get(c_name, 0),
                 unique_count=uniques,
                 min_val=min_v,
                 max_val=max_v,
@@ -627,4 +733,19 @@ def _parse_text_table(
         delimiter=delimiter,
         header_row_index=header_idx,
         provenance_note=f"Tep text/CSV: {file_name} ({len(data_rows)} dong, {len(col_names)} cot, phan cach bang {delim_label})",
+    )
+
+
+def _parse_text_table(
+    text_content: str,
+    file_name: str,
+    max_rows: int = 30000,
+    sample_for_stats: int = 100,
+) -> ParsedLogTable:
+    """Doc bang du lieu tu van ban (CSV, TSV, pipe-delimited, space-delimited)."""
+    return _parse_stream_table(
+        io.StringIO(text_content),
+        file_name=file_name,
+        max_rows=max_rows,
+        sample_for_stats=sample_for_stats,
     )

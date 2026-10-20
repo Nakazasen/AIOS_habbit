@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
-"""Xử lý đính kèm tệp và hình ảnh qua clipboard và phân định giới hạn theo làn (DESKTOP-HOME-LOGCHART-ATTACH-SIZE-FIX).
+"""Xử lý đính kèm tệp và hình ảnh qua clipboard và phân định giới hạn theo làn (DESKTOP-HOME-LOGCHART-CAP-RAISE).
 
 Nguyên tắc tách làn:
 1. Làn tệp log / biểu đồ (CSV, XLSX, XLS, LOG):
-   - Giới hạn trần riêng: MAX_LOG_CHART_FILE_BYTES = 25 MB (26,214,400 bytes).
-   - Lý do: Bao phủ 100% các tệp log sản xuất thực tế đo được tại máy nhà và PC0575
-     (tối đa 4,595,474 bytes ~ 4.6MB của 2026_08_Black_Depth.csv, hệ số dự phòng 5.4 lần cho log tháng/quý/năm).
-     Phù hợp với giới hạn an toàn của bộ đọc log_chart.parser (cắt trần 30,000 dòng, lấy mẫu đều, RAM < 100MB, xử lý < 5 giây).
-   - Khi vượt quá 25MB: Thông báo rõ trần của làn biểu đồ và hướng dẫn người dùng cắt bớt dòng/chia nhỏ tệp.
+   - Giới hạn trần riêng: MAX_LOG_CHART_FILE_BYTES = 64 MiB (67,108,864 bytes).
+   - Lý do: Bao phủ 100% các tệp log sản xuất thực tế đo được tại máy nhà (tệp lớn nhất 2025_02.csv = 30,872,058 bytes,
+     hệ số dự phòng ~2.17 lần cho log LSU lớn theo quý/năm).
+     Phù hợp với giới hạn an toàn của bộ đọc log_chart.parser (đọc theo luồng/chunk, cắt trần 30,000 dòng, lấy mẫu đều,
+     xử lý mượt mà và an toàn RAM).
+   - Khi vượt quá 64MB: Thông báo rõ trần của làn biểu đồ và hướng dẫn người dùng cắt bớt dòng/chia nhỏ tệp.
 2. Làn tệp chữ / ngữ cảnh chat thông thường (MD, TXT, TSV không vẽ biểu đồ):
    - Giữ nguyên trần 50KB: MAX_COMPOSER_TEXT_FILE_BYTES = 50 * 1024 (51,200 bytes).
    - Lý do: Bảo vệ ngữ cảnh trò chuyện của LLM, tránh tràn cửa sổ ngữ cảnh (token blowout) khi trích văn bản thô vào prompt.
@@ -25,7 +26,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 # Giới hạn kích thước theo làn
 MAX_COMPOSER_TEXT_FILE_BYTES: int = 50 * 1024  # 50 KB tối đa cho văn bản đưa vào ngữ cảnh trò chuyện
-MAX_LOG_CHART_FILE_BYTES: int = 25 * 1024 * 1024  # 25 MB tối đa cho tệp log / biểu đồ
+MAX_LOG_CHART_FILE_BYTES: int = 64 * 1024 * 1024  # 64 MiB (67,108,864 bytes) tối đa cho tệp log / biểu đồ (DESKTOP-HOME-LOGCHART-CAP-RAISE)
 MAX_COMPOSER_ATTACHED_TEXT_CHARS: int = 3000  # 3000 ký tự tối đa gộp vào câu hỏi (đồng bộ OCR)
 
 COMPOSER_SUPPORTED_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
@@ -54,7 +55,7 @@ def validate_attachment_lane(file_name: str, file_size: int) -> Tuple[bool, Opti
             return False, f'Tệp "{file_name}" rỗng. Vui lòng chọn tệp có nội dung.', "log_chart"
         if file_size > MAX_LOG_CHART_FILE_BYTES:
             msg = (
-                f'Tệp "{file_name}" ({file_size:,} bytes) vượt quá giới hạn 25MB cho làn tệp log / biểu đồ. '
+                f'Tệp "{file_name}" ({file_size:,} bytes) vượt quá giới hạn 64MB cho làn tệp log / biểu đồ. '
                 "Vui lòng cắt bớt số dòng, chia nhỏ tệp theo khoảng thời gian hoặc lọc bớt cột trước khi tải lên."
             )
             return False, msg, "log_chart"

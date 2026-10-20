@@ -52,7 +52,7 @@ _WORKSPACE_AI_REQUEST_EXECUTOR = ThreadPoolExecutor(
 
 # Giới hạn kích thước và định dạng cho tệp đính kèm một lần trong khung soạn thảo (DESKTOP-COMPOSER-FILE-ATTACH-HOME)
 MAX_COMPOSER_TEXT_FILE_BYTES: int = 50 * 1024  # 50 KB tối đa cho tệp chữ/CSV nhỏ
-MAX_LOG_CHART_FILE_BYTES: int = 25 * 1024 * 1024  # 25 MB cho tệp log / biểu đồ (DESKTOP-HOME-LOGCHART-ATTACH-SIZE-FIX)
+MAX_LOG_CHART_FILE_BYTES: int = 64 * 1024 * 1024  # 64 MiB cho tệp log / biểu đồ (DESKTOP-HOME-LOGCHART-CAP-RAISE)
 MAX_COMPOSER_ATTACHED_TEXT_CHARS: int = 3000   # 3000 ký tự tối đa gộp vào câu hỏi (đồng bộ OCR)
 COMPOSER_SUPPORTED_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
 COMPOSER_SUPPORTED_TEXT_EXTS = {".csv", ".txt", ".tsv", ".md", ".log"}
