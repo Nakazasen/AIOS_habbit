@@ -51,10 +51,10 @@ _WORKSPACE_AI_REQUEST_EXECUTOR = ThreadPoolExecutor(
 )
 
 # Giới hạn kích thước và định dạng cho tệp đính kèm một lần trong khung soạn thảo (DESKTOP-COMPOSER-FILE-ATTACH-HOME)
-MAX_COMPOSER_TEXT_FILE_BYTES: int = 50 * 1024  # 50 KB tối đa cho tệp chữ/CSV nhỏ
+MAX_COMPOSER_TEXT_FILE_BYTES: int = 25 * 1024 * 1024  # 25 MB cho tệp log / Excel sản xuất
 MAX_COMPOSER_ATTACHED_TEXT_CHARS: int = 3000   # 3000 ký tự tối đa gộp vào câu hỏi (đồng bộ OCR)
 COMPOSER_SUPPORTED_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
-COMPOSER_SUPPORTED_TEXT_EXTS = {".csv", ".txt", ".tsv", ".md", ".log"}
+COMPOSER_SUPPORTED_TEXT_EXTS = {".csv", ".txt", ".tsv", ".md", ".log", ".xlsx", ".xls"}
 COMPOSER_SUPPORTED_EXTS = COMPOSER_SUPPORTED_IMAGE_EXTS | COMPOSER_SUPPORTED_TEXT_EXTS
 
 
@@ -2549,7 +2549,41 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
         except Exception:
             return None
     if y_dinh == VE_BIEU_DO:
-        # Nhanh ve bieu do JIG chay doc lap trong luong gop (UX-E2E-APP muc a):
+        # 1. Kiem tra phien log chart builder cua file vua nap (DESKTOP-LOG-CHART-BUILDER-HOME)
+        try:
+            from aios_habit.log_chart import (
+                load_chart_session,
+                save_chart_session,
+                update_spec_from_text,
+                render_chart_image,
+                CHART_TITLES_VI,
+            )
+            chart_session = load_chart_session(active_conversation.id)
+            if chart_session is not None:
+                spec, table, file_path = chart_session
+                updated_spec, explain_msg = update_spec_from_text(spec, q_text, table)
+                save_chart_session(active_conversation.id, updated_spec, file_path)
+                png_bytes = render_chart_image(updated_spec, table)
+                import base64
+                ma_hoa = base64.b64encode(png_bytes).decode("ascii")
+                marker_json = json.dumps({
+                    "spec_id": updated_spec.spec_id,
+                    "conversation_id": active_conversation.id,
+                    "chart_type": updated_spec.chart_type,
+                })
+                van_ban = (
+                    f"### 📊 {explain_msg}\n\n"
+                    f"- **Tệp dữ liệu:** `{table.file_name}`\n"
+                    f"- **Kiểu biểu đồ:** `{CHART_TITLES_VI.get(updated_spec.chart_type, updated_spec.chart_type)}`\n"
+                    f"- **Trục X:** `{updated_spec.x_col}` · **Giá trị Y:** `{updated_spec.y_col}`\n\n"
+                    f"![biểu đồ](data:image/png;base64,{ma_hoa})\n\n"
+                    f"<!-- aios_log_chart_builder: {marker_json} -->"
+                )
+                return van_ban
+        except Exception:
+            pass
+
+        # 2. Nhanh ve bieu do JIG chay doc lap trong luong gop (UX-E2E-APP muc a):
         # cung logic voi luong jig cu, doc du lieu tu phien LSU gate.
         try:
             from aios_habit.production_prediction.jig_chat_wire import (
@@ -2628,6 +2662,9 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
             return f"### ⚠️ Không thể lưu phản hồi nhãn: {e}"
     if y_dinh == XEM_PHAN_HOI:
         try:
+            if any(k in q_text.lower() for k in ("bieu do", "chart")):
+                from aios_habit.log_chart import get_chart_feedback_summary_markdown
+                return get_chart_feedback_summary_markdown()
             if slots.get("loai_phan_hoi") == "phan_loai":
                 from aios_habit.error_cases.autoclassify_feedback import format_autoclassify_review_summary
                 return format_autoclassify_review_summary()
@@ -5647,7 +5684,7 @@ else:
                             with st.popover(t("attach_popover", locale=current_ui_locale), help=t("attach_screenshot_help", locale=current_ui_locale), icon=":material/attach_file:"):
                                 uploaded_image = st.file_uploader(
                                     t("attach_screenshot_label", locale=current_ui_locale),
-                                    type=["png", "jpg", "jpeg", "webp", "bmp", "csv", "txt", "tsv", "md", "log"],
+                                    type=["png", "jpg", "jpeg", "webp", "bmp", "csv", "txt", "tsv", "md", "log", "xlsx", "xls"],
                                     key=upload_key,
                                     help=t("attach_screenshot_help", locale=current_ui_locale),
                                     label_visibility="collapsed",
@@ -5682,7 +5719,7 @@ else:
                                     if _up_ext in COMPOSER_SUPPORTED_TEXT_EXTS:
                                         if _up_size > MAX_COMPOSER_TEXT_FILE_BYTES:
                                             _err_msg = (
-                                                f"Tệp \"{_up_name}\" ({_up_size:,} bytes) vượt quá giới hạn 50KB cho tệp đính kèm chữ/CSV. "
+                                                f"Tệp \"{_up_name}\" ({_up_size:,} bytes) vượt quá giới hạn 25MB cho tệp log / dữ liệu đính kèm. "
                                                 "Vui lòng chọn tệp nhỏ hơn."
                                             )
                                             st.error(_err_msg)
@@ -6334,7 +6371,49 @@ else:
                                 if one_shot_image_text:
                                     q_text = f"{q_text}\n\n---\n{one_shot_image_text}"
                             elif _att_ext in COMPOSER_SUPPORTED_TEXT_EXTS:
-                                # Tệp chữ/CSV đính kèm một lần: trích nội dung chữ rồi gộp thẳng vào câu hỏi
+                                # 1. Thu nap du lieu vao Log Chart Builder (DESKTOP-LOG-CHART-BUILDER-HOME)
+                                _chart_builder_handled = False
+                                try:
+                                    from aios_habit.log_chart import (
+                                        save_log_file_bytes,
+                                        parse_log_file,
+                                        build_initial_spec,
+                                        save_chart_session,
+                                        render_chart_image,
+                                        CHART_TITLES_VI,
+                                        update_spec_from_text,
+                                    )
+                                    _f_hash, _f_path = save_log_file_bytes(_att_name, _att_bytes)
+                                    _parsed_table = parse_log_file(_f_path, file_name=_att_name)
+                                    _spec = build_initial_spec(_parsed_table)
+                                    if q_text:
+                                        _spec, _ = update_spec_from_text(_spec, q_text, _parsed_table)
+                                    save_chart_session(active_conversation.id, _spec, _f_path)
+                                    _main_png = render_chart_image(_spec, _parsed_table)
+                                    import base64
+                                    _ma_hoa = base64.b64encode(_main_png).decode("ascii")
+                                    _marker_json = json.dumps({
+                                        "spec_id": _spec.spec_id,
+                                        "conversation_id": active_conversation.id,
+                                        "chart_type": _spec.chart_type,
+                                    })
+                                    _assistant_reply = (
+                                        f"### 📊 Đã đọc cấu trúc tệp log `{_att_name}`\n\n"
+                                        f"- **Số dòng dữ liệu:** `{_parsed_table.total_rows:,}` dòng\n"
+                                        f"- **Số cột nhận diện:** `{len(_parsed_table.columns)}` cột ({_parsed_table.provenance_note})\n"
+                                        f"- **Kiểu biểu đồ đề xuất:** `{CHART_TITLES_VI.get(_spec.chart_type, _spec.chart_type)}`\n\n"
+                                        f"![biểu đồ](data:image/png;base64,{_ma_hoa})\n\n"
+                                        f"<!-- aios_log_chart_builder: {_marker_json} -->"
+                                    )
+                                    _user_display_q = q_text if q_text else f"Vẽ biểu đồ từ tệp {_att_name}"
+                                    _luu_cap_tin_nhan_chat(active_conversation.id, _user_display_q, _assistant_reply)
+                                    _chart_builder_handled = True
+                                    st.session_state.pop(pasted_image_key, None)
+                                    safe_rerun()
+                                except Exception as _log_chart_exc:
+                                    _chart_builder_handled = False
+
+                                # 2. Tệp chữ/CSV đính kèm một lần: trích nội dung chữ rồi gộp thẳng vào câu hỏi
                                 try:
                                     _raw_text = _att_bytes.decode("utf-8-sig")
                                 except UnicodeDecodeError:

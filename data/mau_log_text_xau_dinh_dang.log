@@ -1,0 +1,50 @@
+# ========================================================
+# NHAT KY DIEU CHINH THIET BI TU DONG HOA BAN 2026
+# May: JIG_ALIGN_07 | Nguoi van hanh: Nguyen Ich Khiem
+# Thiet bi: LSU Adjustment Station | Ngay: 2026-10-20
+# ========================================================
+Timestamp	Line	Station	Defect_Code	Deviation_um	Current_mA	Status
+2026-10-20 08:11:00	Line 1	Tram_Han	None	9.73	112.3	OK
+2026-10-20 08:22:00	Line 3	Tram_Quang	None	10.49	118.0	OK
+2026-10-20 08:33:00	Line 1	Tram_Quang	None	7.86	114.2	OK
+2026-10-20 08:44:00	Line 2	Tram_Han	None	9.12	128.9	OK
+2026-10-20 08:55:00	Line 3	Tram_Han	None	11.57	110.5	OK
+2026-10-20 08:06:00	Line 2	Tram_Quang	None	12.39	125.8	OK
+2026-10-20 08:17:00	Line 2	Tram_Quang	E103_Quang_Thap	16.58	120.4	NG
+2026-10-20 09:28:00	Line 1	Tram_Han	None	0.7	125.6	OK
+2026-10-20 09:39:00	Line 3	Tram_Quang	E102_Cong_Venh	17.19	135.6	NG
+2026-10-20 09:50:00	Line 3	Tram_Quang	None	11.35	108.6	OK
+2026-10-20 09:01:00	Line 1	Tram_Ep	None	10.99	126.2	OK
+2026-10-20 09:12:00	Line 1	Tram_Ep	None	8.94	127.3	OK
+2026-10-20 09:23:00	Line 1	Tram_Ep	None	9.95	99.6	OK
+2026-10-20 09:34:00	Line 2	Tram_Han	None	7.96	97.2	OK
+2026-10-20 09:45:00	Line 1	Tram_Quang	E104_Nguon_Yeu	17.02	117.3	NG
+2026-10-20 10:56:00	Line 1	Tram_Quang	None	7.62	111.0	OK
+2026-10-20 10:07:00	Line 2	Tram_Han	E103_Quang_Thap	13.99	106.2	NG
+2026-10-20 10:18:00	Line 1	Tram_Han	E104_Nguon_Yeu	15.89	132.7	NG
+2026-10-20 10:29:00	Line 1	Tram_Quang	None	10.26	109.9	OK
+2026-10-20 10:40:00	Line 2	Tram_Quang	None	9.24	134.5	OK
+2026-10-20 10:51:00	Line 2	Tram_Ep	None	7.66	123.7	OK
+2026-10-20 10:02:00	Line 2	Tram_Ep	None	4.82	112.2	OK
+2026-10-20 10:13:00	Line 3	Tram_Ep	None	10.3	118.2	OK
+2026-10-20 11:24:00	Line 2	Tram_Quang	None	-4.53	106.1	OK
+2026-10-20 11:35:00	Line 1	Tram_Quang	None	4.22	114.7	OK
+2026-10-20 11:46:00	Line 2	Tram_Ep	None	3.3	112.6	OK
+2026-10-20 11:57:00	Line 2	Tram_Han	None	8.55	122.8	OK
+2026-10-20 11:08:00	Line 2	Tram_Quang	None	-0.99	117.7	OK
+2026-10-20 11:19:00	Line 3	Tram_Han	E102_Cong_Venh	15.6	114.0	NG
+2026-10-20 11:30:00	Line 2	Tram_Ep	E103_Quang_Thap	14.68	126.3	NG
+2026-10-20 11:41:00	Line 3	Tram_Ep	None	6.66	115.6	OK
+2026-10-20 12:52:00	Line 2	Tram_Han	None	6.14	129.5	OK
+2026-10-20 12:03:00	Line 2	Tram_Han	None	7.26	125.0	OK
+2026-10-20 12:14:00	Line 2	Tram_Han	E102_Cong_Venh	15.0	114.5	NG
+2026-10-20 12:25:00	Line 3	Tram_Han	None	6.02	132.0	OK
+2026-10-20 12:36:00	Line 1	Tram_Ep	None	6.78	130.3	OK
+2026-10-20 12:47:00	Line 3	Tram_Han	None	4.85	110.8	OK
+2026-10-20 12:58:00	Line 2	Tram_Han	None	9.28	131.0	OK
+2026-10-20 12:09:00	Line 3	Tram_Quang	None	5.79	113.1	OK
+2026-10-20 13:20:00	Line 3	Tram_Han	None	6.38	117.0	OK
+2026-10-20 13:31:00	Line 1	Tram_Han	None	4.64	136.8	OK
+2026-10-20 13:42:00	Line 1	Tram_Quang	E105_Ket_Cum	21.77	128.2	NG
+2026-10-20 13:53:00	Line 1	Tram_Ep	None	1.95	127.2	OK
+2026-10-20 13:04:00	Line 1	Tram_Han	None	6.07	109.0	OK

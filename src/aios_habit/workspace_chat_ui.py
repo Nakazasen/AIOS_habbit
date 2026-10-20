@@ -358,6 +358,132 @@ def render_archived_notebook_card(
         st.write("---")
 
 
+if hasattr(st, "dialog"):
+    @st.dialog(t("answer_feedback_popup_title", locale="vi"))
+    def _render_dislike_dialog(
+        conv_id: str,
+        msg_id: str,
+        q_txt: str,
+        a_txt: str,
+        sources: Optional[List[str]],
+        dom: str,
+        uid: str,
+        loc: str,
+    ) -> None:
+        from aios_habit import answer_feedback as _af
+
+        st.markdown(f"**{t('answer_feedback_popup_intro', locale=loc)}**")
+        _choices = [
+            ("sai", t("answer_feedback_reason_sai", locale=loc)),
+            ("kho_hieu", t("answer_feedback_reason_kho_hieu", locale=loc)),
+            ("thieu_nguon", t("answer_feedback_reason_thieu_nguon", locale=loc)),
+            ("lac_de", t("answer_feedback_reason_lac_de", locale=loc)),
+        ]
+        _keys = [c[0] for c in _choices]
+        _labels = [c[1] for c in _choices]
+        _picked_label = st.radio(
+            "Lý do:",
+            _labels,
+            key=f"wsc_fb_pop_cat_{msg_id}",
+        )
+        _picked_cat = _keys[_labels.index(_picked_label)] if _picked_label in _labels else "sai"
+        _detail = st.text_input(
+            t("answer_feedback_popup_detail", locale=loc),
+            placeholder="Mô tả cụ thể điểm chưa chính xác...",
+            key=f"wsc_fb_pop_detail_{msg_id}",
+        )
+        col_send, col_space = st.columns([1, 1])
+        with col_send:
+            if st.button(
+                t("answer_feedback_popup_submit", locale=loc),
+                type="primary",
+                key=f"wsc_fb_pop_submit_{msg_id}",
+            ):
+                res = _af.record_feedback(
+                    conversation_id=conv_id,
+                    message_id=msg_id,
+                    question=q_txt,
+                    answer=a_txt,
+                    rating="chua_huu_ich",
+                    reason_category=_picked_cat,
+                    reason=_detail,
+                    user_id=uid,
+                    cited_sources=sources,
+                    domain=dom,
+                )
+                if res.get("ok"):
+                    if hasattr(st, "session_state"):
+                        st.session_state[f"wsc_revote_active_{msg_id}"] = False
+                    if hasattr(st, "toast"):
+                        st.toast("Đã ghi nhận lý do đánh giá. Cảm ơn bạn! 🎯")
+                    if hasattr(st, "rerun"):
+                        st.rerun()
+                else:
+                    st.error(res.get("error_vi") or "Lưu phản hồi thất bại.")
+
+
+def _render_dislike_inline_popup(
+    conv_id: str,
+    msg_id: str,
+    q_txt: str,
+    a_txt: str,
+    sources: Optional[List[str]],
+    dom: str,
+    uid: str,
+    loc: str,
+) -> None:
+    from aios_habit import answer_feedback as _af
+
+    with st.container():
+        st.markdown(f"**{t('answer_feedback_popup_title', locale=loc)}**")
+        st.caption(t("answer_feedback_popup_intro", locale=loc))
+        _choices = [
+            ("sai", t("answer_feedback_reason_sai", locale=loc)),
+            ("kho_hieu", t("answer_feedback_reason_kho_hieu", locale=loc)),
+            ("thieu_nguon", t("answer_feedback_reason_thieu_nguon", locale=loc)),
+            ("lac_de", t("answer_feedback_reason_lac_de", locale=loc)),
+        ]
+        _keys = [c[0] for c in _choices]
+        _labels = [c[1] for c in _choices]
+        _picked_label = st.radio(
+            "Lý do:",
+            _labels,
+            key=f"wsc_fb_pop_cat_{msg_id}",
+        )
+        _picked_cat = _keys[_labels.index(_picked_label)] if _picked_label in _labels else "sai"
+        _detail = st.text_input(
+            t("answer_feedback_popup_detail", locale=loc),
+            placeholder="Mô tả cụ thể...",
+            key=f"wsc_fb_pop_detail_{msg_id}",
+        )
+        if st.button(
+            t("answer_feedback_popup_submit", locale=loc),
+            type="primary",
+            key=f"wsc_fb_pop_submit_{msg_id}",
+        ):
+            res = _af.record_feedback(
+                conversation_id=conv_id,
+                message_id=msg_id,
+                question=q_txt,
+                answer=a_txt,
+                rating="chua_huu_ich",
+                reason_category=_picked_cat,
+                reason=_detail,
+                user_id=uid,
+                cited_sources=sources,
+                domain=dom,
+            )
+            if res.get("ok"):
+                if hasattr(st, "session_state"):
+                    st.session_state[f"wsc_revote_active_{msg_id}"] = False
+                if hasattr(st, "toast"):
+                    st.toast("Đã ghi nhận lý do đánh giá. Cảm ơn bạn! 🎯")
+                if hasattr(st, "rerun"):
+                    st.rerun()
+            else:
+                st.error(res.get("error_vi") or "Lưu phản hồi thất bại.")
+
+
 def render_answer_feedback_row(
     *,
     conversation_id: str,
@@ -366,18 +492,11 @@ def render_answer_feedback_row(
     answer: str,
     locale: str = "vi",
     on_reply: Optional[Callable[[str, str, str], None]] = None,
+    cited_sources: Optional[List[str]] = None,
+    domain: str = "",
 ) -> None:
-    """Hang feedback nho duoi moi cau tra loi cua assistant (vong lap cai thien).
-    Chua hanh dong 'Tra loi' de neo ngu canh + nut thumbs up/down danh gia.
-    Luu o local_cases, khong vao kho tri thuc.
-    """
+    """Hang feedback duoi moi cau tra loi cua assistant kem dinh danh Windows va popup ly do khi che."""
     from aios_habit import answer_feedback
-    try:
-        from aios_habit import feedback_loop_home as _feedback_loop
-        _loop_on = bool(_feedback_loop.feedback_loop_enabled())
-    except (ImportError, ValueError):
-        _feedback_loop = None  # type: ignore[assignment]
-        _loop_on = False
     if not conversation_id or not message_id:
         return
 
@@ -404,87 +523,73 @@ def render_answer_feedback_row(
                 if hasattr(st, "rerun"):
                     st.rerun()
 
+    user_id = answer_feedback.get_windows_identity()
+    existing = answer_feedback.get_feedback(conversation_id, message_id, user_id=user_id)
+    revote_key = f"wsc_revote_active_{message_id}"
+    is_revoting = bool((getattr(st, "session_state", {}) or {}).get(revote_key, False))
+
     with col_fb:
-        if answer_feedback.get_feedback(conversation_id, message_id) is not None:
-            st.caption(t("answer_feedback_thanks_rated", locale=locale))
+        if existing is not None and not is_revoting:
+            is_good = existing.get("rating") == answer_feedback.RATING_HUU_ICH
+            if is_good:
+                st.caption(f"👍 {t('answer_feedback_thanks_rated', locale=locale)}")
+            else:
+                cat = existing.get("reason_category") or "sai"
+                cat_badge = answer_feedback.REASON_CATEGORY_LABELS.get(cat, cat)
+                st.caption(f"👎 {t('answer_feedback_disliked_badge', locale=locale)}: {cat_badge}")
+            if st.button(f"🔄 {t('answer_feedback_revote_action', locale=locale)}", key=f"wsc_revote_btn_{message_id}"):
+                if hasattr(st, "session_state"):
+                    st.session_state[revote_key] = True
+                if hasattr(st, "rerun"):
+                    st.rerun()
             return
+
         key_base = f"wsc_answer_fb_{message_id}"
         rating = st.feedback("thumbs", key=key_base)
         if rating is None:
             return
-    if int(rating) == 1:
-        if _loop_on and _feedback_loop is not None:
-            result = _feedback_loop.record_device_feedback(
-                conversation_id, message_id, question, answer, "huu_ich"
-            )
-        else:
-            result = answer_feedback.record_feedback(
-                conversation_id, message_id, question, answer, "huu_ich"
-            )
-        if result.get("ok"):
-            st.caption(t("answer_feedback_thanks", locale=locale))
-        return
-    if _loop_on and _feedback_loop is not None:
-        _codes = list(_feedback_loop.PRESET_REASONS)
-        _labels = [
-            t(f"feedback_loop_reason_{code}", locale=locale) for code in _codes
-        ]
-        _picked = st.radio(
-            t("feedback_loop_reason_label", locale=locale),
-            _labels,
-            key=key_base + "_loop_reason",
-        )
-        _picked_code = _codes[_labels.index(_picked)] if _picked in _labels else "khac"
-        _extra = st.text_input(
-            t("feedback_loop_reason_other", locale=locale),
-            key=key_base + "_loop_other",
-        )
-        if st.button(t("answer_feedback_send", locale=locale), key=key_base + "_send"):
-            if _picked_code == "khac":
-                _reason_text = str(_extra or "").strip()
-            else:
-                _base_label = t(f"feedback_loop_reason_{_picked_code}", locale=locale)
-                _tail = str(_extra or "").strip()
-                _reason_text = _base_label if not _tail else f"{_base_label} | {_tail}"
-            result = _feedback_loop.record_device_feedback(
+
+        if int(rating) == 1:
+            res = answer_feedback.record_feedback(
                 conversation_id,
                 message_id,
                 question,
                 answer,
-                "chua_huu_ich",
-                reason=_reason_text,
+                "huu_ich",
+                user_id=user_id,
+                cited_sources=cited_sources,
+                domain=domain,
             )
-            if result.get("ok"):
-                st.caption(t("answer_feedback_recorded", locale=locale))
-            else:
-                st.warning(
-                    str(
-                        result.get("error_vi")
-                        or t("answer_feedback_save_failed", locale=locale)
-                    )
-                )
-        return
-    reason = st.text_input(
-        t("answer_feedback_reason_prompt", locale=locale),
-        key=key_base + "_reason",
-    )
-    if st.button(t("answer_feedback_send", locale=locale), key=key_base + "_send"):
-        result = answer_feedback.record_feedback(
-            conversation_id,
-            message_id,
-            question,
-            answer,
-            "chua_huu_ich",
-            reason=reason,
-        )
-        if result.get("ok"):
-            st.caption(t("answer_feedback_recorded", locale=locale))
+            if res.get("ok"):
+                if hasattr(st, "session_state"):
+                    st.session_state[revote_key] = False
+                st.caption(t("answer_feedback_thanks", locale=locale))
+                if hasattr(st, "rerun"):
+                    st.rerun()
+            return
+
+        # Rating == 0 (Dislike): Open modal dialog / popup with 4 mandatory reasons
+        if hasattr(st, "dialog"):
+            _render_dislike_dialog(
+                conv_id=conversation_id,
+                msg_id=message_id,
+                q_txt=question,
+                a_txt=answer,
+                sources=cited_sources,
+                dom=domain,
+                uid=user_id,
+                loc=locale,
+            )
         else:
-            st.warning(
-                str(
-                    result.get("error_vi")
-                    or t("answer_feedback_save_failed", locale=locale)
-                )
+            _render_dislike_inline_popup(
+                conv_id=conversation_id,
+                msg_id=message_id,
+                q_txt=question,
+                a_txt=answer,
+                sources=cited_sources,
+                dom=domain,
+                uid=user_id,
+                loc=locale,
             )
 
 
@@ -693,7 +798,8 @@ def render_chat_bubble(
                 clean_content = _chat_create_case.strip_case_preview_marker(clean_content)
                 clean_content = _chat_intake_ui.strip_intake_markers(clean_content)
                 clean_content = re.sub(r"<!--\s*aios_chat_artifact:.*?-->", "", clean_content, flags=re.DOTALL)
-                clean_content = re.sub(r"<!--\s*aios_realtime_alert:.*?-->", "", clean_content, flags=re.DOTALL).strip()
+                clean_content = re.sub(r"<!--\s*aios_realtime_alert:.*?-->", "", clean_content, flags=re.DOTALL)
+                clean_content = re.sub(r"<!--\s*aios_log_chart_builder:.*?-->", "", clean_content, flags=re.DOTALL).strip()
                 st.markdown(clean_content)
                 return
             from aios_habit.agent_work_artifact import extract_chat_artifact_metadata
@@ -720,6 +826,7 @@ def render_chat_bubble(
                     st.session_state[trace_cache_key] = trace
                 return trace
 
+            _msg_trace: Optional[EvidenceTrace] = None
             if trace_id_str:
                 try:
                     _msg_trace = _load_trace_once()
@@ -798,6 +905,14 @@ def render_chat_bubble(
             intake_review_info = _chat_intake_ui.extract_intake_review_marker(raw_content)
             suggestion_cards = _chat_interview_ui.extract_suggestion_markers(raw_content)
             case_preview_data = _chat_create_case.extract_case_preview_marker(raw_content)
+            display_content = re.sub(r"<!--\s*aios_log_chart_builder:.*?-->", "", display_content, flags=re.DOTALL)
+            log_chart_data = None
+            _m_chart = re.search(r"<!--\s*aios_log_chart_builder:\s*(\{.*?\})\s*-->", raw_content, re.DOTALL)
+            if _m_chart:
+                try:
+                    log_chart_data = json.loads(_m_chart.group(1))
+                except Exception:
+                    log_chart_data = None
             artifact_meta = extract_chat_artifact_metadata(raw_content)
             if artifact_meta:
                 work_id = str(artifact_meta.get("work_id", "")).strip()
@@ -1057,15 +1172,37 @@ def render_chat_bubble(
                     conversation_id=conversation_id,
                     message_id=str(msg.id or ""),
                 )
+            if log_chart_data:
+                try:
+                    from aios_habit.log_chart import load_chart_session
+                    from aios_habit.log_chart.ui import render_log_chart_builder_card
+                    _chart_conv_id = log_chart_data.get("conversation_id") or conversation_id
+                    _loaded = load_chart_session(_chart_conv_id)
+                    if _loaded is not None:
+                        _spec, _table, _fpath = _loaded
+                        render_log_chart_builder_card(_spec, _table, conversation_id=_chart_conv_id, file_path=_fpath, locale=locale)
+                except Exception as _c_err:
+                    st.error(f"Lỗi hiển thị thẻ biểu đồ: {_c_err}")
 
-            if not _is_realtime_alert and not _is_can_bien:
+            if not _is_realtime_alert and not _is_can_bien and not log_chart_data:
                 # Vong lap cai thien lien tuc: feedback cau tra loi ngay tren khung chat.
+                _msg_sources: List[str] = []
+                _msg_domain: str = ""
+                if _msg_trace is not None:
+                    _msg_domain = getattr(_msg_trace, "notebook_id", "") or ""
+                    nodes = getattr(_msg_trace, "nodes", []) or []
+                    for n in nodes:
+                        src = getattr(n, "title", "") or getattr(n, "source_id", "")
+                        if src and src not in _msg_sources:
+                            _msg_sources.append(src)
                 render_answer_feedback_row(
                     conversation_id=conversation_id,
                     message_id=str(msg.id or ""),
                     question=feedback_question,
                     answer=display_content,
                     locale=locale,
+                    cited_sources=_msg_sources,
+                    domain=_msg_domain,
                 )
                 # DRAFT-APPROVAL (co duyet TAT mac dinh): 3 nut duyet ngay duoi
                 # cau tra loi ban thao, chi hien khi da mo khoa PIN.

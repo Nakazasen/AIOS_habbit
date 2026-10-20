@@ -72,7 +72,7 @@ def _la_lenh_xem_phan_hoi(clean: str, norm: str) -> bool:
     """
     if norm.startswith(("/xemphanhoi", "/feedback", "/phanhoi", "/autoclassify", "/phanloai", "/investigation", "lenh: xem phan hoi", "cmd: feedback")):
         return True
-    if any(c in norm for c in ("xem phan hoi dieu tra", "thong ke cay dieu tra", "thong ke dieu tra", "bao cao phan hoi dieu tra", "phan hoi cay dieu tra", "danh gia cay dieu tra")):
+    if any(c in norm for c in ("xem phan hoi dieu tra", "thong ke cay dieu tra", "thong ke dieu tra", "bao cao phan hoi dieu tra", "phan hoi cay dieu tra", "danh gia cay dieu tra", "xem phan hoi bieu do", "thong ke bieu do", "phan hoi bieu do", "danh gia bieu do")):
         return True
     # Chứa mã lỗi máy (VD: C7620, JAM4709, F000) -> câu hỏi tra cứu, không phải lệnh
     if re.search(r"\b(?:[cfj]\s*-?\d{3,4}|jam\s*-?\d{3,4})\b", norm, re.IGNORECASE):
@@ -178,6 +178,39 @@ _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
         (
             "ve bieu do",
             "chon bieu do",
+            "tao bieu do",
+            "bieu do log",
+            "them duong sma",
+            "bat sma",
+            "tat sma",
+            "bo sma",
+            "chi xem line",
+            "chi xem ca",
+            "chi xem dong ng",
+            "chi dong ng",
+            "loc ng",
+            "loc dong ng",
+            "doi sang pareto",
+            "bieu do pareto",
+            "bieu do xu huong",
+            "bieu do spc",
+            "kiem soat spc",
+            "bieu do cot nhom",
+            "bieu do donut",
+            "bieu do histogram",
+            "bieu do scatter",
+            "bieu do phan tan",
+            "bieu do box plot",
+            "bieu do hop",
+            "bieu do heatmap",
+            "ban do nhiet",
+            "bieu do stacked bar",
+            "cot chong theo thoi gian",
+            "doi truc x",
+            "doi truc y",
+            "xem tat ca dong",
+            "huy loc",
+            "bo loc",
         ),
     ),
     (
