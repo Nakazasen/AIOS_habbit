@@ -686,6 +686,9 @@ def execute_ui_turn(
         ai_mode="grounded",
     ))
 
+    daemon_log_path = DAEMON_LOGS.get(target_block)
+    start_log_size = daemon_log_path.stat().st_size if (daemon_log_path and daemon_log_path.exists()) else 0
+
     nav_url = f"{URL}/?nb={notebook_id}&conv={conv_id}&block={ui_block_param}"
     log(f"[T{turn_idx:03d}/{qid}] Navigate: {nav_url} (turn_timeout={turn_timeout_s:.0f}s)")
     page.goto(nav_url, wait_until="domcontentloaded", timeout=60000)
@@ -724,13 +727,53 @@ def execute_ui_turn(
             time.sleep(wait_remain)
 
     # 2(a) Cho den khi worker cua khoi dich dat trang thai resident va nut gui duoc bat (not disabled)
-    deadline_warm = time.time() + 180.0
+    btn_probe = page.locator(f'[class*="st-key-wsc_ask_{conv_id}"] button, [class*="st-key-wsc-action-"] button').first
+    if btn_probe.count() > 0 and btn_probe.is_disabled():
+        log(f"[T{turn_idx:03d}/{qid}] Nut gui dang disabled (worker '{target_block}' dang nap). Cho tin hieu 'bge_worker_stage backend=onnx init_ms=' trong daemon log...")
+        init_seen = False
+        deadline_init = time.time() + 180.0
+        while time.time() < deadline_init:
+            if daemon_log_path and daemon_log_path.exists():
+                try:
+                    with open(daemon_log_path, "r", encoding="utf-8", errors="ignore") as df:
+                        df.seek(start_log_size)
+                        tail_txt = df.read()
+                        if "bge_worker_stage backend=onnx init_ms=" in tail_txt:
+                            init_seen = True
+                            break
+                except Exception:
+                    pass
+            page.wait_for_timeout(1500)
+        if init_seen:
+            log(f"[T{turn_idx:03d}/{qid}] Worker '{target_block}' da khoi tao xong! Reload trang 1 lan de kich hoat nut gui...")
+        else:
+            log(f"[T{turn_idx:03d}/{qid}] Het thoi gian cho init_ms, thu reload trang 1 lan...")
+        page.wait_for_timeout(1500)
+        page.goto(nav_url, wait_until="domcontentloaded", timeout=60000)
+        page.wait_for_selector('textarea[placeholder*="Nhập câu hỏi"]', timeout=60000)
+
+    deadline_warm = time.time() + 60.0
     while time.time() < deadline_warm:
         if is_workspace_chat_worker_warmed(collection_id=target_block):
             btn_probe = page.locator(f'[class*="st-key-wsc_ask_{conv_id}"] button, [class*="st-key-wsc-action-"] button').first
             if btn_probe.count() > 0 and not btn_probe.is_disabled():
                 break
         page.wait_for_timeout(500)
+
+    # Ensure textarea still holds question in case a background warmup rerun re-rendered the composer
+    try:
+        textarea = page.locator('textarea[placeholder*="Nhập câu hỏi"]').first
+        if textarea.count() > 0:
+            cur_val = textarea.input_value()
+            if not cur_val or cur_val.strip() != question.strip():
+                textarea.click()
+                textarea.fill(question)
+                textarea.dispatch_event("input")
+                textarea.dispatch_event("change")
+                textarea.evaluate("el => el.blur()")
+                page.wait_for_timeout(350)
+    except Exception:
+        pass
 
     server_log_offset = server_log_file.stat().st_size if server_log_file.exists() else 0
     daemon_snap = tracker.snapshot_line_counts()
@@ -1238,8 +1281,9 @@ def run_stress_suite(
         if line.strip()
     ]
     if question_ids:
-        qid_set = {q.strip().upper() for q in question_ids.split(",") if q.strip()}
-        questions = [q for q in all_raw_questions if str(q.get("question_id", "")).strip().upper() in qid_set]
+        qid_order = [q.strip().upper() for q in question_ids.split(",") if q.strip()]
+        by_qid = {str(q.get("question_id", "")).strip().upper(): q for q in all_raw_questions}
+        questions = [by_qid[qid] for qid in qid_order if qid in by_qid]
         log(f"[SUITE] Da loc {len(questions)} cau hoi theo danh sach --question-ids: {question_ids}")
     elif limit is not None and limit > 0:
         questions = all_raw_questions[:limit]

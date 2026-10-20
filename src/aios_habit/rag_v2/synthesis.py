@@ -2341,8 +2341,7 @@ def _combine_answer_value_fragments(
     dense_cos = float(item.ranking_signals.get("dense_cosine", 0.0))
     is_tabular = bool(item.sheet or item.cell_range or item.file_type in {"xlsx", "csv"})
     has_high_semantic = dense_cos >= 0.58 and not is_tabular
-    is_value_intent = bool(_VALUE_QUERY_INTENT_RE.search(query or "")) or _query_has_exact_values(query_terms)
-    if not known_values and not is_named_source and not has_high_semantic and not is_value_intent:
+    if not known_values and not is_named_source and not has_high_semantic:
         return first_fragment
 
     candidates = sorted(
@@ -2364,7 +2363,7 @@ def _combine_answer_value_fragments(
         if fragment.casefold() in " ".join(combined).casefold():
             continue
         frag_terms = set(extract_content_terms(fragment))
-        if is_named_source or has_high_semantic or is_value_intent:
+        if is_named_source or has_high_semantic:
             new_terms = (frag_terms & query_terms) - known_terms
             new_values = _answer_value_literals(fragment, query_terms) - known_values
             if not new_terms and len(frag_terms - known_terms) < 2 and not new_values:
@@ -2379,7 +2378,7 @@ def _combine_answer_value_fragments(
         combined.append(fragment)
         combined_size += 3 + len(fragment)
         known_terms.update(frag_terms)
-        if not is_named_source and not has_high_semantic and not is_value_intent and len(known_values) >= _MAX_LOCAL_CLAIMS:
+        if not is_named_source and not has_high_semantic and len(known_values) >= _MAX_LOCAL_CLAIMS:
             break
     return " ".join(combined)
 
@@ -2655,7 +2654,7 @@ def _claim_value_score(
     is_value_query = bool(_VALUE_QUERY_INTENT_RE.search(query or "")) or _query_has_exact_values(query_terms)
     header_rank = 0 if (is_value_query and _is_pure_header(fragment)) else 1
     summary_penalty = 0 if is_value_query else -int(_is_summary_evidence(item))
-    variant_rank = 0 if is_value_query else int(bool(item.matched_target_equivalent_variant_ids))
+    variant_rank = int(bool(item.matched_target_equivalent_variant_ids))
     return (
         _item_matches_query_source(item, query),
         variant_rank,
@@ -2907,7 +2906,7 @@ def _compose_grounded_claims(
         for item in pack.items:
             if item.evidence_id in claim.evidence_ids:
                 doc_claim_counts[item.document_id] = doc_claim_counts.get(item.document_id, 0) + 1
-    for prefer_new_document in (True, False):
+    for pass_mode in ("first_per_doc", "within_initial_cap", "overflow"):
         for item in ordered_candidates:
             if len(claims) >= max_claims:
                 break
@@ -2919,8 +2918,13 @@ def _compose_grounded_claims(
                 max_initial_per_doc = pack.config.effective_synthesis_claim_limit(is_named_doc=is_named)
             else:
                 max_initial_per_doc = 5 if is_named else 3
-            is_eligible_initial = current_doc_count < max_initial_per_doc
-            if prefer_new_document != is_eligible_initial:
+            if pass_mode == "first_per_doc":
+                eligible = (current_doc_count < 2) or (is_named and current_doc_count < max_initial_per_doc)
+            elif pass_mode == "within_initial_cap":
+                eligible = 2 <= current_doc_count < max_initial_per_doc
+            else:
+                eligible = current_doc_count >= max_initial_per_doc
+            if not eligible:
                 continue
             if add(item):
                 doc_claim_counts[item.document_id] = current_doc_count + 1

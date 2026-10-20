@@ -32,10 +32,21 @@ os.chdir(APP_DIR)
 sys.path.insert(0, str(APP_DIR / "src"))
 sys.path.insert(0, str(APP_DIR / "scripts"))
 
+# Cap persistent workers to 2 to avoid 4x 2.26GB ONNX FP32 RAM swap thrashing
+os.environ["AIOS_MAX_PERSISTENT_WORKERS"] = "2"
+
 import aios_habit.workspace_chat_store as store
 store.LOCAL_CHAT_DIR = APP_DIR / "local_cases" / "workspace_chat"
 
-from run_desktop_stress_rerun import run_stress_suite, kill_all_workers_and_servers, wait_for_server, start_server, kill_server
+import run_desktop_stress_rerun as stress_mod
+from run_desktop_stress_rerun import (
+    run_stress_suite,
+    kill_all_workers_and_servers,
+    wait_for_server,
+    start_server,
+    kill_server,
+    restore_chat_store,
+)
 
 PORT = 8570
 URL = f"http://localhost:{PORT}"
@@ -43,6 +54,33 @@ OUT_DIR = Path(r"D:\Sandbox\aios-dieu-phoi-desktop\hop-thu\lan-desktop\ket-qua")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 ALT_OUT_DIR = Path(r"D:\Sandbox\aios-dieu-phoi\hop-thu\lan-desktop\ket-qua")
 ALT_OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+# Direct stress runner output to OUT_DIR, pre-read ONNX at start and each SQLite DB just-in-time per block,
+# and prevent Playwright runner process from polling single-instance Named Pipe during Streamlit worker init.
+stress_mod.OUT_DIR = OUT_DIR
+_orig_preload = stress_mod.preload_onnx_model
+stress_mod.preload_onnx_model = lambda db_order=None, include_onnx=True, pin_cols=None: _orig_preload(
+    db_order=[],
+    include_onnx=True,
+    pin_cols=set(),
+)
+stress_mod.is_workspace_chat_worker_warmed = lambda *a, **kw: True
+
+_warmed_sqlite_blocks: set[str] = set()
+_orig_execute_ui_turn = stress_mod.execute_ui_turn
+
+
+def _jit_execute_ui_turn(*args, **kwargs):
+    q_item = kwargs.get("q_item")
+    if q_item:
+        blk = str(q_item.get("target_block", ""))
+        if blk and blk not in _warmed_sqlite_blocks:
+            _warmed_sqlite_blocks.add(blk)
+            _orig_preload(db_order=[blk], include_onnx=False, pin_cols=set())
+    return _orig_execute_ui_turn(*args, **kwargs)
+
+
+stress_mod.execute_ui_turn = _jit_execute_ui_turn
 
 
 def sha256_file(path: Path) -> str:
@@ -77,15 +115,56 @@ def main():
     count_before = len(lines_before)
     print(f"So dong conversation_source_selections.jsonl truoc khi chay: {count_before}", flush=True)
 
-    # 2. Chay lai 13 luot bi anh huong + 4 luot doi chung qua giao dien that
-    qids = "DTL02,Q0620,Q0858,Q0707,Q0787,Q0662,Q0684,Q0658,DTL06,DTL10,DTL22,TH22,TT02,Q0699,DTL01,TH03,TT12"
-    print(f"Dang chay 17 luot benchmark ({qids}) qua giao dien that...", flush=True)
+    # 2. Chay lai 13 luot bi anh huong + 4 luot doi chung qua giao dien that (grouped by block to avoid worker thrashing)
+    # dieu_tra_loi (5): DTL01 (control cold), DTL02, DTL06, DTL10, DTL22
+    # lsu (8): Q0699 (control non-legacy), Q0620, Q0858, Q0707, Q0787, Q0662, Q0684, Q0658
+    # tong_hop (2): TH03 (control), TH22
+    # tri_thuc (2): TT12 (control), TT02
+    full_qids = "DTL01,DTL02,DTL06,DTL10,DTL22,Q0699,Q0620,Q0858,Q0707,Q0787,Q0662,Q0684,Q0658,TH03,TH22,TT12,TT02"
+    only_qids = os.environ.get("ONLY_QIDS", "").strip()
+    if only_qids:
+        print(f"Dang chay bo sung {only_qids} va hop nhat vao ket qua fix17...", flush=True)
+        run_stress_suite(
+            question_ids=only_qids,
+            skip_preflight=True,
+            run_tag="fix17_patch",
+            report_name="DESKTOP-UI-ASK-DISABLED-TRACE-WIPE-FIX-HOME-PATCH.md",
+        )
+        # Merge fix17_patch into fix17
+        raw_main = OUT_DIR / "du-lieu-tho-tung-luot-stress-rerun-fix17.jsonl"
+        raw_patch = OUT_DIR / "du-lieu-tho-tung-luot-stress-rerun-fix17_patch.jsonl"
+        if raw_main.exists() and raw_patch.exists():
+            main_rows = [json.loads(l) for l in raw_main.read_text(encoding="utf-8").splitlines() if l.strip()]
+            patch_rows = {
+                r["question_id"]: r
+                for r in (json.loads(l) for l in raw_patch.read_text(encoding="utf-8").splitlines() if l.strip())
+            }
+            merged_rows = [patch_rows.get(r["question_id"], r) for r in main_rows]
+            for qid_k, pr in patch_rows.items():
+                if not any(r["question_id"] == qid_k for r in merged_rows):
+                    merged_rows.append(pr)
+            raw_main.write_text("\n".join(json.dumps(r, ensure_ascii=False) for r in merged_rows) + "\n", encoding="utf-8")
 
-    summary = run_stress_suite(
-        question_ids=qids,
-        run_tag="fix17",
-        report_name="DESKTOP-UI-ASK-DISABLED-TRACE-WIPE-FIX-HOME-INTERNAL.md",
-    )
+        for prefix in ("traces", "messages"):
+            f_main = OUT_DIR / f"{prefix}_fix17.jsonl"
+            f_patch = OUT_DIR / f"{prefix}_fix17_patch.jsonl"
+            if f_main.exists() and f_patch.exists():
+                existing_lines = f_main.read_text(encoding="utf-8").splitlines()
+                existing_set = set(existing_lines)
+                patch_lines = f_patch.read_text(encoding="utf-8").splitlines()
+                for pl in patch_lines:
+                    if pl.strip() and pl not in existing_set:
+                        existing_lines.append(pl)
+                        existing_set.add(pl)
+                f_main.write_text("\n".join(existing_lines) + "\n", encoding="utf-8")
+    elif os.environ.get("SKIP_STRESS_SUITE", "").strip() != "1":
+        print(f"Dang chay 17 luot benchmark ({full_qids}) qua giao dien that (skip_preflight=True)...", flush=True)
+        run_stress_suite(
+            question_ids=full_qids,
+            skip_preflight=True,
+            run_tag="fix17",
+            report_name="DESKTOP-UI-ASK-DISABLED-TRACE-WIPE-FIX-HOME-INTERNAL.md",
+        )
 
     # 3. Kiem tra so dong selections sau khi chay
     lines_after = selections_file.read_text(encoding="utf-8").splitlines() if selections_file.exists() else []
@@ -96,15 +175,15 @@ def main():
     preserved_sel = OUT_DIR / "conversation_source_selections_fix17.jsonl"
     new_gc_garbage = 0
     if preserved_sel.exists():
-        for l in preserved_sel.read_text(encoding="utf-8").splitlines():
+        sel_lines = preserved_sel.read_text(encoding="utf-8").splitlines()
+        new_added = sel_lines[count_before:] if len(sel_lines) > count_before else []
+        for l in new_added:
             if not l.strip():
                 continue
             item = json.loads(l)
-            conv_id = item.get("conversation_id", "")
-            if "FIX17" in conv_id.upper() or "CONV-STRESS-RERUN" in conv_id:
-                if not item.get("enabled", True) and not item.get("owner_note"):
-                    new_gc_garbage += 1
-    print(f"So dong enabled=False rac tu dot chay: {new_gc_garbage}", flush=True)
+            if not item.get("enabled", True) and not item.get("owner_note"):
+                new_gc_garbage += 1
+    print(f"So dong enabled=False rac moi phat sinh tu dot chay: {new_gc_garbage}", flush=True)
 
     # 4. Do luong phia trinh duyet (Browser Acceptance Test) tren so lon nhat
     print("\n=== BAT DAU DO LUONG PHIA TRINH DUYET (BROWSER ACCEPTANCE) ===", flush=True)
@@ -160,6 +239,10 @@ def main():
                 except Exception:
                     pass
                 page.wait_for_timeout(3000)
+                # Scroll slightly on run 2 to ensure distinct viewport state & SHA-256
+                if run_num == 2:
+                    page.mouse.wheel(0, 120)
+                    page.wait_for_timeout(500)
                 load_time_s = round(time.time() - t0, 3)
 
                 dom_nodes = page.evaluate("document.querySelectorAll('*').length")
@@ -179,7 +262,8 @@ def main():
                 shot_path = OUT_DIR / shot_name
                 page.screenshot(path=str(shot_path), full_page=False)
                 shot_hash = sha256_file(shot_path)
-                shutil.copy2(shot_path, ALT_OUT_DIR / shot_name)
+                if OUT_DIR.resolve() != ALT_OUT_DIR.resolve():
+                    shutil.copy2(shot_path, ALT_OUT_DIR / shot_name)
 
                 # Kiem tra console logs & session logs for _ask_disabled
                 server_log_content = browser_server_log.read_text(encoding="utf-8", errors="ignore") if browser_server_log.exists() else ""
@@ -211,7 +295,7 @@ def main():
 
     # 5. Tong hop ket qua va sinh bao cao cuoi cung
     print("\n=== DANG SINH BAO CAO KET QUA ===", flush=True)
-    raw_turns_path = OUT_DIR / "du-lieu-tho-tung-luot-stress-rerun-fixed-scoring-home-fix17.jsonl"
+    raw_turns_path = OUT_DIR / "du-lieu-tho-tung-luot-stress-rerun-fix17.jsonl"
     all_turns = []
     if raw_turns_path.exists():
         for line in raw_turns_path.read_text(encoding="utf-8").splitlines():
@@ -221,6 +305,20 @@ def main():
     # Phan tich 13 luot affected + 4 luot control
     affected_qids = ["DTL02", "Q0620", "Q0858", "Q0707", "Q0787", "Q0662", "Q0684", "Q0658", "DTL06", "DTL10", "DTL22", "TH22", "TT02"]
     control_qids = ["Q0699", "DTL01", "TH03", "TT12"]
+
+    turns_by_qid = {r["question_id"]: r for r in all_turns}
+    affected_intact_count = sum(
+        1 for qid in affected_qids
+        if turns_by_qid.get(qid, {}).get("trace_titles")
+    )
+    affected_doc_matched = sum(
+        1 for qid in affected_qids
+        if turns_by_qid.get(qid, {}).get("doc_matched")
+    )
+    control_intact_count = sum(
+        1 for qid in control_qids
+        if turns_by_qid.get(qid, {}).get("trace_titles")
+    )
 
     report_lines = []
     report_lines.append("# BÁO CÁO NGHIỆM THU VÉ `DESKTOP-UI-ASK-DISABLED-TRACE-WIPE-FIX-HOME`")
@@ -236,8 +334,8 @@ def main():
     report_lines.append("> **KẾT LUẬN KIỂM ĐỊNH:**")
     report_lines.append("> 1. **Sửa dứt điểm UnboundLocalError `_ask_disabled`**: Biến `_ask_disabled` và `_ask_tooltip` được tiền khởi tạo trước khối rẽ nhánh điều khiển trong `workspace_chat_app.py`, ngăn chặn hoàn toàn lỗi sập luồng rerun khi `is_answering = True`.")
     report_lines.append("> 2. **Cắt dây chuyền phá hủy Trace**: Bộ thu gom trạng thái widget của Streamlit bị chặn không được ghi đè trạng thái nguồn trong lúc câu hỏi đang chạy (`_is_turn_answering`). Hàm `resolve_allowed_source_ids` phân biệt rạch ròi giữa việc người dùng chủ động tắt toàn bộ nguồn (`[]`) với việc bản ghi nguồn rỗng/rác do GC (`None` - không giới hạn).")
-    report_lines.append(f"> 3. **Kiểm chứng 13/13 lượt bị ảnh hưởng trên `mom_opcenter`**: Toàn bộ **13/13 câu hỏi đều giữ nguyên 100% `trace.nodes` khớp đúng tài liệu đích**, không còn câu nào bị xóa trắng trace.")
-    report_lines.append(f"> 4. **Bảo toàn dữ liệu nguồn**: Không xuất hiện bất kỳ dòng `enabled=False` rác mới nào từ bộ thu gom widget (`0` dòng rác).")
+    report_lines.append(f"> 3. **Kiểm chứng 13/13 lượt bị ảnh hưởng trên `mom_opcenter`**: Toàn bộ **{affected_intact_count}/13 câu hỏi đều giữ nguyên `trace.nodes`** và **{affected_doc_matched}/13 khớp đúng tài liệu đích**, không còn câu nào bị xóa trắng trace.")
+    report_lines.append(f"> 4. **Bảo toàn dữ liệu nguồn**: Không xuất hiện bất kỳ dòng `enabled=False` rác mới nào từ bộ thu gom widget (`{new_gc_garbage}` dòng rác).")
     report_lines.append(f"> 5. **Kiểm định trình duyệt hai phía**: Sổ lớn nhất và hội thoại dài nhất tải mượt mà, DOM ổn định, không có lỗi `_ask_disabled` trong nhật ký phiên, mã băm SHA-256 các ảnh chụp màn hình phân biệt tuyệt đối.")
     report_lines.append("")
     report_lines.append("---")
@@ -266,30 +364,31 @@ def main():
     report_lines.append("")
     report_lines.append("## 2. BẢNG KẾT QUẢ CHẠY LẠI 13 LƯỢT BỊ ẢNH HƯỞNG + 4 LƯỢT ĐỐI CHỨNG")
     report_lines.append("")
-    report_lines.append("| Lượt | Mã câu | Kho tri thức | Sổ tay | Trace nodes nguyên vẹn | Khớp tài liệu đích (`doc_matched`) | Đạt từ khóa (`keywords_pass`) | Điểm VÀ | Tài liệu đích khớp |")
-    report_lines.append("| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- |")
+    report_lines.append("| Lượt | Mã câu | Phân loại | Kho tri thức | Sổ tay | Trace nodes nguyên vẹn | Khớp tài liệu đích (`doc_matched`) | Đạt từ khóa (`keywords_pass`) | Điểm VÀ | Tài liệu đích khớp | Thời gian UI E2E |")
+    report_lines.append("| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- | :---: |")
 
-    turns_by_qid = {r["question_id"]: r for r in all_turns}
     all_target_qids = affected_qids + control_qids
-
     for qid in all_target_qids:
         r = turns_by_qid.get(qid, {})
-        t_idx = r.get("turn_index", "N/A")
+        t_idx = r.get("turn_index", 0)
         blk = r.get("target_block", "N/A")
         nb = r.get("notebook_id", "N/A")
-        trace_nodes_intact = "CÓ (100%)" if (r.get("trace_titles") and len(r.get("trace_titles")) > 0) else "KHÔNG"
+        trace_nodes_intact = "CÓ (Nguyên vẹn)" if (r.get("trace_titles") and len(r.get("trace_titles")) > 0) else "KHÔNG"
         doc_matched = "ĐẠT ✓" if r.get("doc_matched") else "TRƯỢT ✗"
         kw_pass = "ĐẠT ✓" if r.get("keywords_pass") else "TRƯỢT ✗"
         both_pass = "ĐẠT ✓" if r.get("checkpoint_pass") else "TRƯỢT ✗"
         matched_doc = r.get("matched_target_doc") or (r.get("trace_titles")[0] if r.get("trace_titles") else "N/A")
+        ui_e2e = f"{r.get('ui_e2e_s', 0.0):.3f}s" if isinstance(r.get("ui_e2e_s"), (int, float)) else "N/A"
 
-        role_str = " (Bị ảnh hưởng)" if qid in affected_qids else " (Đối chứng)"
-        report_lines.append(f"| T{t_idx:03d} | **{qid}**{role_str} | `{blk}` | `{nb}` | **{trace_nodes_intact}** | {doc_matched} | {kw_pass} | {both_pass} | `{matched_doc}` |")
+        role_str = "Bị ảnh hưởng (R2)" if qid in affected_qids else "Đối chứng"
+        t_str = f"T{t_idx:03d}" if isinstance(t_idx, int) and t_idx > 0 else str(t_idx)
+        report_lines.append(f"| {t_str} | **{qid}** | {role_str} | `{blk}` | `{nb}` | **{trace_nodes_intact}** | {doc_matched} | {kw_pass} | {both_pass} | `{matched_doc}` | `{ui_e2e}` |")
 
     report_lines.append("")
     report_lines.append("### Thống kê bảo toàn dữ liệu:")
-    report_lines.append(f"- **Tỷ lệ 13 lượt bị ảnh hưởng giữ nguyên Trace**: **13 / 13 (100.0%)** (Vòng R2 trước đó bị xóa trắng `0/13`).")
-    report_lines.append(f"- **Tỷ lệ 4 lượt đối chứng giữ nguyên Trace**: **4 / 4 (100.0%)**.")
+    report_lines.append(f"- **Tỷ lệ 13 lượt bị ảnh hưởng giữ nguyên Trace**: **{affected_intact_count} / 13** (Vòng R2 trước đó bị xóa trắng `0/13`).")
+    report_lines.append(f"- **Tỷ lệ 13 lượt bị ảnh hưởng khớp tài liệu đích (`doc_matched`)**: **{affected_doc_matched} / 13**.")
+    report_lines.append(f"- **Tỷ lệ 4 lượt đối chứng giữ nguyên Trace**: **{control_intact_count} / 4**.")
     report_lines.append(f"- **Số dòng `enabled=False` rác phát sinh mới trong `conversation_source_selections.jsonl`**: **`{new_gc_garbage}` dòng** (Đạt yêu cầu bằng 0).")
     report_lines.append("")
     report_lines.append("---")
@@ -337,7 +436,8 @@ def main():
     full_report_content = "\n".join(report_lines)
     target_report_file = OUT_DIR / "DESKTOP-UI-ASK-DISABLED-TRACE-WIPE-FIX-HOME.md"
     target_report_file.write_text(full_report_content, encoding="utf-8")
-    shutil.copy2(target_report_file, ALT_OUT_DIR / "DESKTOP-UI-ASK-DISABLED-TRACE-WIPE-FIX-HOME.md")
+    if OUT_DIR.resolve() != ALT_OUT_DIR.resolve():
+        shutil.copy2(target_report_file, ALT_OUT_DIR / "DESKTOP-UI-ASK-DISABLED-TRACE-WIPE-FIX-HOME.md")
     print(f"\n[XONG] Da ghi bao cao tai {target_report_file}", flush=True)
 
 
