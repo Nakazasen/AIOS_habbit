@@ -1433,6 +1433,7 @@ def route_workspace_chat_submission(
             chat_history=chat_history,
             answer_language=answer_language,
             workspace_id=notebook_id or "default",
+            notebook_id=notebook_id or "",
             consent_memory_fingerprint=consent_memory_fingerprint,
             on_chunk=effective_on_chunk,
             ai_mode=ai_mode,
@@ -1605,11 +1606,16 @@ def route_workspace_chat_submission(
                 get_default_draft_entries,
                 log_draft_fallback_activation,
             )
+            from aios_habit.draft_source_layer import resolve_notebook_draft_domain
+            target_domain = resolve_notebook_draft_domain(notebook_id)
             draft_decision = resolve_answer(
                 question,
                 rag_ok=True,
                 rag_answer=result.answer_text,
                 draft_entries=get_default_draft_entries(),
+                domain_filter=target_domain,
+                notebook_id=notebook_id,
+                require_scope=True,
             )
             is_draft = (draft_decision.lane == "draft_fallback")
 
@@ -1989,10 +1995,15 @@ def route_workspace_chat_submission(
                     resolve_answer,
                     get_default_draft_entries,
                 )
+                from aios_habit.draft_source_layer import resolve_notebook_draft_domain
+                target_domain = resolve_notebook_draft_domain(notebook_id)
                 draft_decision = resolve_answer(
                     question,
                     rag_ok=False,
                     draft_entries=get_default_draft_entries(),
+                    domain_filter=target_domain,
+                    notebook_id=notebook_id,
+                    require_scope=True,
                 )
                 if draft_decision.lane == "draft_fallback":
                     local_answer = draft_decision.answer_text

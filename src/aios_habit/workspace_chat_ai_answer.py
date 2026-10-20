@@ -70,6 +70,7 @@ class WorkspaceAIAnswerRequest:
     router_deadline_monotonic: Optional[float] = None
     draft_search_results: Tuple[Any, ...] = ()
     disable_draft_layer: bool = False
+    notebook_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -436,13 +437,22 @@ def recall_draft_layer_for_answer(
 
     Gọi đồng thời cùng kho chính quy, không phải chờ RAG chết mới gọi.
     Tốc độ tìm kiếm tầng draft dưới 30ms.
+    Khoá nguồn theo sổ đang mở (ticket DESKTOP-HOME-DRAFT-STORE-SCOPE-FIX):
+    Mặc định an toàn: không rõ sổ đang mở -> không phục vụ bản thảo.
     """
     if getattr(request, "disable_draft_layer", False):
         return ()
     try:
-        from aios_habit.draft_source_layer import get_draft_search_index
+        from aios_habit.draft_source_layer import (
+            get_draft_search_index,
+            resolve_notebook_draft_domain,
+        )
+        target_nb = getattr(request, "notebook_id", "") or getattr(request, "workspace_id", "")
+        target_domain = resolve_notebook_draft_domain(target_nb)
+        if not target_domain:
+            return ()
         index = get_draft_search_index()
-        results, _ = index.search(request.question, top_k=top_k)
+        results, _ = index.search(request.question, top_k=top_k, domain_filter=target_domain)
         return tuple(results)
     except Exception:
         return ()

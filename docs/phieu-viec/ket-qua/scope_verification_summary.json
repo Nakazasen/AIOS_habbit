@@ -1,0 +1,16 @@
+{
+  "shot1": {
+    "file": "ui-draft-scope-01-mom-served.png",
+    "sha256": "93b913e573baf57bb6a2be2396068e738aa3a363547c159f6dee672ec1b424e8",
+    "size": 130113,
+    "notebook": "mom_opcenter (MOM / Opcenter)",
+    "status": "PHUC_VU_BAN_THAO_CO_NHAN"
+  },
+  "shot2": {
+    "file": "ui-draft-scope-02-lsu-honest.png",
+    "sha256": "2bce86d39a8d1601bbea84d5a7c2e45046bb3971968b5c911a8f8916ecfec647",
+    "size": 89035,
+    "notebook": "NB-LAZY-LSU (Điều tra lỗi LSU)",
+    "status": "TRUNG_THUC_TU_CHOI_KHONG_MUON_BAN_THAO_SO_KHAC"
+  }
+}

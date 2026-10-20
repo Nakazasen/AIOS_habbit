@@ -92,7 +92,7 @@ def stable_answer_draft_id(pack: RAGEvidencePack) -> str:
     return "ANS-" + hashlib.sha256(raw.encode("utf-8")).hexdigest()[:12].upper()
 
 
-def compose_local_answer(pack: RAGEvidencePack, max_items: int = 5, mode: str = "local_evidence_draft", draft_results: Sequence[Any] | None = None) -> LocalAnswerDraft | FinalOwnerAnswer:
+def compose_local_answer(pack: RAGEvidencePack, max_items: int = 5, mode: str = "local_evidence_draft", draft_results: Sequence[Any] | None = None, notebook_id: Optional[str] = None) -> LocalAnswerDraft | FinalOwnerAnswer:
     if mode == "final_owner_answer":
         return compose_final_owner_answer(pack, max_items=max_items)
     if mode != "local_evidence_draft":
@@ -178,17 +178,40 @@ def compose_local_answer(pack: RAGEvidencePack, max_items: int = 5, mode: str = 
         )
         citation_ids = [ref.ref_id for ref in refs]
 
-    # Tích hợp tầng nguồn bản thảo song song mặc định
+    # Tích hợp tầng nguồn bản thảo song song mặc định (khoá theo sổ đang mở)
     draft_meta: Dict[str, str] = {}
     effective_drafts = draft_results
     if effective_drafts is None:
         try:
-            from aios_habit.draft_source_layer import get_draft_search_index
-            idx = get_draft_search_index()
-            found_drafts, _ = idx.search(pack.query, top_k=2)
-            effective_drafts = found_drafts
+            from aios_habit.draft_source_layer import (
+                get_draft_search_index,
+                resolve_notebook_draft_domain,
+            )
+            target_nb = notebook_id or pack.metadata.get("notebook_id") or pack.metadata.get("collection_id") or ""
+            target_domain = resolve_notebook_draft_domain(target_nb)
+            if target_domain:
+                idx = get_draft_search_index()
+                found_drafts, _ = idx.search(pack.query, top_k=2, domain_filter=target_domain)
+                effective_drafts = found_drafts
+            else:
+                effective_drafts = ()
         except Exception:
             effective_drafts = ()
+    else:
+        target_nb = notebook_id or pack.metadata.get("notebook_id") or pack.metadata.get("collection_id") or ""
+        if target_nb:
+            from aios_habit.draft_source_layer import resolve_notebook_draft_domain
+            target_domain = resolve_notebook_draft_domain(target_nb)
+            if target_domain:
+                filtered = []
+                for d in effective_drafts:
+                    item = getattr(d, 'item', d)
+                    dom = getattr(item, 'domain', '')
+                    if dom == target_domain or (target_domain in ("dieuchinh", "dieu_tra_loi") and dom in ("dieuchinh", "dieu_tra_loi")):
+                        filtered.append(d)
+                effective_drafts = filtered
+            else:
+                effective_drafts = ()
 
     if effective_drafts:
         from aios_habit.draft_source_layer import (

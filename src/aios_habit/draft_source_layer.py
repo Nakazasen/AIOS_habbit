@@ -120,6 +120,97 @@ class DraftPromotionCandidate:
 
 
 # ==============================================================================
+# ÁNH XẠ SỔ ĐANG MỞ -> MIỀN/KHO ĐÍCH BẢN THẢO (ticket DESKTOP-HOME-DRAFT-STORE-SCOPE-FIX)
+# ==============================================================================
+
+def resolve_notebook_draft_domain(
+    notebook: Union[str, Any, None] = None,
+) -> Optional[str]:
+    """Phân giải sổ đang mở sang miền/nhãn kho đích của bản thảo.
+
+    Tuân thủ ticket DESKTOP-HOME-DRAFT-STORE-SCOPE-FIX:
+    - Trích xuất miền từ định nghĩa sổ của app (collection_id, domain detection từ tiêu đề/mô tả, hoặc id).
+    - Tuyệt đối không hardcode logic tìm kiếm bản thảo.
+    - Mặc định an toàn: 'không rõ sổ đang mở -> None (không phục vụ bản thảo)'.
+    """
+    if notebook is None:
+        return None
+
+    nb_id = ""
+    nb_title = ""
+    nb_desc = ""
+    nb_col = ""
+
+    if isinstance(notebook, str):
+        raw = notebook.strip()
+        if not raw:
+            return None
+        nb_id = raw
+        # Thử tìm đối tượng DocumentNotebook trong store của app
+        try:
+            from aios_habit.workspace_chat_store import load_notebook, load_active_notebooks
+            nb_obj = load_notebook(raw)
+            if nb_obj is None:
+                nb_obj = next((n for n in load_active_notebooks() if n.id == raw), None)
+            if nb_obj is not None:
+                nb_id = getattr(nb_obj, "id", "") or raw
+                nb_title = getattr(nb_obj, "title", "") or ""
+                nb_desc = getattr(nb_obj, "description", "") or ""
+                nb_col = getattr(nb_obj, "collection_id", "") or ""
+        except Exception:
+            pass
+    elif hasattr(notebook, "id"):
+        nb_id = getattr(notebook, "id", "") or ""
+        nb_title = getattr(notebook, "title", "") or ""
+        nb_desc = getattr(notebook, "description", "") or ""
+        nb_col = getattr(notebook, "collection_id", "") or ""
+    else:
+        return None
+
+    # 1. Kiểm tra collection_id tường minh nếu có
+    norm_col = nb_col.strip().lower()
+    if norm_col and norm_col not in ("tri_thuc", "default", "auto"):
+        if "lsu" in norm_col:
+            return "lsu"
+        if "mom" in norm_col:
+            return "mom"
+        if "dieu_tra_loi" in norm_col or "dieuchinh" in norm_col or "dtl" in norm_col:
+            return "dieuchinh"
+
+    # 2. Phân tích tiêu đề và mô tả sổ bằng bộ nhận diện domain chuẩn của app
+    full_text = f"{nb_title} {nb_desc}".strip()
+    if full_text:
+        try:
+            from aios_habit import index_domain
+            classified = index_domain.detect_domain_from_question(full_text)
+            if (
+                classified is not None
+                and getattr(classified, "confidence", 0.0) >= index_domain.CONFIDENCE_LOW_THRESHOLD
+            ):
+                dom = classified.domain.lower()
+                if dom == "mom" and ("mom" in nb_id.lower() or "opcenter" in full_text.lower() or "mom" in full_text.lower()):
+                    return "mom"
+                if dom == "lsu" and ("lsu" in nb_id.lower() or "lsu" in full_text.lower()):
+                    return "lsu"
+                if dom in ("dieu_tra_loi", "dieuchinh") and ("dieu" in nb_id.lower() or "điều tra" in full_text.lower()):
+                    return "dieuchinh"
+        except Exception:
+            pass
+
+    # 3. Kiểm tra định danh id của sổ (đáp ứng cả trường hợp test truyền ID rút gọn hoặc ID chuẩn)
+    low_id = nb_id.lower()
+    if "lsu" in low_id:
+        return "lsu"
+    if "mom" in low_id:
+        return "mom"
+    if "dieuchinh" in low_id or "dieu_tra" in low_id or "dtl" in low_id or "dieutraloi" in low_id:
+        return "dieuchinh"
+
+    # 4. Mặc định an toàn: không nhận diện được miền bản thảo hợp lệ -> Không phục vụ bản thảo
+    return None
+
+
+# ==============================================================================
 # TIỆN ÍCH CHUẨN HÓA VĂN BẢN
 # ==============================================================================
 
@@ -441,9 +532,18 @@ class DraftSearchIndex:
         query: str,
         *,
         top_k: int = 3,
-        domain_filter: Optional[str] = None,
+        domain_filter: Optional[Union[str, Sequence[str]]] = None,
+        allow_unscoped: bool = False,
     ) -> Tuple[List[DraftSearchResult], float]:
-        """Thực hiện tìm kiếm full-text FTS5 và trả về danh sách kết quả kèm thời gian chạy (ms)."""
+        """Thực hiện tìm kiếm full-text FTS5 và trả về danh sách kết quả kèm thời gian chạy (ms).
+
+        Quy tắc an toàn khoá nguồn (ticket DESKTOP-HOME-DRAFT-STORE-SCOPE-FIX):
+        - Mặc định an toàn: 'không rõ sổ đang mở -> không phục vụ bản thảo'.
+        - Khi domain_filter không được truyền và allow_unscoped=False, trả về danh sách rỗng.
+        """
+        if not domain_filter and not allow_unscoped:
+            return [], 0.0
+
         t0 = time.perf_counter()
         if not query or not query.strip():
             return [], 0.0
@@ -459,8 +559,24 @@ class DraftSearchIndex:
         if not clean_terms:
             return [], 0.0
 
-        fts_query = " AND ".join(f'"{t}"*' for t in clean_terms)
+        from aios_habit.answer_draft_fallback import STOPWORDS
+        substantive_terms = [t for t in clean_terms if t not in STOPWORDS]
+        search_terms = substantive_terms if substantive_terms else clean_terms
+        substantive_set = set(search_terms)
+
+        fts_query = " AND ".join(f'"{t}"*' for t in search_terms)
         results: List[DraftSearchResult] = []
+
+        target_domains: List[str] = []
+        if domain_filter:
+            if isinstance(domain_filter, str):
+                target_domains = [domain_filter.lower()]
+                if domain_filter.lower() in ("dieuchinh", "dieu_tra_loi"):
+                    target_domains = ["dieuchinh", "dieu_tra_loi"]
+            else:
+                target_domains = [d.lower() for d in domain_filter]
+                if any(d in ("dieuchinh", "dieu_tra_loi") for d in target_domains):
+                    target_domains = list(set(target_domains) | {"dieuchinh", "dieu_tra_loi"})
 
         with self._lock:
             try:
@@ -469,51 +585,70 @@ class DraftSearchIndex:
                     "FROM drafts_fts WHERE drafts_fts MATCH ? "
                 )
                 params: List[Any] = [fts_query]
-                if domain_filter:
-                    sql += " AND domain = ?"
-                    params.append(domain_filter)
+                if target_domains:
+                    ph = ",".join("?" for _ in target_domains)
+                    sql += f" AND domain IN ({ph})"
+                    params.extend(target_domains)
                 sql += " ORDER BY rank LIMIT ?"
-                params.append(top_k)
+                params.append(top_k * 3)
 
                 cur = self._conn.execute(sql, params)
                 rows = cur.fetchall()
 
-                # Nếu AND không có kết quả, thử OR
-                if not rows and len(clean_terms) > 1:
-                    fts_query_or = " OR ".join(f'"{t}"*' for t in clean_terms[:5])
+                # Nếu AND không có kết quả, thử OR trên các từ thực chất
+                if not rows and len(search_terms) > 1:
+                    fts_query_or = " OR ".join(f'"{t}"*' for t in search_terms[:5])
                     sql_or = (
                         "SELECT item_id, rank, snippet(drafts_fts, 5, '<b>', '</b>', '...', 15) "
                         "FROM drafts_fts WHERE drafts_fts MATCH ? "
                     )
                     params_or: List[Any] = [fts_query_or]
-                    if domain_filter:
-                        sql_or += " AND domain = ?"
-                        params_or.append(domain_filter)
+                    if target_domains:
+                        ph = ",".join("?" for _ in target_domains)
+                        sql_or += f" AND domain IN ({ph})"
+                        params_or.extend(target_domains)
                     sql_or += " ORDER BY rank LIMIT ?"
-                    params_or.append(top_k)
+                    params_or.append(top_k * 3)
                     cur = self._conn.execute(sql_or, params_or)
                     rows = cur.fetchall()
 
+                total_sig = len(substantive_set)
                 for row in rows:
                     iid = row[0]
                     rank = float(row[1])
                     snip = str(row[2] or "")
                     item = self._items_by_id.get(iid)
                     if item:
-                        # FTS5 rank là số âm (càng âm càng khớp)
+                        # Kiểm tra độ bao phủ từ khóa thực chất (substantive coverage gate)
+                        # Đồng bộ với ticket DESKTOP-HOME-DRAFT-FALLBACK-GATE-CHECK-FIX & TAKEOVER
+                        if substantive_set:
+                            from aios_habit.answer_draft_fallback import extract_significant_tokens
+                            q_tokens = set(extract_significant_tokens(item.question))
+                            matched_q = substantive_set & q_tokens
+                            cov_q = len(matched_q) / total_sig if total_sig else 0.0
+
+                            all_tokens = set(extract_significant_tokens(item.question + " " + item.answer))
+                            matched_all = substantive_set & all_tokens
+                            cov_all = len(matched_all) / total_sig if total_sig else 0.0
+
+                            if cov_q < 0.5 and cov_all < 0.65:
+                                continue
+
                         score = max(0.01, round(abs(rank), 3))
                         results.append(
                             DraftSearchResult(
                                 item=item,
                                 score=score,
                                 search_time_ms=0.0,
-                                matched_terms=tuple(clean_terms),
+                                matched_terms=tuple(search_terms),
                                 snippet=snip,
                             )
                         )
+                        if len(results) >= top_k:
+                            break
             except Exception:
                 # Fallback: Quét bộ nhớ đơn giản bằng token overlap nếu FTS5 gặp lỗi cú pháp
-                results = self._fallback_in_memory_search(clean_terms, top_k, domain_filter)
+                results = self._fallback_in_memory_search(clean_terms, top_k, target_domains)
 
         elapsed_ms = (time.perf_counter() - t0) * 1000.0
         # Gán thời gian chạy thực tế cho các kết quả
@@ -533,16 +668,19 @@ class DraftSearchIndex:
         self,
         terms: List[str],
         top_k: int,
-        domain_filter: Optional[str] = None,
+        target_domains: Optional[Sequence[str]] = None,
     ) -> List[DraftSearchResult]:
-        query_set = set(terms)
+        from aios_habit.answer_draft_fallback import STOPWORDS
+        substantive = [t for t in terms if t not in STOPWORDS]
+        query_set = set(substantive if substantive else terms)
         scored = []
         for item in self._items_by_id.values():
-            if domain_filter and item.domain != domain_filter:
+            if target_domains and item.domain not in target_domains:
                 continue
             text_tokens = set(tokenize_query(item.question + " " + item.answer))
             overlap = len(query_set & text_tokens)
-            if overlap > 0:
+            coverage = overlap / len(query_set) if query_set else 0.0
+            if overlap > 0 and (not substantive or coverage >= 0.5):
                 scored.append((overlap, item))
         scored.sort(key=lambda x: -x[0])
         return [

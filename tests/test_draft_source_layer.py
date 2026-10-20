@@ -61,7 +61,7 @@ def test_draft_search_index_latency_under_30ms():
     ]
 
     for q in test_queries:
-        results, elapsed_ms = index.search(q, top_k=3)
+        results, elapsed_ms = index.search(q, top_k=3, allow_unscoped=True)
         assert elapsed_ms < 30.0, f"Query '{q}' took {elapsed_ms:.2f}ms, exceeding 30ms limit!"
         assert len(results) > 0, f"Query '{q}' should return at least 1 result"
         for r in results:
@@ -204,6 +204,7 @@ def test_workspace_chat_ai_answer_parallel_draft_retrieval():
         privacy_mode=PRIVACY_MODE_CLOUD_ALLOWED,
         cloud_consent_confirmed=True,
         consent_source_keys=(("workspace", "src-1"),),
+        notebook_id="NB-LAZY-LSU",
     )
 
     # 1. Gọi trực tiếp recall_draft_layer_for_answer

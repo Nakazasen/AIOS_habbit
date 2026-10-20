@@ -790,19 +790,23 @@ def deliver_5tier_ladder_answer(
                     get_draft_search_index,
                     format_draft_answer_body,
                     record_draft_invocation,
+                    resolve_notebook_draft_domain,
                 )
-                idx = get_draft_search_index()
-                draft_hits, _ = idx.search(question, top_k=1)
-                if draft_hits:
-                    best_draft = draft_hits[0]
-                    draft_used_title = best_draft.item.source_file
-                    draft_body_found = format_draft_answer_body(best_draft.item.answer, source_name=best_draft.item.source_file)
-                    record_draft_invocation(
-                        best_draft.item.item_id,
-                        question=question,
-                        source_file=best_draft.item.source_file,
-                        base_cases_dir=base_cases_dir,
-                    )
+                target_domain = resolve_notebook_draft_domain(notebook_id)
+                if target_domain:
+                    idx = get_draft_search_index()
+                    draft_hits, _ = idx.search(question, top_k=1, domain_filter=target_domain)
+                    if draft_hits:
+                        best_draft = draft_hits[0]
+                        draft_used_title = best_draft.item.source_file
+                        draft_body_found = format_draft_answer_body(best_draft.item.answer, source_name=best_draft.item.source_file)
+                        record_draft_invocation(
+                            best_draft.item.item_id,
+                            question=question,
+                            source_file=best_draft.item.source_file,
+                            domain=target_domain,
+                            base_cases_dir=base_cases_dir,
+                        )
             except Exception:
                 pass
         inferred_body = inferred_reasoning or draft_body_found or (

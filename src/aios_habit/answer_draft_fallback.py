@@ -187,6 +187,7 @@ class DraftEntry:
     answer: str
     source_file: str = ""
     position: int = 0
+    domain: str = ""
 
 
 def parse_draft_text(text: str, source_file: str = "") -> List[DraftEntry]:
@@ -213,12 +214,22 @@ def parse_draft_text(text: str, source_file: str = "") -> List[DraftEntry]:
                     answer = payload
         if question and answer:
             position += 1
+            rel_lower = source_file.replace("\\", "/").lower()
+            if "lsu" in rel_lower:
+                dom = "lsu"
+            elif "mom" in rel_lower:
+                dom = "mom"
+            elif "dieuchinh" in rel_lower or "dieu_tra" in rel_lower:
+                dom = "dieuchinh"
+            else:
+                dom = "general"
             entries.append(
                 DraftEntry(
                     question=question,
                     answer=answer,
                     source_file=source_file,
                     position=position,
+                    domain=dom,
                 )
             )
     return entries
@@ -252,6 +263,8 @@ def search_drafts(
     min_overlap: int = 1,
     min_sig_match: int = DEFAULT_MIN_SIGNIFICANT_MATCH,
     min_coverage: float = DEFAULT_MIN_COVERAGE,
+    domain_filter: Optional[Union[str, Sequence[str]]] = None,
+    allow_unscoped: bool = True,
 ) -> List[DraftEntry]:
     """Find draft entries sharing significant content tokens with the question.
 
@@ -269,7 +282,23 @@ def search_drafts(
     folded_query = _fold(question)
     scored: List[tuple[float, int, int, DraftEntry]] = []
 
+    target_domains: set[str] = set()
+    if domain_filter:
+        if isinstance(domain_filter, str):
+            target_domains = {domain_filter.lower()}
+            if domain_filter.lower() in ("dieuchinh", "dieu_tra_loi"):
+                target_domains.update({"dieuchinh", "dieu_tra_loi"})
+        else:
+            target_domains = {d.lower() for d in domain_filter}
+
     for entry in entries:
+        if domain_filter:
+            entry_dom = (entry.domain or "").lower()
+            rel_lower = entry.source_file.replace("\\", "/").lower()
+            if entry_dom not in target_domains and not any(td in rel_lower for td in target_domains):
+                continue
+        elif not allow_unscoped:
+            continue
         entry_sig_tokens = set(extract_significant_tokens(entry.question))
         matched_tokens = query_sig_tokens & entry_sig_tokens
         num_matched = len(matched_tokens)
@@ -324,6 +353,9 @@ def resolve_answer(
     abstained: bool = False,
     draft_entries: Sequence[DraftEntry] = (),
     enabled: bool | None = None,
+    domain_filter: Optional[Union[str, Sequence[str]]] = None,
+    notebook_id: Optional[str] = None,
+    require_scope: bool = False,
 ) -> FallbackDecision:
     """Apply the a -> b -> c chain without touching the RAG path itself."""
     flag_on = draft_fallback_enabled() if enabled is None else bool(enabled)
@@ -338,7 +370,25 @@ def resolve_answer(
         abstained=abstained,
     ):
         return FallbackDecision(lane="rag", answer_text=(rag_answer or "").strip())
-    hits = search_drafts(question, draft_entries, top_k=1)
+
+    eff_domain_filter = domain_filter
+    if notebook_id and not eff_domain_filter:
+        try:
+            from aios_habit.draft_source_layer import resolve_notebook_draft_domain
+            eff_domain_filter = resolve_notebook_draft_domain(notebook_id)
+        except Exception:
+            eff_domain_filter = None
+
+    if require_scope and not eff_domain_filter:
+        return FallbackDecision(lane="not_found", answer_text=NOT_FOUND_MESSAGE)
+
+    hits = search_drafts(
+        question,
+        draft_entries,
+        top_k=1,
+        domain_filter=eff_domain_filter,
+        allow_unscoped=(not require_scope and eff_domain_filter is None),
+    )
     if hits:
         best = hits[0]
         return FallbackDecision(
@@ -528,12 +578,21 @@ def deliver_draft_answer(
         (ok, success_message, badge, error_message) if draft resolved and delivered,
         or None if draft fallback is disabled, unselected, or not matched.
     """
+    from aios_habit.draft_source_layer import resolve_notebook_draft_domain
+    target_domain = resolve_notebook_draft_domain(notebook_id)
+    if not target_domain:
+        # Mặc định an toàn: không rõ sổ đang mở -> không phục vụ bản thảo
+        return None
+
     entries = draft_entries if draft_entries is not None else get_default_draft_entries()
     decision = resolve_answer(
         question,
         rag_ok=False,
         draft_entries=entries,
         enabled=enabled,
+        domain_filter=target_domain,
+        notebook_id=notebook_id,
+        require_scope=True,
     )
     if decision.lane != "draft_fallback":
         return None
