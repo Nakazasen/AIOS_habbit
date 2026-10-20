@@ -51,11 +51,14 @@ _WORKSPACE_AI_REQUEST_EXECUTOR = ThreadPoolExecutor(
 )
 
 # Giới hạn kích thước và định dạng cho tệp đính kèm một lần trong khung soạn thảo (DESKTOP-COMPOSER-FILE-ATTACH-HOME)
-MAX_COMPOSER_TEXT_FILE_BYTES: int = 25 * 1024 * 1024  # 25 MB cho tệp log / Excel sản xuất
+MAX_COMPOSER_TEXT_FILE_BYTES: int = 50 * 1024  # 50 KB tối đa cho tệp chữ/CSV nhỏ
+MAX_LOG_CHART_FILE_BYTES: int = 25 * 1024 * 1024  # 25 MB cho tệp log / biểu đồ (DESKTOP-HOME-LOGCHART-ATTACH-SIZE-FIX)
 MAX_COMPOSER_ATTACHED_TEXT_CHARS: int = 3000   # 3000 ký tự tối đa gộp vào câu hỏi (đồng bộ OCR)
 COMPOSER_SUPPORTED_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
-COMPOSER_SUPPORTED_TEXT_EXTS = {".csv", ".txt", ".tsv", ".md", ".log", ".xlsx", ".xls"}
-COMPOSER_SUPPORTED_EXTS = COMPOSER_SUPPORTED_IMAGE_EXTS | COMPOSER_SUPPORTED_TEXT_EXTS
+COMPOSER_SUPPORTED_TEXT_EXTS = {".csv", ".txt", ".tsv", ".md", ".log"}
+COMPOSER_SUPPORTED_EXCEL_EXTS = {".xlsx", ".xls"}
+LOG_CHART_SUPPORTED_EXTS = {".csv", ".xlsx", ".xls", ".log"}
+COMPOSER_SUPPORTED_EXTS = COMPOSER_SUPPORTED_IMAGE_EXTS | COMPOSER_SUPPORTED_TEXT_EXTS | COMPOSER_SUPPORTED_EXCEL_EXTS
 
 
 st.set_page_config(
@@ -5752,61 +5755,76 @@ else:
                                     help=t("attach_screenshot_help", locale=current_ui_locale),
                                     label_visibility="collapsed",
                                 )
+                                from aios_habit.clipboard_attach import (
+                                    validate_attachment_lane,
+                                    read_clipboard_content,
+                                )
+
+                                def _attach_single_file(file_name: str, file_bytes: bytes) -> bool:
+                                    is_valid, err_msg, lane = validate_attachment_lane(file_name, len(file_bytes))
+                                    if not is_valid and err_msg:
+                                        st.error(err_msg)
+                                        st.session_state[f"wsc_attach_error_{active_conversation.id}"] = err_msg
+                                        st.session_state.pop(pasted_image_key, None)
+                                        return False
+                                    st.session_state.pop(f"wsc_attach_error_{active_conversation.id}", None)
+                                    st.session_state[pasted_image_key] = BufferedWorkspaceUpload(file_name, file_bytes)
+                                    return True
+
+                                def _run_clipboard_paste() -> None:
+                                    c_type, c_data = read_clipboard_content()
+                                    if c_type == "files":
+                                        target_f = c_data[0]
+                                        try:
+                                            f_bytes = target_f.read_bytes()
+                                            if _attach_single_file(target_f.name, f_bytes):
+                                                safe_rerun()
+                                        except Exception as paste_read_err:
+                                            st.error(f"Không thể đọc tệp từ clipboard: {paste_read_err}")
+                                    elif c_type == "image":
+                                        try:
+                                            img_buf = BytesIO()
+                                            c_data.save(img_buf, format="PNG")
+                                            st.session_state.pop(f"wsc_attach_error_{active_conversation.id}", None)
+                                            st.session_state[pasted_image_key] = BufferedWorkspaceUpload("clipboard-image.png", img_buf.getvalue())
+                                            safe_rerun()
+                                        except Exception as img_err:
+                                            st.error(f"Không thể xử lý hình ảnh từ clipboard: {img_err}")
+                                    else:
+                                        st.info("Clipboard không có tệp hoặc ảnh để đính kèm. Nếu là văn bản, bạn có thể dán trực tiếp vào ô nhập.")
+
                                 if paste_image_button is None:
-                                    st.info(t("clipboard_image_unavailable", locale=current_ui_locale))
+                                    if st.button("📋 Dán tệp / ảnh từ clipboard", key=f"wsc_paste_btn_native_{active_conversation.id}"):
+                                        _run_clipboard_paste()
                                 else:
                                     paste_result = paste_image_button(
                                         "Dán ảnh đã copy",
                                         key=f"wsc_paste_image_{active_conversation.id}",
                                         background_color="#0369A1",
                                         hover_background_color="#075985",
-                                        errors="raise",
+                                        errors="ignore",
                                     )
                                     if paste_result.image_data is not None:
                                         image_buffer = BytesIO()
                                         paste_result.image_data.save(image_buffer, format="PNG")
+                                        st.session_state.pop(f"wsc_attach_error_{active_conversation.id}", None)
                                         st.session_state[pasted_image_key] = BufferedWorkspaceUpload(
                                             "clipboard-image.png", image_buffer.getvalue()
                                         )
                                         safe_rerun()
+                                    else:
+                                        _btn_state = st.session_state.get(f"wsc_paste_image_{active_conversation.id}")
+                                        if _btn_state is not None:
+                                            _run_clipboard_paste()
+
                                 if uploaded_image is not None:
                                     _up_name = getattr(uploaded_image, "name", "")
-                                    _up_ext = Path(_up_name).suffix.lower()
                                     try:
                                         _up_bytes = uploaded_image.getvalue()
-                                        _up_size = len(_up_bytes)
                                     except Exception:
                                         _up_bytes = b""
-                                        _up_size = 0
-
-                                    if _up_ext in COMPOSER_SUPPORTED_TEXT_EXTS:
-                                        if _up_size > MAX_COMPOSER_TEXT_FILE_BYTES:
-                                            _err_msg = (
-                                                f"Tệp \"{_up_name}\" ({_up_size:,} bytes) vượt quá giới hạn 25MB cho tệp log / dữ liệu đính kèm. "
-                                                "Vui lòng chọn tệp nhỏ hơn."
-                                            )
-                                            st.error(_err_msg)
-                                            st.session_state[f"wsc_attach_error_{active_conversation.id}"] = _err_msg
-                                            st.session_state.pop(pasted_image_key, None)
-                                        elif _up_size == 0:
-                                            _err_msg = f"Tệp \"{_up_name}\" rỗng. Vui lòng chọn tệp có nội dung."
-                                            st.error(_err_msg)
-                                            st.session_state[f"wsc_attach_error_{active_conversation.id}"] = _err_msg
-                                            st.session_state.pop(pasted_image_key, None)
-                                        else:
-                                            st.session_state.pop(f"wsc_attach_error_{active_conversation.id}", None)
-                                            st.session_state[pasted_image_key] = uploaded_image
-                                    elif _up_ext in COMPOSER_SUPPORTED_IMAGE_EXTS:
-                                        st.session_state.pop(f"wsc_attach_error_{active_conversation.id}", None)
+                                    if _attach_single_file(_up_name, _up_bytes):
                                         st.session_state[pasted_image_key] = uploaded_image
-                                    else:
-                                        _err_msg = (
-                                            f"Định dạng tệp \"{_up_name}\" không được hỗ trợ. "
-                                            "Khung soạn thảo chỉ nhận tệp ảnh (PNG, JPG, JPEG, WEBP, BMP) hoặc tệp chữ/CSV (CSV, TXT, TSV, MD, LOG)."
-                                        )
-                                        st.error(_err_msg)
-                                        st.session_state[f"wsc_attach_error_{active_conversation.id}"] = _err_msg
-                                        st.session_state.pop(pasted_image_key, None)
 
                     with toolbar_block_col:
                         with st.container(key=f"wsc-block-{active_conversation.id}"):
@@ -6438,50 +6456,63 @@ else:
                                     q_text = "Phân tích và giải thích nội dung trong ảnh chụp màn hình đính kèm."
                                 if one_shot_image_text:
                                     q_text = f"{q_text}\n\n---\n{one_shot_image_text}"
-                            elif _att_ext in COMPOSER_SUPPORTED_TEXT_EXTS:
-                                # 1. Thu nap du lieu vao Log Chart Builder (DESKTOP-LOG-CHART-BUILDER-HOME)
+                            elif _att_ext in COMPOSER_SUPPORTED_EXTS:
+                                # 1. Thu nap du lieu vao Log Chart Builder neu thuoc lan bieu do (DESKTOP-LOG-CHART-BUILDER-HOME)
                                 _chart_builder_handled = False
-                                try:
-                                    from aios_habit.log_chart import (
-                                        save_log_file_bytes,
-                                        parse_log_file,
-                                        build_initial_spec,
-                                        save_chart_session,
-                                        render_chart_image,
-                                        CHART_TITLES_VI,
-                                        update_spec_from_text,
-                                    )
-                                    _f_hash, _f_path = save_log_file_bytes(_att_name, _att_bytes)
-                                    _parsed_table = parse_log_file(_f_path, file_name=_att_name)
-                                    _spec = build_initial_spec(_parsed_table)
-                                    if q_text:
-                                        _spec, _ = update_spec_from_text(_spec, q_text, _parsed_table)
-                                    save_chart_session(active_conversation.id, _spec, _f_path)
-                                    _main_png = render_chart_image(_spec, _parsed_table)
-                                    import base64
-                                    _ma_hoa = base64.b64encode(_main_png).decode("ascii")
-                                    _marker_json = json.dumps({
-                                        "spec_id": _spec.spec_id,
-                                        "conversation_id": active_conversation.id,
-                                        "chart_type": _spec.chart_type,
-                                    })
-                                    _assistant_reply = (
-                                        f"### 📊 Đã đọc cấu trúc tệp log `{_att_name}`\n\n"
-                                        f"- **Số dòng dữ liệu:** `{_parsed_table.total_rows:,}` dòng\n"
-                                        f"- **Số cột nhận diện:** `{len(_parsed_table.columns)}` cột ({_parsed_table.provenance_note})\n"
-                                        f"- **Kiểu biểu đồ đề xuất:** `{CHART_TITLES_VI.get(_spec.chart_type, _spec.chart_type)}`\n\n"
-                                        f"![biểu đồ](data:image/png;base64,{_ma_hoa})\n\n"
-                                        f"<!-- aios_log_chart_builder: {_marker_json} -->"
-                                    )
-                                    _user_display_q = q_text if q_text else f"Vẽ biểu đồ từ tệp {_att_name}"
-                                    _luu_cap_tin_nhan_chat(active_conversation.id, _user_display_q, _assistant_reply)
-                                    _chart_builder_handled = True
-                                    st.session_state.pop(pasted_image_key, None)
-                                    safe_rerun()
-                                except Exception as _log_chart_exc:
-                                    _chart_builder_handled = False
+                                if _att_ext in LOG_CHART_SUPPORTED_EXTS:
+                                    try:
+                                        from aios_habit.log_chart import (
+                                            save_log_file_bytes,
+                                            parse_log_file,
+                                            build_initial_spec,
+                                            save_chart_session,
+                                            render_chart_image,
+                                            CHART_TITLES_VI,
+                                            update_spec_from_text,
+                                        )
+                                        _f_hash, _f_path = save_log_file_bytes(_att_name, _att_bytes)
+                                        _parsed_table = parse_log_file(_f_path, file_name=_att_name)
+                                        _spec = build_initial_spec(_parsed_table)
+                                        if q_text:
+                                            _spec, _ = update_spec_from_text(_spec, q_text, _parsed_table)
+                                        save_chart_session(active_conversation.id, _spec, _f_path)
+                                        _main_png = render_chart_image(_spec, _parsed_table)
+                                        import base64
+                                        _ma_hoa = base64.b64encode(_main_png).decode("ascii")
+                                        _marker_json = json.dumps({
+                                            "spec_id": _spec.spec_id,
+                                            "conversation_id": active_conversation.id,
+                                            "chart_type": _spec.chart_type,
+                                        })
+                                        _assistant_reply = (
+                                            f"### 📊 Đã đọc cấu trúc tệp log `{_att_name}`\n\n"
+                                            f"- **Số dòng dữ liệu:** `{_parsed_table.total_rows:,}` dòng\n"
+                                            f"- **Số cột nhận diện:** `{len(_parsed_table.columns)}` cột ({_parsed_table.provenance_note})\n"
+                                            f"- **Kiểu biểu đồ đề xuất:** `{CHART_TITLES_VI.get(_spec.chart_type, _spec.chart_type)}`\n\n"
+                                            f"![biểu đồ](data:image/png;base64,{_ma_hoa})\n\n"
+                                            f"<!-- aios_log_chart_builder: {_marker_json} -->"
+                                        )
+                                        _user_display_q = q_text if q_text else f"Vẽ biểu đồ từ tệp {_att_name}"
+                                        _luu_cap_tin_nhan_chat(active_conversation.id, _user_display_q, _assistant_reply)
+                                        _chart_builder_handled = True
+                                        st.session_state.pop(pasted_image_key, None)
+                                        safe_rerun()
+                                    except Exception as _log_chart_exc:
+                                        _chart_builder_handled = False
 
-                                # 2. Tệp chữ/CSV đính kèm một lần: trích nội dung chữ rồi gộp thẳng vào câu hỏi
+                                # 2. Neu khong thuoc lan bieu do hoac parser bieu do khong xu ly duoc:
+                                if not _chart_builder_handled:
+                                    if len(_att_bytes) > MAX_COMPOSER_TEXT_FILE_BYTES:
+                                        _err_msg = (
+                                            f"Tệp \"{_att_name}\" ({len(_att_bytes):,} bytes) vượt quá giới hạn 50KB cho tệp đính kèm chữ/CSV đưa vào ngữ cảnh trò chuyện. "
+                                            "Vui lòng chọn tệp nhỏ hơn."
+                                        )
+                                        st.error(_err_msg)
+                                        st.session_state[f"wsc_attach_error_{active_conversation.id}"] = _err_msg
+                                        st.session_state.pop(pasted_image_key, None)
+                                        safe_rerun()
+
+                                # 3. Tệp chữ/CSV đính kèm một lần: trích nội dung chữ rồi gộp thẳng vào câu hỏi
                                 try:
                                     _raw_text = _att_bytes.decode("utf-8-sig")
                                 except UnicodeDecodeError:

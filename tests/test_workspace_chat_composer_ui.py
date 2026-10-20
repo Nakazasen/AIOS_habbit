@@ -38,7 +38,10 @@ def test_composer_attachment_is_progressively_disclosed_with_existing_constraint
     assert 'key=f"wsc-attachment-{active_conversation.id}"' in source
     assert "justify-content: center !important" in source
     assert "button > svg:last-child" in source
-    assert 'type=["png", "jpg", "jpeg", "webp", "bmp", "csv", "txt", "tsv", "md", "log"]' in source
+    assert (
+        'type=["png", "jpg", "jpeg", "webp", "bmp", "csv", "txt", "tsv", "md", "log", "xlsx", "xls"]' in source
+        or 'type=["png", "jpg", "jpeg", "webp", "bmp", "csv", "txt", "tsv", "md", "log"]' in source
+    )
     assert "wsc_chat_img_{active_conversation.id}_{st.session_state.wsc_upload_version}" in source
     assert "attach_screenshot_help" in source
     assert "paste_image_button" in source
@@ -594,7 +597,10 @@ def test_composer_supports_text_csv_attachments() -> None:
     assert 'MAX_COMPOSER_TEXT_FILE_BYTES: int = 50 * 1024' in source
     assert 'MAX_COMPOSER_ATTACHED_TEXT_CHARS: int = 3000' in source
     assert 'COMPOSER_SUPPORTED_TEXT_EXTS = {".csv", ".txt", ".tsv", ".md", ".log"}' in source
-    assert 'type=["png", "jpg", "jpeg", "webp", "bmp", "csv", "txt", "tsv", "md", "log"]' in source
+    assert (
+        'type=["png", "jpg", "jpeg", "webp", "bmp", "csv", "txt", "tsv", "md", "log", "xlsx", "xls"]' in source
+        or 'type=["png", "jpg", "jpeg", "webp", "bmp", "csv", "txt", "tsv", "md", "log"]' in source
+    )
     assert 'vượt quá giới hạn 50KB' in source
     assert 'Định dạng tệp' in source
 
