@@ -6023,6 +6023,13 @@ else:
                 if _ask_disabled and not (is_answering or is_waiting_for_sources):
                     st.caption(f"⏳ {_ask_tooltip}")
 
+                    @st.fragment(run_every=1.5)
+                    def _poll_worker_warming_ready() -> None:
+                        if is_workspace_chat_worker_warmed(collection_id=_target_composer_col):
+                            safe_rerun(scope="app")
+
+                    _poll_worker_warming_ready()
+
                 if ask_submitted and pending_submission:
                     # A fresh submit intentionally replaces an older waiting
                     # question; this avoids a surprising late answer.
@@ -6041,6 +6048,13 @@ else:
                     user_attached_image = None
 
                 if ask_submitted:
+                    q_text = user_input.strip()
+                    if q_text and get_workspace_memory_enabled_preference():
+                        from aios_habit.workspace_memory_ui import queue_memory_command_if_present
+
+                        if queue_memory_command_if_present(q_text):
+                            safe_rerun()
+
                     if not is_workspace_chat_worker_warmed(collection_id=_target_composer_col):
                         try:
                             trigger_collection_warming_on_demand(
@@ -6055,13 +6069,6 @@ else:
                             or "Mô hình và dữ liệu kho đang được nạp vào bộ nhớ. Vui lòng chờ trong giây lát..."
                         )
                         safe_rerun()
-
-                    q_text = user_input.strip()
-                    if q_text and get_workspace_memory_enabled_preference():
-                        from aios_habit.workspace_memory_ui import queue_memory_command_if_present
-
-                        if queue_memory_command_if_present(q_text):
-                            safe_rerun()
                     # UX-CHAT-CORE: bo dinh tuyen y dinh chat-first. Nguoi dung chi
                     # go cau tieng Viet, app tu dieu phoi (khong con radio nhanh).
                     if q_text and _xu_ly_y_dinh_chat(

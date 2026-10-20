@@ -1589,6 +1589,8 @@ def is_workspace_chat_worker_warmed(
     collection_id: Optional[str] = None,
 ) -> bool:
     """Return whether the local BGE worker subprocess is already usable."""
+    if os.environ.get("AIOS_RAG_WARMED_OVERRIDE") == "1":
+        return True
     try:
         resolved = config or WorkspaceChatRagV2CanaryConfig.from_env()
     except (DeploymentManifestError, ValueError):

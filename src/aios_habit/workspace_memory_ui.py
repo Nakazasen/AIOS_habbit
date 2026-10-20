@@ -13,14 +13,25 @@ from aios_habit.workspace_memory_models import (
 from aios_habit.workspace_memory_service import (
     append_memory_decision,
     apply_conflict_choice,
+    clear_pending_command,
+    clear_pending_correction_conflict,
+    clear_pending_correction_form,
+    clear_pending_drafts,
     default_decisions_path,
+    default_pending_drafts_path,
     find_near_duplicates,
     fold_vi,
     get_workspace_memory_enabled_preference,
+    load_pending_drafts,
     make_memory_decision,
+    override_pending_drafts_path,
     preview_memory_decision,
     read_effective_memory,
     recall_workspace_memory,
+    save_pending_command,
+    save_pending_command_conflict,
+    save_pending_correction_conflict,
+    save_pending_correction_form,
     tokenize,
 )
 
@@ -124,6 +135,50 @@ def conflict_choice_labels() -> dict[str, str]:
     }
 
 
+def restore_pending_drafts_to_session_state(path: Path | None = None) -> None:
+    """Restore saved pending drafts from disk into Streamlit session_state."""
+    try:
+        import streamlit as st
+    except Exception:
+        return
+    try:
+        drafts = load_pending_drafts(path=path)
+        if not drafts:
+            return
+
+        cmd = drafts.get("command")
+        if isinstance(cmd, dict) and PENDING_COMMAND_KEY not in st.session_state:
+            st.session_state[PENDING_COMMAND_KEY] = cmd
+
+        cmd_conf = drafts.get("command_conflict")
+        if isinstance(cmd_conf, dict) and PENDING_CONFLICT_KEY not in st.session_state:
+            st.session_state[PENDING_CONFLICT_KEY] = cmd_conf
+
+        corr_confs = drafts.get("correction_conflicts")
+        if isinstance(corr_confs, dict):
+            for msg_id, conf_data in corr_confs.items():
+                key = f"wsc_corr_conflict_{msg_id}"
+                if key not in st.session_state and isinstance(conf_data, dict):
+                    st.session_state[key] = conf_data
+
+        corr_forms = drafts.get("correction_forms")
+        if isinstance(corr_forms, dict):
+            for msg_id, form_data in corr_forms.items():
+                if not isinstance(form_data, dict):
+                    continue
+                st_key = f"wsc_corr_statement_{msg_id}"
+                app_key = f"wsc_corr_applies_{msg_id}"
+                neg_key = f"wsc_corr_negative_{msg_id}"
+                if st_key not in st.session_state and form_data.get("statement") is not None:
+                    st.session_state[st_key] = form_data.get("statement", "")
+                if app_key not in st.session_state and form_data.get("applies_when") is not None:
+                    st.session_state[app_key] = form_data.get("applies_when", "")
+                if neg_key not in st.session_state and form_data.get("does_not_apply_when") is not None:
+                    st.session_state[neg_key] = form_data.get("does_not_apply_when", "")
+    except Exception:
+        pass
+
+
 def queue_memory_command_if_present(text: str) -> bool:
     if not get_workspace_memory_enabled_preference():
         return False
@@ -135,6 +190,7 @@ def queue_memory_command_if_present(text: str) -> bool:
     except Exception:
         return False
     st.session_state[PENDING_COMMAND_KEY] = parsed
+    save_pending_command(parsed)
     return True
 
 
@@ -232,6 +288,7 @@ def render_workspace_memory_workspace(
         except Exception:
             items = ()
     render_workspace_memory_panel(items, locale=locale)
+    restore_pending_drafts_to_session_state()
     _render_pending_command(workspace_id=workspace_id)
     if last_assistant_id:
         _render_correction_form(
@@ -246,6 +303,8 @@ def _render_pending_command(*, workspace_id: str) -> None:
         import streamlit as st
     except Exception:
         return
+    if PENDING_COMMAND_KEY not in st.session_state:
+        restore_pending_drafts_to_session_state()
     pending = st.session_state.get(PENDING_COMMAND_KEY)
     if not isinstance(pending, dict):
         return
@@ -285,6 +344,7 @@ def _render_pending_command(*, workspace_id: str) -> None:
                     return
                 st.session_state.pop(PENDING_COMMAND_KEY, None)
                 st.session_state.pop(PENDING_CONFLICT_KEY, None)
+                clear_pending_command()
                 st.session_state.wsc_action_message = (
                     confirm_cancelled_message() if stored is None else REMEMBER_SUCCESS
                 )
@@ -293,6 +353,7 @@ def _render_pending_command(*, workspace_id: str) -> None:
             if st.button("Hủy", key="wsc_memory_conflict_cancel"):
                 st.session_state.pop(PENDING_COMMAND_KEY, None)
                 st.session_state.pop(PENDING_CONFLICT_KEY, None)
+                clear_pending_command()
                 st.session_state.wsc_action_message = confirm_cancelled_message()
                 st.rerun()
         return
@@ -307,8 +368,11 @@ def _render_pending_command(*, workspace_id: str) -> None:
                 if action == "confirm":
                     hits = find_near_duplicates(statement, scope, path)
                     if hits:
-                        st.session_state[PENDING_CONFLICT_KEY] = {"statement": statement, "scope": scope}
+                        conflict_payload = {"statement": statement, "scope": scope}
+                        st.session_state[PENDING_CONFLICT_KEY] = conflict_payload
+                        save_pending_command_conflict(conflict_payload)
                         st.rerun()
+                        return
                     decision = make_memory_decision(
                         action="confirm",
                         statement=statement,
@@ -329,6 +393,7 @@ def _render_pending_command(*, workspace_id: str) -> None:
                     if not target_memory_id:
                         st.session_state.wsc_action_error = NOT_FOUND_FORGET_ERROR
                         st.session_state.pop(PENDING_COMMAND_KEY, None)
+                        clear_pending_command()
                         st.rerun()
                         return
 
@@ -342,6 +407,7 @@ def _render_pending_command(*, workspace_id: str) -> None:
                     append_memory_decision(decision, path=path)
                     st.session_state.wsc_action_message = FORGET_SUCCESS
                 st.session_state.pop(PENDING_COMMAND_KEY, None)
+                clear_pending_command()
                 st.rerun()
             except Exception as exc:
                 st.session_state.wsc_action_error = _safe_error(exc)
@@ -349,6 +415,7 @@ def _render_pending_command(*, workspace_id: str) -> None:
         if st.button("Hủy", key="wsc_memory_cancel"):
             st.session_state.pop(PENDING_COMMAND_KEY, None)
             st.session_state.pop(PENDING_CONFLICT_KEY, None)
+            clear_pending_command()
             st.session_state.wsc_action_message = confirm_cancelled_message()
             st.rerun()
 
@@ -359,8 +426,20 @@ def _render_correction_form(*, message_id: str, trace_id: str | None, workspace_
     except Exception:
         return
     corr_conflict_key = f"wsc_corr_conflict_{message_id}"
+    st_key = f"wsc_corr_statement_{message_id}"
+    app_key = f"wsc_corr_applies_{message_id}"
+    neg_key = f"wsc_corr_negative_{message_id}"
+
+    if corr_conflict_key not in st.session_state and st_key not in st.session_state:
+        restore_pending_drafts_to_session_state()
+
     pending_conflict = st.session_state.get(corr_conflict_key)
-    with st.expander(correction_action_label(), expanded=bool(pending_conflict)):
+    has_form_draft = bool(
+        (st.session_state.get(st_key) or "").strip()
+        or (st.session_state.get(app_key) or "").strip()
+    )
+
+    with st.expander(correction_action_label(), expanded=bool(pending_conflict or has_form_draft)):
         if isinstance(pending_conflict, dict):
             st.warning("Đã có bài học gần trùng hoặc mâu thuẫn. Hãy chọn cách xử lý trước khi lưu.")
             labels = conflict_choice_labels()
@@ -386,6 +465,11 @@ def _render_correction_form(*, message_id: str, trace_id: str | None, workspace_
                     try:
                         stored = apply_conflict_choice(choice, candidate, path=path, scope=scope)
                         st.session_state.pop(corr_conflict_key, None)
+                        st.session_state.pop(st_key, None)
+                        st.session_state.pop(app_key, None)
+                        st.session_state.pop(neg_key, None)
+                        clear_pending_correction_conflict(message_id)
+                        clear_pending_correction_form(message_id)
                         if stored is None:
                             st.session_state.wsc_action_message = confirm_cancelled_message()
                         else:
@@ -396,23 +480,35 @@ def _render_correction_form(*, message_id: str, trace_id: str | None, workspace_
             with cancel_col:
                 if st.button("Hủy lựa chọn", key=f"wsc_corr_cancel_conflict_{message_id}"):
                     st.session_state.pop(corr_conflict_key, None)
+                    clear_pending_correction_conflict(message_id)
                     st.session_state.wsc_action_message = confirm_cancelled_message()
                     st.rerun()
             return
 
         statement = st.text_area(
             "Phần sửa cần nhớ",
-            key=f"wsc_corr_statement_{message_id}",
+            key=st_key,
             height=80,
         )
         applies_when = st.text_input(
             "Áp dụng khi",
-            key=f"wsc_corr_applies_{message_id}",
+            key=app_key,
         )
         does_not_apply = st.text_input(
             "Không áp dụng khi",
-            key=f"wsc_corr_negative_{message_id}",
+            key=neg_key,
         )
+
+        if (statement or "").strip() or (applies_when or "").strip():
+            save_pending_correction_form(
+                message_id,
+                statement=statement,
+                applies_when=applies_when,
+                does_not_apply_when=does_not_apply,
+            )
+        else:
+            clear_pending_correction_form(message_id)
+
         if statement.strip() and applies_when.strip():
             candidate = CorrectionLessonCandidate(
                 candidate_id=f"corr_{message_id}",
@@ -445,7 +541,7 @@ def _render_correction_form(*, message_id: str, trace_id: str | None, workspace_
                 try:
                     hits = find_near_duplicates(candidate.statement, scope, path)
                     if hits:
-                        st.session_state[corr_conflict_key] = {
+                        conflict_payload = {
                             "candidate_id": candidate.candidate_id,
                             "statement": candidate.statement,
                             "applies_when": candidate.applies_when,
@@ -454,6 +550,9 @@ def _render_correction_form(*, message_id: str, trace_id: str | None, workspace_
                             "trace_ref": candidate.trace_ref,
                             "scope": scope,
                         }
+                        st.session_state[corr_conflict_key] = conflict_payload
+                        save_pending_correction_conflict(message_id, conflict_payload)
+                        clear_pending_correction_form(message_id)
                     else:
                         append_memory_decision(
                             candidate.to_decision(
@@ -463,6 +562,11 @@ def _render_correction_form(*, message_id: str, trace_id: str | None, workspace_
                             ),
                             path=path,
                         )
+                        clear_pending_correction_form(message_id)
+                        clear_pending_correction_conflict(message_id)
+                        st.session_state.pop(st_key, None)
+                        st.session_state.pop(app_key, None)
+                        st.session_state.pop(neg_key, None)
                         st.session_state.wsc_action_message = CORRECTION_SUCCESS
                     st.rerun()
                 except Exception as exc:
@@ -470,6 +574,11 @@ def _render_correction_form(*, message_id: str, trace_id: str | None, workspace_
         with cancel_col:
             if st.button("Hủy bài học", key=f"wsc_corr_cancel_{message_id}"):
                 st.session_state.pop(corr_conflict_key, None)
+                st.session_state.pop(st_key, None)
+                st.session_state.pop(app_key, None)
+                st.session_state.pop(neg_key, None)
+                clear_pending_correction_form(message_id)
+                clear_pending_correction_conflict(message_id)
                 st.session_state.wsc_action_message = confirm_cancelled_message()
                 st.rerun()
 

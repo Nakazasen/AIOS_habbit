@@ -76,6 +76,9 @@ _RECORDS_OVERRIDE: ContextVar[tuple[Mapping[str, Any], ...] | None] = ContextVar
 )
 _DECISIONS_OVERRIDE: ContextVar[Path | None] = ContextVar("workspace_memory_decisions", default=None)
 _SETTINGS_OVERRIDE: ContextVar[Path | None] = ContextVar("workspace_memory_settings", default=None)
+_PENDING_DRAFTS_OVERRIDE: ContextVar[Path | None] = ContextVar(
+    "workspace_memory_pending_drafts", default=None
+)
 
 MEMORY_SETTINGS_SCHEMA_VERSION = "1"
 MEMORY_SETTINGS_ENABLED_KEY = "memory_enabled"
@@ -681,6 +684,213 @@ def set_workspace_memory_enabled_preference(enabled: bool, path: Path | None = N
         encoding="utf-8",
     )
     os.replace(temporary_path, settings_path)
+
+
+def default_pending_drafts_path(root: Path | None = None) -> Path:
+    override = _PENDING_DRAFTS_OVERRIDE.get()
+    if override is not None:
+        return override
+    dec_override = _DECISIONS_OVERRIDE.get()
+    if dec_override is not None:
+        return dec_override.parent / "pending_drafts.json"
+    base = Path(root) if root is not None else Path("local_cases") / "workspace_memory"
+    return base / "pending_drafts.json"
+
+
+@contextmanager
+def override_pending_drafts_path(path: Path) -> Iterator[None]:
+    token = _PENDING_DRAFTS_OVERRIDE.set(Path(path))
+    try:
+        yield
+    finally:
+        _PENDING_DRAFTS_OVERRIDE.reset(token)
+
+
+def load_pending_drafts(path: Path | None = None) -> dict[str, Any]:
+    """Fail-safe read of pending drafts from disk.
+
+    If file does not exist, is corrupted, or unreadable, returns empty dict.
+    NEVER raises an exception or crashes the app.
+    """
+    drafts_path = (
+        Path(path)
+        if path is not None
+        else (_PENDING_DRAFTS_OVERRIDE.get() or default_pending_drafts_path())
+    )
+    if not drafts_path.exists():
+        return {}
+    try:
+        content = drafts_path.read_text(encoding="utf-8").strip()
+        if not content:
+            return {}
+        data = json.loads(content)
+        if not isinstance(data, dict):
+            return {}
+        return data
+    except Exception:
+        return {}
+
+
+def save_pending_drafts(payload: Mapping[str, Any], path: Path | None = None) -> None:
+    """Atomic write of pending drafts using .tmp -> replace with LibraryWriterLease.
+
+    If payload has no active drafts, removes the file if present.
+    Fail-safe: handles IO / lease gracefully so it never crashes the caller.
+    """
+    drafts_path = (
+        Path(path)
+        if path is not None
+        else (_PENDING_DRAFTS_OVERRIDE.get() or default_pending_drafts_path())
+    )
+    has_command = bool(payload.get("command"))
+    has_command_conflict = bool(payload.get("command_conflict"))
+    has_corr_conflict = bool(payload.get("correction_conflicts"))
+    has_corr_forms = bool(payload.get("correction_forms"))
+
+    if not (has_command or has_command_conflict or has_corr_conflict or has_corr_forms):
+        try:
+            if drafts_path.exists():
+                drafts_path.unlink()
+        except Exception:
+            pass
+        return
+
+    try:
+        drafts_path.parent.mkdir(parents=True, exist_ok=True)
+        lease = LibraryWriterLease(drafts_path.parent)
+        acquired = lease.acquire(owner="workspace_memory_drafts")
+        try:
+            clean_payload = {
+                "schema_version": "1",
+                "command": dict(payload["command"]) if payload.get("command") else None,
+                "command_conflict": (
+                    dict(payload["command_conflict"])
+                    if payload.get("command_conflict")
+                    else None
+                ),
+                "correction_conflicts": {
+                    str(k): dict(v)
+                    for k, v in dict(payload.get("correction_conflicts") or {}).items()
+                    if isinstance(v, Mapping)
+                },
+                "correction_forms": {
+                    str(k): dict(v)
+                    for k, v in dict(payload.get("correction_forms") or {}).items()
+                    if isinstance(v, Mapping)
+                },
+                "updated_at": _now_iso(),
+            }
+            temp_path = drafts_path.with_name(f"{drafts_path.name}.{uuid.uuid4().hex[:8]}.tmp")
+            temp_path.write_text(
+                json.dumps(clean_payload, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            os.replace(temp_path, drafts_path)
+        finally:
+            if acquired:
+                lease.release()
+    except Exception:
+        # Fail-safe: saving drafts must never crash the caller/app
+        pass
+
+
+def clear_pending_drafts(path: Path | None = None) -> None:
+    """Clear all pending drafts and remove pending_drafts.json."""
+    save_pending_drafts({}, path=path)
+
+
+def save_pending_command(
+    command: Mapping[str, Any],
+    *,
+    conflict: Mapping[str, Any] | None = None,
+    path: Path | None = None,
+) -> None:
+    """Save pending 'Hãy nhớ:' or 'Hãy quên:' command draft."""
+    drafts = load_pending_drafts(path=path)
+    drafts["command"] = dict(command)
+    if conflict is not None:
+        drafts["command_conflict"] = dict(conflict)
+    save_pending_drafts(drafts, path=path)
+
+
+def save_pending_command_conflict(
+    conflict: Mapping[str, Any],
+    path: Path | None = None,
+) -> None:
+    """Save pending command conflict state while preserving command draft."""
+    drafts = load_pending_drafts(path=path)
+    drafts["command_conflict"] = dict(conflict)
+    save_pending_drafts(drafts, path=path)
+
+
+def clear_pending_command(path: Path | None = None) -> None:
+    """Clear pending command and command conflict drafts."""
+    drafts = load_pending_drafts(path=path)
+    drafts.pop("command", None)
+    drafts.pop("command_conflict", None)
+    save_pending_drafts(drafts, path=path)
+
+
+def save_pending_correction_conflict(
+    message_id: str,
+    conflict_data: Mapping[str, Any],
+    path: Path | None = None,
+) -> None:
+    """Save pending correction conflict for a specific message."""
+    drafts = load_pending_drafts(path=path)
+    confs = dict(drafts.get("correction_conflicts") or {})
+    confs[str(message_id)] = dict(conflict_data)
+    drafts["correction_conflicts"] = confs
+    save_pending_drafts(drafts, path=path)
+
+
+def clear_pending_correction_conflict(
+    message_id: str,
+    path: Path | None = None,
+) -> None:
+    """Clear pending correction conflict for a specific message."""
+    drafts = load_pending_drafts(path=path)
+    confs = dict(drafts.get("correction_conflicts") or {})
+    confs.pop(str(message_id), None)
+    drafts["correction_conflicts"] = confs
+    save_pending_drafts(drafts, path=path)
+
+
+def save_pending_correction_form(
+    message_id: str,
+    statement: str,
+    applies_when: str,
+    does_not_apply_when: str = "",
+    path: Path | None = None,
+) -> None:
+    """Save pending correction form draft for a message if non-empty, else clear it."""
+    drafts = load_pending_drafts(path=path)
+    forms = dict(drafts.get("correction_forms") or {})
+    st_text = (statement or "").strip()
+    app_text = (applies_when or "").strip()
+    neg_text = (does_not_apply_when or "").strip()
+    if st_text or app_text or neg_text:
+        forms[str(message_id)] = {
+            "statement": statement,
+            "applies_when": applies_when,
+            "does_not_apply_when": does_not_apply_when,
+        }
+    else:
+        forms.pop(str(message_id), None)
+    drafts["correction_forms"] = forms
+    save_pending_drafts(drafts, path=path)
+
+
+def clear_pending_correction_form(
+    message_id: str,
+    path: Path | None = None,
+) -> None:
+    """Clear pending correction form draft for a specific message."""
+    drafts = load_pending_drafts(path=path)
+    forms = dict(drafts.get("correction_forms") or {})
+    forms.pop(str(message_id), None)
+    drafts["correction_forms"] = forms
+    save_pending_drafts(drafts, path=path)
 
 
 def _read_jsonl(path: Path) -> list[dict[str, Any]]:
