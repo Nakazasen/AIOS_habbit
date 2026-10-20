@@ -2000,7 +2000,44 @@ def route_workspace_chat_submission(
                     draft_source = draft_decision.draft_source
                     draft_question = draft_decision.draft_question
                 else:
-                    lines.append("Không tìm thấy dữ liệu trích xuất phù hợp trong kho tài liệu để trả lời câu hỏi này.")
+                    from aios_habit.final_answer_composer import (
+                        format_tier_3_ambiguous_answer,
+                        format_tier_4_inferred_answer,
+                        TIER_5_DEFAULT_ACTIONS,
+                    )
+                    from aios_habit.question_intent_classifier import (
+                        classify_question_intent,
+                        INTENT_MO_HO,
+                        suggest_rephrasings,
+                    )
+                    intent_res = classify_question_intent(question)
+                    if intent_res.intent == INTENT_MO_HO:
+                        local_answer = format_tier_3_ambiguous_answer(
+                            question=question,
+                            suggested_rephrasings=intent_res.suggested_rephrasings or suggest_rephrasings(question),
+                            provisional_answer=f"Vấn đề bạn quan tâm liên quan đến '{question.strip()}'. Thông thường các sự cố này cần kiểm tra kết nối nguồn, tín hiệu cảm biến hoặc nhật ký lỗi gần nhất.",
+                            actions=TIER_5_DEFAULT_ACTIONS,
+                        )
+                    else:
+                        inferred_body = (
+                            f"Về câu hỏi *'{question.strip()}'*, hệ thống chưa tìm thấy dữ liệu đối chiếu trực tiếp trong các tài liệu nội bộ đã bật. "
+                            "Theo nguyên lý kỹ thuật chung: Hãy xác định rõ mã thiết bị/model, kiểm tra trạng thái hoạt động trên màn hình điều khiển, "
+                            "đối chiếu bảng mã lỗi chuẩn và thu thập nhật ký vận hành tại thời điểm xảy ra sự cố."
+                        )
+                        steps = [
+                            "Kiểm tra lại tên chính xác của thiết bị hoặc tài liệu nghiệp vụ tương ứng.",
+                            "Đối chiếu các tham số và mã cảnh báo hiển thị trên giao diện điều khiển thực tế.",
+                            "Trao đổi trực tiếp với kỹ sư phụ trách miền để được cung cấp tài liệu SOP hoặc bản vẽ kỹ thuật.",
+                        ]
+                        local_answer = format_tier_4_inferred_answer(
+                            question=question,
+                            inferred_content=inferred_body,
+                            reasoning_steps=steps,
+                            actions=TIER_5_DEFAULT_ACTIONS,
+                        )
+                    is_draft = True
+                    draft_source = "5tier_ladder_inferred"
+                    draft_question = question
             if not is_draft:
                 local_answer = "\n\n".join(lines)
 

@@ -1213,6 +1213,73 @@ def render_chat_bubble(
                     answer=display_content,
                     locale=locale,
                 )
+
+                # 5-Tier Response Ladder: Tier 3 suggestions & Tier 5 actions
+                _msg_meta = getattr(msg, "metadata", {}) or {}
+                _ladder_rephrasings = _msg_meta.get("suggested_rephrasings") or []
+                if not _ladder_rephrasings and "👉 **" in display_content:
+                    _ladder_rephrasings = [
+                        m.group(1).strip()
+                        for m in re.finditer(r"👉\s*\*\*(.*?)\*\*", display_content)
+                    ]
+                if _ladder_rephrasings and render_interactive:
+                    st.caption("💡 **Gợi ý diễn đạt lại để tra cứu chính xác hơn:**")
+                    _r_cols = st.columns(min(len(_ladder_rephrasings), 4))
+                    for _ri, _r_text in enumerate(_ladder_rephrasings[:4]):
+                        with _r_cols[_ri]:
+                            if st.button(
+                                f"👉 {_r_text}",
+                                key=f"wsc_rephrase_{msg.id}_{_ri}",
+                                use_container_width=True,
+                            ):
+                                st.session_state[f"wsc_suggest_send_{conversation_id}"] = _r_text
+                                try:
+                                    from aios_habit.final_answer_composer import record_ladder_rephrase_acceptance
+                                    record_ladder_rephrase_acceptance(conversation_id, str(msg.id or ""), _r_text)
+                                except Exception:
+                                    pass
+                                safe_rerun()
+
+                # Tier 5 Interactive Action Buttons
+                _has_tier_5 = _msg_meta.get("tier") in (3, 4, 5, "3", "4", "5") or "Hành động tiếp nối" in display_content
+                if _has_tier_5 and render_interactive:
+                    _act_cols = st.columns(3)
+                    with _act_cols[0]:
+                        if st.button(
+                            "🎓 Dạy AIOS điều này",
+                            key=f"wsc_tier5_teach_{msg.id}",
+                            use_container_width=True,
+                            help="Bổ sung thông tin chuẩn xác vào kho tri thức",
+                        ):
+                            st.session_state["wsc_open_teach_dialog"] = True
+                            st.session_state["wsc_teach_prefill_question"] = feedback_question
+                            st.toast("📝 Đã mở form nạp tri thức cho câu hỏi này.")
+                            safe_rerun()
+                    with _act_cols[1]:
+                        if st.button(
+                            "👨‍💼 Hỏi chuyên gia miền",
+                            key=f"wsc_tier5_expert_{msg.id}",
+                            use_container_width=True,
+                            help="Chuyển thắc mắc vào hàng đợi của kỹ sư/chuyên gia phụ trách",
+                        ):
+                            try:
+                                from aios_habit.final_answer_composer import route_question_to_expert_queue
+                                route_question_to_expert_queue(conversation_id, str(msg.id or ""), feedback_question, domain=_msg_domain)
+                                st.toast("✅ Đã gửi thắc mắc đến kỹ sư phụ trách miền!")
+                            except Exception as _e_exp:
+                                st.toast(f"Đã ghi nhận yêu cầu: {_e_exp}")
+                            safe_rerun()
+                    with _act_cols[2]:
+                        if st.button(
+                            "🌐 Hỏi AI ngoài",
+                            key=f"wsc_tier5_extai_{msg.id}",
+                            use_container_width=True,
+                            help="Chuyển sang chế độ AI ngoài (Gemini/ChatGPT) để tham khảo",
+                        ):
+                            st.session_state[f"wsc_ai_mode_{conversation_id}"] = "external"
+                            st.session_state[f"wsc_suggest_send_{conversation_id}"] = feedback_question
+                            st.toast("🌐 Đang chuyển sang chế độ Hỏi AI ngoài...")
+                            safe_rerun()
     else:
         st.info(msg.content)
 

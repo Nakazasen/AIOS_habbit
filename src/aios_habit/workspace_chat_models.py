@@ -120,6 +120,7 @@ class ChatMessage:
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
     trace_id: Optional[str] = None
     reply_to_message_id: Optional[str] = None
+    metadata: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -127,9 +128,11 @@ class ChatMessage:
     @classmethod
     def from_dict(cls, data: dict) -> 'ChatMessage':
         valid_keys = {
-            "id", "conversation_id", "role", "content", "created_at", "trace_id", "reply_to_message_id"
+            "id", "conversation_id", "role", "content", "created_at", "trace_id", "reply_to_message_id", "metadata"
         }
         filtered = {k: v for k, v in data.items() if k in valid_keys}
+        if "metadata" not in filtered or not isinstance(filtered["metadata"], dict):
+            filtered["metadata"] = {}
         return cls(**filtered)
 
 

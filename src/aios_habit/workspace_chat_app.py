@@ -2008,6 +2008,19 @@ def _run_chat_turn_async(
                             f"[DRAFT_FALLBACK_COMPLETE] conv={conversation_id} wait_s={worker_wait_s:.3f} total_s={turn_total_s:.3f} timestamp={ts_draft}"
                         )
                         return draft_res
+                    from aios_habit.final_answer_composer import deliver_5tier_ladder_answer
+                    ladder_res = deliver_5tier_ladder_answer(
+                        q_text,
+                        conversation_id=conversation_id,
+                        notebook_id=notebook_id,
+                        user_raw_input=user_raw_input,
+                        user_message_id=user_message_id,
+                        current_ui_locale=current_ui_locale,
+                        answer_language=answer_language,
+                        on_chunk=on_chunk,
+                    )
+                    if ladder_res is not None:
+                        return ladder_res
                 return (False, "", None, err_msg)
         elif ret_res["summary_count"] == 0:
             if has_attached_facts:
@@ -2044,7 +2057,34 @@ def _run_chat_turn_async(
                         f"[DRAFT_FALLBACK_COMPLETE] conv={conversation_id} wait_s={worker_wait_s:.3f} total_s={turn_total_s:.3f} timestamp={ts_draft}"
                     )
                     return draft_res
-                # st.session_state.wsc_action_error = "Chưa tìm thấy đoạn phù hợp trong nguồn đang bật."
+                from aios_habit.final_answer_composer import deliver_5tier_ladder_answer
+                ladder_res = deliver_5tier_ladder_answer(
+                    q_text,
+                    conversation_id=conversation_id,
+                    notebook_id=notebook_id,
+                    user_raw_input=user_raw_input,
+                    user_message_id=user_message_id,
+                    current_ui_locale=current_ui_locale,
+                    answer_language=answer_language,
+                    on_chunk=on_chunk,
+                )
+                if ladder_res is not None:
+                    turn_total_s = time.time() - t_turn_start
+                    ts_ladder = format_marker_timestamp()
+                    try:
+                        LOGGER.info(
+                            "[LADDER_ANSWER_COMPLETE] conv=%s wait_s=%.3f total_s=%.3f timestamp=%s",
+                            conversation_id,
+                            worker_wait_s,
+                            turn_total_s,
+                            ts_ladder,
+                        )
+                    except Exception:
+                        pass
+                    _safe_print_streaming_marker(
+                        f"[LADDER_ANSWER_COMPLETE] conv={conversation_id} wait_s={worker_wait_s:.3f} total_s={turn_total_s:.3f} timestamp={ts_ladder}"
+                    )
+                    return ladder_res
                 err_msg = t("no_matched_segments_error", locale=current_ui_locale)
                 return (False, "", None, err_msg)
         else:
@@ -6022,13 +6062,6 @@ else:
 
                 if _ask_disabled and not (is_answering or is_waiting_for_sources):
                     st.caption(f"⏳ {_ask_tooltip}")
-
-                    @st.fragment(run_every=1.5)
-                    def _poll_worker_warming_ready() -> None:
-                        if is_workspace_chat_worker_warmed(collection_id=_target_composer_col):
-                            safe_rerun(scope="app")
-
-                    _poll_worker_warming_ready()
 
                 if ask_submitted and pending_submission:
                     # A fresh submit intentionally replaces an older waiting
