@@ -1,141 +1,15 @@
 {
-  "ticket": "DESKTOP-HOME-SEND-ACK-LATENCY-REMEASURE",
+  "ticket": "DESKTOP-HOME-SEND-ACK-CLIENT-INSTANT",
   "machine": "H410ASROCK",
   "python_version": "3.11.14 (main, Feb 12 2026, 00:37:49) [MSC v.1944 64 bit (AMD64)]",
-  "timestamp": "2026-10-21T22:38:21.091564",
+  "timestamp": "2026-10-21T23:52:58.156476",
   "measurement_method": {
     "clock": "in-page performance.now()",
     "t0_definition": "real click event on Send button (capture: true on document)",
     "t_end_definition": "MutationObserver verification that BOTH user question bubble AND ack card/indicator are present in DOM",
     "identical_standard": true
   },
-  "baseline_7a2d4e90": {
-    "version_tag": "7a2d4e90",
-    "commit_sha": "7a2d4e90",
-    "app_dir": "D:\\Sandbox\\AIOS_habbit_worktree_7a2d4e90",
-    "question": "C6770 nguyen nhan thuong gap la gi?",
-    "num_runs": 5,
-    "raw_latencies": [
-      1.478,
-      1.498,
-      1.582,
-      1.356,
-      1.567
-    ],
-    "median_latency_seconds": 1.498,
-    "mean_latency_seconds": 1.496,
-    "min_latency_seconds": 1.356,
-    "max_latency_seconds": 1.582,
-    "std_latency_seconds": 0.08,
-    "runs": [
-      {
-        "version": "7a2d4e90",
-        "t0_perf": 724.8999999985099,
-        "t0_epoch": 1729524902832,
-        "t0_iso": "2026-10-21T15:35:02.832Z",
-        "t_end_perf": 2202.89999999851,
-        "t_end_epoch": 1729524904310.0,
-        "t_end_iso": "2026-10-21T15:35:04.310Z",
-        "latency_ms": 1478.0,
-        "latency_seconds": 1.478,
-        "ack_type": "assistant_wait_card",
-        "user_bubbles_initial": 0,
-        "user_bubbles_current": 1,
-        "assistant_bubbles_initial": 0,
-        "assistant_bubbles_current": 1,
-        "success": true,
-        "run_index": 1,
-        "screenshot_filename": "anh-ack-7a2d4e90-run1.png",
-        "screenshot_sha256": "50FBE10C21C2780A73CB1D2CAC46D57BE796D3BD088BA717AA0C6B2B408CB880",
-        "screenshot_size_bytes": 80721
-      },
-      {
-        "version": "7a2d4e90",
-        "t0_perf": 729.0,
-        "t0_epoch": 1729524913024,
-        "t0_iso": "2026-10-21T15:35:13.024Z",
-        "t_end_perf": 2227.0,
-        "t_end_epoch": 1729524914522.0,
-        "t_end_iso": "2026-10-21T15:35:14.522Z",
-        "latency_ms": 1498.0,
-        "latency_seconds": 1.498,
-        "ack_type": "assistant_wait_card",
-        "user_bubbles_initial": 0,
-        "user_bubbles_current": 1,
-        "assistant_bubbles_initial": 0,
-        "assistant_bubbles_current": 1,
-        "success": true,
-        "run_index": 2,
-        "screenshot_filename": "anh-ack-7a2d4e90-run2.png",
-        "screenshot_sha256": "B57E9E51BE83342DAF3D43DBD2FB3F961D7236AC2225AAE150F80EAC61E84B44",
-        "screenshot_size_bytes": 80120
-      },
-      {
-        "version": "7a2d4e90",
-        "t0_perf": 732.2,
-        "t0_epoch": 1729524922697,
-        "t0_iso": "2026-10-21T15:35:22.697Z",
-        "t_end_perf": 2314.2,
-        "t_end_epoch": 1729524924279.0,
-        "t_end_iso": "2026-10-21T15:35:24.279Z",
-        "latency_ms": 1582.0,
-        "latency_seconds": 1.582,
-        "ack_type": "assistant_wait_card",
-        "user_bubbles_initial": 0,
-        "user_bubbles_current": 1,
-        "assistant_bubbles_initial": 0,
-        "assistant_bubbles_current": 1,
-        "success": true,
-        "run_index": 3,
-        "screenshot_filename": "anh-ack-7a2d4e90-run3.png",
-        "screenshot_sha256": "6BDB933AF2C6D3A45E21C8364BA4BFBE51B516BE7303DC321542AB4F7657D335",
-        "screenshot_size_bytes": 87117
-      },
-      {
-        "version": "7a2d4e90",
-        "t0_perf": 725.5,
-        "t0_epoch": 1729524932308,
-        "t0_iso": "2026-10-21T15:35:32.308Z",
-        "t_end_perf": 2081.5,
-        "t_end_epoch": 1729524933664.0,
-        "t_end_iso": "2026-10-21T15:35:33.664Z",
-        "latency_ms": 1356.0,
-        "latency_seconds": 1.356,
-        "ack_type": "assistant_wait_card",
-        "user_bubbles_initial": 0,
-        "user_bubbles_current": 1,
-        "assistant_bubbles_initial": 0,
-        "assistant_bubbles_current": 1,
-        "success": true,
-        "run_index": 4,
-        "screenshot_filename": "anh-ack-7a2d4e90-run4.png",
-        "screenshot_sha256": "BBB59A306AF1619546BD7CF1CCE864458B5D2834B9190FAB9007916BFD777BDF",
-        "screenshot_size_bytes": 86321
-      },
-      {
-        "version": "7a2d4e90",
-        "t0_perf": 3729.400000035763,
-        "t0_epoch": 1792597099127,
-        "t0_iso": "2026-10-21T15:38:19.127Z",
-        "t_end_perf": 5296.699999988079,
-        "t_end_epoch": 1792597100694.3,
-        "t_end_iso": "2026-10-21T15:38:20.694Z",
-        "latency_ms": 1567.2999999523163,
-        "latency_seconds": 1.567,
-        "ack_type": "assistant_wait_card",
-        "user_bubbles_initial": 34,
-        "user_bubbles_current": 35,
-        "assistant_bubbles_initial": 19,
-        "assistant_bubbles_current": 20,
-        "success": true,
-        "run_index": 5,
-        "screenshot_filename": "anh-ack-7a2d4e90-run5.png",
-        "screenshot_sha256": "6997BC77FBFFC243D9BDD8C979D551430E13A7F2E3A7528D9DBC7E4A7D4E213F",
-        "screenshot_size_bytes": 86783
-      }
-    ]
-  },
-  "after_c3923032": {
+  "baseline_c3923032": {
     "version_tag": "c3923032",
     "commit_sha": "c3923032",
     "app_dir": "D:\\Sandbox\\AIOS_habbit",
@@ -261,28 +135,194 @@
       }
     ]
   },
+  "after_client_instant": {
+    "version_tag": "client_instant",
+    "commit_sha": "phieu-viec/rag-fix1",
+    "app_dir": "D:\\Sandbox\\AIOS_habbit",
+    "question": "C6770 nguyen nhan thuong gap la gi?",
+    "num_runs": 5,
+    "raw_latencies": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "median_latency_seconds": 0,
+    "mean_latency_seconds": 0.0,
+    "min_latency_seconds": 0,
+    "max_latency_seconds": 0,
+    "std_latency_seconds": 0.0,
+    "runs": [
+      {
+        "version": "client_instant",
+        "t0_perf": 3397.100000023842,
+        "t0_epoch": 1792601495497,
+        "t0_iso": "2026-10-21T16:51:35.497Z",
+        "t_end_perf": 3397.5,
+        "t_end_epoch": 1792601495497.4,
+        "t_end_iso": "2026-10-21T16:51:35.497Z",
+        "latency_ms": 0.3999999761581421,
+        "latency_seconds": 0,
+        "ack_type": "wsc-send-ack-pill",
+        "user_bubbles_initial": 0,
+        "user_bubbles_current": 1,
+        "assistant_bubbles_initial": 0,
+        "assistant_bubbles_current": 1,
+        "success": true,
+        "run_index": 1,
+        "screenshot_filename": "anh-ack-client_instant-run1.png",
+        "screenshot_sha256": "A3D51F130BABC9DF8B079F1D526BD5CC22A9F1CC5983D570AA1CE00239F02686",
+        "screenshot_size_bytes": 85815
+      },
+      {
+        "version": "client_instant",
+        "t0_perf": 3942.699999988079,
+        "t0_epoch": 1792601504268,
+        "t0_iso": "2026-10-21T16:51:44.268Z",
+        "t_end_perf": 3942.900000035763,
+        "t_end_epoch": 1792601504268.2,
+        "t_end_iso": "2026-10-21T16:51:44.268Z",
+        "latency_ms": 0.20000004768371582,
+        "latency_seconds": 0,
+        "ack_type": "wsc-send-ack-pill",
+        "user_bubbles_initial": 0,
+        "user_bubbles_current": 1,
+        "assistant_bubbles_initial": 0,
+        "assistant_bubbles_current": 1,
+        "success": true,
+        "run_index": 2,
+        "screenshot_filename": "anh-ack-client_instant-run2.png",
+        "screenshot_sha256": "A3D51F130BABC9DF8B079F1D526BD5CC22A9F1CC5983D570AA1CE00239F02686",
+        "screenshot_size_bytes": 85815
+      },
+      {
+        "version": "client_instant",
+        "t0_perf": 3607.600000023842,
+        "t0_epoch": 1792601512768,
+        "t0_iso": "2026-10-21T16:51:52.768Z",
+        "t_end_perf": 3607.699999988079,
+        "t_end_epoch": 1792601512768.1,
+        "t_end_iso": "2026-10-21T16:51:52.768Z",
+        "latency_ms": 0.09999996423721313,
+        "latency_seconds": 0,
+        "ack_type": "wsc-send-ack-pill",
+        "user_bubbles_initial": 0,
+        "user_bubbles_current": 1,
+        "assistant_bubbles_initial": 0,
+        "assistant_bubbles_current": 1,
+        "success": true,
+        "run_index": 3,
+        "screenshot_filename": "anh-ack-client_instant-run3.png",
+        "screenshot_sha256": "A3D51F130BABC9DF8B079F1D526BD5CC22A9F1CC5983D570AA1CE00239F02686",
+        "screenshot_size_bytes": 85815
+      },
+      {
+        "version": "client_instant",
+        "t0_perf": 3714.699999988079,
+        "t0_epoch": 1792601521035,
+        "t0_iso": "2026-10-21T16:52:01.035Z",
+        "t_end_perf": 3714.800000011921,
+        "t_end_epoch": 1792601521035.1,
+        "t_end_iso": "2026-10-21T16:52:01.035Z",
+        "latency_ms": 0.10000002384185791,
+        "latency_seconds": 0,
+        "ack_type": "wsc-send-ack-pill",
+        "user_bubbles_initial": 0,
+        "user_bubbles_current": 1,
+        "assistant_bubbles_initial": 0,
+        "assistant_bubbles_current": 1,
+        "success": true,
+        "run_index": 4,
+        "screenshot_filename": "anh-ack-client_instant-run4.png",
+        "screenshot_sha256": "8028851A097DB421DC74C530835AE2191651BD274459C852782106375BF313C5",
+        "screenshot_size_bytes": 85890
+      },
+      {
+        "version": "client_instant",
+        "t0_perf": 30961,
+        "t0_epoch": 1792601556902,
+        "t0_iso": "2026-10-21T16:52:36.902Z",
+        "t_end_perf": 30961.099999964237,
+        "t_end_epoch": 1792601556902.1,
+        "t_end_iso": "2026-10-21T16:52:36.902Z",
+        "latency_ms": 0.09999996423721313,
+        "latency_seconds": 0,
+        "ack_type": "wsc-send-ack-pill",
+        "user_bubbles_initial": 0,
+        "user_bubbles_current": 1,
+        "assistant_bubbles_initial": 0,
+        "assistant_bubbles_current": 1,
+        "success": true,
+        "run_index": 5,
+        "screenshot_filename": "anh-ack-client_instant-run5.png",
+        "screenshot_sha256": "A3D51F130BABC9DF8B079F1D526BD5CC22A9F1CC5983D570AA1CE00239F02686",
+        "screenshot_size_bytes": 85815
+      }
+    ],
+    "dedup_verification": {
+      "clicks_fired": 3,
+      "user_bubbles_added": 1,
+      "db_turns_added": 1,
+      "passed": true
+    },
+    "cold_warming_verification": {
+      "question_preserved": true,
+      "passed": true
+    }
+  },
   "comparison": {
-    "baseline_median_seconds": 1.498,
-    "after_median_seconds": 1.228,
-    "delta_seconds": -0.27,
-    "target_sub_0_5s_met": false,
+    "baseline_median_seconds": 1.228,
+    "after_median_seconds": 0,
+    "delta_seconds": -1.228,
+    "target_sub_0_5s_met": true,
     "clear_improvement": true
   },
   "submitted_evidence_files": {
     "anh_01_send_ack_first_visual_feedback": {
       "filename": "anh-01-send-ack-first-visual-feedback.png",
-      "size_bytes": 80817,
-      "sha256": "01F9FC6996C180B9C7F659B546B141C65EC38311E62D9B579C604478B8880B3A"
+      "size_bytes": 85815,
+      "sha256": "A3D51F130BABC9DF8B079F1D526BD5CC22A9F1CC5983D570AA1CE00239F02686"
     },
-    "anh_ack_c3923032_run1": {
-      "filename": "anh-ack-c3923032-run1.png",
-      "size_bytes": 80817,
-      "sha256": "01F9FC6996C180B9C7F659B546B141C65EC38311E62D9B579C604478B8880B3A"
+    "anh_02_rapid_click_single_turn_guard": {
+      "filename": "anh-02-rapid-click-single-turn-guard.png",
+      "size_bytes": 85469,
+      "sha256": "FEEC0F6502B77A6E6BEF24ED9EE544B65A0E0238458C3957B8F942BF8CE2B960"
     },
-    "anh_ack_7a2d4e90_run1": {
-      "filename": "anh-ack-7a2d4e90-run1.png",
-      "size_bytes": 80721,
-      "sha256": "50FBE10C21C2780A73CB1D2CAC46D57BE796D3BD088BA717AA0C6B2B408CB880"
+    "anh_03_cold_warming_auto_unlock_intact": {
+      "filename": "anh-03-cold-warming-auto-unlock-intact.png",
+      "size_bytes": 100676,
+      "sha256": "4F6730AFAF53406E4B5C2ECF2E3EFBDC0E5E45513863DCAF6D75B245CDED05F7"
+    },
+    "anh_ack_client_instant_run1": {
+      "filename": "anh-ack-client_instant-run1.png",
+      "size_bytes": 85815,
+      "sha256": "A3D51F130BABC9DF8B079F1D526BD5CC22A9F1CC5983D570AA1CE00239F02686"
+    },
+    "anh_ack_client_instant_run2": {
+      "filename": "anh-ack-client_instant-run2.png",
+      "size_bytes": 85815,
+      "sha256": "A3D51F130BABC9DF8B079F1D526BD5CC22A9F1CC5983D570AA1CE00239F02686"
+    },
+    "anh_ack_client_instant_run3": {
+      "filename": "anh-ack-client_instant-run3.png",
+      "size_bytes": 85815,
+      "sha256": "A3D51F130BABC9DF8B079F1D526BD5CC22A9F1CC5983D570AA1CE00239F02686"
+    },
+    "anh_ack_client_instant_run4": {
+      "filename": "anh-ack-client_instant-run4.png",
+      "size_bytes": 85890,
+      "sha256": "8028851A097DB421DC74C530835AE2191651BD274459C852782106375BF313C5"
+    },
+    "anh_ack_client_instant_run5": {
+      "filename": "anh-ack-client_instant-run5.png",
+      "size_bytes": 85815,
+      "sha256": "A3D51F130BABC9DF8B079F1D526BD5CC22A9F1CC5983D570AA1CE00239F02686"
+    },
+    "verification_send_ack_evidence": {
+      "filename": "verification_send_ack_evidence.json",
+      "size_bytes": 12276,
+      "sha256": "60C244111A706D1A13541DF2B75D61357BFAD6FE9C8BD4F20FBB3A96E0B57858"
     }
   }
 }

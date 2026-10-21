@@ -5118,6 +5118,21 @@ else:
                     "user_msg_id": f"MSG-U-{uuid.uuid4().hex[:8].upper()}",
                     "timestamp": time.time(),
                 }
+                # Log send ack event to local_cases for continuous improvement loop (Requirement 4.6)
+                try:
+                    _lc_dir = Path("local_cases")
+                    _lc_dir.mkdir(parents=True, exist_ok=True)
+                    _ack_event = {
+                        "timestamp": datetime.now().isoformat(),
+                        "conversation_id": conv_id,
+                        "question_length": len(raw_text),
+                        "ack_mode": "client_instant",
+                        "server_receive_time": time.time(),
+                    }
+                    with open(_lc_dir / "send_ack_events.jsonl", "a", encoding="utf-8") as _lf:
+                        _lf.write(json.dumps(_ack_event, ensure_ascii=False) + "\n")
+                except Exception:
+                    pass
 
             def _render_chat_main_column():
                 ai_request_key = f"wsc_ai_request_{active_conversation.id}"
@@ -5296,6 +5311,16 @@ else:
                                            conversation_id=active_conversation.id,
                                            feedback_question=_fb_question,
                                            render_interactive=should_render_interactive)
+                    _opt_answering_str = "true" if is_answering else "false"
+                    _opt_has_error_str = "true" if bool(st.session_state.get("wsc_action_error")) else "false"
+                    st.html(
+                        f'<div id="wsc-optimistic-slot-{active_conversation.id}" '
+                        f'class="wsc-optimistic-slot" '
+                        f'data-conv-id="{active_conversation.id}" '
+                        f'data-messages-count="{total_msgs}" '
+                        f'data-answering="{_opt_answering_str}" '
+                        f'data-error="{_opt_has_error_str}"></div>'
+                    )
                     if is_answering:
                         stream_state = (
                             active_ai_request.get("stream_state")
@@ -6114,28 +6139,131 @@ else:
                                 )
 
                     _js_is_answering = "true" if is_answering else "false"
-                    st.html(
+                    _js_has_error = "true" if bool(st.session_state.get("wsc_action_error")) else "false"
+                    _js_ack_text = t("question_received_ack", locale=current_ui_locale)
+                    _js_wait_title = t("qa_wait_title", locale=current_ui_locale)
+                    _js_wait_spinner = t("ai_analysis_spinner", locale=current_ui_locale)
+                    _js_step_find = t("qa_step_find", locale=current_ui_locale)
+                    _js_step_read = t("qa_step_read", locale=current_ui_locale)
+                    _js_step_synth = t("qa_step_synth", locale=current_ui_locale)
+
+                    st.html("<!-- wsc-ack-hook -->")
+                    import streamlit.components.v1 as _wsc_components
+                    _wsc_components.html(
                         f"""
                         <script>
                         (function() {{
-                          const doc = window.document;
-
+                          const parentDoc = window.parent.document;
+                          const parentWin = window.parent;
                           const isAnswering = {_js_is_answering};
-                          const currentSendBtn = doc.querySelector('[class*="st-key-wsc_ask_"] button, [class*="st-key-wsc-action-"] button');
-                          if (currentSendBtn && !isAnswering) {{
-                            currentSendBtn.removeAttribute("data-wsc-sending");
-                            currentSendBtn.removeAttribute("disabled");
-                            currentSendBtn.style.pointerEvents = "";
-                            currentSendBtn.style.opacity = "";
+                          const hasError = {_js_has_error};
+                          const convId = "{active_conversation.id}";
+
+                          // 1. Reconciliation: If server is answering (real bubble + real streaming box present)
+                          // or error returned or settled: clear optimistic slot so no duplicate bubble exists
+                          const slot = parentDoc.getElementById("wsc-optimistic-slot-" + convId) || parentDoc.querySelector('.wsc-optimistic-slot');
+                          if (slot && (isAnswering || hasError || slot.getAttribute("data-wsc-filled") === "true")) {{
+                            slot.innerHTML = "";
+                            slot.removeAttribute("data-wsc-filled");
                           }}
 
-                          if (!window.__wscComposerShortcutBound) {{
-                            window.__wscComposerShortcutBound = true;
+                          // 2. State recovery on composer controls
+                          const currentSendBtn = parentDoc.querySelector('[class*="st-key-wsc_ask_"] button, [class*="st-key-wsc-action-"] button');
+                          if (currentSendBtn && !isAnswering) {{
+                            if (currentSendBtn.getAttribute("data-wsc-sending") === "true") {{
+                              currentSendBtn.removeAttribute("data-wsc-sending");
+                              currentSendBtn.removeAttribute("disabled");
+                              currentSendBtn.style.pointerEvents = "";
+                              currentSendBtn.style.opacity = "";
+                            }}
+                          }}
 
-                            doc.addEventListener("input", function(e) {{
+                          const currentTextarea = parentDoc.querySelector('[class*="st-key-wsc_question_input_"] textarea');
+                          if (currentTextarea && !isAnswering) {{
+                            currentTextarea.removeAttribute("readonly");
+                            currentTextarea.removeAttribute("disabled");
+                            currentTextarea.style.pointerEvents = "";
+                            currentTextarea.style.opacity = "";
+                          }}
+
+                          // 3. Client-side instant visual ack trigger
+                          parentWin.__wscDoInstantAck = function(textarea, sendBtn) {{
+                            const rawText = (textarea ? textarea.value : "").trim();
+                            if (!rawText) return;
+
+                            // (b) Lock controls immediately to prevent duplicates
+                            sendBtn.setAttribute("data-wsc-sending", "true");
+                            sendBtn.setAttribute("disabled", "true");
+                            sendBtn.style.pointerEvents = "none";
+                            sendBtn.style.opacity = "0.5";
+
+                            if (textarea) {{
+                              textarea.setAttribute("readonly", "true");
+                              textarea.style.opacity = "0.7";
+                            }}
+
+                            // (a) Render instant question bubble + ack badge into chat area
+                            const targetSlot = parentDoc.getElementById("wsc-optimistic-slot-" + convId) || parentDoc.querySelector('.wsc-optimistic-slot');
+                            if (targetSlot) {{
+                              const escapedText = rawText
+                                .replace(/&/g, "&amp;")
+                                .replace(/</g, "&lt;")
+                                .replace(/>/g, "&gt;")
+                                .replace(/"/g, "&quot;")
+                                .replace(/'/g, "&#039;");
+
+                              const optimisticHtml = `
+                                <div data-testid="stChatMessage" class="stChatMessage wsc-client-optimistic-bubble" style="display:flex; gap:1rem; padding:1rem 0; animation: fadeIn 0.1s ease-in;">
+                                  <div data-testid="stChatMessageAvatarUser" style="width:2rem; height:2rem; border-radius:50%; background:#f1f5f9; display:flex; align-items:center; justify-content:center; font-size:1.2rem; flex-shrink:0;">
+                                    🧑
+                                  </div>
+                                  <div data-testid="stChatMessageContent" style="flex:1; min-width:0;">
+                                    <div class="stMarkdown" style="word-break:break-word;">
+                                      <p style="margin:0; font-size:1rem; line-height:1.5;">${{escapedText}}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div data-testid="stChatMessage" class="stChatMessage wsc-client-optimistic-ack" style="display:flex; gap:1rem; padding:0.5rem 0 1rem 0; animation: fadeIn 0.1s ease-in;">
+                                  <div data-testid="stChatMessageAvatarAssistant" style="width:2rem; height:2rem; border-radius:50%; background:#e0f2fe; display:flex; align-items:center; justify-content:center; font-size:1.2rem; flex-shrink:0;">
+                                    🤖
+                                  </div>
+                                  <div data-testid="stChatMessageContent" style="flex:1; min-width:0;">
+                                    <div class="wsc-send-ack-pill" style="display:inline-flex; align-items:center; gap:6px; background:#ECFDF5; border:1px solid #10B981; color:#065F46; padding:3px 10px; border-radius:12px; font-size:0.82rem; font-weight:600; margin-bottom:8px;">
+                                      <span>✅</span> <span>{_js_ack_text}</span>
+                                    </div>
+                                    <div class="wsc-answer-wait-steps" style="font-size:0.85rem; color:#475569; margin-top:4px;">
+                                      <div style="font-style:italic; margin-bottom:4px;">⏳ {_js_wait_spinner}</div>
+                                      <div style="font-size:0.8rem; color:#64748b; margin-bottom:4px;">{_js_wait_title}</div>
+                                      <div style="margin-left:4px; font-size:0.82rem; line-height:1.4;">
+                                        <div>● {_js_step_find}</div>
+                                        <div>○ {_js_step_read}</div>
+                                        <div>○ {_js_step_synth}</div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              `;
+                              targetSlot.innerHTML = optimisticHtml;
+                              targetSlot.setAttribute("data-wsc-filled", "true");
+                              targetSlot.scrollIntoView({{ behavior: "instant", block: "nearest" }});
+                            }}
+
+                            const hintEl = parentDoc.querySelector('[class*="st-key-wsc-shortcut-hint-"]');
+                            if (hintEl) {{
+                              hintEl.innerHTML = '<span class="wsc-client-ack-tag" style="color:#059669; font-weight:600; font-size:0.75rem;">✓ Đã nhận</span>';
+                            }}
+                            console.log("[WSC_CLICK_ACK] Instant visual ack rendered in DOM and composer locked.");
+                          }};
+
+                          // 4. Bind event listeners to parent document (once)
+                          if (!parentWin.__wscComposerShortcutBound) {{
+                            parentWin.__wscComposerShortcutBound = true;
+
+                            parentDoc.addEventListener("input", function(e) {{
                               if (e.target && e.target.matches && e.target.matches('[class*="st-key-wsc_question_input_"] textarea')) {{
-                                const btn = doc.querySelector('[class*="st-key-wsc_ask_"] button, [class*="st-key-wsc-action-"] button');
-                                if (btn) {{
+                                const btn = parentDoc.querySelector('[class*="st-key-wsc_ask_"] button, [class*="st-key-wsc-action-"] button');
+                                // Only reset lock if sending was active, never unlock cold warming button!
+                                if (btn && btn.getAttribute("data-wsc-sending") === "true") {{
                                   btn.removeAttribute("data-wsc-sending");
                                   btn.removeAttribute("disabled");
                                   btn.style.pointerEvents = "";
@@ -6144,7 +6272,7 @@ else:
                               }}
                             }}, true);
 
-                            doc.addEventListener("click", function(event) {{
+                            parentDoc.addEventListener("click", function(event) {{
                               const sendBtn = event.target.closest('[class*="st-key-wsc_ask_"] button, [class*="st-key-wsc-action-"] button');
                               if (sendBtn) {{
                                 if (sendBtn.disabled || sendBtn.getAttribute("data-wsc-sending") === "true") {{
@@ -6155,32 +6283,26 @@ else:
                                 const isStopBtn = sendBtn.innerText.includes("Dừng") || sendBtn.innerText.includes("stop");
                                 if (isStopBtn) return;
 
-                                const textarea = doc.querySelector('[class*="st-key-wsc_question_input_"] textarea');
+                                const textarea = parentDoc.querySelector('[class*="st-key-wsc_question_input_"] textarea');
                                 const hasText = textarea && textarea.value.trim().length > 0;
-                                if (hasText) {{
-                                  sendBtn.setAttribute("data-wsc-sending", "true");
-                                  sendBtn.style.pointerEvents = "none";
-                                  sendBtn.style.opacity = "0.6";
-                                  setTimeout(function() {{
-                                    sendBtn.setAttribute("disabled", "true");
-                                  }}, 50);
-
-                                  const hintEl = doc.querySelector('[class*="st-key-wsc-shortcut-hint-"]');
-                                  if (hintEl) {{
-                                    hintEl.innerHTML = '<span class="wsc-client-ack-tag" style="color:#059669; font-weight:600; font-size:0.75rem;">✓ Đã nhận</span>';
-                                  }}
-                                  console.log("[WSC_CLICK_ACK] Instant visual ack rendered and duplicate guard locked.");
+                                if (hasText && typeof parentWin.__wscDoInstantAck === "function") {{
+                                  parentWin.__wscDoInstantAck(textarea, sendBtn);
                                 }}
                               }}
                             }}, true);
 
-                            doc.addEventListener("keydown", function(event) {{
+                            parentDoc.addEventListener("keydown", function(event) {{
                               if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {{
-                                const sendButton = doc.querySelector(
-                                  '[class*="st-key-wsc-action-"] button'
+                                const sendButton = parentDoc.querySelector(
+                                  '[class*="st-key-wsc-action-"] button, [class*="st-key-wsc_ask_"] button'
                                 );
                                 if (sendButton && !sendButton.disabled && sendButton.getAttribute("data-wsc-sending") !== "true") {{
                                   event.preventDefault();
+                                  const textarea = parentDoc.querySelector('[class*="st-key-wsc_question_input_"] textarea');
+                                  const hasText = textarea && textarea.value.trim().length > 0;
+                                  if (hasText && typeof parentWin.__wscDoInstantAck === "function") {{
+                                    parentWin.__wscDoInstantAck(textarea, sendButton);
+                                  }}
                                   sendButton.click();
                                 }}
                               }}
@@ -6189,7 +6311,8 @@ else:
                         }})();
                         </script>
                         """,
-                        unsafe_allow_javascript=True,
+                        height=0,
+                        width=0,
                     )
 
                     if get_jig_session_type() == "truc_ban" or st.session_state.get("wsc_last_chart_png"):
