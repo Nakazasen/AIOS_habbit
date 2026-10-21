@@ -3003,8 +3003,10 @@ def get_ai_language_instruction(answer_language: Optional[str]) -> str:
 
     # Default to Vietnamese ('vi')
     return (
-        "Yêu cầu ngôn ngữ: Trả lời hoàn toàn bằng Tiếng Việt. "
-        "Giữ nguyên vẹn 100% tất cả các mã trích dẫn (ví dụ [1], [E1], EVD-001), tên tệp (ví dụ document.pdf), "
-        "đường dẫn tệp, mã lỗi kỹ thuật và các đoạn trích dẫn nguồn gốc. "
-        "Tuyệt đối không dịch hoặc làm thay đổi các mã định danh và trích dẫn bằng chứng."
+        "Yêu cầu ngôn ngữ: Trả lời hoàn toàn bằng Tiếng Việt chuẩn xác và tự nhiên. "
+        "Thân câu trả lời tuyệt đối không chứa các từ ngữ, câu chữ hoặc nhãn trường tiếng Nhật chưa dịch. "
+        "Mọi thông tin kỹ thuật, nguyên nhân, biện pháp khắc phục trích xuất từ tài liệu nguồn tiếng Nhật "
+        "đều phải được dịch và diễn đạt rõ ràng bằng Tiếng Việt để người dùng đọc hiểu ngay lập tức. "
+        "Chỉ giữ nguyên vẹn các mã trích dẫn (ví dụ [1], [E1]), tên tệp tài liệu trong dấu backtick "
+        "(ví dụ `02XC_自己診断表示一覧表.xls`) và mã định danh kỹ thuật / mã lỗi."
     )

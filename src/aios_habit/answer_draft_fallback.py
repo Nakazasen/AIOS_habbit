@@ -597,9 +597,18 @@ def deliver_draft_answer(
     if decision.lane != "draft_fallback":
         return None
 
-    if on_chunk and decision.answer_text:
+    from aios_habit.answer_language_policy import purify_markdown_text
+    purified_draft = purify_markdown_text(
+        decision.answer_text,
+        question=question,
+        route="draft_fallback",
+        conversation_id=conversation_id,
+        base_cases_dir=base_cases_dir,
+    )
+
+    if on_chunk and purified_draft:
         try:
-            on_chunk(decision.answer_text)
+            on_chunk(purified_draft)
         except Exception:
             pass
 
@@ -618,7 +627,7 @@ def deliver_draft_answer(
 
     trace = build_evidence_trace_from_citations(
         query=question,
-        answer_text=decision.answer_text,
+        answer_text=purified_draft,
         evidence_items=[],
         allowed_source_ids=[],
         notebook_id=notebook_id,
@@ -642,7 +651,7 @@ def deliver_draft_answer(
             id=assistant_msg_id,
             conversation_id=conversation_id,
             role="assistant",
-            content=decision.answer_text,
+            content=purified_draft,
             trace_id=trace.trace_id,
         )
     )

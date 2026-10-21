@@ -1,0 +1,166 @@
+{
+  "ticket": "DESKTOP-HOME-ANSWER-LANGUAGE-PURITY-FIX",
+  "timestamp": "2026-10-22T06:03:45.032820",
+  "events_logged_count": 36,
+  "sample_recent_events": [
+    {
+      "timestamp": "2026-10-22T06:03:12.266229",
+      "route": "error_lookup_synthesized",
+      "question": "Mã lỗi C6770 nguyên nhân là gì?",
+      "detected_count": 2,
+      "actions": [
+        "giu-dinh-danh",
+        "giu-dinh-danh"
+      ],
+      "details": [
+        {
+          "line": 7,
+          "action": "giu-dinh-danh",
+          "snippet": "- **Tài liệu tham chiếu:** 02XC_自己診断表示一覧表-Iris2020 VN.xls"
+        },
+        {
+          "line": 51,
+          "action": "giu-dinh-danh",
+          "snippet": "- **Báo cáo gốc:** `FY2027上期機器製造 品質状況 Tình hình chất lượng chế tạo máy FY2027 (6"
+        }
+      ],
+      "conversation_id": ""
+    },
+    {
+      "timestamp": "2026-10-22T06:03:12.268192",
+      "route": "5tier_ladder",
+      "question": "Mã lỗi C6770 nguyên nhân là gì?",
+      "detected_count": 2,
+      "actions": [
+        "giu-dinh-danh",
+        "giu-dinh-danh"
+      ],
+      "details": [
+        {
+          "line": 7,
+          "action": "giu-dinh-danh",
+          "snippet": "- **Tài liệu tham chiếu:** 02XC_自己診断表示一覧表-Iris2020 VN.xls"
+        },
+        {
+          "line": 51,
+          "action": "giu-dinh-danh",
+          "snippet": "- **Báo cáo gốc:** `FY2027上期機器製造 品質状況 Tình hình chất lượng chế tạo máy FY2027 (6"
+        }
+      ],
+      "conversation_id": "CONV-PURITY-C6770-001"
+    },
+    {
+      "timestamp": "2026-10-22T06:03:25.784492",
+      "route": "error_lookup_synthesized",
+      "question": "Mã lỗi JAM4212 nguyên nhân và xử lý thế nào?",
+      "detected_count": 2,
+      "actions": [
+        "giu-dinh-danh",
+        "giu-dinh-danh"
+      ],
+      "details": [
+        {
+          "line": 7,
+          "action": "giu-dinh-danh",
+          "snippet": "- **Tài liệu tham chiếu:** 02XC_機能定義書_JAM一覧 (1).xls"
+        },
+        {
+          "line": 34,
+          "action": "giu-dinh-danh",
+          "snippet": "- **Báo cáo gốc:** `FY2027上期機器製造 品質状況 Tình hình chất lượng chế tạo máy FY2027 (6"
+        }
+      ],
+      "conversation_id": ""
+    },
+    {
+      "timestamp": "2026-10-22T06:03:25.786488",
+      "route": "5tier_ladder",
+      "question": "Mã lỗi JAM4212 nguyên nhân và xử lý thế nào?",
+      "detected_count": 2,
+      "actions": [
+        "giu-dinh-danh",
+        "giu-dinh-danh"
+      ],
+      "details": [
+        {
+          "line": 7,
+          "action": "giu-dinh-danh",
+          "snippet": "- **Tài liệu tham chiếu:** 02XC_機能定義書_JAM一覧 (1).xls"
+        },
+        {
+          "line": 34,
+          "action": "giu-dinh-danh",
+          "snippet": "- **Báo cáo gốc:** `FY2027上期機器製造 品質状況 Tình hình chất lượng chế tạo máy FY2027 (6"
+        }
+      ],
+      "conversation_id": "CONV-PURITY-JAM4212-002"
+    },
+    {
+      "timestamp": "2026-10-22T06:03:39.501045",
+      "route": "error_lookup_synthesized",
+      "question": "Mã lỗi F000 nguyên nhân và biện pháp xử lý là gì?",
+      "detected_count": 2,
+      "actions": [
+        "giu-dinh-danh",
+        "giu-dinh-danh"
+      ],
+      "details": [
+        {
+          "line": 9,
+          "action": "giu-dinh-danh",
+          "snippet": "- **Tài liệu tham chiếu:** UWCAシステムエラー(FXXX)概要.xls"
+        },
+        {
+          "line": 32,
+          "action": "giu-dinh-danh",
+          "snippet": "- **Báo cáo gốc:** `old/2022年機器製造 品質状況 Tình hình chất lượng chế tạo máy 2022(10～"
+        }
+      ],
+      "conversation_id": ""
+    },
+    {
+      "timestamp": "2026-10-22T06:03:39.504039",
+      "route": "5tier_ladder",
+      "question": "Mã lỗi F000 nguyên nhân và biện pháp xử lý là gì?",
+      "detected_count": 2,
+      "actions": [
+        "giu-dinh-danh",
+        "giu-dinh-danh"
+      ],
+      "details": [
+        {
+          "line": 9,
+          "action": "giu-dinh-danh",
+          "snippet": "- **Tài liệu tham chiếu:** UWCAシステムエラー(FXXX)概要.xls"
+        },
+        {
+          "line": 32,
+          "action": "giu-dinh-danh",
+          "snippet": "- **Báo cáo gốc:** `old/2022年機器製造 品質状況 Tình hình chất lượng chế tạo máy 2022(10～"
+        }
+      ],
+      "conversation_id": "CONV-PURITY-F000-003"
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "anh-language-purity-01-c6770.png",
+      "size_bytes": 191723,
+      "sha256": "9C2D2B1845708A7E371C82B654EBDB44E0F178FC0AC7A409D82A8DE33595B943",
+      "scene": "C6770: Thân đáp án thuần Việt, '不要' được dịch sang đối sách xử lý tại chỗ, không còn ký tự Nhật thô"
+    },
+    {
+      "file": "anh-language-purity-02-jam4212.png",
+      "size_bytes": 184551,
+      "sha256": "B252323625BF50BE9DF89FB74AB681C5AC74E073E8186D7B1B55A9F36F2A5C95",
+      "scene": "JAM4212: Định nghĩa, cơ chế và nguyên nhân thuần Việt, chỉ giữ tên file tài liệu tham chiếu hợp lệ"
+    },
+    {
+      "file": "anh-language-purity-03-f000.png",
+      "size_bytes": 181508,
+      "sha256": "B5544091389D5A95A4093C5200F00F4597969A974A59C50F8463B450F8EE4609",
+      "scene": "F000: Bất thường truyền thông Panel-Main, 6 biện pháp xử lý kỹ thuật thuần Việt"
+    }
+  ],
+  "status": "PASS"
+}

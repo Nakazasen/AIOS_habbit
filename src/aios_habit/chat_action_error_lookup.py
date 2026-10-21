@@ -804,18 +804,24 @@ def _case_dict(row: sqlite3.Row, has_missing_col: bool = False) -> Dict[str, Any
         if p
     )
     thieu_hien_tuong, goi_y_hien_tuong, goi_y_nguon = _phenomenon_flag(row, raw)
+    from aios_habit.answer_language_policy import translate_kdtps_field
+    hien_tuong_trans, _ = translate_kdtps_field(hien_tuong, field_name="phenomenon")
+    nguyen_nhan_trans, _ = translate_kdtps_field(nguyen_nhan, field_name="cause")
+    doi_sach_trans, _ = translate_kdtps_field(doi_sach, field_name="remedy")
+    where_trans, _ = translate_kdtps_field(where, field_name="machine")
+    machine_trans, _ = translate_kdtps_field(machine_clean, field_name="machine")
     return {
         "id": row["id"],
         "no_dvd": row["no_dvd"] or "",
-        "where": where,
-        "machine_type": machine_clean,
+        "where": where_trans,
+        "machine_type": machine_trans,
         "serial": serial_val,
         "occurred_at": date_val,
         "category": str(category),
         "co_ma_that": _has_real_code(row, has_missing_col),
-        "hien_tuong": _clip(hien_tuong),
-        "nguyen_nhan": _clip(nguyen_nhan),
-        "doi_sach": _clip(doi_sach),
+        "hien_tuong": _clip(hien_tuong_trans),
+        "nguyen_nhan": _clip(nguyen_nhan_trans),
+        "doi_sach": _clip(doi_sach_trans),
         "bao_cao_goc": provenance,
         "thieu_hien_tuong": thieu_hien_tuong,
         "goi_y_hien_tuong": goi_y_hien_tuong,
@@ -875,8 +881,10 @@ def _render_synthesized_answer(
     ]
 
     entry = glossary.get(primary_code) or (glossary.get(codes[1]) if len(codes) > 1 else None)
+    from aios_habit.answer_language_policy import translate_kdtps_field, purify_markdown_text
     if entry:
         meaning = entry.get("name_vi") or entry.get("name_ja") or entry.get("name_en") or "Lỗi vận hành / chức năng"
+        meaning, _ = translate_kdtps_field(meaning, field_name="error_name")
         fam = entry.get("code_family") or (_CODE_FAMILY.get(primary_code[0], ("", ""))[0] if primary_code else "")
         source = entry.get("source_file") or ""
         lines.append("### 1. Định nghĩa kỹ thuật & Mô tả mã lỗi")
@@ -885,20 +893,24 @@ def _render_synthesized_answer(
         if fam:
             lines.append(f"- **Phân loại hệ thống:** {fam}")
         if entry.get("cause"):
-            lines.append(f"- **Cơ chế phát sinh:** {entry.get('cause')}")
+            c_trans, _ = translate_kdtps_field(entry.get("cause"), field_name="cause")
+            lines.append(f"- **Cơ chế phát sinh:** {c_trans}")
         if source:
             lines.append(f"- **Tài liệu tham chiếu:** {source}")
         lines.append("")
 
     lines.append("### 2. Nguyên nhân chính theo các báo cáo điều tra thực tế")
     causes_seen: List[str] = []
-    if entry and entry.get("cause") and entry.get("cause") not in causes_seen:
-        causes_seen.append(entry.get("cause"))
+    if entry and entry.get("cause"):
+        c_trans, _ = translate_kdtps_field(entry.get("cause"), field_name="cause")
+        if c_trans and c_trans not in causes_seen:
+            causes_seen.append(c_trans)
 
     for c in cases:
         raw_nn = c.get("nguyen_nhan") or ""
-        if raw_nn and raw_nn not in ("—", "-", "ー") and raw_nn not in causes_seen:
-            causes_seen.append(raw_nn)
+        trans_nn, _ = translate_kdtps_field(raw_nn, field_name="cause")
+        if trans_nn and trans_nn not in ("—", "-", "ー") and trans_nn not in causes_seen:
+            causes_seen.append(trans_nn)
 
     if causes_seen:
         for idx, nn in enumerate(causes_seen[:6], 1):
@@ -912,13 +924,16 @@ def _render_synthesized_answer(
     if entry and entry.get("remedy"):
         for r_line in str(entry.get("remedy")).split("\n"):
             r_clean = r_line.strip()
-            if r_clean and r_clean not in remedies_seen:
-                remedies_seen.append(r_clean)
+            if r_clean:
+                r_trans, _ = translate_kdtps_field(r_clean, field_name="remedy")
+                if r_trans and r_trans not in remedies_seen:
+                    remedies_seen.append(r_trans)
 
     for c in cases:
         raw_ds = c.get("doi_sach") or ""
-        if raw_ds and raw_ds not in ("—", "-", "ー", "不要", "Không cần đối sách chính thức") and raw_ds not in remedies_seen:
-            remedies_seen.append(raw_ds)
+        trans_ds, _ = translate_kdtps_field(raw_ds, field_name="remedy")
+        if trans_ds and trans_ds not in ("—", "-", "ー") and trans_ds not in remedies_seen:
+            remedies_seen.append(trans_ds)
 
     if remedies_seen:
         for idx, ds in enumerate(remedies_seen[:6], 1):
@@ -945,7 +960,9 @@ def _render_synthesized_answer(
 
     lines.append("---")
     lines.append("_Nguồn trích dẫn: Cơ sở dữ liệu ca lỗi KDTPS Bước 0–5 (30.075 ca lịch sử) và Danh mục mã lỗi tự chẩn đoán._")
-    return "\n".join(lines)
+    res_text = "\n".join(lines)
+    from aios_habit.answer_language_policy import purify_markdown_text
+    return purify_markdown_text(res_text, question, route="error_lookup_synthesized")
 
 
 def _render_cards(
@@ -1046,7 +1063,9 @@ def _render_cards(
         "`đánh giá một phần`"
     )
     lines.append("_Gõ ngay trong ô chat — không cần mở thêm gì._")
-    return "\n".join(lines)
+    res_text = "\n".join(lines)
+    from aios_habit.answer_language_policy import purify_markdown_text
+    return purify_markdown_text(res_text, code_label or "cards", route="error_lookup_cards")
 
 
 # ---------------------------------------------------------------------------

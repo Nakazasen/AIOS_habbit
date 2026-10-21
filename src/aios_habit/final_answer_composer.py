@@ -601,7 +601,12 @@ def compose_final_owner_answer(
         format_tier_5_actions_markdown(tier_actions),
     ])
 
-    answer_text = "\n".join(sections)
+    from aios_habit.answer_language_policy import purify_markdown_text
+    answer_text = purify_markdown_text(
+        "\n".join(sections),
+        question=pack.query,
+        route="final_owner_composer",
+    )
 
     return FinalOwnerAnswer(
         draft_id=_stable_final_id(pack),
@@ -937,6 +942,15 @@ def deliver_5tier_ladder_answer(
                 actions=TIER_5_DEFAULT_ACTIONS,
             )
             has_banner = True
+
+    from aios_habit.answer_language_policy import purify_markdown_text
+    answer_text = purify_markdown_text(
+        answer_text,
+        question=question,
+        route="5tier_ladder",
+        conversation_id=conversation_id,
+        base_cases_dir=base_cases_dir,
+    )
 
     if on_chunk and answer_text:
         try:
