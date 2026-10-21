@@ -1,0 +1,30 @@
+{
+  "ticket": "DESKTOP-HOME-UI-WARMING-DEADLOCK-FIX",
+  "phase": "VERIFICATION_AFTER_FIX",
+  "collection": "dieu_tra_loi",
+  "notebook_id": "NB-LAZY-DTL",
+  "worker_ready_timestamp": "2026-10-21T17:21:57.183983",
+  "ui_unlocked_timestamp": "2026-10-21T17:21:59.909129",
+  "auto_unlock_latency_seconds": 2.72,
+  "send_button_initially_disabled": null,
+  "send_button_auto_unlocked": true,
+  "question_preserved_after_rerun": true,
+  "warming_caption_disappeared": true,
+  "no_duplicate_hourglass": true,
+  "warm_query_latency_seconds": 2.66,
+  "screenshot_warming": {
+    "path": "D:\\Sandbox\\AIOS_habbit\\docs\\phieu-viec\\ket-qua\\anh-03-fixed-cold-warming-state.png",
+    "size_bytes": 102434,
+    "sha256": "621A8F9DCAE62CAD1C9B65F9BAEFA4FF7882A36D816B98B62591E05428B553FA"
+  },
+  "screenshot_auto_unlocked": {
+    "path": "D:\\Sandbox\\AIOS_habbit\\docs\\phieu-viec\\ket-qua\\anh-04-fixed-auto-unlocked-no-interaction.png",
+    "size_bytes": 100903,
+    "sha256": "4F3D675A55BBA167E4B59AF10741865979BBF1595DAB841548C5555C1E49EF39"
+  },
+  "screenshot_query_response": {
+    "path": "D:\\Sandbox\\AIOS_habbit\\docs\\phieu-viec\\ket-qua\\anh-05-fixed-warm-query-response.png",
+    "size_bytes": 85662,
+    "sha256": "77D26960251ADCF034C4EDFE126CF0D31160B2381C535A48AAB1480C403F9C55"
+  }
+}

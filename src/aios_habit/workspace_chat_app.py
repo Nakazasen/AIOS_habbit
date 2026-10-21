@@ -6114,7 +6114,22 @@ else:
                 )
 
                 if _ask_disabled and not (is_answering or is_waiting_for_sources):
-                    st.caption(f"⏳ {_ask_tooltip}")
+                    @st.fragment(run_every=2.0)
+                    def _worker_warming_live_watcher(col: str, locale: str) -> None:
+                        if is_workspace_chat_worker_warmed(collection_id=col):
+                            try:
+                                st.rerun(scope="app")
+                            except TypeError:
+                                st.rerun()
+                            return
+                        status_line = (
+                            format_worker_warming_status_line(col, locale=locale)
+                            or "Đang nạp mô hình & chỉ mục kho vào bộ nhớ..."
+                        )
+                        caption_text = status_line if status_line.startswith("⏳") else f"⏳ {status_line}"
+                        st.caption(caption_text)
+
+                    _worker_warming_live_watcher(_target_composer_col, current_ui_locale)
 
                 if ask_submitted and pending_submission:
                     # A fresh submit intentionally replaces an older waiting

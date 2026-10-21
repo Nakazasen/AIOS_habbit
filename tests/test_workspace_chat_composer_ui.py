@@ -648,3 +648,42 @@ def test_cagent_login_ui_is_in_live_composer_popover_not_legacy_header() -> None
     assert "wsc_cagent_login_sub_btn" in cagent_branch
 
 
+def test_worker_warming_auto_refresh_fragment_contract() -> None:
+    """DESKTOP-HOME-UI-WARMING-DEADLOCK-FIX: warming watcher registers @st.fragment(run_every=2.0)
+    and calls st.rerun(scope='app') when worker reports ready."""
+    source = _app_source()
+
+    assert "@st.fragment(run_every=2.0)" in source
+    assert "def _worker_warming_live_watcher(col: str, locale: str) -> None:" in source
+    assert "is_workspace_chat_worker_warmed(collection_id=col)" in source
+    assert 'st.rerun(scope="app")' in source
+    assert "_worker_warming_live_watcher(_target_composer_col, current_ui_locale)" in source
+
+
+def test_worker_warming_status_line_hourglass_dedup() -> None:
+    """DESKTOP-HOME-UI-WARMING-DEADLOCK-FIX: status line does not duplicate hourglass icon."""
+    source = _app_source()
+    from aios_habit.workspace_chat_app import format_worker_warming_status_line
+
+    # Verify helper itself formats with single hourglass
+    line = format_worker_warming_status_line("dieu_tra_loi", locale="vi")
+    assert line.startswith("⏳ ")
+    assert not line.startswith("⏳ ⏳")
+
+    # Verify deduplication code is in place
+    assert 'caption_text = status_line if status_line.startswith("⏳") else f"⏳ {status_line}"' in source
+
+
+def test_worker_warming_watcher_scoped_to_unready_state() -> None:
+    """DESKTOP-HOME-UI-WARMING-DEADLOCK-FIX: watcher is only executed when worker is unready,
+    ensuring zero periodic reruns or delays for warm/resident workers."""
+    source = _app_source()
+
+    # Must be inside the unready condition
+    guard = "if _ask_disabled and not (is_answering or is_waiting_for_sources):"
+    assert guard in source
+    section = source.split(guard, 1)[1].split("if ask_submitted and pending_submission:", 1)[0]
+    assert "_worker_warming_live_watcher" in section
+
+
+

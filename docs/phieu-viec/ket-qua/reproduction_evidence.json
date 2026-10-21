@@ -1,0 +1,21 @@
+{
+  "ticket": "DESKTOP-HOME-UI-WARMING-DEADLOCK-FIX",
+  "phase": "REPRODUCTION_BEFORE_FIX",
+  "collection": "dieu_tra_loi",
+  "notebook_id": "NB-LAZY-DTL",
+  "worker_ready_timestamp": "2026-10-21T17:16:57.936306",
+  "ui_check_timestamp": "2026-10-21T17:17:07.950620",
+  "send_button_disabled_initially": null,
+  "send_button_still_disabled_after_worker_ready": true,
+  "warming_caption_still_present": true,
+  "screenshot_1": {
+    "path": "D:\\Sandbox\\AIOS_habbit\\docs\\phieu-viec\\ket-qua\\anh-01-repro-warming-cold-dieu-tra-loi.png",
+    "size_bytes": 102559,
+    "sha256": "E4A3ED142DB825D389B7462C55A308EA80BF2B97AEF2A1B57F3C2702174F56C5"
+  },
+  "screenshot_2": {
+    "path": "D:\\Sandbox\\AIOS_habbit\\docs\\phieu-viec\\ket-qua\\anh-02-repro-deadlock-after-worker-ready.png",
+    "size_bytes": 102559,
+    "sha256": "E4A3ED142DB825D389B7462C55A308EA80BF2B97AEF2A1B57F3C2702174F56C5"
+  }
+}
