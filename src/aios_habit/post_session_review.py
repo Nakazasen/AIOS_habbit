@@ -84,6 +84,13 @@ class SecondBrainNote:
     links: List[str] = field(default_factory=list)
     content_body: str = ""
     supporting_files: Dict[str, str] = field(default_factory=dict)  # relative path -> content
+    pinned: bool = False
+    use_count: int = 0
+    last_activity_at: str = ""
+    absorbed_into: Optional[str] = None
+    supersedes: Optional[str] = None
+    superseded_by: Optional[str] = None
+    created_by: str = "agent"
 
     def to_markdown(self) -> str:
         """Render complete markdown note with YAML frontmatter and wikilinks."""
@@ -101,6 +108,20 @@ class SecondBrainNote:
             "partition": self.partition,
             "links": list(self.links),
         }
+        if self.pinned:
+            frontmatter_data["pinned"] = self.pinned
+        if self.use_count:
+            frontmatter_data["use_count"] = self.use_count
+        if self.last_activity_at:
+            frontmatter_data["last_activity_at"] = self.last_activity_at
+        if self.absorbed_into:
+            frontmatter_data["absorbed_into"] = self.absorbed_into
+        if self.supersedes:
+            frontmatter_data["supersedes"] = self.supersedes
+        if self.superseded_by:
+            frontmatter_data["superseded_by"] = self.superseded_by
+        if self.created_by and self.created_by != "agent":
+            frontmatter_data["created_by"] = self.created_by
         yaml_str = yaml.safe_dump(frontmatter_data, sort_keys=False, allow_unicode=True).strip()
         body = self.content_body.strip()
         return f"---\n{yaml_str}\n---\n\n{body}\n"
@@ -152,6 +173,13 @@ class SecondBrainNote:
             partition=str(fm.get("partition") or "local_habit"),
             links=list(fm.get("links") or []),
             content_body=body_text,
+            pinned=bool(fm.get("pinned", False)),
+            use_count=int(fm.get("use_count", 0)),
+            last_activity_at=str(fm.get("last_activity_at") or ""),
+            absorbed_into=fm.get("absorbed_into"),
+            supersedes=fm.get("supersedes"),
+            superseded_by=fm.get("superseded_by"),
+            created_by=str(fm.get("created_by") or "agent"),
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -174,6 +202,13 @@ class SecondBrainNote:
             links=list(data.get("links") or []),
             content_body=str(data.get("content_body") or ""),
             supporting_files=dict(data.get("supporting_files") or {}),
+            pinned=bool(data.get("pinned", False)),
+            use_count=int(data.get("use_count", 0)),
+            last_activity_at=str(data.get("last_activity_at") or ""),
+            absorbed_into=data.get("absorbed_into"),
+            supersedes=data.get("supersedes"),
+            superseded_by=data.get("superseded_by"),
+            created_by=str(data.get("created_by") or "agent"),
         )
 
 
@@ -426,6 +461,8 @@ def list_local_skills(skills_dir: Optional[Path] = None) -> List[SecondBrainNote
     skills: List[SecondBrainNote] = []
     for item in s_dir.iterdir():
         if item.is_dir():
+            if item.name.startswith("."):
+                continue
             skill_md = item / "SKILL.md"
             if skill_md.exists():
                 try:
@@ -433,7 +470,7 @@ def list_local_skills(skills_dir: Optional[Path] = None) -> List[SecondBrainNote
                     skills.append(note)
                 except Exception:
                     pass
-        elif item.suffix.lower() == ".md" and not item.name.endswith("_MOC.md"):
+        elif item.suffix.lower() == ".md" and not item.name.endswith("_MOC.md") and not item.name.startswith("."):
             try:
                 note = SecondBrainNote.from_markdown(item.read_text(encoding="utf-8"))
                 if note.kind == DRAFT_KIND_SKILL:

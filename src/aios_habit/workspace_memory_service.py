@@ -475,7 +475,7 @@ def _read_skill_records(skills_dir: Path | None = None) -> list[dict[str, Any]]:
             return []
         records: list[dict[str, Any]] = []
         for note in list_local_skills(s_dir):
-            if note.trang_thai != "confirmed":
+            if note.trang_thai not in ("confirmed", "active"):
                 continue
             records.append(
                 {
@@ -499,6 +499,61 @@ def _read_skill_records(skills_dir: Path | None = None) -> list[dict[str, Any]]:
         return []
 
 
+def _read_second_brain_lessons(
+    second_brain_dir: Path | None = None,
+    existing_source_ids: set[str] | None = None,
+) -> list[dict[str, Any]]:
+    try:
+        from aios_habit.post_session_review import SecondBrainNote
+        from aios_habit.skills_curator import get_second_brain_dir
+
+        sb_dir = second_brain_dir if second_brain_dir is not None else get_second_brain_dir()
+        lessons_dir = sb_dir / "lessons"
+        if not lessons_dir.exists():
+            return []
+
+        notes_by_id: dict[str, SecondBrainNote] = {}
+        for f in lessons_dir.glob("*.md"):
+            try:
+                n = SecondBrainNote.from_markdown(f.read_text(encoding="utf-8"))
+                notes_by_id[n.id] = n
+            except Exception:
+                pass
+
+        records: list[dict[str, Any]] = []
+        seen_ids = set(existing_source_ids or set())
+
+        for note_id, note in notes_by_id.items():
+            if note.trang_thai not in ("confirmed", "active"):
+                continue
+            if note.superseded_by and note.superseded_by in notes_by_id:
+                # Skip superseded note; successor takes precedence
+                continue
+            if note_id in seen_ids or any(ref in seen_ids for ref in note.evidence_refs):
+                continue
+
+            records.append(
+                {
+                    "memory_key": f"second_brain:{note.id}:v1",
+                    "source_kind": SOURCE_KIND_SENIOR_LEARNING_CARD,
+                    "source_id": note.id,
+                    "title": note.title,
+                    "statement": note.content_body[:500] if note.content_body else note.title,
+                    "applies_when": note.applies_when,
+                    "does_not_apply_when": note.does_not_apply_when,
+                    "scope": f"workspace:{note.mien}" if note.mien != "general" else "general",
+                    "status": "confirmed",
+                    "evidence_refs": tuple(note.evidence_refs) if note.evidence_refs else ("second_brain",),
+                    "privacy_classification": PRIVACY_LOCAL_ONLY,
+                    "export_allowed": False,
+                    "updated_at": note.updated,
+                }
+            )
+        return records
+    except Exception:
+        return []
+
+
 def load_live_catalog(
     collection_id: str,
     *,
@@ -511,6 +566,8 @@ def load_live_catalog(
     catalog.extend(_read_learning_card_records())
     catalog.extend(_read_case_lesson_records())
     catalog.extend(_read_skill_records())
+    existing_source_ids = {str(item.get("source_id", "")) for item in catalog}
+    catalog.extend(_read_second_brain_lessons(existing_source_ids=existing_source_ids))
     try:
         catalog.extend(
             list_eligible_published_memory_candidates(collection_id, base_dir=published_base_dir)
