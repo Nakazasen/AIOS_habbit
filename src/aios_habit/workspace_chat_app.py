@@ -1750,7 +1750,8 @@ def _run_chat_turn_async(
 
     if ai_mode == "external":
         should_retrieve = False
-        ai_backend = "nakazasen_router"
+        if ai_backend not in ("cagent_api", "cagent"):
+            ai_backend = "nakazasen_router"
     else:
         from aios_habit.workspace_chat_rag_v2_adapter import is_production_index_available
         should_retrieve = bool(

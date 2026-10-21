@@ -382,3 +382,70 @@ def test_integration_routing_simulation_cagent_timeout_triggers_notice(monkeypat
     # Verify existing answer label is preserved intact (unmodified)
     from aios_habit.i18n import t
     assert t("local_fallback_note", locale="vi") == "Tổng hợp cục bộ từ trích đoạn — chưa qua mô hình"
+
+
+def test_cagent_external_mode_routes_to_cagent_with_zero_internal_sources(tmp_path, monkeypatch):
+    """When backend='cagent_api' and ai_mode='external', C-Agent handles external QA with 0 internal sources."""
+    import aios_habit.workspace_chat_store as store_mod
+    import aios_habit.antigravity_bridge as bridge
+    from aios_habit import cagent_api
+    from aios_habit.cagent_api import CAgentResponse
+    from aios_habit.workspace_chat_ai_answer import WorkspaceAIContextSource
+
+    monkeypatch.setattr(store_mod, "LOCAL_CHAT_DIR", tmp_path)
+    monkeypatch.setattr(store_mod, "MESSAGES_FILE", tmp_path / "messages.jsonl")
+    monkeypatch.setattr(store_mod, "TRACES_FILE", tmp_path / "traces.jsonl")
+    monkeypatch.setattr(store_mod, "CONVERSATIONS_FILE", tmp_path / "conversations.jsonl")
+    monkeypatch.setattr(store_mod, "SOURCE_SELECTIONS_FILE", tmp_path / "selections.jsonl")
+    monkeypatch.setattr(store_mod, "EXTERNAL_AI_USAGE_FILE", tmp_path / "ext_usage.jsonl")
+    store_mod.init_chat_store()
+
+    captured = {}
+
+    def _mock_cagent(endpoint_url="", *, system_prompt="", user_prompt="", **kwargs):
+        captured["system_prompt"] = system_prompt
+        captured["user_prompt"] = user_prompt
+        return CAgentResponse(ok=True, text="Cảm biến quang học chuyển đổi ánh sáng thành tín hiệu điện.")
+
+    monkeypatch.setattr(cagent_api, "call_cagent_prediction", _mock_cagent)
+
+    secret_source = WorkspaceAIContextSource(
+        source_id="SRC-SECRET-1",
+        source_scope="notebook",
+        source_type="text",
+        title="Bí mật nội bộ công ty",
+        privacy_label="cloud_allowed",
+        text="MẬT_KHẨU_NỘI_BỘ_TUYỆT_MẬT_9999",
+        included_chars=30,
+        truncated=False,
+    )
+
+    ok, succ_msg, badge, err = bridge.route_workspace_chat_submission(
+        question="Cảm biến quang học là gì?",
+        evidence_items=[{"evidence_id": "EV-1", "title": "Bí mật nội bộ công ty", "text": "MẬT_KHẨU_NỘI_BỘ_TUYỆT_MẬT_9999"}],
+        packed_sources=(secret_source,),
+        conversation_id="CONV-EXT-CAGENT-01",
+        notebook_id="NB-8354F455",
+        retrieval_applied=False,
+        retrieved_sources=(),
+        retrieval_summary="",
+        current_keys=(),
+        chat_history=(),
+        user_raw_input="Cảm biến quang học là gì?",
+        backend="cagent_api",
+        cagent_endpoint_url="https://kdtvn-ai.cmcts.vn/api/v1/prediction/fake",
+        ai_mode="external",
+    )
+
+    assert ok is True
+    assert err is None
+    assert badge is not None
+    assert badge["provider"] == "C-AGENT API"
+    assert badge["operational_mode"] == "external_ai"
+    assert badge["ai_mode"] == "external"
+    assert badge["source_count"] == 0
+    assert badge["source_titles"] == []
+    assert badge["evidence_items"] == []
+    assert badge.get("fallback_used") is not True
+    assert "MẬT_KHẨU_NỘI_BỘ_TUYỆT_MẬT_9999" not in captured["user_prompt"]
+    assert "Bí mật nội bộ công ty" not in captured["user_prompt"]

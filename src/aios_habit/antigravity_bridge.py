@@ -1216,11 +1216,10 @@ def route_workspace_chat_submission(
     if was_cancelled():
         return (False, "", None, "Đã dừng yêu cầu AI.")
 
-    if ai_mode == "external":
-        backend = "nakazasen_router"
-
     if backend == "cagent":
         backend = "cagent_api"
+    if ai_mode == "external" and backend != "cagent_api":
+        backend = "nakazasen_router"
     if backend not in {"gemini_web", "cagent_api", "nakazasen_router", "local"}:
         return (False, "", None, "Lựa chọn cầu nối AI không hợp lệ.")
 
@@ -1229,6 +1228,7 @@ def route_workspace_chat_submission(
 
     def _try_cagent_api() -> tuple[bool, str, dict[str, Any] | None, str | None]:
         nonlocal evidence_items
+        is_ext = (ai_mode == "external")
         from aios_habit.cagent_api import (
             DEFAULT_CAGENT_API_URL,
             call_cagent_prediction,
@@ -1251,55 +1251,81 @@ def route_workspace_chat_submission(
         )
         from aios_habit.workspace_memory_service import get_workspace_memory_enabled_preference
 
-        if retrieval_applied and retrieved_sources:
-            candidate_sources = tuple(retrieved_sources)
-        else:
-            raw_pool = packed_sources if packed_sources else ()
-            lex_evidence, lex_sources = _extract_top_chunks_lexical(question, raw_pool)
-            if lex_sources:
-                candidate_sources = lex_sources
-                if not evidence_items and lex_evidence:
-                    evidence_items = lex_evidence
-            else:
-                candidate_sources = tuple(raw_pool)
-                if len(candidate_sources) > 1:
-                    candidate_sources = _rank_sources_for_fallback(question, candidate_sources)
-
-        q_capped, capped_sources, _ = _cap_and_pack_sources(question, candidate_sources)
-        prompt_sources = [s for s in capped_sources if getattr(s, "included_chars", len(getattr(s, "text", ""))) > 0]
-        if not prompt_sources and candidate_sources:
-            prompt_sources = list(candidate_sources[:5])
-
-        memory_result = None
-        if get_workspace_memory_enabled_preference():
-            memory_result = recall_memory_for_answer(
-                _MemReq(
-                    conversation_id=conversation_id,
-                    question=question,
-                    context_sources=tuple(prompt_sources),
-                    privacy_mode=PRIVACY_MODE_CLOUD_ALLOWED,
-                    workspace_id=notebook_id or "default",
-                )
-            )
-        if memory_consent_requires_reconfirmation(memory_result, consent_memory_fingerprint):
-            return (False, "", None, MEMORY_CONSENT_RECONFIRM_MESSAGE)
-
         cagent_history = trim_chat_history_for_cagent(chat_history)
-        system_prompt, user_prompt = build_workspace_ai_prompt(
-            question,
-            prompt_sources,
-            cagent_history,
-            answer_language=answer_language,
-            memory_result=memory_result,
-        )
-        from aios_habit.wire_qa_staging import build_wire_qa_reference, strip_echoed_draft_label
+        memory_result = None
+        wire_reference = None
 
-        wire_reference = build_wire_qa_reference(question)
-        if wire_reference is not None:
-            system_prompt = f"{system_prompt}\n\n{wire_reference.system_note}"
-            user_prompt = f"{wire_reference.prompt_block}\n\n{user_prompt}"
+        if is_ext:
+            evidence_items = []
+            system_prompt = (
+                "Bạn là trợ lý AI thông minh trong Workspace Chat.\n"
+                "Bạn đang trả lời người dùng ở chế độ 'Hỏi AI ngoài' (không bị giới hạn trong kho tài liệu nội bộ).\n"
+                "Hãy trả lời câu hỏi một cách chính xác, đầy đủ, mạch lạc và hữu ích bằng tiếng Việt.\n"
+                "Nếu câu hỏi yêu cầu giải thích, hãy giải thích rõ ràng và có cấu trúc."
+            )
+            history_lines = []
+            for h_msg in cagent_history:
+                h_role = "Người dùng" if h_msg.get("role") == "user" else "Trợ lý"
+                h_content = str(h_msg.get("content", "")).strip()
+                if h_content:
+                    history_lines.append(f"{h_role}: {h_content}")
+            if history_lines:
+                user_prompt = "Lịch sử hội thoại gần đây:\n" + "\n".join(history_lines) + f"\n\nCâu hỏi hiện tại: {question}"
+            else:
+                user_prompt = question
+        else:
+            if retrieval_applied and retrieved_sources:
+                candidate_sources = tuple(retrieved_sources)
+            else:
+                raw_pool = packed_sources if packed_sources else ()
+                lex_evidence, lex_sources = _extract_top_chunks_lexical(question, raw_pool)
+                if lex_sources:
+                    candidate_sources = lex_sources
+                    if not evidence_items and lex_evidence:
+                        evidence_items = lex_evidence
+                else:
+                    candidate_sources = tuple(raw_pool)
+                    if len(candidate_sources) > 1:
+                        candidate_sources = _rank_sources_for_fallback(question, candidate_sources)
+
+            q_capped, capped_sources, _ = _cap_and_pack_sources(question, candidate_sources)
+            prompt_sources = [s for s in capped_sources if getattr(s, "included_chars", len(getattr(s, "text", ""))) > 0]
+            if not prompt_sources and candidate_sources:
+                prompt_sources = list(candidate_sources[:5])
+
+            if get_workspace_memory_enabled_preference():
+                memory_result = recall_memory_for_answer(
+                    _MemReq(
+                        conversation_id=conversation_id,
+                        question=question,
+                        context_sources=tuple(prompt_sources),
+                        privacy_mode=PRIVACY_MODE_CLOUD_ALLOWED,
+                        workspace_id=notebook_id or "default",
+                    )
+                )
+            if memory_consent_requires_reconfirmation(memory_result, consent_memory_fingerprint):
+                return (False, "", None, MEMORY_CONSENT_RECONFIRM_MESSAGE)
+
+            system_prompt, user_prompt = build_workspace_ai_prompt(
+                question,
+                prompt_sources,
+                cagent_history,
+                answer_language=answer_language,
+                memory_result=memory_result,
+            )
+            from aios_habit.wire_qa_staging import build_wire_qa_reference, strip_echoed_draft_label
+
+            wire_reference = build_wire_qa_reference(question)
+            if wire_reference is not None:
+                system_prompt = f"{system_prompt}\n\n{wire_reference.system_note}"
+                user_prompt = f"{wire_reference.prompt_block}\n\n{user_prompt}"
 
         cagent_timeout = int(os.environ.get("AIOS_CAGENT_TIMEOUT_SECONDS", "60"))
+        t_cagent_start = time.monotonic()
+        ts_cagent_start = format_marker_timestamp()
+        _safe_print_streaming_marker(
+            f"[CAGENT_SYNTH_START] conv={conversation_id} backend=cagent_api ai_mode={ai_mode} timestamp={ts_cagent_start}"
+        )
         cagent_res = call_cagent_prediction(
             endpoint,
             system_prompt=system_prompt,
@@ -1307,17 +1333,34 @@ def route_workspace_chat_submission(
             timeout_seconds=cagent_timeout,
             cancellation_event=cancellation_event,
         )
+        t_cagent_end = time.monotonic()
+        measured_cagent_s = round(max(0.0, t_cagent_end - t_cagent_start), 4)
+        eff_duration_s = float(duration_sec) if duration_sec is not None else measured_cagent_s
+        eff_ttft_s = float(ttft_sec) if ttft_sec is not None else measured_cagent_s
+        ts_cagent_done = format_marker_timestamp()
+        _safe_print_streaming_marker(
+            f"[CAGENT_SYNTH_DONE] conv={conversation_id} ok={cagent_res.ok} latency_s={eff_duration_s:.3f} ttft_s={eff_ttft_s:.3f} duration_s={eff_duration_s:.3f} timestamp={ts_cagent_done}"
+        )
         if was_cancelled():
             return (False, "", None, "Đã dừng yêu cầu AI.")
         if not cagent_res.ok or not str(cagent_res.text or "").strip():
             return (False, "", None, cagent_res.error_message or "C-AGENT API không trả về câu trả lời.")
 
         disclaimer = _get_ai_disclaimer(answer_language)
-        if wire_reference is not None:
+        if is_ext:
+            answer_text = cagent_res.text.strip()
+        elif wire_reference is not None:
+            from aios_habit.wire_qa_staging import strip_echoed_draft_label
             model_text = strip_echoed_draft_label(cagent_res.text)
             answer_text = f"{wire_reference.label_block}\n\n{model_text}{disclaimer}"
         else:
             answer_text = cagent_res.text.strip() + disclaimer
+
+        if on_chunk is not None and answer_text:
+            try:
+                on_chunk(answer_text)
+            except Exception:
+                pass
 
         user_msg = _get_or_create_user_message(conversation_id, user_raw_input, reuse_message_id=user_message_id)
         assistant_msg_id = f"MSG-{uuid.uuid4().hex[:8].upper()}"
@@ -1325,19 +1368,21 @@ def route_workspace_chat_submission(
             load_conversation,
             load_conversation_source_selections,
             save_evidence_trace,
+            log_external_ai_usage,
         )
         from aios_habit.evidence_trace import build_evidence_trace_from_citations
 
         selections = load_conversation_source_selections(conversation_id)
-        allowed_source_ids = resolve_allowed_source_ids(conversation_id, selections)
+        allowed_source_ids_eff = [] if is_ext else resolve_allowed_source_ids(conversation_id, selections)
         conversation = load_conversation(conversation_id)
         ui_locale = getattr(conversation, "ui_locale", "vi") if conversation else "vi"
         provider_name = "C-AGENT API"
+        model_name = "configured_by_provider"
         trace = build_evidence_trace_from_citations(
             query=question,
             answer_text=answer_text,
-            evidence_items=evidence_items,
-            allowed_source_ids=allowed_source_ids,
+            evidence_items=[] if is_ext else evidence_items,
+            allowed_source_ids=allowed_source_ids_eff,
             notebook_id=notebook_id,
             conversation_id=conversation_id,
             user_message_id=user_msg.id,
@@ -1345,9 +1390,10 @@ def route_workspace_chat_submission(
             ui_locale=ui_locale,
             answer_language=answer_language,
             provenance={
-                "operational_mode": "external_api",
+                "operational_mode": "external_ai" if is_ext else "external_api",
                 "provider_name": provider_name,
-                "model_name": "configured_by_provider",
+                "model_name": model_name,
+                "ai_mode": ai_mode,
             },
         )
         save_evidence_trace(trace)
@@ -1358,26 +1404,38 @@ def route_workspace_chat_submission(
             content=answer_text,
             trace_id=trace.trace_id,
         ))
-        source_titles = [
+        if is_ext:
+            log_external_ai_usage(
+                conversation_id=conversation_id,
+                message_id=assistant_msg_id,
+                model_name=model_name,
+                duration_sec=eff_duration_s,
+                ttft_sec=eff_ttft_s,
+            )
+        source_titles = [] if is_ext else [
             (item.get("title", "") if isinstance(item, dict) else getattr(item, "title", ""))
             for item in evidence_items
         ]
         badge = {
             "conversation_id": conversation_id,
-            "type": "ai_answered",
-            "source_count": len(source_titles),
+            "type": "external_ai_answered" if is_ext else "ai_answered",
+            "ai_mode": ai_mode,
+            "source_count": 0 if is_ext else len(source_titles),
             "source_titles": source_titles,
             "ai_source": provider_name,
             "bridge": provider_name,
             "provider": provider_name,
             "model_tool_name": "",
             "verified_model": "",
-            "operational_mode": "external_api",
-            "retrieval_summary": retrieval_summary,
-            "evidence_items": evidence_items,
+            "operational_mode": "external_ai" if is_ext else "external_api",
+            "retrieval_summary": "" if is_ext else retrieval_summary,
+            "evidence_items": [] if is_ext else evidence_items,
             "trace_id": trace.trace_id,
+            "duration_sec": eff_duration_s,
+            "ttft_sec": eff_ttft_s,
         }
-        badge.update(memory_badge_fields(memory_result))
+        if not is_ext:
+            badge.update(memory_badge_fields(memory_result))
         return (True, f"Đã nhận câu trả lời từ {provider_name}.", badge, None)
 
     def _try_nakazasen_router() -> tuple[bool, str, dict[str, Any] | None, str | None]:
