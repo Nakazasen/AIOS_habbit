@@ -3156,6 +3156,11 @@ if active_nb_id is None:
         locale=current_ui_locale,
     )
     render_sidebar_bridge_status(locale=current_ui_locale, key_prefix="wsc_sidebar_home")
+    try:
+        from aios_habit.expert_review_ui import render_expert_queue_sidebar
+        render_expert_queue_sidebar()
+    except Exception:
+        pass
 
     with st.expander(t("shared_library_expander", locale=current_ui_locale), expanded=True):
         st.write(t("shared_library_help", locale=current_ui_locale))
@@ -3851,6 +3856,12 @@ else:
 
     from aios_habit.workspace_memory_ui import render_master_self_learn_controls
     render_master_self_learn_controls()
+
+    try:
+        from aios_habit.expert_review_ui import render_expert_queue_sidebar
+        render_expert_queue_sidebar()
+    except Exception:
+        pass
 
     st.sidebar.write("---")
     st.sidebar.subheader(f"💬 {t('conversations', locale=current_ui_locale)}")

@@ -1,0 +1,94 @@
+# Sổ Đăng Ký Vai Trò Chuyên Gia Theo Miền (Expert Role Registry)
+# Tuân thủ thiết kế Mục 5.6 - 5.8 Báo cáo Tự học (DESKTOP-AIOS-SELF-LEARN-HERMES-ANALYSIS-HOME)
+# Quyết định 2026-10-20: Định danh theo tài khoản Windows, không hardcode.
+# Quản trị viên đã cấu hình tài khoản chuyên gia thực tế cho môi trường máy trạm.
+
+domains:
+  lsu:
+    title: "Miền Kiểm tra & Căn chỉnh LSU"
+    primary_expert: "H410ASROCK\\Vinh"
+    backup_experts:
+      - "DOMAIN\\khiem_ni"
+      - "DOMAIN\\thao_nt"
+    matching_rules:
+      collections:
+        - "lsu_master"
+        - "lsu_tuning"
+        - "6tha3_lsu"
+        - "iris_lsu"
+        - "sirius_lsu"
+        - "lsu"
+      keywords:
+        - "lsu"
+        - "laser"
+        - "motor"
+        - "polygon"
+        - "aperture"
+        - "beam"
+        - "lens"
+        - "f-theta"
+        - "skew"
+        - "bow"
+    authorized_machines:
+      - "*"
+      - "h410asrock"
+
+  dieu_tra_loi:
+    title: "Miền Phân tích & Điều tra Lỗi Sản xuất"
+    primary_expert: "DOMAIN\\duc_na"
+    backup_experts:
+      - "H410ASROCK\\Vinh"
+      - "DOMAIN\\khiem_ni"
+    matching_rules:
+      collections:
+        - "dieutraloi"
+        - "error_codes"
+        - "4m_investigation"
+        - "cases"
+      keywords:
+        - "nguyen nhan"
+        - "bien ban"
+        - "4m"
+        - "doi sach"
+        - "loi"
+        - "ng"
+        - "sc"
+        - "ec"
+        - "jig"
+    authorized_machines:
+      - "*"
+
+  mom_opcenter:
+    title: "Miền Hệ thống Quản lý Sản xuất MOM/Opcenter"
+    primary_expert: "DOMAIN\\tuan_pa"
+    backup_experts:
+      - "H410ASROCK\\Vinh"
+      - "DOMAIN\\admin_local"
+    matching_rules:
+      collections:
+        - "mom_wms"
+        - "work_orders"
+        - "opcenter"
+      keywords:
+        - "wo"
+        - "lenh san xuat"
+        - "lo"
+        - "material"
+        - "opcenter"
+        - "erp"
+        - "wms"
+        - "ke hoach"
+    authorized_machines:
+      - "*"
+
+  general_fallback:
+    title: "Miền Tri thức Chung / Tổng hợp"
+    primary_expert: "H410ASROCK\\Vinh"
+    backup_experts: []
+    matching_rules:
+      collections:
+        - "*"
+      keywords:
+        - "*"
+    authorized_machines:
+      - "*"

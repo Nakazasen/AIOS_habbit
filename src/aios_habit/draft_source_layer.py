@@ -1069,6 +1069,21 @@ def check_and_promote_draft_candidate(
 
     with queue_file.open("a", encoding="utf-8") as f:
         f.write(json.dumps(queue_record, ensure_ascii=False) + "\n")
+    try:
+        from aios_habit.expert_review_queue import get_expert_queue_repo, SOURCE_DRAFT_PROMOTION
+        get_expert_queue_repo().submit_to_queue(
+            SOURCE_DRAFT_PROMOTION,
+            question=candidate.question,
+            draft_answer=stat.get("answer", ""),
+            source_file=candidate.source_file,
+            domain_id=candidate.domain,
+            invocation_count=candidate.invocation_count,
+            like_count=candidate.like_count,
+            dislike_count=candidate.dislike_count,
+            force_pass_throttle=True,
+        )
+    except Exception:
+        pass
 
     # Đánh dấu đã thăng hạng trong stats file để không trùng lặp
     stat["promoted_to_expert_queue"] = True

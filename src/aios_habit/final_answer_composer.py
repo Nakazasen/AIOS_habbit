@@ -743,6 +743,18 @@ def route_question_to_expert_queue(
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
     except Exception:
         pass
+    try:
+        from aios_habit.expert_review_queue import get_expert_queue_repo, SOURCE_TIER5_INQUIRY
+        get_expert_queue_repo().submit_to_queue(
+            SOURCE_TIER5_INQUIRY,
+            question=question,
+            conversation_id=conversation_id,
+            message_id=message_id,
+            domain_id=domain,
+            force_pass_throttle=True,
+        )
+    except Exception:
+        pass
     return record
 
 
