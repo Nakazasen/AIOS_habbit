@@ -353,6 +353,97 @@ KHO_TONG_HOP_PROFILE = TargetProfile(
     fields=KHO_TONG_HOP_FIELDS,
 )
 
+# ---------------------------------------------------------------------------
+# Hồ sơ mẫu 4: Kho MOM/Opcenter (DESKTOP-KNOWLEDGE-INTAKE-MOM-HOME)
+# Phục vụ chế độ DẠY: chuyên gia dạy tri thức về hệ thống MOM/Opcenter
+# (cách đọc màn hình/báo cáo Opcenter, ý nghĩa các mã trạng thái, quy ước vận hành,
+# kinh nghiệm xử lý tình huống trong hệ thống).
+# Khuôn tài liệu tri thức gồm 4 trường bắt buộc:
+#   chủ đề, nội dung, điều kiện áp dụng, nguồn.
+# Cộng các trường phụ bổ trợ: người dạy, ngày dạy, phân hệ, màn hình, ghi chú.
+# ---------------------------------------------------------------------------
+
+STORE_ID_MOM = "kho_mom"
+INGEST_ROUTE_MOM = "DESKTOP-KNOWLEDGE-INTAKE-MOM-HOME"
+
+KHO_MOM_FIELDS: Tuple[TargetFieldSpec, ...] = (
+    # 4 trường bắt buộc theo vé DESKTOP-KNOWLEDGE-INTAKE-MOM-HOME
+    TargetFieldSpec(
+        name="chu_de",
+        label_vi="Chủ đề",
+        is_mandatory=True,
+        description_vi="Chủ đề bài học về hệ thống MOM/Opcenter (đọc màn hình/báo cáo, ý nghĩa mã trạng thái, quy ước vận hành)",
+        guidance_vi="Chủ đề hoặc kỹ năng vận hành hệ thống MOM/Opcenter",
+    ),
+    TargetFieldSpec(
+        name="noi_dung",
+        label_vi="Nội dung",
+        is_mandatory=True,
+        description_vi="Nội dung chi tiết bài giảng của chuyên gia về hệ thống MOM/Opcenter",
+        guidance_vi="Giải thích cách đọc, phân tích dữ liệu, quy ước và các bước thao tác trên Opcenter",
+    ),
+    TargetFieldSpec(
+        name="dieu_kien_ap_dung",
+        label_vi="Điều kiện áp dụng",
+        is_mandatory=True,
+        description_vi="Điều kiện, màn hình, phân hệ hoặc phạm vi áp dụng trong hệ thống Opcenter",
+        guidance_vi="Màn hình, phân hệ sản xuất, dòng máy hoặc tình huống áp dụng cụ thể",
+    ),
+    TargetFieldSpec(
+        name="nguon",
+        label_vi="Nguồn",
+        is_mandatory=True,
+        description_vi="Nguồn gốc tri thức: chuyên gia giảng dạy về hệ thống MOM/Opcenter",
+        guidance_vi="Gắn nhãn định danh nguồn day-chuyen-gia + tên người dạy + ngày dạy",
+    ),
+    # Các trường phụ hỗ trợ metadata
+    TargetFieldSpec(
+        name="nguoi_day",
+        label_vi="Người dạy",
+        is_mandatory=False,
+        description_vi="Tên chuyên gia hoặc kỹ sư đào tạo hệ thống",
+        guidance_vi="Họ tên chuyên gia hoặc kỹ sư phụ trách bài giảng",
+    ),
+    TargetFieldSpec(
+        name="ngay_day",
+        label_vi="Ngày dạy",
+        is_mandatory=False,
+        description_vi="Ngày tháng thực hiện bài giảng (YYYY-MM-DD)",
+        guidance_vi="Ngày tháng theo định dạng chuẩn ISO YYYY-MM-DD",
+    ),
+    TargetFieldSpec(
+        name="phan_he",
+        label_vi="Phân hệ",
+        is_mandatory=False,
+        description_vi="Phân hệ chức năng trong MOM/Opcenter (WIP, Tracking, Quality, Dispatching, Material)",
+        guidance_vi="Tên phân hệ hoặc module nghiệp vụ trên hệ thống",
+    ),
+    TargetFieldSpec(
+        name="man_hinh",
+        label_vi="Màn hình / Báo cáo",
+        is_mandatory=False,
+        description_vi="Tên màn hình, giao diện chức năng hoặc mã báo cáo Opcenter",
+        guidance_vi="Màn hình thao tác hoặc mã báo cáo liên quan",
+    ),
+    TargetFieldSpec(
+        name="ghi_chu",
+        label_vi="Ghi chú",
+        is_mandatory=False,
+        description_vi="Lưu ý vận hành, quy ước phối hợp hoặc cảnh báo sai lệch",
+        guidance_vi="Kinh nghiệm thực tiễn hoặc điều kiện ngoại lệ",
+    ),
+)
+
+KHO_MOM_PROFILE = TargetProfile(
+    store_id=STORE_ID_MOM,
+    display_name="Kho MOM/Opcenter",
+    description="Kho tri thức về hệ thống MOM/Opcenter phục vụ chế độ DẠY (khuôn: chủ đề, nội dung, điều kiện áp dụng, nguồn)",
+    ingest_route=INGEST_ROUTE_MOM,
+    source_prefix="kho_mom",
+    fields=KHO_MOM_FIELDS,
+)
+
+
 
 # ---------------------------------------------------------------------------
 # Nhãn nguồn thống nhất (Source Tag Formatter)
@@ -399,6 +490,16 @@ def format_tonghop_source_tag(
     return "day-chuyen-gia | %s | %s" % (exp, d)
 
 
+def format_mom_source_tag(
+    expert_name: str,
+    date_str: Optional[str] = None,
+) -> str:
+    """Nhãn nguồn định danh chuẩn cho Kho MOM/Opcenter: 'day-chuyen-gia | <ten_nguoi_day> | <ngay_day>'."""
+    exp = str(expert_name or "").strip() or "chưa xác nhận"
+    d = str(date_str or "").strip() or date.today().isoformat()
+    return "day-chuyen-gia | %s | %s" % (exp, d)
+
+
 def parse_source_tag(tag: str) -> Dict[str, str]:
     """Phân rã nhãn nguồn thống nhất thành các thành phần."""
     parts = [p.strip() for p in str(tag or "").split("|")]
@@ -410,11 +511,12 @@ def parse_source_tag(tag: str) -> Dict[str, str]:
             "store_id": parts[3],
         }
     if len(parts) == 3 and parts[0] == "day-chuyen-gia":
+        guessed_store = STORE_ID_MOM if any(k in tag.lower() for k in ("mom", "opcenter")) else STORE_ID_TONG_HOP
         return {
             "mode": parts[0],
             "expert_name": parts[1],
             "date": parts[2],
-            "store_id": STORE_ID_TONG_HOP,
+            "store_id": guessed_store,
         }
     return {
         "mode": parts[0] if len(parts) > 0 else "phong-van",
@@ -469,6 +571,7 @@ class TargetProfileRegistry:
         self.register(KHO_LSU_PROFILE)
         self.register(KHO_DIEU_TRA_LOI_PROFILE)
         self.register(KHO_TONG_HOP_PROFILE)
+        self.register(KHO_MOM_PROFILE)
 
 
 # Global registry instance

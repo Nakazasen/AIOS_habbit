@@ -35,6 +35,7 @@ from aios_habit.intake_staging import IntakeStagingStore
 from aios_habit.intake_target_profiles import (
     STORE_ID_DIEU_TRA_LOI,
     STORE_ID_LSU,
+    STORE_ID_MOM,
     STORE_ID_TONG_HOP,
     get_target_profile,
     list_target_profiles,
@@ -81,7 +82,7 @@ def _parse_store_id(norm_text: str) -> str:
     if "dieu tra" in norm_text:
         return STORE_ID_DIEU_TRA_LOI
     if "mom" in norm_text or "opcenter" in norm_text:
-        return "kho_mom"
+        return STORE_ID_MOM
     if "tong hop" in norm_text:
         return STORE_ID_TONG_HOP
     return STORE_ID_LSU

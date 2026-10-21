@@ -47,8 +47,10 @@ from aios_habit.intake_staging import (
 )
 from aios_habit.intake_target_profiles import (
     STORE_ID_LSU,
+    STORE_ID_MOM,
     STORE_ID_TONG_HOP,
     TargetProfile,
+    format_mom_source_tag,
     format_source_tag,
     format_tonghop_source_tag,
     get_target_profile,
@@ -545,6 +547,57 @@ def synthesize_draft_items(session: KnowledgeIntakeSession) -> List[IntakeDraftI
         fields["nguoi_day"] = session.expert_name if session.expert_name else "chưa xác nhận"
         fields["ngay_day"] = today_str
         fields["linh_vuc"] = session.topic if session.topic else "chưa xác nhận"
+        fields["ghi_chu"] = (
+            " ".join(ghi_chu_pieces).strip() if ghi_chu_pieces else "chưa xác nhận"
+        )
+    elif session.store_id == STORE_ID_MOM:
+        # Áp dụng khuôn Kho MOM/Opcenter (chủ đề, nội dung, điều kiện áp dụng, nguồn)
+        chu_de_val = session.topic if session.topic else ""
+        noi_dung_val = ""
+        dieu_kien_val = ""
+        phan_he_val = ""
+        man_hinh_val = ""
+        ghi_chu_pieces: List[str] = []
+
+        for t in answers:
+            pt = t.probe_type
+            ans = t.answer_text.strip()
+            low_ans = ans.lower()
+            if pt in ("mo_dau_bai_giang", "general") and not noi_dung_val:
+                noi_dung_val = ans
+            elif pt in (CLARIFY_PHAM_VI, "phan_he_man_hinh", "dieu_kien_ap_dung") and not dieu_kien_val:
+                dieu_kien_val = ans
+            elif pt in ("phan_he", "module") and not phan_he_val:
+                phan_he_val = ans
+            elif pt in ("man_hinh", "bao_cao") and not man_hinh_val:
+                man_hinh_val = ans
+            elif pt in (CLARIFY_HIEU_SAI, CLARIFY_NGOAI_LE, "ghi_chu"):
+                ghi_chu_pieces.append("[%s]: %s" % (pt, ans))
+
+            # Tìm kiếm heuristic nếu câu trả lời chứa từ khóa
+            if not dieu_kien_val and any(k in low_ans for k in ("áp dụng cho", "ap dung cho", "điều kiện", "dieu kien", "màn hình", "phân hệ", "báo cáo")):
+                dieu_kien_val = ans
+            if not phan_he_val and any(k in low_ans for k in ("phân hệ", "phan he", "module", "wip", "tracking", "dispatching")):
+                phan_he_val = ans
+            if not man_hinh_val and any(k in low_ans for k in ("màn hình", "man hinh", "báo cáo", "bao cao")):
+                man_hinh_val = ans
+
+        if not noi_dung_val and answers:
+            noi_dung_val = answers[0].answer_text.strip()
+
+        source_label = format_mom_source_tag(session.expert_name, today_str)
+
+        # 4 trường bắt buộc
+        fields["chu_de"] = chu_de_val if chu_de_val else "chưa xác nhận"
+        fields["noi_dung"] = noi_dung_val if noi_dung_val else "chưa xác nhận"
+        fields["dieu_kien_ap_dung"] = dieu_kien_val if dieu_kien_val else "chưa xác nhận"
+        fields["nguon"] = source_label
+
+        # Các trường phụ
+        fields["nguoi_day"] = session.expert_name if session.expert_name else "chưa xác nhận"
+        fields["ngay_day"] = today_str
+        fields["phan_he"] = phan_he_val if phan_he_val else "chưa xác nhận"
+        fields["man_hinh"] = man_hinh_val if man_hinh_val else "chưa xác nhận"
         fields["ghi_chu"] = (
             " ".join(ghi_chu_pieces).strip() if ghi_chu_pieces else "chưa xác nhận"
         )
