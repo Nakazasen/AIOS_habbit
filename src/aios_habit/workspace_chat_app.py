@@ -1721,6 +1721,59 @@ def _run_chat_turn_async(
     if cancellation_event is not None and cancellation_event.is_set():
         return (False, "", None, "Đã dừng yêu cầu AI.")
 
+    first_token_recorded: list[float] = []
+
+    def _mark_first_token() -> None:
+        if not first_token_recorded:
+            t_now = time.time()
+            first_token_recorded.append(t_now)
+            ttft_s = max(0.0, t_now - t_turn_start)
+            ts_first_token = format_marker_timestamp()
+            try:
+                LOGGER.info(
+                    "[STREAMING_QA_FIRST_TOKEN] conv=%s ttft_s=%.3f ttft_ms=%.1f timestamp=%s",
+                    conversation_id,
+                    ttft_s,
+                    ttft_s * 1000,
+                    ts_first_token,
+                )
+            except Exception:
+                pass
+            _safe_print_streaming_marker(
+                f"[STREAMING_QA_FIRST_TOKEN] conv={conversation_id} ttft_s={ttft_s:.3f} ttft_ms={ttft_s * 1000:.1f} timestamp={ts_first_token}"
+            )
+
+    from aios_habit.streaming_markers import progressive_emit_chunks
+
+    def _wrap_on_chunk(raw_cb: Any) -> Any:
+        if raw_cb is None:
+            return None
+        if getattr(raw_cb, "_is_progressive", False):
+            def _pass_through_and_mark(delta: str) -> None:
+                if delta:
+                    _mark_first_token()
+                raw_cb(delta)
+
+            setattr(_pass_through_and_mark, "_is_progressive", True)
+            return _pass_through_and_mark
+
+        def _progressive_cb(delta: str) -> None:
+            if not delta:
+                return
+            _mark_first_token()
+            progressive_emit_chunks(
+                delta,
+                raw_cb,
+                cancellation_event=cancellation_event,
+                target_total_duration_s=0.75,
+                target_chunk_size=45,
+            )
+
+        setattr(_progressive_cb, "_is_progressive", True)
+        return _progressive_cb
+
+    effective_on_chunk = _wrap_on_chunk(on_chunk)
+
     def _is_worker_startup_reason(reason: str) -> bool:
         folded = str(reason or "").casefold()
         return (
@@ -1804,12 +1857,13 @@ def _run_chat_turn_async(
                 t_first_token = time.time()
                 ttft_s = t_first_token - t_turn_start
                 ts_first_token = format_marker_timestamp()
-                if on_chunk is not None:
+                if effective_on_chunk is not None:
                     try:
-                        on_chunk(answer)
+                        effective_on_chunk(answer)
                     except Exception:
                         pass
-                first_token_emitted = False
+                _mark_first_token()
+                first_token_emitted = True
                 if isinstance(stream_state, dict):
                     lock = stream_state.get("lock")
                     if lock is not None:
@@ -1993,7 +2047,7 @@ def _run_chat_turn_async(
                         user_message_id=user_message_id,
                         current_ui_locale=current_ui_locale,
                         answer_language=answer_language,
-                        on_chunk=on_chunk,
+                        on_chunk=effective_on_chunk,
                     )
                     if draft_res is not None:
                         turn_total_s = time.time() - t_turn_start
@@ -2011,6 +2065,22 @@ def _run_chat_turn_async(
                         _safe_print_streaming_marker(
                             f"[DRAFT_FALLBACK_COMPLETE] conv={conversation_id} wait_s={worker_wait_s:.3f} total_s={turn_total_s:.3f} timestamp={ts_draft}"
                         )
+                        _mark_first_token()
+                        try:
+                            LOGGER.info(
+                                "[STREAMING_QA_COMPLETE] conv=%s total_s=%.3f total_ms=%.1f backend=%s ok=%s timestamp=%s",
+                                conversation_id,
+                                turn_total_s,
+                                turn_total_s * 1000,
+                                "draft_fallback",
+                                draft_res[0],
+                                ts_draft,
+                            )
+                        except Exception:
+                            pass
+                        _safe_print_streaming_marker(
+                            f"[STREAMING_QA_COMPLETE] conv={conversation_id} total_s={turn_total_s:.3f} total_ms={turn_total_s * 1000:.1f} backend=draft_fallback ok={draft_res[0]} timestamp={ts_draft}"
+                        )
                         return draft_res
                     from aios_habit.final_answer_composer import deliver_5tier_ladder_answer
                     ladder_res = deliver_5tier_ladder_answer(
@@ -2021,9 +2091,42 @@ def _run_chat_turn_async(
                         user_message_id=user_message_id,
                         current_ui_locale=current_ui_locale,
                         answer_language=answer_language,
-                        on_chunk=on_chunk,
+                        on_chunk=effective_on_chunk,
                     )
                     if ladder_res is not None:
+                        turn_total_s = time.time() - t_turn_start
+                        ts_ladder = format_marker_timestamp()
+                        badge_l = ladder_res[2] if len(ladder_res) > 2 and isinstance(ladder_res[2], dict) else {}
+                        eff_back = (badge_l.get("provider") or badge_l.get("ai_source") or "5tier_ladder") if badge_l else "5tier_ladder"
+                        try:
+                            LOGGER.info(
+                                "[LADDER_ANSWER_COMPLETE] conv=%s wait_s=%.3f total_s=%.3f timestamp=%s",
+                                conversation_id,
+                                worker_wait_s,
+                                turn_total_s,
+                                ts_ladder,
+                            )
+                        except Exception:
+                            pass
+                        _safe_print_streaming_marker(
+                            f"[LADDER_ANSWER_COMPLETE] conv={conversation_id} wait_s={worker_wait_s:.3f} total_s={turn_total_s:.3f} timestamp={ts_ladder}"
+                        )
+                        _mark_first_token()
+                        try:
+                            LOGGER.info(
+                                "[STREAMING_QA_COMPLETE] conv=%s total_s=%.3f total_ms=%.1f backend=%s ok=%s timestamp=%s",
+                                conversation_id,
+                                turn_total_s,
+                                turn_total_s * 1000,
+                                eff_back,
+                                ladder_res[0],
+                                ts_ladder,
+                            )
+                        except Exception:
+                            pass
+                        _safe_print_streaming_marker(
+                            f"[STREAMING_QA_COMPLETE] conv={conversation_id} total_s={turn_total_s:.3f} total_ms={turn_total_s * 1000:.1f} backend={eff_back} ok={ladder_res[0]} timestamp={ts_ladder}"
+                        )
                         return ladder_res
                 return (False, "", None, err_msg)
         elif ret_res["summary_count"] == 0:
@@ -2042,7 +2145,7 @@ def _run_chat_turn_async(
                     user_message_id=user_message_id,
                     current_ui_locale=current_ui_locale,
                     answer_language=answer_language,
-                    on_chunk=on_chunk,
+                    on_chunk=effective_on_chunk,
                 )
                 if draft_res is not None:
                     turn_total_s = time.time() - t_turn_start
@@ -2060,6 +2163,22 @@ def _run_chat_turn_async(
                     _safe_print_streaming_marker(
                         f"[DRAFT_FALLBACK_COMPLETE] conv={conversation_id} wait_s={worker_wait_s:.3f} total_s={turn_total_s:.3f} timestamp={ts_draft}"
                     )
+                    _mark_first_token()
+                    try:
+                        LOGGER.info(
+                            "[STREAMING_QA_COMPLETE] conv=%s total_s=%.3f total_ms=%.1f backend=%s ok=%s timestamp=%s",
+                            conversation_id,
+                            turn_total_s,
+                            turn_total_s * 1000,
+                            "draft_fallback",
+                            draft_res[0],
+                            ts_draft,
+                        )
+                    except Exception:
+                        pass
+                    _safe_print_streaming_marker(
+                        f"[STREAMING_QA_COMPLETE] conv={conversation_id} total_s={turn_total_s:.3f} total_ms={turn_total_s * 1000:.1f} backend=draft_fallback ok={draft_res[0]} timestamp={ts_draft}"
+                    )
                     return draft_res
                 from aios_habit.final_answer_composer import deliver_5tier_ladder_answer
                 ladder_res = deliver_5tier_ladder_answer(
@@ -2070,11 +2189,13 @@ def _run_chat_turn_async(
                     user_message_id=user_message_id,
                     current_ui_locale=current_ui_locale,
                     answer_language=answer_language,
-                    on_chunk=on_chunk,
+                    on_chunk=effective_on_chunk,
                 )
                 if ladder_res is not None:
                     turn_total_s = time.time() - t_turn_start
                     ts_ladder = format_marker_timestamp()
+                    badge_l = ladder_res[2] if len(ladder_res) > 2 and isinstance(ladder_res[2], dict) else {}
+                    eff_back = (badge_l.get("provider") or badge_l.get("ai_source") or "5tier_ladder") if badge_l else "5tier_ladder"
                     try:
                         LOGGER.info(
                             "[LADDER_ANSWER_COMPLETE] conv=%s wait_s=%.3f total_s=%.3f timestamp=%s",
@@ -2087,6 +2208,22 @@ def _run_chat_turn_async(
                         pass
                     _safe_print_streaming_marker(
                         f"[LADDER_ANSWER_COMPLETE] conv={conversation_id} wait_s={worker_wait_s:.3f} total_s={turn_total_s:.3f} timestamp={ts_ladder}"
+                    )
+                    _mark_first_token()
+                    try:
+                        LOGGER.info(
+                            "[STREAMING_QA_COMPLETE] conv=%s total_s=%.3f total_ms=%.1f backend=%s ok=%s timestamp=%s",
+                            conversation_id,
+                            turn_total_s,
+                            turn_total_s * 1000,
+                            eff_back,
+                            ladder_res[0],
+                            ts_ladder,
+                        )
+                    except Exception:
+                        pass
+                    _safe_print_streaming_marker(
+                        f"[STREAMING_QA_COMPLETE] conv={conversation_id} total_s={turn_total_s:.3f} total_ms={turn_total_s * 1000:.1f} backend={eff_back} ok={ladder_res[0]} timestamp={ts_ladder}"
                     )
                     return ladder_res
                 err_msg = t("no_matched_segments_error", locale=current_ui_locale)
@@ -2137,11 +2274,12 @@ def _run_chat_turn_async(
         cagent_endpoint_url=cagent_endpoint_url,
         cancellation_event=cancellation_event,
         local_synthesis=ret_res.get("local_synthesis") if (retrieval_applied and "ret_res" in locals()) else None,
-        on_chunk=on_chunk,
+        on_chunk=effective_on_chunk,
         ai_mode=ai_mode,
         anchored_context=anchored_context,
         allowed_source_ids=allowed_source_ids,
     )
+    _mark_first_token()
     t_turn_end = time.time()
     turn_total_s = t_turn_end - t_turn_start
     badge = res[2] if len(res) > 2 and isinstance(res[2], dict) else {}
@@ -5328,9 +5466,10 @@ else:
                             else None
                         )
 
-                        @st.fragment(run_every=0.25)
+                        @st.fragment(run_every=0.15)
                         def _render_streaming_assistant_box() -> None:
                             curr_text = ""
+                            curr_phase = "retrieving"
                             warming_col_live = None
                             _live_req = st.session_state.get(ai_request_key)
                             _live_future = _live_req.get("future") if isinstance(_live_req, dict) else None
@@ -5338,6 +5477,7 @@ else:
                             if _live_stream and "lock" in _live_stream:
                                 with _live_stream["lock"]:
                                     curr_text = str(_live_stream.get("text", "") or "")
+                                    curr_phase = str(_live_stream.get("phase", "retrieving") or "retrieving")
                                     warming_col_live = _live_stream.get("warming_collection")
 
                             with st.chat_message("assistant"):
@@ -5348,6 +5488,12 @@ else:
                                 if _is_stream_ext:
                                     st.info(f"🌐 **{t('external_ai_provenance_banner', locale=current_ui_locale)}**")
                                 if curr_text:
+                                    st.markdown(
+                                        f"<div class='wsc-streaming-writing-pill' style='display:inline-flex; align-items:center; gap:6px; background:#EFF6FF; border:1px solid #3B82F6; color:#1D4ED8; padding:3px 10px; border-radius:12px; font-size:0.82rem; font-weight:600; margin-bottom:8px;'>"
+                                        f"<span>✍️</span> <span>{t('writing_answer_progress', locale=current_ui_locale)}</span>"
+                                        f"</div>",
+                                        unsafe_allow_html=True,
+                                    )
                                     st.markdown(curr_text + " ▌")
                                 else:
                                     treo_nguon = st.session_state.get(_PENDING_SOURCE_SUBMISSION_KEY)
@@ -7093,30 +7239,47 @@ else:
                                     "started_at": time.time(),
                                     "warming_collection": None,
                                     "lock": Lock(),
+                                    "phase": "retrieving",
                                 }
 
                                 def _on_chunk(delta: str) -> None:
                                     if not delta:
                                         return
-                                    with stream_state["lock"]:
-                                        if stream_state["first_token_time"] is None:
-                                            stream_state["first_token_time"] = time.time()
-                                            ttft_s = stream_state["first_token_time"] - stream_state["started_at"]
-                                            ts_first_token = format_marker_timestamp()
-                                            try:
-                                                LOGGER.info(
-                                                    "[STREAMING_QA_FIRST_TOKEN] conv=%s ttft_s=%.3f ttft_ms=%.1f timestamp=%s",
-                                                    active_conversation.id,
-                                                    ttft_s,
-                                                    ttft_s * 1000,
-                                                    ts_first_token,
+                                    from aios_habit.streaming_markers import split_text_into_streaming_chunks
+                                    if len(delta) > 80:
+                                        sub_chunks = split_text_into_streaming_chunks(delta, target_chunk_size=45)
+                                    else:
+                                        sub_chunks = [delta]
+
+                                    chunk_delay = min(0.035, max(0.012, 0.75 / len(sub_chunks))) if len(sub_chunks) > 1 else 0.0
+
+                                    for idx, sub_chunk in enumerate(sub_chunks):
+                                        if cancellation_event is not None and cancellation_event.is_set():
+                                            break
+                                        with stream_state["lock"]:
+                                            if stream_state["first_token_time"] is None:
+                                                stream_state["first_token_time"] = time.time()
+                                                ttft_s = stream_state["first_token_time"] - stream_state["started_at"]
+                                                ts_first_token = format_marker_timestamp()
+                                                try:
+                                                    LOGGER.info(
+                                                        "[STREAMING_QA_FIRST_TOKEN] conv=%s ttft_s=%.3f ttft_ms=%.1f timestamp=%s",
+                                                        active_conversation.id,
+                                                        ttft_s,
+                                                        ttft_s * 1000,
+                                                        ts_first_token,
+                                                    )
+                                                except Exception:
+                                                    pass
+                                                _safe_print_streaming_marker(
+                                                    f"[STREAMING_QA_FIRST_TOKEN] conv={active_conversation.id} ttft_s={ttft_s:.3f} ttft_ms={ttft_s * 1000:.1f} timestamp={ts_first_token}"
                                                 )
-                                            except Exception:
-                                                pass
-                                            _safe_print_streaming_marker(
-                                                f"[STREAMING_QA_FIRST_TOKEN] conv={active_conversation.id} ttft_s={ttft_s:.3f} ttft_ms={ttft_s * 1000:.1f} timestamp={ts_first_token}"
-                                            )
-                                        stream_state["text"] += delta
+                                            stream_state["text"] += sub_chunk
+                                            stream_state["phase"] = "drafting"
+                                        if chunk_delay > 0 and idx < len(sub_chunks) - 1:
+                                            time.sleep(chunk_delay)
+
+                                setattr(_on_chunk, "_is_progressive", True)
 
                                 from aios_habit.antigravity_bridge import resolve_allowed_source_ids
                                 snap_selections = load_conversation_source_selections(active_conversation.id)

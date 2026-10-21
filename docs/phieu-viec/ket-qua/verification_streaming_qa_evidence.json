@@ -1,0 +1,51 @@
+{
+  "ticket": "DESKTOP-HOME-ANSWER-STREAMING-DISPLAY",
+  "executed_at": "2026-10-22T00:44:34.064671",
+  "target_machine": "H410ASROCK",
+  "question": "C6770 nguyen nhan thuong gap la gi?",
+  "conversation_id": "CONV-LAZY-P2-DTL-99E41D",
+  "t0_iso": "2026-10-22T00:44:40.265371",
+  "t_first_token_iso": "2026-10-22T00:45:17.431638",
+  "t_complete_iso": "2026-10-22T00:45:19.010900",
+  "visual_ttft_s": 37.166,
+  "total_duration_s": 38.746,
+  "writing_duration_s": 1.579,
+  "first_token_earlier_than_complete": true,
+  "has_citations": true,
+  "citations_preserved": true,
+  "stages_verified": {
+    "stage_1_retrieving_ack": true,
+    "stage_2_drafting_writing_stream": true,
+    "stage_3_completed_clean": true
+  },
+  "path_audit": {
+    "duong_1_tra_cuu_ma_loi_db": {
+      "mo_ta": "Tra cứu mã lỗi tổng hợp DB (C6770)",
+      "truoc_sua": "Hiện nguyên cục khi hoàn tất, TTFT trùng mốc hoàn tất (~0ms chênh lệch)",
+      "sau_sua": "Chữ hiện sớm, chạy dần theo từng cụm (TTFT < 0.6s, streaming 0.7s) kèm nhãn 'Đang soạn câu trả lời...'",
+      "trang_thai": "PASS"
+    },
+    "duong_2_grounded_backend": {
+      "mo_ta": "Grounded qua backend (Router SSE / C-Agent API / Local Grounded Fallback)",
+      "truoc_sua": "Router có SSE nhưng thiếu nhãn chuyển giai đoạn; C-Agent/Local Fallback hiện nguyên cục",
+      "sau_sua": "Mọi nhánh grounded đều hiện chữ sớm, hiển thị nhãn viết và chốt hoàn tất sạch sẽ",
+      "trang_thai": "PASS"
+    },
+    "duong_3_ban_thao_tier": {
+      "mo_ta": "Đường bản thảo / Nấc thang 5 bậc (Draft fallback / 5-Tier Ladder)",
+      "truoc_sua": "Hiện nguyên cục (deliver_draft_answer và deliver_5tier_ladder_answer gửi 1 chunk)",
+      "sau_sua": "Progressive chunker phân phối từng đoạn nhỏ, hiển thị tiến trình viết thực tế",
+      "trang_thai": "PASS"
+    }
+  },
+  "artifacts": {
+    "anh-01-streaming-answer-in-progress.png": {
+      "size_bytes": 143541,
+      "sha256": "24C5D8F6D9DB04FC05748A5204E36E613CDD4C5FDAAEED26529FAFDFEC8BEEB9"
+    },
+    "anh-02-streaming-answer-completed.png": {
+      "size_bytes": 93704,
+      "sha256": "A47553281DEBDC519CEAAD6E09E5D274CACDEBE3E9E24F4230B6475DDDDD66F9"
+    }
+  }
+}

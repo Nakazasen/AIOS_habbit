@@ -10,8 +10,10 @@ from __future__ import annotations
 
 from datetime import datetime
 import logging
+import re
 import sys
-from typing import Optional
+import time
+from typing import Any, Callable, List, Optional, Sequence
 
 LOGGER = logging.getLogger("aios_habit.streaming_markers")
 
@@ -74,3 +76,83 @@ def emit_pre_synth_step_marker(
     except Exception:
         pass
     return marker_msg
+
+
+def split_text_into_streaming_chunks(text: str, target_chunk_size: int = 40) -> List[str]:
+    """Split a text block into progressive streaming chunks while strictly preserving exact content.
+
+    Invariant: ''.join(split_text_into_streaming_chunks(text)) == text
+    Splits by paragraph/sentence/word boundaries without breaking markdown citations or formatting.
+    """
+    if not text:
+        return []
+    if len(text) <= target_chunk_size:
+        return [text]
+
+    # Delimiter-preserving tokenizer: captures paragraphs, sentence endings, punctuation, and whitespace
+    pattern = re.compile(r"(\n+|(?<=[.?!:])\s+|(?<=[,;])\s+|\s+)")
+    tokens = pattern.split(text)
+    chunks: List[str] = []
+    current: List[str] = []
+    current_len = 0
+
+    for tok in tokens:
+        if not tok:
+            continue
+        if current_len + len(tok) <= target_chunk_size:
+            current.append(tok)
+            current_len += len(tok)
+        else:
+            if current:
+                chunks.append("".join(current))
+                current = []
+                current_len = 0
+            if len(tok) > target_chunk_size:
+                for i in range(0, len(tok), target_chunk_size):
+                    chunks.append(tok[i : i + target_chunk_size])
+            else:
+                current.append(tok)
+                current_len += len(tok)
+
+    if current:
+        chunks.append("".join(current))
+
+    assert "".join(chunks) == text, "split_text_into_streaming_chunks invariant violation: output does not match input"
+    return chunks
+
+
+def progressive_emit_chunks(
+    text: str,
+    on_chunk: Optional[Callable[[str], None]],
+    cancellation_event: Any = None,
+    target_total_duration_s: float = 0.7,
+    target_chunk_size: int = 40,
+) -> None:
+    """Progressively deliver chunks of a complete text block to an on_chunk listener.
+
+    Supports ticket DESKTOP-HOME-ANSWER-STREAMING-DISPLAY:
+    - Yields chunks progressively so the user sees text flowing smoothly in real time.
+    - Adapts chunk delay dynamically so total duration stays within a fast, responsive window (0.3s - 0.9s).
+    - Checks cancellation_event on every step to halt immediately if user cancels.
+    - True streaming chunks (len <= target_chunk_size) pass through instantly with zero added delay.
+    """
+    if not text or on_chunk is None:
+        return
+
+    if len(text) <= target_chunk_size:
+        on_chunk(text)
+        return
+
+    chunks = split_text_into_streaming_chunks(text, target_chunk_size=target_chunk_size)
+    if len(chunks) <= 1:
+        on_chunk(text)
+        return
+
+    chunk_delay = min(0.035, max(0.012, target_total_duration_s / len(chunks)))
+    for idx, chunk in enumerate(chunks):
+        if cancellation_event is not None and getattr(cancellation_event, "is_set", lambda: False)():
+            break
+        on_chunk(chunk)
+        if idx < len(chunks) - 1:
+            time.sleep(chunk_delay)
+
