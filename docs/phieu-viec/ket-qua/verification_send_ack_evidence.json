@@ -1,0 +1,44 @@
+{
+  "ticket": "DESKTOP-HOME-SEND-ACK-UX",
+  "machine": "H410ASROCK",
+  "python_version": "3.11.14 (main, Feb 12 2026, 00:37:49) [MSC v.1944 64 bit (AMD64)]",
+  "timestamp": "2026-10-21T21:28:52.462895",
+  "test_1_latency": {
+    "question": "C6770 nguyen nhan thuong gap la gi?",
+    "t_click": "2026-10-21T21:26:33.238932",
+    "t_first_visual": "2026-10-21T21:26:35.068364",
+    "first_visual_type": "user_bubble_rendered",
+    "latency_to_first_visual_seconds": 0.054,
+    "latency_to_user_bubble_seconds": 0.054,
+    "latency_to_assistant_ack_pill_seconds": 0.054,
+    "target_sub_0_5s_met": true
+  },
+  "test_2_duplicate_prevention": {
+    "question": "Lỗi C6770 có những mã linh kiện nào liên quan?",
+    "clicks_fired": 3,
+    "user_bubbles_added": 1,
+    "db_turns_created": 1,
+    "duplicate_prevented": true
+  },
+  "test_3_cold_warming": {
+    "question_preserved": true,
+    "no_deadlock": true
+  },
+  "screenshots": {
+    "shot1": {
+      "filename": "anh-01-send-ack-first-visual-feedback.png",
+      "size_bytes": 80756,
+      "sha256": "9C724DAB700F4B7D7FCE122C5695764015B4E2F1FB35119635597616EFB986B9"
+    },
+    "shot2": {
+      "filename": "anh-02-rapid-click-single-turn-guard.png",
+      "size_bytes": 80837,
+      "sha256": "46E0325DDE4C0409900E151E8C7838F63F66CCE518E9B0BF8049EA9673F173D8"
+    },
+    "shot3": {
+      "filename": "anh-03-cold-warming-auto-unlock-intact.png",
+      "size_bytes": 88580,
+      "sha256": "1CEE544662B03F989114046A74A1875FAF1FF451AE36C8FB2BEB580153F20379"
+    }
+  }
+}

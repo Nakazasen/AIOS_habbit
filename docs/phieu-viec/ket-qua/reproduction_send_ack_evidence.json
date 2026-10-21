@@ -1,0 +1,12 @@
+{
+  "ticket": "DESKTOP-HOME-SEND-ACK-UX",
+  "phase": "reproduction_baseline",
+  "notebook_id": "NB-LAZY-DTL",
+  "collection_id": "dieu_tra_loi",
+  "question": "C6770 nguyen nhan thuong gap la gi?",
+  "t_click_iso": "2026-10-21T20:34:31.478408",
+  "t_first_visual_iso": "2026-10-21T20:34:33.202499",
+  "first_visual_type": "button_state_changed (disabled=False, text='arrow_upwardHỏi')",
+  "latency_seconds": 0.062,
+  "target_met": true
+}

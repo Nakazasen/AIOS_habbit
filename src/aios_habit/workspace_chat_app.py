@@ -3984,6 +3984,18 @@ else:
             pass
         # Nén Ngữ Cảnh & Kế Thừa
         messages = load_messages(active_conversation.id)
+        _submitting_ack = st.session_state.get(f"wsc_submitting_ack_{active_conversation.id}")
+        if _submitting_ack and isinstance(_submitting_ack, dict) and _submitting_ack.get("q_text"):
+            _opt_q = _submitting_ack["q_text"]
+            _opt_id = _submitting_ack.get("user_msg_id", f"MSG-U-{uuid.uuid4().hex[:8].upper()}")
+            if not any(m.id == _opt_id for m in messages):
+                messages.append(ChatMessage(
+                    id=_opt_id,
+                    conversation_id=active_conversation.id,
+                    role="user",
+                    content=_opt_q,
+                    created_at=datetime.now().isoformat(),
+                ))
         if len(messages) > 0:
             pending_compress_id = st.session_state.get("wsc_pending_compress_conversation_id")
             if pending_compress_id == active_conversation.id:
@@ -5086,15 +5098,41 @@ else:
                 except Exception:
                     pass
 
+            def _handle_composer_send_callback(conv_id: str) -> None:
+                if st.session_state.get(f"wsc_submitting_ack_{conv_id}"):
+                    return
+                ai_req = st.session_state.get(f"wsc_ai_request_{conv_id}")
+                if ai_req:
+                    future = ai_req.get("future")
+                    if future is not None and not future.done():
+                        return
+                input_key = f"wsc_question_input_{conv_id}"
+                raw_text = str(st.session_state.get(input_key, "") or "").strip()
+                pasted_img_key = f"wsc_pasted_image_{conv_id}"
+                has_image = bool(st.session_state.get(pasted_img_key))
+                if not raw_text and not has_image:
+                    return
+                st.session_state[input_key] = ""
+                st.session_state[f"wsc_submitting_ack_{conv_id}"] = {
+                    "q_text": raw_text,
+                    "user_msg_id": f"MSG-U-{uuid.uuid4().hex[:8].upper()}",
+                    "timestamp": time.time(),
+                }
+
             def _render_chat_main_column():
                 ai_request_key = f"wsc_ai_request_{active_conversation.id}"
                 active_ai_request = st.session_state.get(ai_request_key)
+                _submitting_ack = st.session_state.get(f"wsc_submitting_ack_{active_conversation.id}")
                 is_answering = False
+                request_future = None
+                cancellation_event = None
+                stream_state = None
                 if active_ai_request:
                     request_future = active_ai_request.get("future")
                     cancellation_event = active_ai_request.get("cancellation_event")
                     if request_future is not None and request_future.done():
                         st.session_state.pop(ai_request_key, None)
+                        st.session_state.pop(f"wsc_submitting_ack_{active_conversation.id}", None)
                         if cancellation_event is not None and cancellation_event.is_set():
                             st.session_state.wsc_action_message = "Đã dừng yêu cầu AI."
                         else:
@@ -5135,6 +5173,8 @@ else:
                         safe_rerun()
                     elif request_future is not None:
                         is_answering = True
+                elif _submitting_ack is not None:
+                    is_answering = True
 
                 active_pending = list_pending_ide_requests(active_conversation.id)
                 for req_info in active_pending:
@@ -5267,14 +5307,17 @@ else:
                         def _render_streaming_assistant_box() -> None:
                             curr_text = ""
                             warming_col_live = None
-                            if stream_state and "lock" in stream_state:
-                                with stream_state["lock"]:
-                                    curr_text = str(stream_state.get("text", "") or "")
-                                    warming_col_live = stream_state.get("warming_collection")
+                            _live_req = st.session_state.get(ai_request_key)
+                            _live_future = _live_req.get("future") if isinstance(_live_req, dict) else None
+                            _live_stream = _live_req.get("stream_state") if isinstance(_live_req, dict) else None
+                            if _live_stream and "lock" in _live_stream:
+                                with _live_stream["lock"]:
+                                    curr_text = str(_live_stream.get("text", "") or "")
+                                    warming_col_live = _live_stream.get("warming_collection")
 
                             with st.chat_message("assistant"):
                                 _is_stream_ext = bool(
-                                    (isinstance(active_ai_request, dict) and active_ai_request.get("ai_mode") == "external")
+                                    (isinstance(_live_req, dict) and _live_req.get("ai_mode") == "external")
                                     or getattr(active_conversation, "ai_mode", "grounded") == "external"
                                 )
                                 if _is_stream_ext:
@@ -5287,14 +5330,20 @@ else:
                                         isinstance(treo_nguon, dict)
                                         and treo_nguon.get("conversation_id") == active_conversation.id
                                     )
+                                    st.markdown(
+                                        f"<div class='wsc-send-ack-pill' style='display:inline-flex; align-items:center; gap:6px; background:#ECFDF5; border:1px solid #10B981; color:#065F46; padding:3px 10px; border-radius:12px; font-size:0.82rem; font-weight:600; margin-bottom:8px;'>"
+                                        f"<span>✅</span> <span>{t('question_received_ack', locale=current_ui_locale)}</span>"
+                                        f"</div>",
+                                        unsafe_allow_html=True,
+                                    )
                                     render_answer_wait_steps(
                                         "cho_tai_lieu" if dang_cho_nguon else "dang_xu_ly",
                                         locale=current_ui_locale,
                                     )
                                     try:
                                         _forced_req_col = (
-                                            active_ai_request.get("forced_domain")
-                                            if isinstance(active_ai_request, dict)
+                                            _live_req.get("forced_domain")
+                                            if isinstance(_live_req, dict)
                                             else None
                                         )
                                         _target_warm_col = str(
@@ -5327,7 +5376,7 @@ else:
                                             or t("worker_warming_background", locale=current_ui_locale)
                                         )
 
-                            if request_future is not None and request_future.done():
+                            if _live_future is not None and _live_future.done():
                                 try:
                                     st.rerun(scope="app")
                                 except TypeError:
@@ -6032,7 +6081,8 @@ else:
                                 )
                                 ask_submitted = False
                                 if stop_requested:
-                                    if is_answering:
+                                    st.session_state.pop(f"wsc_submitting_ack_{active_conversation.id}", None)
+                                    if is_answering and active_ai_request:
                                         active_ai_request["cancellation_event"].set()
                                         st.session_state.wsc_action_message = "Đang dừng yêu cầu AI…"
                                     else:
@@ -6059,25 +6109,84 @@ else:
                                     type="primary",
                                     disabled=_ask_disabled,
                                     help=_ask_tooltip,
+                                    on_click=_handle_composer_send_callback,
+                                    args=(active_conversation.id,),
                                 )
 
+                    _js_is_answering = "true" if is_answering else "false"
                     st.html(
-                        """
+                        f"""
                         <script>
-                        if (!window.parent.__wscComposerShortcutBound) {
-                          window.parent.__wscComposerShortcutBound = true;
-                          window.parent.document.addEventListener("keydown", function(event) {
-                            if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-                              const sendButton = window.parent.document.querySelector(
-                                '[class*="st-key-wsc-action-"] button'
-                              );
-                              if (sendButton && !sendButton.disabled) {
-                                event.preventDefault();
-                              sendButton.click();
-                              }
-                            }
-                          }, true);
-                        }
+                        (function() {{
+                          const doc = window.document;
+
+                          const isAnswering = {_js_is_answering};
+                          const currentSendBtn = doc.querySelector('[class*="st-key-wsc_ask_"] button, [class*="st-key-wsc-action-"] button');
+                          if (currentSendBtn && !isAnswering) {{
+                            currentSendBtn.removeAttribute("data-wsc-sending");
+                            currentSendBtn.removeAttribute("disabled");
+                            currentSendBtn.style.pointerEvents = "";
+                            currentSendBtn.style.opacity = "";
+                          }}
+
+                          if (!window.__wscComposerShortcutBound) {{
+                            window.__wscComposerShortcutBound = true;
+
+                            doc.addEventListener("input", function(e) {{
+                              if (e.target && e.target.matches && e.target.matches('[class*="st-key-wsc_question_input_"] textarea')) {{
+                                const btn = doc.querySelector('[class*="st-key-wsc_ask_"] button, [class*="st-key-wsc-action-"] button');
+                                if (btn) {{
+                                  btn.removeAttribute("data-wsc-sending");
+                                  btn.removeAttribute("disabled");
+                                  btn.style.pointerEvents = "";
+                                  btn.style.opacity = "";
+                                }}
+                              }}
+                            }}, true);
+
+                            doc.addEventListener("click", function(event) {{
+                              const sendBtn = event.target.closest('[class*="st-key-wsc_ask_"] button, [class*="st-key-wsc-action-"] button');
+                              if (sendBtn) {{
+                                if (sendBtn.disabled || sendBtn.getAttribute("data-wsc-sending") === "true") {{
+                                  event.stopImmediatePropagation();
+                                  event.preventDefault();
+                                  return false;
+                                }}
+                                const isStopBtn = sendBtn.innerText.includes("Dừng") || sendBtn.innerText.includes("stop");
+                                if (isStopBtn) return;
+
+                                const textarea = doc.querySelector('[class*="st-key-wsc_question_input_"] textarea');
+                                const hasText = textarea && textarea.value.trim().length > 0;
+                                if (hasText) {{
+                                  sendBtn.setAttribute("data-wsc-sending", "true");
+                                  sendBtn.style.pointerEvents = "none";
+                                  sendBtn.style.opacity = "0.6";
+                                  setTimeout(function() {{
+                                    sendBtn.setAttribute("disabled", "true");
+                                  }}, 50);
+
+                                  const hintEl = doc.querySelector('[class*="st-key-wsc-shortcut-hint-"]');
+                                  if (hintEl) {{
+                                    hintEl.innerHTML = '<span class="wsc-client-ack-tag" style="color:#059669; font-weight:600; font-size:0.75rem;">✓ Đã nhận</span>';
+                                  }}
+                                  console.log("[WSC_CLICK_ACK] Instant visual ack rendered and duplicate guard locked.");
+                                }}
+                              }}
+                            }}, true);
+
+                            doc.addEventListener("keydown", function(event) {{
+                              if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {{
+                                const sendButton = doc.querySelector(
+                                  '[class*="st-key-wsc-action-"] button'
+                                );
+                                if (sendButton && !sendButton.disabled && sendButton.getAttribute("data-wsc-sending") !== "true") {{
+                                  event.preventDefault();
+                                  sendButton.click();
+                                }}
+                              }}
+                            }}, true);
+                          }}
+                        }})();
                         </script>
                         """,
                         unsafe_allow_javascript=True,
@@ -6147,6 +6256,11 @@ else:
                     ask_submitted = True
                     user_input = _suggested_question
                     user_attached_image = None
+
+                _current_submitting_ack = st.session_state.get(f"wsc_submitting_ack_{active_conversation.id}")
+                if _current_submitting_ack and _current_submitting_ack.get("q_text") and not user_input.strip():
+                    user_input = _current_submitting_ack["q_text"]
+                    ask_submitted = True
 
                 if ask_submitted:
                     try:
@@ -6830,8 +6944,14 @@ else:
                                 from aios_habit.workspace_chat_models import ChatMessage
                                 from aios_habit.workspace_chat_store import save_message
 
+                                _active_ack = st.session_state.get(f"wsc_submitting_ack_{active_conversation.id}")
+                                _turn_msg_id = (
+                                    _active_ack.get("user_msg_id")
+                                    if (_active_ack and isinstance(_active_ack, dict))
+                                    else f"MSG-{uuid.uuid4().hex[:8].upper()}"
+                                )
                                 user_msg = ChatMessage(
-                                    id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
+                                    id=_turn_msg_id,
                                     conversation_id=active_conversation.id,
                                     role="user",
                                     content=q_text,
@@ -6918,7 +7038,9 @@ else:
                                         or "auto"
                                     ),
                                 }
-                                safe_rerun()
+                                st.session_state.pop(f"wsc_submitting_ack_{active_conversation.id}", None)
+                                if not _active_ack:
+                                    safe_rerun()
 
                 current_undo_state = _get_source_undo_state()
                 document_total = len(notebook_sources) + len(temp_sources)
