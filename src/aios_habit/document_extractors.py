@@ -805,6 +805,20 @@ def _extract_pdf(path: Path) -> list[ExtractionResult]:
         return [deep_result]
     deep_warning = deep_result.warning if deep_result is not None else ""
 
+    # Tich hop lop bo tro Indra OCR theo ve DESKTOP-HOME-INDRA-OCR-INGEST-INTEGRATE
+    try:
+        from aios_habit.indra_ocr_adapter import run_indra_extraction
+
+        indra_results, indra_stats = run_indra_extraction(path, routes=routes)
+        if indra_results and indra_stats.used_indra:
+            if deep_warning and indra_results:
+                indra_results[0].warning = "; ".join(
+                    item for item in [deep_warning, indra_results[0].warning] if item
+                )
+            return indra_results
+    except Exception:
+        pass
+
     try:
         import fitz
     except ImportError:
@@ -927,6 +941,17 @@ def extract_text_chunks_from_file(path: str | Path, *, root: str | Path | None =
     for result in results:
         result.text = normalize_extracted_text(result.text)
         chunks.extend(_chunk_result(result, file_path, root_path, max_chars_per_chunk))
+
+    try:
+        from aios_habit.indra_ocr_adapter import get_last_indra_stats
+
+        last_stats = get_last_indra_stats(file_path)
+        if last_stats is not None:
+            stats_dict = last_stats.to_dict()
+            for chunk in chunks:
+                chunk["indra_stats"] = stats_dict
+    except Exception:
+        pass
     return chunks
 
 
@@ -976,8 +1001,12 @@ def local_capabilities() -> dict[str, Any]:
     availability["tesseract"] = tesseract_available
     selected = next((name for name in engine_caps["ocr_engine_order"] if availability.get(name)), "none")
     ocr_available = selected != "none"
+    from aios_habit.indra_ocr_adapter import is_indra_available, is_indra_enabled
+
     return {
-        "ocr_available": ocr_available,
+        "indra_ocr_available": is_indra_available(),
+        "indra_ocr_enabled": is_indra_enabled(),
+        "ocr_available": ocr_available or is_indra_available(),
         "ocr_engine": selected,
         "tesseract_cmd": tesseract_detail if tesseract_available else "",
         "ocr_lang": _ocr_lang(),

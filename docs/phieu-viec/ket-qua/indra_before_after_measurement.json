@@ -1,0 +1,219 @@
+{
+  "8d": {
+    "name": "Báo cáo 8D nhà cung cấp KDTVN",
+    "type": "PDF kỹ thuật chữ mỏng + bảng biểu",
+    "pages": 5,
+    "file_size": 1476027,
+    "old": {
+      "chars": 3125,
+      "bytes": 6228,
+      "ocr_pages": 0,
+      "elapsed_seconds": 0.1357,
+      "results_count": 5
+    },
+    "new": {
+      "chars": 5746,
+      "bytes": 8751,
+      "ocr_pages": 3,
+      "elapsed_seconds": 4.7253,
+      "results_count": 5,
+      "used_indra": true,
+      "gate_rule": "gate_b_short_doc",
+      "stats": {
+        "file_path": "C:\\tmp\\indra_test_files\\8d_kdtvn_5p.pdf",
+        "so_ky_tu_lop_chu_san": 3125,
+        "so_ky_tu_sau_indra": 5746,
+        "so_trang_ocr": 3,
+        "co_dung_indra": true,
+        "thoi_gian_nap": 4.7046,
+        "cong_kich_hoat": "gate_b_short_doc",
+        "tong_so_trang": 5,
+        "native_chars": 3125,
+        "indra_chars": 5746,
+        "ocr_pages": 3,
+        "used_indra": true,
+        "elapsed_seconds": 4.7046,
+        "gate_rule": "gate_b_short_doc",
+        "details": {
+          "ocr_page_count": 3,
+          "pages_requested": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        }
+      }
+    }
+  },
+  "7pa": {
+    "name": "Sơ đồ mạch 7PA1187DCZ",
+    "type": "Sơ đồ mạch điện tử + tiếng Nhật",
+    "pages": 11,
+    "file_size": 643709,
+    "old": {
+      "chars": 31187,
+      "bytes": 35234,
+      "ocr_pages": 0,
+      "elapsed_seconds": 0.2582,
+      "results_count": 11
+    },
+    "new": {
+      "chars": 95816,
+      "bytes": 99670,
+      "ocr_pages": 10,
+      "elapsed_seconds": 17.2927,
+      "results_count": 11,
+      "used_indra": true,
+      "gate_rule": "gate_b_short_doc",
+      "stats": {
+        "file_path": "C:\\tmp\\indra_test_files\\7pa1187dcz_11p.pdf",
+        "so_ky_tu_lop_chu_san": 31187,
+        "so_ky_tu_sau_indra": 95816,
+        "so_trang_ocr": 10,
+        "co_dung_indra": true,
+        "thoi_gian_nap": 17.1528,
+        "cong_kich_hoat": "gate_b_short_doc",
+        "tong_so_trang": 11,
+        "native_chars": 31187,
+        "indra_chars": 95816,
+        "ocr_pages": 10,
+        "used_indra": true,
+        "elapsed_seconds": 17.1528,
+        "gate_rule": "gate_b_short_doc",
+        "details": {
+          "ocr_page_count": 10,
+          "pages_requested": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11
+          ]
+        }
+      }
+    }
+  },
+  "c6610": {
+    "name": "Tài liệu scan thuần C6610 (N00137687_thực hành)",
+    "type": "Tài liệu scan thuần 100% không có lớp chữ",
+    "pages": 31,
+    "file_size": 10478841,
+    "old": {
+      "chars": 2159,
+      "bytes": 2235,
+      "ocr_pages": 28,
+      "elapsed_seconds": 47.4671,
+      "results_count": 31
+    },
+    "new": {
+      "chars": 41720,
+      "bytes": 61133,
+      "ocr_pages": 31,
+      "elapsed_seconds": 64.2803,
+      "results_count": 31,
+      "used_indra": true,
+      "gate_rule": "gate_b_short_doc",
+      "stats": {
+        "file_path": "C:\\tmp\\indra_test_files\\c6610_n00137687_scan_31p.pdf",
+        "so_ky_tu_lop_chu_san": 0,
+        "so_ky_tu_sau_indra": 41720,
+        "so_trang_ocr": 31,
+        "co_dung_indra": true,
+        "thoi_gian_nap": 64.2606,
+        "cong_kich_hoat": "gate_b_short_doc",
+        "tong_so_trang": 31,
+        "native_chars": 0,
+        "indra_chars": 41720,
+        "ocr_pages": 31,
+        "used_indra": true,
+        "elapsed_seconds": 64.2606,
+        "gate_rule": "gate_b_short_doc",
+        "details": {
+          "ocr_page_count": 31,
+          "pages_requested": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+            31
+          ]
+        }
+      }
+    }
+  },
+  "smkdj": {
+    "name": "Service manual 2xd_smkdj_jpn (Đối chứng âm)",
+    "type": "Service manual dung lượng lớn 165MB",
+    "pages": 1758,
+    "file_size": 164940866,
+    "old": {
+      "chars": 1569357,
+      "bytes": 2877060,
+      "ocr_pages": 7,
+      "elapsed_seconds": 49.7051,
+      "results_count": 1758
+    },
+    "new": {
+      "chars": 1569357,
+      "bytes": 2877060,
+      "ocr_pages": 0,
+      "elapsed_seconds": 49.5981,
+      "results_count": 1758,
+      "used_indra": false,
+      "gate_rule": "gate_c_skipped_long_doc",
+      "stats": {
+        "file_path": "C:\\tmp\\indra_test_files\\2xd_smkdj_jpn_service_manual_1758p.pdf",
+        "so_ky_tu_lop_chu_san": 1569631,
+        "so_ky_tu_sau_indra": 1569631,
+        "so_trang_ocr": 0,
+        "co_dung_indra": false,
+        "thoi_gian_nap": 0.0013,
+        "cong_kich_hoat": "gate_c_skipped_long_doc",
+        "tong_so_trang": 1758,
+        "native_chars": 1569631,
+        "indra_chars": 1569631,
+        "ocr_pages": 0,
+        "used_indra": false,
+        "elapsed_seconds": 0.0013,
+        "gate_rule": "gate_c_skipped_long_doc",
+        "details": {
+          "skipped_reason": "gate_c_skipped_long_doc"
+        }
+      }
+    }
+  }
+}

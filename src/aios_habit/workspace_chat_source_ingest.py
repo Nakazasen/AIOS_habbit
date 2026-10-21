@@ -312,6 +312,35 @@ def ingest_and_extract_bytes(
 
         preview = combined_text[:WORKSPACE_CHAT_SOURCE_PREVIEW_LIMIT]
 
+        # Thu thap thong ke Indra OCR theo ve DESKTOP-HOME-INDRA-OCR-INGEST-INTEGRATE
+        indra_stats = None
+        for chunk in chunks:
+            if "indra_stats" in chunk:
+                indra_stats = chunk["indra_stats"]
+                break
+        if indra_stats is None:
+            try:
+                from aios_habit.indra_ocr_adapter import get_last_indra_stats
+                last_stats = get_last_indra_stats(temp_path)
+                if last_stats is not None:
+                    indra_stats = last_stats.to_dict()
+            except Exception:
+                pass
+
+        meta: dict[str, Any] = {
+            "file_size_bytes": file_size,
+            "extension": ext,
+            "raw_warnings": warnings,
+        }
+        if indra_stats:
+            meta["indra_stats"] = indra_stats
+            meta["so_ky_tu_lop_chu_san"] = indra_stats.get("so_ky_tu_lop_chu_san", 0)
+            meta["so_ky_tu_sau_indra"] = indra_stats.get("so_ky_tu_sau_indra", 0)
+            meta["so_trang_ocr"] = indra_stats.get("so_trang_ocr", 0)
+            meta["co_dung_indra"] = indra_stats.get("co_dung_indra", False)
+            meta["thoi_gian_nap"] = indra_stats.get("thoi_gian_nap", 0.0)
+            meta["cong_kich_hoat"] = indra_stats.get("cong_kich_hoat", "")
+
         return {
             "ok": True,
             "filename": safe_name,
@@ -319,11 +348,7 @@ def ingest_and_extract_bytes(
             "owner_message": "Đã đọc và trích xuất thành công tài liệu.",
             "text": combined_text,
             "preview": preview,
-            "metadata": {
-                "file_size_bytes": file_size,
-                "extension": ext,
-                "raw_warnings": warnings,
-            },
+            "metadata": meta,
         }
 
     except Exception as e:
