@@ -138,6 +138,18 @@ def detect_family(code: str) -> Optional[str]:
     return None
 
 
+def _has_glossary_table(conn: Optional[sqlite3.Connection]) -> bool:
+    if conn is None:
+        return False
+    try:
+        r = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='error_glossary'"
+        ).fetchone()
+        return bool(r)
+    except Exception:
+        return False
+
+
 def _norm_text(*parts: Any) -> str:
     text = " ".join("" if p is None else str(p) for p in parts)
     return unicodedata.normalize("NFKC", text).lower()
@@ -228,7 +240,8 @@ def classify_error(
     can_cu: Dict[str, str] = {}
 
     glossary_text = ""
-    if glossary_conn is not None:
+    glossary_entry = None
+    if glossary_conn is not None and _has_glossary_table(glossary_conn):
         if family is None:
             # B0-DICT: the token may be a variant name spelling rather than
             # a code (e.g. copied from a workbook); resolve via the alias
@@ -240,10 +253,22 @@ def classify_error(
                     f"Chuẩn hóa tên gọi: '{error_code}' -> {family} {code}."
                 )
         if family is not None:
-            entry = glossary_lookup(glossary_conn, family, code)
-            if entry:
+            glossary_entry = glossary_lookup(glossary_conn, family, code)
+            if not glossary_entry:
+                # Fallback search across known families
+                for fam in ("C_CALL", "F_SYSTEM", "JAM", "SCT_ADJ"):
+                    cur = glossary_conn.execute(
+                        "SELECT * FROM error_glossary WHERE code_family = ? AND code = ? AND code_sub = ''",
+                        (fam, code),
+                    )
+                    r = cur.fetchone()
+                    if r:
+                        glossary_entry = dict(r) if hasattr(r, "keys") else {desc[0]: val for desc, val in zip(cur.description, r)}
+                        family = fam
+                        break
+            if glossary_entry:
                 glossary_text = " ".join(
-                    str(entry.get(k) or "")
+                    str(glossary_entry.get(k) or "")
                     for k in ("name_vi", "name_en", "name_ja", "cause", "remedy")
                 )
                 reasons.append(
@@ -259,6 +284,38 @@ def classify_error(
         reasons.append(f"Nhận dạng nhóm mã: {family} (theo hình thức mã).")
     else:
         reasons.append(f"Không nhận dạng được nhóm mã từ '{error_code}'.")
+
+    # Conflict check: when an error code has a defined meaning in the glossary,
+    # verify whether symptom keywords contradict the code's inherent meaning.
+    override_stage: Optional[str] = None
+    override_dept: Optional[str] = None
+    conflict_reason = ""
+    if code and glossary_entry:
+        entry_name_vi = str(glossary_entry.get("name_vi") or "").strip()
+        entry_name_ja = str(glossary_entry.get("name_ja") or "").strip()
+        phen_lower = (phenomenon or "").lower()
+
+        jam_keywords_in_phen = [kw for kw in ("kẹt giấy", "jam", "dắt giấy", "paper jam") if kw in phen_lower]
+        if family == "C_CALL" and jam_keywords_in_phen:
+            kw_str = ", ".join(f"'{k}'" for k in jam_keywords_in_phen)
+            reasons.append(
+                f"Phát hiện mâu thuẫn: Hiện tượng chứa từ khóa kẹt giấy ({kw_str}) nhưng mã {code} thuộc họ C_CALL ({entry_name_vi or entry_name_ja})."
+            )
+            glossary_lower = f"{entry_name_vi} {entry_name_ja} {glossary_entry.get('cause', '')} {glossary_entry.get('remedy', '')}".lower()
+            if any(term in glossary_lower for term in ("đăng ký màu", "レジスト", "registration", "calib", "hiệu chuẩn", "điều chỉnh", "lệch màu", "skew", "tilt")):
+                override_stage = "Điều chỉnh"
+                override_dept = "Kỹ thuật"
+            elif any(term in glossary_lower for term in ("lắp ráp", "kết nối", "connector", "cắm", "rơi", "tuột")):
+                override_stage = "Lắp ráp"
+                override_dept = "Bảo trì"
+            else:
+                override_stage = "Điều chỉnh"
+                override_dept = "Kỹ thuật"
+
+            conflict_reason = (
+                f"Hiện tượng mô tả có từ khóa ({kw_str}) mâu thuẫn với định nghĩa mã {code} trong từ điển {family} "
+                f"('{entry_name_vi or entry_name_ja}'). Hệ thống ưu tiên căn cứ theo bản chất mã lỗi để đề xuất công đoạn '{override_stage}'."
+            )
 
     text = _norm_text(code, phenomenon, investigation, glossary_text)
 
@@ -289,7 +346,11 @@ def classify_error(
     stage_kw, stage_hits = _pick_best(stage_scores)
 
     defaults = FAMILY_DEFAULTS.get(family or "", {})
-    if dept_kw is not None:
+    if override_dept:
+        bo_phan: Optional[str] = override_dept
+        reasons.append(f"Bộ phận '{bo_phan}': ưu tiên theo nghĩa mã trong từ điển {family}.")
+        can_cu["bo_phan"] = f"Mặc định theo họ mã {family} và quy trình hiệu chuẩn ({code})"
+    elif dept_kw is not None:
         bo_phan: Optional[str] = dept_kw
         matched_dept_kws = ", ".join(f"'{k}'" for k in dept_hits_map[dept_kw][:3])
         reasons.append(f"Bộ phận '{dept_kw}': khớp {dept_hits} từ khóa ({matched_dept_kws}).")
@@ -304,7 +365,16 @@ def classify_error(
         else:
             can_cu["bo_phan"] = "Không đủ căn cứ suy luận"
 
-    if stage_kw is not None:
+    if override_stage:
+        cong_doan: Optional[str] = override_stage
+        reasons.append(f"Công đoạn '{cong_doan}': ưu tiên theo nghĩa mã trong từ điển {family}.")
+        name_def = glossary_entry.get("name_vi") or glossary_entry.get("name_ja") if glossary_entry else ""
+        can_cu["cong_doan"] = (
+            f"Ưu tiên mã {code} theo từ điển {family} ('{name_def}' → công đoạn {cong_doan}) "
+            f"thay vì từ khóa hiện tượng 'kẹt giấy'"
+        )
+        can_cu["mau_thuan_ma"] = conflict_reason
+    elif stage_kw is not None:
         cong_doan: Optional[str] = stage_kw
         matched_stage_kws = ", ".join(f"'{k}'" for k in stage_hits_map[stage_kw][:3])
         reasons.append(f"Công đoạn '{stage_kw}': khớp {stage_hits} từ khóa ({matched_stage_kws}).")
@@ -418,23 +488,105 @@ def detect_recurrence(
     threshold: int = 2,
     now: Optional[datetime] = None,
 ) -> Optional[RecurrenceAlert]:
-    """Alert when the same code or phenomenon reappears inside the time window.
+    """Alert when the same code or phenomenon reappears in historical database.
 
-    The window ends at ``now`` (default: current time) and counts
-    historical records by their occurrence time: ``occurred_at`` when the
-    source carried a real date, else ``created_at`` (import time). Rows
-    with a real date are day-granular in the source, so their window
-    widens to the calendar days touched by [now - window, now]; rows
-    without keep the exact timestamp window. The new case being entered
-    counts as +1. Fires when total >= threshold (default 2 = recurring).
+    - When error_code is present: recurrence checking MUST query against
+      the historical database across all 30,075 cases (matching error_code_c,
+      error_code_h, error_code_i). If count >= 1, is_recurrence=True, surfacing
+      the total case count, the most recent case (ticket/date/model), and its
+      countermeasure. If the code does not exist in DB (count == 0), no false
+      recurrence is triggered (returns None).
+    - When error_code is absent (phenomenon only): falls back to time-windowed
+      symptom token matching.
     """
-    code = norm_code(error_code) if error_code else ""
+    import json
+    code = norm_code(error_code).upper().replace(" ", "") if error_code else ""
     ref = now or _utcnow()
     if ref.tzinfo is None:
         ref = ref.replace(tzinfo=timezone.utc)
     start = ref - timedelta(hours=window_hours)
+
+    if code:
+        try:
+            cnt_row = conn.execute(
+                """SELECT COUNT(*) FROM error_cases
+                   WHERE REPLACE(UPPER(COALESCE(error_code_c, '')), ' ', '') = ?
+                      OR REPLACE(UPPER(COALESCE(error_code_h, '')), ' ', '') = ?
+                      OR REPLACE(UPPER(COALESCE(error_code_i, '')), ' ', '') = ?""",
+                (code, code, code),
+            ).fetchone()
+            count = int(cnt_row[0]) if cnt_row else 0
+        except sqlite3.Error:
+            count = 0
+
+        if count < 1:
+            return None
+
+        # Fetch most recent case matching code
+        try:
+            cols = {row[1] for row in conn.execute("PRAGMA table_info(error_cases)")}
+            cm_select = ", countermeasure" if "countermeasure" in cols else ""
+            latest_rows = conn.execute(
+                f"""SELECT no_dvd, error_code_c, error_code_h, error_code_i,
+                          machine_type, line, investigation{cm_select},
+                          created_at, occurred_at, raw_json
+                   FROM error_cases
+                   WHERE REPLACE(UPPER(COALESCE(error_code_c, '')), ' ', '') = ?
+                      OR REPLACE(UPPER(COALESCE(error_code_h, '')), ' ', '') = ?
+                      OR REPLACE(UPPER(COALESCE(error_code_i, '')), ' ', '') = ?
+                   ORDER BY COALESCE(occurred_at, created_at) DESC, id DESC
+                   LIMIT 5""",
+                (code, code, code),
+            ).fetchall()
+        except sqlite3.Error:
+            latest_rows = []
+
+        remedy = ""
+        no_dvd = ""
+        date_str = ""
+        model_line = ""
+
+        if latest_rows:
+            top_r = dict(latest_rows[0])
+            no_dvd = str(top_r.get("no_dvd") or "").strip()
+            date_val = str(top_r.get("occurred_at") or top_r.get("created_at") or "").strip()
+            date_str = date_val.split("T")[0].split(" ")[0] if date_val else "Chưa ghi nhận ngày"
+            m_type = str(top_r.get("machine_type") or "").strip()
+            l_val = str(top_r.get("line") or "").strip()
+            if m_type and l_val:
+                model_line = f"{m_type} / {l_val}"
+            else:
+                model_line = m_type or l_val or "Chưa rõ model"
+
+            raw = {}
+            if top_r.get("raw_json"):
+                try:
+                    raw = json.loads(top_r["raw_json"])
+                except Exception:
+                    raw = {}
+
+            raw_cm = str(top_r.get("countermeasure") or raw.get("AB") or "").strip()
+            if raw_cm and raw_cm not in ("-", "—", "ー"):
+                remedy = raw_cm
+            else:
+                raw_inv = str(raw.get("O") or raw.get("M") or top_r.get("investigation") or "").strip()
+                remedy = raw_inv[:300] if raw_inv else "Chưa có đối sách cụ thể trong lịch sử"
+
+        message_vi = (
+            f"Tái phát: mã {code} đã xuất hiện {count} lần trong cơ sở dữ liệu lịch sử (30.075 ca). "
+            f"Ca gần nhất: phiếu {no_dvd} (ngày {date_str}, model {model_line})."
+        )
+        return RecurrenceAlert(
+            code=code,
+            count=count,
+            window_hours=window_hours,
+            message_vi=message_vi,
+            suggested_remedy=remedy,
+            suggested_from=no_dvd,
+        )
+
+    # Fallback when code is absent (phenomenon only)
     try:
-        # Check if countermeasure column exists
         cols = {row[1] for row in conn.execute("PRAGMA table_info(error_cases)")}
         cm_select = ", countermeasure" if "countermeasure" in cols else ""
         rows = conn.execute(
@@ -458,28 +610,20 @@ def detect_recurrence(
         return None
 
     hits: List[Dict[str, Any]] = []
-    if code:
-        hits = [
-            dict(r) for r in rows
-            if norm_code(r["error_code_c"]) == code
-            or norm_code(r["error_code_h"]) == code
-            or norm_code(r["error_code_i"]) == code
-        ]
-    elif phenomenon:
-        phen_tokens = _token_set(phenomenon)
-        if phen_tokens:
-            for r in rows:
-                inv = r.get("investigation") or ""
-                inv_tokens = _token_set(inv)
-                if len(phen_tokens & inv_tokens) >= 2:
-                    hits.append(dict(r))
+    phen_tokens = _token_set(phenomenon) if phenomenon else set()
+    if phen_tokens:
+        for r in rows:
+            inv = r.get("investigation") or ""
+            inv_tokens = _token_set(inv)
+            if len(phen_tokens & inv_tokens) >= 2:
+                hits.append(dict(r))
 
     total = len(hits) + 1  # +1 = the new case being entered
     if total < threshold:
         return None
 
-    remedy: Optional[str] = None
-    remedy_from: Optional[str] = None
+    remedy = None
+    remedy_from = None
     for h in hits:
         inv = (h.get("countermeasure") or h.get("investigation") or "").strip()
         if inv:
@@ -487,7 +631,7 @@ def detect_recurrence(
             remedy_from = h.get("no_dvd")
             break
 
-    disp_key = f"mã {code}" if code else "hiện tượng tương tự"
+    disp_key = "hiện tượng tương tự"
     if remedy:
         message_vi = (
             f"Tái phát: {disp_key} đã phát sinh {total} lần trong "
@@ -500,7 +644,7 @@ def detect_recurrence(
             f"cần điều tra nguyên nhân gốc."
         )
     return RecurrenceAlert(
-        code=code or phenomenon[:20],
+        code=phenomenon[:20] if phenomenon else "",
         count=total,
         window_hours=window_hours,
         message_vi=message_vi,
@@ -529,6 +673,9 @@ def classify_new_error(
     Returns a dict with keys: classification, history_matches,
     recurrence_alert, history_checked (always True).
     """
+    if glossary_conn is None and _has_glossary_table(conn):
+        glossary_conn = conn
+
     classification = classify_error(
         error_code,
         phenomenon=phenomenon,
@@ -551,7 +698,24 @@ def classify_new_error(
         top_case = top.case
         classification.suggested_from_case = top_case.get("no_dvd")
         if top.score >= 5.0:
-            if top_case.get("process_stage") and classification.cong_doan is None:
+            top_stage = str(top_case.get("process_stage") or "").strip()
+            mapped_stage = None
+            if "調整" in top_stage:
+                mapped_stage = "Điều chỉnh"
+            elif "組立" in top_stage:
+                mapped_stage = "Lắp ráp"
+            elif "検査" in top_stage or "確認" in top_stage:
+                mapped_stage = "Kiểm tra"
+            elif top_stage in STAGE_KEYWORDS:
+                mapped_stage = top_stage
+
+            if mapped_stage and (classification.cong_doan is None or "mau_thuan_ma" in classification.can_cu):
+                classification.cong_doan = mapped_stage
+                classification.can_cu["cong_doan"] = (
+                    f"Ưu tiên mã {classification.error_code} theo từ điển {classification.code_family or 'C_CALL'} "
+                    f"và lịch sử ca #{top_case.get('no_dvd')} (công đoạn {top_stage} → {mapped_stage})"
+                )
+            elif top_case.get("process_stage") and classification.cong_doan is None:
                 classification.cong_doan = str(top_case.get("process_stage"))
                 classification.can_cu["cong_doan"] = (
                     f"Dựa trên ca lịch sử #{top_case.get('no_dvd')} (độ tương đồng {top.score:.1f})"

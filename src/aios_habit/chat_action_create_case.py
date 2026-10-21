@@ -179,6 +179,13 @@ def render_preview_card_text(
         f"- **Bộ phận phụ trách:** {bo_phan_val if bo_phan_val else 'Chưa xác định'} *(Căn cứ: {can_cu_bp})*",
     ]
 
+    if can_cu.get("mau_thuan_ma"):
+        lines.extend([
+            "",
+            "> ℹ️ **LƯU Ý ĐỐI CHIẾU MÃ LỖI (Bước 5):**",
+            f"> - {can_cu['mau_thuan_ma']}",
+        ])
+
     if rec_alert is not None:
         lines.extend([
             "",
@@ -187,7 +194,7 @@ def render_preview_card_text(
         ])
         if rec_alert.suggested_remedy:
             src_str = f" *(từ phiếu `{rec_alert.suggested_from}`)*" if rec_alert.suggested_from else ""
-            lines.append(f"> - Đối sách đã áp dụng trong lịch sử: **{rec_alert.suggested_remedy}**{src_str}")
+            lines.append(f"> - Đối sách đã áp dụng của ca gần nhất: **{rec_alert.suggested_remedy}**{src_str}")
 
     lines.extend([
         "",
