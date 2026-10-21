@@ -781,6 +781,101 @@ def deliver_5tier_ladder_answer(
     tier = TIER_3_AMBIGUOUS if intent_res.intent == INTENT_MO_HO else TIER_4_INFERRED
     draft_used_title = ""
     draft_body_found = ""
+    from_error_cases_db = False
+
+    # Pre-check DB error_cases for Sổ Điều tra lỗi (NB-LAZY-DTL) before Tier 3 ambiguous branch
+    if not inferred_reasoning and notebook_id in ("NB-LAZY-DTL", "dieu_tra_loi"):
+        try:
+            from aios_habit.chat_action_error_lookup import (
+                extract_codes,
+                extract_filter_entities,
+                is_natural_question,
+                log_filter_event,
+                lookup_glossary,
+                resolve_db_path,
+                search_similar,
+                _OFFTOPIC_HINTS,
+                _open_ro,
+                _render_cards,
+                _render_synthesized_answer,
+            )
+            from aios_habit.chat_action import ChatActionRequest, normalize_text
+
+            norm = normalize_text(question)
+            if not any(h in norm for h in _OFFTOPIC_HINTS):
+                req_dummy = ChatActionRequest(question=question, notebook_id=notebook_id)
+                db_p = resolve_db_path(req_dummy)
+                if db_p:
+                    conn_ec = _open_ro(db_p)
+                    try:
+                        codes = extract_codes(question)
+                        filter_ents = extract_filter_entities(conn_ec, question)
+                        has_filters = bool(
+                            filter_ents.get("machine")
+                            or filter_ents.get("serial")
+                            or filter_ents.get("date_range")
+                        )
+                        if codes or has_filters:
+                            gloss = lookup_glossary(conn_ec, codes) if codes else {}
+                            extra = []
+                            for code in codes:
+                                ent = gloss.get(code, {})
+                                extra.extend(
+                                    str(ent.get(k) or "")
+                                    for k in ("name_vi", "name_ja", "name_en", "cause", "remedy")
+                                )
+                            ec_cases, ec_codes, ec_total = search_similar(
+                                conn_ec,
+                                question,
+                                extra_keywords=extra,
+                                filter_entities=filter_ents,
+                            )
+                            if ec_cases or gloss or has_filters:
+                                tier = TIER_4_INFERRED
+                                from_error_cases_db = True
+                                if has_filters:
+                                    log_filter_event(
+                                        question=question,
+                                        entities={
+                                            "machine": filter_ents.get("machine", {}).get("name")
+                                            if filter_ents.get("machine")
+                                            else None,
+                                            "serial": filter_ents.get("serial"),
+                                            "date_range": filter_ents.get("date_range", {}).get("label")
+                                            if filter_ents.get("date_range")
+                                            else None,
+                                            "codes": ec_codes,
+                                        },
+                                        matched_count=ec_total,
+                                        top_cases=ec_cases,
+                                        conversation_id=conversation_id,
+                                    )
+                                if ec_codes and is_natural_question(question):
+                                    inferred_reasoning = _render_synthesized_answer(
+                                        ec_cases,
+                                        ec_codes,
+                                        gloss,
+                                        ec_total,
+                                        question,
+                                        filter_entities=filter_ents,
+                                    )
+                                else:
+                                    inferred_reasoning = _render_cards(
+                                        ec_cases,
+                                        ec_codes,
+                                        gloss,
+                                        ec_total,
+                                        filter_entities=filter_ents,
+                                    )
+                                draft_used_title = (
+                                    ec_cases[0]["bao_cao_goc"]
+                                    if ec_cases and ec_cases[0].get("bao_cao_goc")
+                                    else "error_cases_reconciled.db"
+                                )
+                    finally:
+                        conn_ec.close()
+        except Exception:
+            pass
 
     if tier == TIER_3_AMBIGUOUS:
         rephrasings = intent_res.suggested_rephrasings or suggest_rephrasings(question)
@@ -796,44 +891,6 @@ def deliver_5tier_ladder_answer(
         )
         has_banner = False
     else:
-        if not inferred_reasoning:
-            # Check DB error_cases for Sổ Điều tra lỗi (NB-LAZY-DTL)
-            if notebook_id in ("NB-LAZY-DTL", "dieu_tra_loi"):
-                try:
-                    from aios_habit.chat_action_error_lookup import (
-                        extract_codes,
-                        lookup_glossary,
-                        search_similar,
-                        resolve_db_path,
-                        _open_ro,
-                        _render_synthesized_answer,
-                        _OFFTOPIC_HINTS,
-                    )
-                    from aios_habit.chat_action import normalize_text, ChatActionRequest
-
-                    norm = normalize_text(question)
-                    if not any(h in norm for h in _OFFTOPIC_HINTS):
-                        codes = extract_codes(question)
-                        if codes:
-                            req_dummy = ChatActionRequest(question=question, notebook_id=notebook_id)
-                            db_p = resolve_db_path(req_dummy)
-                            if db_p:
-                                conn_ec = _open_ro(db_p)
-                                try:
-                                    gloss = lookup_glossary(conn_ec, codes)
-                                    extra = []
-                                    for code in codes:
-                                        ent = gloss.get(code, {})
-                                        extra.extend(str(ent.get(k) or "") for k in ("name_vi", "name_ja", "name_en", "cause", "remedy"))
-                                    ec_cases, ec_codes, ec_total = search_similar(conn_ec, question, extra_keywords=extra)
-                                    if ec_cases or gloss:
-                                        inferred_reasoning = _render_synthesized_answer(ec_cases, ec_codes, gloss, ec_total, question)
-                                        draft_used_title = ec_cases[0]["bao_cao_goc"] if ec_cases and ec_cases[0].get("bao_cao_goc") else "error_cases_reconciled.db"
-                                finally:
-                                    conn_ec.close()
-                except Exception:
-                    pass
-
         if not inferred_reasoning:
             try:
                 from aios_habit.draft_source_layer import (
@@ -869,7 +926,7 @@ def deliver_5tier_ladder_answer(
             "Đối chiếu các tham số và mã cảnh báo hiển thị trên giao diện điều khiển thực tế.",
             "Trao đổi trực tiếp với kỹ sư phụ trách miền để được cung cấp tài liệu SOP hoặc bản vẽ kỹ thuật.",
         ]
-        if inferred_reasoning and "30.075" in inferred_reasoning:
+        if from_error_cases_db or (inferred_reasoning and "30.075" in inferred_reasoning):
             answer_text = inferred_reasoning
             has_banner = False
         else:

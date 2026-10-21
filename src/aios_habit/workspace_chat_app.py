@@ -1801,6 +1801,63 @@ def _run_chat_turn_async(
     evidence_items = []
     retrieval_summary = ""
 
+    # DESKTOP-HOME-MACHINE-SERIAL-DATE-FILTER & ERRORCODE-CASE-ROUTE-FIX:
+    # In So Dieu tra loi (NB-LAZY-DTL / dieu_tra_loi), queries containing error codes
+    # or structured machine/serial/date filters must directly consult the 30.075-case
+    # error_cases_reconciled.db via deliver_5tier_ladder_answer before RAG index search.
+    if ai_mode != "external" and notebook_id in ("NB-LAZY-DTL", "dieu_tra_loi"):
+        try:
+            from aios_habit.chat_action import ChatActionRequest, DOC_REF_RE, normalize_text
+            from aios_habit.chat_action_error_lookup import (
+                _OFFTOPIC_HINTS,
+                _open_ro,
+                extract_codes,
+                extract_filter_entities,
+                resolve_db_path,
+            )
+
+            norm_q = normalize_text(q_text)
+            if not DOC_REF_RE.search(q_text) and not any(h in norm_q for h in _OFFTOPIC_HINTS):
+                req_dtl = ChatActionRequest(question=q_text, notebook_id=notebook_id)
+                db_dtl = resolve_db_path(req_dtl)
+                if db_dtl:
+                    conn_dtl = _open_ro(db_dtl)
+                    try:
+                        has_codes = bool(extract_codes(q_text))
+                        f_ents = extract_filter_entities(conn_dtl, q_text)
+                        has_struct_filter = bool(
+                            f_ents.get("machine") or f_ents.get("serial") or f_ents.get("date_range")
+                        )
+                    finally:
+                        conn_dtl.close()
+                    if has_codes or has_struct_filter:
+                        from aios_habit.final_answer_composer import deliver_5tier_ladder_answer
+
+                        ladder_res = deliver_5tier_ladder_answer(
+                            q_text,
+                            conversation_id=conversation_id,
+                            notebook_id=notebook_id,
+                            user_raw_input=user_raw_input,
+                            user_message_id=user_message_id,
+                            current_ui_locale=current_ui_locale,
+                            answer_language=answer_language,
+                            on_chunk=effective_on_chunk,
+                        )
+                        if ladder_res is not None:
+                            turn_total_s = time.time() - t_turn_start
+                            ts_ladder = format_marker_timestamp()
+                            badge_l = ladder_res[2] if len(ladder_res) > 2 and isinstance(ladder_res[2], dict) else {}
+                            eff_back = (
+                                badge_l.get("provider") or badge_l.get("ai_source") or "5tier_ladder"
+                            ) if badge_l else "5tier_ladder"
+                            _mark_first_token()
+                            _safe_print_streaming_marker(
+                                f"[STREAMING_QA_COMPLETE] conv={conversation_id} total_s={turn_total_s:.3f} total_ms={turn_total_s * 1000:.1f} backend={eff_back} ok={ladder_res[0]} timestamp={ts_ladder}"
+                            )
+                            return ladder_res
+        except Exception:
+            pass
+
     if ai_mode == "external":
         should_retrieve = False
         if ai_backend not in ("cagent_api", "cagent"):

@@ -1,0 +1,191 @@
+{
+  "ticket": "DESKTOP-HOME-MACHINE-SERIAL-DATE-FILTER",
+  "timestamp": "2026-10-22T04:49:01.835870",
+  "supplementary_note_0402_confirmed": "Da doc ghi chu bo sung 04:02 va ap dung cong nghiem thu bo sung.",
+  "events_logged_count": 20,
+  "sample_recent_events": [
+    {
+      "timestamp": "2026-10-21T21:46:49.961239+00:00",
+      "question": "cac ca cua may Libra2",
+      "conversation_id": "CONV-FILTER-VIRGO-LIBRA2-004",
+      "entities": {
+        "machine": "Libra 2",
+        "serial": null,
+        "date_range": null,
+        "codes": []
+      },
+      "matched_count": 483,
+      "top_dvds": [
+        "2026/1277",
+        "2026/4313",
+        "2025/899",
+        "2025/178",
+        "2025/5173"
+      ],
+      "top_ids": [
+        14549,
+        12751,
+        9338,
+        8617,
+        8111
+      ]
+    },
+    {
+      "timestamp": "2026-10-21T21:48:10.281274+00:00",
+      "question": "cac ca cua may Iris",
+      "conversation_id": "CONV-FILTER-IRIS-001",
+      "entities": {
+        "machine": "Iris",
+        "serial": null,
+        "date_range": null,
+        "codes": []
+      },
+      "matched_count": 6961,
+      "top_dvds": [
+        "2024/963",
+        "2024/497",
+        "2024/479",
+        "2024/223",
+        "2024/220"
+      ],
+      "top_ids": [
+        18521,
+        18061,
+        18043,
+        17789,
+        17786
+      ]
+    },
+    {
+      "timestamp": "2026-10-21T21:48:22.245399+00:00",
+      "question": "serial WD72Z12772",
+      "conversation_id": "CONV-FILTER-SERIAL-002",
+      "entities": {
+        "machine": null,
+        "serial": "WD72Z12772",
+        "date_range": null,
+        "codes": []
+      },
+      "matched_count": 1,
+      "top_dvds": [
+        "2023/1"
+      ],
+      "top_ids": [
+        1
+      ]
+    },
+    {
+      "timestamp": "2026-10-21T21:48:37.641893+00:00",
+      "question": "C7620 nam 2025",
+      "conversation_id": "CONV-FILTER-C7620-2025-003",
+      "entities": {
+        "machine": null,
+        "serial": null,
+        "date_range": "năm 2025",
+        "codes": [
+          "C7620"
+        ]
+      },
+      "matched_count": 60,
+      "top_dvds": [
+        "2025/1107",
+        "2025/3279",
+        "2025/3269",
+        "2025/1841",
+        "2025/1064"
+      ],
+      "top_ids": [
+        9546,
+        11717,
+        11707,
+        10280,
+        9503
+      ]
+    },
+    {
+      "timestamp": "2026-10-21T21:48:47.742237+00:00",
+      "question": "cac ca cua may Virgo",
+      "conversation_id": "CONV-FILTER-VIRGO-004",
+      "entities": {
+        "machine": "Virgo",
+        "serial": null,
+        "date_range": null,
+        "codes": []
+      },
+      "matched_count": 3182,
+      "top_dvds": [
+        "2024/1241",
+        "2024/1099",
+        "2024/136",
+        "2024/135",
+        "2024/100"
+      ],
+      "top_ids": [
+        18794,
+        18652,
+        17703,
+        17702,
+        17668
+      ]
+    },
+    {
+      "timestamp": "2026-10-21T21:48:56.595562+00:00",
+      "question": "cac ca cua may Libra2",
+      "conversation_id": "CONV-FILTER-LIBRA2-005",
+      "entities": {
+        "machine": "Libra 2",
+        "serial": null,
+        "date_range": null,
+        "codes": []
+      },
+      "matched_count": 483,
+      "top_dvds": [
+        "2026/1277",
+        "2026/4313",
+        "2025/899",
+        "2025/178",
+        "2025/5173"
+      ],
+      "top_ids": [
+        14549,
+        12751,
+        9338,
+        8617,
+        8111
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "anh-filter-01-may-iris.png",
+      "size_bytes": 243149,
+      "sha256": "136CBADD84BB46CE49508610A3D8A0BEF3EF12D1CEC4A16E09F6F1DA975BA4BD",
+      "scene": "Lọc theo tên máy Iris (6.961 ca họ Iris)"
+    },
+    {
+      "file": "anh-filter-02-serial-wd72z12772.png",
+      "size_bytes": 212856,
+      "sha256": "21B0BEBC0A9070F688CAB6EBAF2C683D24F2426B61FADBBB198A7599A134F8F8",
+      "scene": "Lọc theo Serial WD72Z12772 (Phiếu 2023/1, 6th Next, 2023-01-05) kèm đối chiếu Xem hồ sơ gốc"
+    },
+    {
+      "file": "anh-filter-03-ma-loi-c7620-nam-2025.png",
+      "size_bytes": 223436,
+      "sha256": "80056D37D0D2105F403FDB25DC3ECE8EC6CAC89BD649163B69166F401CB55184",
+      "scene": "Lọc mã lỗi C7620 kết hợp năm 2025 (60 ca phát sinh trong năm 2025)"
+    },
+    {
+      "file": "anh-filter-04-may-virgo.png",
+      "size_bytes": 240729,
+      "sha256": "8B71B4B5AAD96D39B013C0EA246D0C84AA09C60CC6FB176F513F2F71375E4D8D",
+      "scene": "Lọc theo dòng máy ngoài Iris/6thNext: Virgo (3.182 ca)"
+    },
+    {
+      "file": "anh-filter-05-may-libra2.png",
+      "size_bytes": 235379,
+      "sha256": "AB1B132F08ECA2151129BBDC4AED38A4FD9DCFB119C3236CD7F7F7D41D94356C",
+      "scene": "Lọc theo dòng máy ngoài Iris/6thNext: Libra2 / Libra 2 (483 ca)"
+    }
+  ],
+  "status": "PASS"
+}
