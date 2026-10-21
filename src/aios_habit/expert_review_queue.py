@@ -866,6 +866,7 @@ class ExpertReviewQueueRepository:
         machine_node: Optional[str] = None,
         notes: str = "",
         destination: str = "company_knowledge",
+        updated_draft: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Phê duyệt mục hàng đợi và ghi nhận vào kho công ty.
 
@@ -928,15 +929,19 @@ class ExpertReviewQueueRepository:
             },
         )
 
+        if updated_draft is not None and updated_draft.strip():
+            item.draft_answer = updated_draft.strip()
+
         with self._connection() as conn:
             conn.execute(
                 """
                 UPDATE queue_items
                 SET status = 'approved',
+                    draft_answer = ?,
                     updated_at = ?
                 WHERE item_id = ?
                 """,
-                (now_iso, item_id),
+                (item.draft_answer, now_iso, item_id),
             )
             conn.execute(
                 """
@@ -977,14 +982,16 @@ class ExpertReviewQueueRepository:
         self,
         item_id: str,
         actor_subject: str,
-        pin: str,
+        pin: Optional[str] = None,
         *,
         reason: str,
         machine_node: Optional[str] = None,
+        decision_status: str = STATUS_REJECTED,
+        require_pin: bool = False,
     ) -> Dict[str, Any]:
-        """Từ chối mục hàng đợi kèm lý do bắt buộc."""
+        """Từ chối hoặc yêu cầu trả sửa mục hàng đợi kèm lý do bắt buộc."""
         if not reason or not reason.strip():
-            return {"ok": False, "error_vi": "Vui lòng nhập lý do từ chối để hoàn thiện kiểm toán."}
+            return {"ok": False, "error_vi": "Vui lòng nhập lý do từ chối / trả sửa để hoàn thiện kiểm toán."}
 
         item = self.get_item(item_id)
         if not item:
@@ -1000,28 +1007,31 @@ class ExpertReviewQueueRepository:
         if not self.registry.is_machine_authorized(item.domain_id, current_node):
             return {"ok": False, "error_vi": f"Máy tính '{current_node}' không được cấp phép."}
 
-        pin_check = self.verify_expert_pin(pin)
-        if not pin_check.get("ok"):
-            return pin_check
+        # Nếu yêu cầu PIN hoặc chuyên gia nhập PIN thì xác thực, ngược lại cho phép trả sửa kèm lý do
+        if require_pin or (pin is not None and str(pin).strip() != ""):
+            pin_check = self.verify_expert_pin(str(pin).strip())
+            if not pin_check.get("ok"):
+                return pin_check
 
         now_iso = _utc_now_iso()
         audit_id = f"AUDIT-{uuid.uuid4().hex[:8].upper()}"
+        decision = decision_status if decision_status in (STATUS_REJECTED, STATUS_REVISED) else STATUS_REJECTED
         audit_stamp = ApprovalAuditStamp(
             audit_id=audit_id,
             item_id=item_id,
-            decision=STATUS_REJECTED,
+            decision=decision,
             actor_subject=actor_subject,
             actor_machine=current_node,
             actor_role=f"{item.domain_id}:expert",
             timestamp=now_iso,
             destination="none",
-            notes=reason,
+            notes=reason.strip(),
         )
 
         with self._connection() as conn:
             conn.execute(
-                "UPDATE queue_items SET status = 'rejected', updated_at = ? WHERE item_id = ?",
-                (now_iso, item_id),
+                "UPDATE queue_items SET status = ?, updated_at = ? WHERE item_id = ?",
+                (decision, now_iso, item_id),
             )
             conn.execute(
                 """
@@ -1045,7 +1055,7 @@ class ExpertReviewQueueRepository:
             )
 
         self._record_approval_audit_log(audit_stamp)
-        return {"ok": True, "item_id": item_id, "status": STATUS_REJECTED, "audit_stamp": audit_stamp.to_dict()}
+        return {"ok": True, "item_id": item_id, "status": decision, "audit_stamp": audit_stamp.to_dict()}
 
     def _record_approval_audit_log(self, stamp: ApprovalAuditStamp) -> None:
         try:

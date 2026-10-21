@@ -5907,8 +5907,12 @@ else:
 
                 with st.container(border=True, key=f"wsc-composer-{active_conversation.id}"):
                     clear_input_key = f"wsc_clear_input_{active_conversation.id}"
+                    draft_backup_key = f"wsc_draft_input_backup_{active_conversation.id}"
                     if st.session_state.pop(clear_input_key, False):
                         st.session_state[f"wsc_question_input_{active_conversation.id}"] = ""
+                        st.session_state.pop(draft_backup_key, None)
+                    elif draft_backup_key in st.session_state and not st.session_state.get(f"wsc_question_input_{active_conversation.id}"):
+                        st.session_state[f"wsc_question_input_{active_conversation.id}"] = st.session_state[draft_backup_key]
                     uploaded_image = None
 
                     # Hiển thị neo ngữ cảnh khi người dùng bấm "Trả lời" một đáp án (DESKTOP-ANSWER-REPLY-HOME)
@@ -5944,6 +5948,8 @@ else:
                         key=f"wsc_question_input_{active_conversation.id}",
                         label_visibility="visible",
                     )
+                    if user_input:
+                        st.session_state[draft_backup_key] = user_input
 
                     _attach_err = st.session_state.get(f"wsc_attach_error_{active_conversation.id}")
                     if _attach_err:

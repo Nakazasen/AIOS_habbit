@@ -135,7 +135,7 @@ def render_expert_queue_sidebar() -> None:
             item_dconf = registry.get_domain(item.domain_id)
             m_title = item_dconf.title if item_dconf else item.domain_id
 
-            # Badge trạng thái ưu tiên và quá hạn
+            # Badge trạng thái ưu tiên và quá hạn (Rút gọn)
             p_badge = f"⭐ Priority: {item.priority_score:.1f}"
             st.markdown(f"**#{idx+1}. {item.title}**")
             st.caption(f"Miền: *{m_title}* · {p_badge} · Chê: {item.dislike_count} · Lượt hỏi: {item.service_frequency}")
@@ -145,33 +145,28 @@ def render_expert_queue_sidebar() -> None:
             elif item.escalation_level >= 2:
                 st.error(f"🔥 **Đã quá 7 ngày!** Đã leo thang sang chuyên gia dự phòng: `{item.escalated_to}`.")
 
-            with st.expander("📄 Chi tiết câu hỏi & nội dung", expanded=False):
-                st.markdown(f"**Câu hỏi:** {item.question}")
-                if item.draft_answer:
-                    st.markdown("**Bản nháp đề xuất:**")
-                    st.code(item.draft_answer, language="markdown")
-                if item.source_file:
-                    st.caption(f"Nguồn: `{item.source_file}`")
-
-            # Nút bấm mở popup duyệt
-            if active_approve_id != item.item_id:
-                col_btn1, col_btn2 = st.columns([1, 1])
-                if col_btn1.button("✅ Duyệt vào kho", key=f"btn_app_{item.item_id}", use_container_width=True):
-                    st.session_state["wsc_expert_active_approve_item"] = item.item_id
-                    st.rerun()
-
-                if col_btn2.button("❌ Từ chối", key=f"btn_rej_{item.item_id}", use_container_width=True):
-                    st.session_state["wsc_expert_active_reject_item"] = item.item_id
-                    st.rerun()
-
-            # Popup / Form xác thực mã PIN khi phê duyệt
-            if active_approve_id == item.item_id:
-                _render_pin_approval_form(item, subject, current_node, repo, registry)
-
-            if st.session_state.get("wsc_expert_active_reject_item") == item.item_id:
-                _render_reject_form(item, subject, current_node, repo, registry)
+            # Nút mở Lớp duyệt tập trung (Focus Layer) phủ lên vùng chat chính
+            if st.button("🔍 Mở duyệt tập trung", key=f"btn_open_focus_{item.item_id}", use_container_width=True):
+                st.session_state["wsc_focus_review_active_item_id"] = item.item_id
+                st.rerun()
 
             st.write("---")
+
+    # Mở Lớp duyệt tập trung khi người dùng chọn mục
+    active_focus_id = st.session_state.get("wsc_focus_review_active_item_id")
+    if active_focus_id:
+        try:
+            from aios_habit.expert_review_focus_layer import render_focus_review_layer
+            render_focus_review_layer(
+                item_id=active_focus_id,
+                subject=subject,
+                current_node=current_node,
+                repo=repo,
+                registry=registry,
+                relevant_items=relevant_items,
+            )
+        except Exception as exc:
+            st.error(f"Lỗi khi mở lớp duyệt tập trung: {exc}")
 
 
 def _render_pin_approval_form(
