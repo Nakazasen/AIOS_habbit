@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Sequence
+
+logger = logging.getLogger(__name__)
 
 from aios_habit.workspace_memory_models import (
     CorrectionLessonCandidate,
@@ -69,15 +72,18 @@ def correction_action_label() -> str:
 def format_why_memory_lines(items: Sequence[WorkspaceMemoryRecallItem]) -> tuple[str, ...]:
     lines: list[str] = []
     for item in items:
+        stmt = (item.statement or "").strip()
+        if not stmt:
+            continue
         if item.source_kind in ("skill", "local_skill"):
             lines.append(f"Áp dụng kỹ năng: {item.title} — người dùng đã xác nhận.")
-            if item.statement:
-                lines.append(f"Quy trình kỹ năng: {item.statement}")
+            lines.append(f"Quy trình kỹ năng: {stmt}")
             if item.applies_when:
                 lines.append(f"Áp dụng khi: {item.applies_when}")
             lines.append(f"Căn cứ quy trình: local_cases/skills/{item.source_id}/SKILL.md ({len(item.evidence_refs)} mục bằng chứng).")
         else:
             lines.append(f"{item.title} — nguồn {item.source_kind}, đã xác nhận.")
+            lines.append(f"Nội dung bài học: {stmt}")
             if item.applies_when:
                 lines.append(f"Áp dụng khi: {item.applies_when}")
             lines.append(f"Căn cứ: {len(item.evidence_refs)} mục bằng chứng.")
@@ -98,9 +104,14 @@ def remember_preview_text(statement: str, scope: str) -> str:
 
 
 def forget_preview_text(statement: str) -> str:
+    stmt = (statement or "").strip()
+    if not stmt:
+        return ""
     return (
-        f"Xem trước: AIOS sẽ ngừng dùng bài học “{statement.strip()}”. "
-        "Lịch sử quyết định vẫn được giữ. Bấm xác nhận để quên."
+        f"Xem trước: AIOS sẽ ngừng dùng bài học “{stmt}”. "
+        "Từ nay AIOS không dùng bài học này để trả lời nữa. "
+        "Lịch sử quyết định vẫn được giữ để có thể khôi phục khi cần. "
+        "Bấm xác nhận để quên."
     )
 
 
@@ -156,7 +167,22 @@ def restore_pending_drafts_to_session_state(path: Path | None = None) -> None:
 
         cmd = drafts.get("command")
         if isinstance(cmd, dict) and PENDING_COMMAND_KEY not in st.session_state:
-            st.session_state[PENDING_COMMAND_KEY] = cmd
+            cmd_action = str(cmd.get("action") or "").strip().lower()
+            if cmd_action == "remember":
+                cmd_action = "confirm"
+            cmd_stmt = str(cmd.get("statement") or cmd.get("rule_text") or "").strip()
+            if cmd_stmt.startswith("Hãy nhớ:") or cmd_stmt.startswith("Hãy quên:"):
+                parsed = parse_memory_command(cmd_stmt)
+                if parsed:
+                    cmd_action = parsed.get("action", cmd_action)
+                    cmd_stmt = parsed.get("statement", cmd_stmt)
+            if cmd_action in ("confirm", "forget") and cmd_stmt:
+                restored_cmd = dict(cmd)
+                restored_cmd["action"] = cmd_action
+                restored_cmd["statement"] = cmd_stmt
+                st.session_state[PENDING_COMMAND_KEY] = restored_cmd
+            else:
+                logger.warning("Bỏ qua khôi phục lệnh nháp không hợp lệ hoặc rỗng: %s", cmd)
 
         cmd_conf = drafts.get("command_conflict")
         if isinstance(cmd_conf, dict) and PENDING_CONFLICT_KEY not in st.session_state:
@@ -247,7 +273,13 @@ def _scope_for(workspace_id: str) -> str:
     return f"workspace:{value}"
 
 
-def render_workspace_memory_panel(items: Sequence[WorkspaceMemoryRecallItem] | None = None, *, locale: str = "vi") -> None:
+def render_workspace_memory_panel(
+    items: Sequence[WorkspaceMemoryRecallItem] | None = None,
+    *,
+    locale: str = "vi",
+    workspace_id: str = "default",
+    conversation_id: str = "",
+) -> None:
     if not get_workspace_memory_enabled_preference():
         return
     try:
@@ -255,11 +287,30 @@ def render_workspace_memory_panel(items: Sequence[WorkspaceMemoryRecallItem] | N
     except Exception:
         return
     st.caption(why_memory_panel_title())
-    if not items:
+    valid_items = [
+        it for it in (items or ())
+        if (it.statement or "").strip() and (it.title or "").strip()
+    ]
+    if not valid_items:
         st.caption("Chưa có bài học đã xác nhận cho câu hỏi này.")
         return
-    for line in format_why_memory_lines(items):
-        st.caption(line)
+    for item in valid_items:
+        for line in format_why_memory_lines((item,)):
+            st.caption(line)
+        st.caption(
+            "💡 Quên bài học: từ nay AIOS không dùng bài học này trả lời nữa, lịch sử vẫn giữ để khôi phục được."
+        )
+        if st.button("Quên bài học này", key=f"wsc_forget_btn_{item.source_id}"):
+            payload = {
+                "action": "forget",
+                "statement": item.statement,
+                "memory_id": item.source_id,
+            }
+            if conversation_id:
+                payload["conversation_id"] = conversation_id
+            st.session_state[PENDING_COMMAND_KEY] = payload
+            save_pending_command(payload)
+            st.rerun()
 
 
 def render_workspace_memory_workspace(
@@ -292,12 +343,34 @@ def render_workspace_memory_workspace(
                     include_local_only=True,
                 )
             )
-            items = result.items
+            items = tuple(
+                item for item in result.items
+                if (item.statement or "").strip() and (item.title or "").strip()
+            )
         except Exception:
             items = ()
-    render_workspace_memory_panel(items, locale=locale)
+
     restore_pending_drafts_to_session_state()
-    _render_pending_command(workspace_id=workspace_id)
+    render_workspace_memory_panel(
+        items,
+        locale=locale,
+        workspace_id=workspace_id,
+        conversation_id=conversation_id,
+    )
+    if items:
+        _render_pending_command(workspace_id=workspace_id, active_items=items)
+    else:
+        # Case (a): No confirmed lesson related to question -> HIDE FORGET ACTION COMPLETELY
+        pending = st.session_state.get(PENDING_COMMAND_KEY)
+        if isinstance(pending, dict):
+            p_act = str(pending.get("action") or "").strip().lower()
+            p_stmt = str(pending.get("statement") or pending.get("rule_text") or "").strip()
+            if p_act in ("confirm", "remember") and p_stmt:
+                _render_pending_command(workspace_id=workspace_id, active_items=None)
+            elif p_act == "forget" or not p_stmt:
+                st.session_state.pop(PENDING_COMMAND_KEY, None)
+                clear_pending_command()
+
     if last_assistant_id:
         _render_correction_form(
             message_id=last_assistant_id,
@@ -306,7 +379,11 @@ def render_workspace_memory_workspace(
         )
 
 
-def _render_pending_command(*, workspace_id: str) -> None:
+def _render_pending_command(
+    *,
+    workspace_id: str,
+    active_items: Sequence[WorkspaceMemoryRecallItem] | None = None,
+) -> None:
     try:
         import streamlit as st
     except Exception:
@@ -316,14 +393,34 @@ def _render_pending_command(*, workspace_id: str) -> None:
     pending = st.session_state.get(PENDING_COMMAND_KEY)
     if not isinstance(pending, dict):
         return
-    action = str(pending.get("action") or "")
-    statement = str(pending.get("statement") or "").strip()
+    action = str(pending.get("action") or "").strip().lower()
+    if action == "remember":
+        action = "confirm"
+    statement = str(pending.get("statement") or pending.get("rule_text") or "").strip()
+    if statement.startswith("Hãy nhớ:") or statement.startswith("Hãy quên:"):
+        parsed = parse_memory_command(statement)
+        if parsed:
+            action = parsed.get("action", action)
+            statement = parsed.get("statement", statement)
+
+    if not statement or action not in ("confirm", "forget"):
+        st.session_state.pop(PENDING_COMMAND_KEY, None)
+        clear_pending_command()
+        return
+
+    # If action is forget and active_items is provided and empty, HIDE FORGET ACTION COMPLETELY
+    if action == "forget" and active_items is not None and len(active_items) == 0:
+        return
+
     scope = _scope_for(workspace_id)
     path = default_decisions_path()
     if action == "confirm":
         st.info(remember_preview_text(statement, scope))
     else:
-        st.info(forget_preview_text(statement))
+        preview_text = forget_preview_text(statement)
+        if not preview_text:
+            return
+        st.info(preview_text)
 
     conflict = st.session_state.get(PENDING_CONFLICT_KEY)
     if action == "confirm" and isinstance(conflict, dict):

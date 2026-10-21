@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import re
 import unicodedata
@@ -13,6 +14,8 @@ from contextvars import ContextVar
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator, Mapping, Sequence
+
+logger = logging.getLogger(__name__)
 
 from aios_habit.feature_flags import FEATURE_ADAPTIVE_WORK_MEMORY, is_feature_enabled
 from aios_habit.knowledge_publication import list_eligible_published_memory_candidates
@@ -477,13 +480,18 @@ def _read_skill_records(skills_dir: Path | None = None) -> list[dict[str, Any]]:
         for note in list_local_skills(s_dir):
             if note.trang_thai not in ("confirmed", "active"):
                 continue
+            title = (note.title or "").strip()
+            statement = (note.content_body[:500] if note.content_body else note.title).strip()
+            if not title or not statement:
+                logger.warning("Bỏ qua kỹ năng rỗng: id=%s", note.id)
+                continue
             records.append(
                 {
                     "memory_key": f"skill:{note.id}:v1",
                     "source_kind": SOURCE_KIND_SKILL,
                     "source_id": note.id,
-                    "title": note.title,
-                    "statement": note.content_body[:500] if note.content_body else note.title,
+                    "title": title,
+                    "statement": statement,
                     "applies_when": note.applies_when,
                     "does_not_apply_when": note.does_not_apply_when,
                     "scope": f"workspace:{note.mien}" if note.mien != "general" else "general",
@@ -532,13 +540,19 @@ def _read_second_brain_lessons(
             if note_id in seen_ids or any(ref in seen_ids for ref in note.evidence_refs):
                 continue
 
+            title = (note.title or "").strip()
+            statement = (note.content_body[:500] if note.content_body else note.title).strip()
+            if not title or not statement:
+                logger.warning("Bỏ qua bài học second brain rỗng: id=%s", note.id)
+                continue
+
             records.append(
                 {
                     "memory_key": f"second_brain:{note.id}:v1",
                     "source_kind": SOURCE_KIND_SENIOR_LEARNING_CARD,
                     "source_id": note.id,
-                    "title": note.title,
-                    "statement": note.content_body[:500] if note.content_body else note.title,
+                    "title": title,
+                    "statement": statement,
                     "applies_when": note.applies_when,
                     "does_not_apply_when": note.does_not_apply_when,
                     "scope": f"workspace:{note.mien}" if note.mien != "general" else "general",
@@ -1042,13 +1056,18 @@ def _effective_user_memory_records(path: Path) -> list[dict[str, Any]]:
         action = str(row.get("action") or "")
         if action not in ACTIVE_DECISION_ACTIONS:
             continue
+        statement = str(row.get("statement") or "").strip()
+        title = str(row.get("title") or row.get("statement") or memory_id).strip()
+        if not statement or not title:
+            logger.warning("Bỏ qua bản ghi bài học rỗng trong effective user memory: memory_id=%s", memory_id)
+            continue
         records.append(
             {
                 "memory_key": f"user_memory:{memory_id}:v1",
                 "source_kind": SOURCE_KIND_USER_MEMORY,
                 "source_id": memory_id,
-                "title": str(row.get("title") or row.get("statement") or memory_id),
-                "statement": str(row.get("statement") or ""),
+                "title": title,
+                "statement": statement,
                 "applies_when": str(row.get("applies_when") or ""),
                 "does_not_apply_when": str(row.get("does_not_apply_when") or ""),
                 "scope": str(row.get("scope") or "general"),
@@ -1277,14 +1296,19 @@ def list_ledger_memories(
     items: list[dict[str, Any]] = []
     for record in _effective_user_memory_records(path):
         source_id = str(record.get("source_id") or "")
+        statement = str(record.get("statement") or "").strip()
+        title = str(record.get("title") or "").strip()
+        if not statement or not title:
+            logger.warning("Bỏ qua bài học rỗng trong ledger user_memory: source_id=%s", source_id)
+            continue
         meta = actors.get(source_id, {})
         refs = record.get("evidence_refs") or ()
         items.append({
             "memory_key": str(record.get("memory_key") or source_id),
             "source_kind": SOURCE_KIND_USER_MEMORY,
             "source_id": source_id,
-            "title": str(record.get("title") or ""),
-            "statement": str(record.get("statement") or ""),
+            "title": title,
+            "statement": statement,
             "scope": str(record.get("scope") or "general"),
             "status": "confirmed",
             "updated_at": str(record.get("updated_at") or meta.get("created_at") or ""),
@@ -1299,13 +1323,18 @@ def list_ledger_memories(
         status = _normalize_status(str(row.get("status") or ""), str(row.get("source_kind") or ""))
         if status is None:
             continue
+        statement = str(row.get("statement") or "").strip()
+        title = str(row.get("title") or "").strip()
+        if not statement or not title:
+            logger.warning("Bỏ qua bài học rỗng trong ledger live_rows: source_id=%s", row.get("source_id"))
+            continue
         refs = row.get("evidence_refs") or ()
         items.append({
             "memory_key": str(row.get("memory_key") or row.get("source_id") or ""),
             "source_kind": str(row.get("source_kind") or ""),
             "source_id": str(row.get("source_id") or ""),
-            "title": str(row.get("title") or ""),
-            "statement": str(row.get("statement") or ""),
+            "title": title,
+            "statement": statement,
             "scope": str(row.get("scope") or "general"),
             "status": status,
             "updated_at": str(row.get("updated_at") or ""),
