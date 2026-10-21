@@ -47,8 +47,10 @@ from aios_habit.intake_staging import (
 )
 from aios_habit.intake_target_profiles import (
     STORE_ID_LSU,
+    STORE_ID_TONG_HOP,
     TargetProfile,
     format_source_tag,
+    format_tonghop_source_tag,
     get_target_profile,
 )
 
@@ -497,6 +499,52 @@ def synthesize_draft_items(session: KnowledgeIntakeSession) -> List[IntakeDraftI
         fields["model"] = detected_model if detected_model else "chưa xác nhận"
         fields["line"] = detected_line if detected_line else "chưa xác nhận"
         fields["dau_hieu_som"] = dau_hieu_val if dau_hieu_val else "chưa xác nhận"
+        fields["ghi_chu"] = (
+            " ".join(ghi_chu_pieces).strip() if ghi_chu_pieces else "chưa xác nhận"
+        )
+    elif session.store_id == STORE_ID_TONG_HOP:
+        # Áp dụng khuôn Kho kiến thức tổng hợp (chủ đề, nội dung, điều kiện áp dụng, ví dụ, nguồn)
+        chu_de_val = session.topic if session.topic else ""
+        noi_dung_val = ""
+        dieu_kien_val = ""
+        vi_du_val = ""
+        ghi_chu_pieces: List[str] = []
+
+        for t in answers:
+            pt = t.probe_type
+            ans = t.answer_text.strip()
+            low_ans = ans.lower()
+            if pt in ("mo_dau_bai_giang", "general") and not noi_dung_val:
+                noi_dung_val = ans
+            elif pt in (CLARIFY_PHAM_VI, "cong_doan_line", "dieu_kien_ap_dung") and not dieu_kien_val:
+                dieu_kien_val = ans
+            elif pt in (CLARIFY_VI_DU_THAT, "vi_du") and not vi_du_val:
+                vi_du_val = ans
+            elif pt in (CLARIFY_HIEU_SAI, CLARIFY_NGOAI_LE, "ghi_chu"):
+                ghi_chu_pieces.append("[%s]: %s" % (pt, ans))
+
+            # Tìm kiếm heuristic nếu câu trả lời chứa từ khóa
+            if not dieu_kien_val and any(k in low_ans for k in ("áp dụng cho", "ap dung cho", "điều kiện", "dieu kien", "dòng máy", "dong may", "công đoạn")):
+                dieu_kien_val = ans
+            if not vi_du_val and any(k in low_ans for k in ("ví dụ", "vi du", "thực tế", "thuc te", "đã từng", "da tung")):
+                vi_du_val = ans
+
+        if not noi_dung_val and answers:
+            noi_dung_val = answers[0].answer_text.strip()
+
+        source_label = format_tonghop_source_tag(session.expert_name, today_str)
+
+        # 5 trường bắt buộc
+        fields["chu_de"] = chu_de_val if chu_de_val else "chưa xác nhận"
+        fields["noi_dung"] = noi_dung_val if noi_dung_val else "chưa xác nhận"
+        fields["dieu_kien_ap_dung"] = dieu_kien_val if dieu_kien_val else "chưa xác nhận"
+        fields["vi_du"] = vi_du_val if vi_du_val else "chưa xác nhận"
+        fields["nguon"] = source_label
+
+        # Các trường phụ
+        fields["nguoi_day"] = session.expert_name if session.expert_name else "chưa xác nhận"
+        fields["ngay_day"] = today_str
+        fields["linh_vuc"] = session.topic if session.topic else "chưa xác nhận"
         fields["ghi_chu"] = (
             " ".join(ghi_chu_pieces).strip() if ghi_chu_pieces else "chưa xác nhận"
         )

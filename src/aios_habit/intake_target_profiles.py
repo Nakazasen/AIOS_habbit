@@ -266,6 +266,95 @@ KHO_DIEU_TRA_LOI_PROFILE = TargetProfile(
 
 
 # ---------------------------------------------------------------------------
+# Hồ sơ mẫu 3: Kho kiến thức tổng hợp (DESKTOP-KNOWLEDGE-INTAKE-TRITHUC-HOME)
+# Phục vụ chế độ DẠY: chuyên gia dạy kiến thức nền về nhà máy và lĩnh vực công ty.
+# Khuôn tài liệu tri thức gồm 5 trường bắt buộc:
+#   chủ đề, nội dung, điều kiện áp dụng, ví dụ, nguồn.
+# Cộng các trường phụ bổ trợ: người dạy, ngày dạy, lĩnh vực, ghi chú.
+# ---------------------------------------------------------------------------
+
+STORE_ID_TONG_HOP = "kho_tong_hop"
+INGEST_ROUTE_TONG_HOP = "DESKTOP-KNOWLEDGE-INTAKE-TRITHUC-HOME"
+
+KHO_TONG_HOP_FIELDS: Tuple[TargetFieldSpec, ...] = (
+    # 5 trường bắt buộc theo vé DESKTOP-KNOWLEDGE-INTAKE-TRITHUC-HOME
+    TargetFieldSpec(
+        name="chu_de",
+        label_vi="Chủ đề",
+        is_mandatory=True,
+        description_vi="Chủ đề hoặc tiêu đề bài học tri thức nền",
+        guidance_vi="Chủ đề kiến thức nền về nhà máy hoặc lĩnh vực chuyên môn của công ty",
+    ),
+    TargetFieldSpec(
+        name="noi_dung",
+        label_vi="Nội dung",
+        is_mandatory=True,
+        description_vi="Nội dung chi tiết của bài giảng / kiến thức chuyên gia",
+        guidance_vi="Mô tả nguyên lý, khái niệm, bản chất kỹ thuật, quy trình tiêu chuẩn",
+    ),
+    TargetFieldSpec(
+        name="dieu_kien_ap_dung",
+        label_vi="Điều kiện áp dụng",
+        is_mandatory=True,
+        description_vi="Điều kiện, phạm vi hoặc trường hợp áp dụng kiến thức này",
+        guidance_vi="Các dòng máy, công đoạn, môi trường hoặc điều kiện kỹ thuật phù hợp",
+    ),
+    TargetFieldSpec(
+        name="vi_du",
+        label_vi="Ví dụ",
+        is_mandatory=True,
+        description_vi="Ví dụ thực tế hoặc tình huống minh họa cụ thể",
+        guidance_vi="Tình huống thực tế đã xảy ra tại nhà máy làm rõ cho bài học",
+    ),
+    TargetFieldSpec(
+        name="nguon",
+        label_vi="Nguồn",
+        is_mandatory=True,
+        description_vi="Nguồn gốc tri thức: chuyên gia giảng dạy, tài liệu hoặc quy chuẩn",
+        guidance_vi="Gắn nhãn định danh nguồn day-chuyen-gia + tên người dạy + ngày dạy",
+    ),
+    # Các trường phụ hỗ trợ metadata
+    TargetFieldSpec(
+        name="nguoi_day",
+        label_vi="Người dạy",
+        is_mandatory=False,
+        description_vi="Tên chuyên gia hoặc giảng viên chia sẻ kiến thức",
+        guidance_vi="Họ tên chuyên gia hoặc kỹ sư phụ trách bài giảng",
+    ),
+    TargetFieldSpec(
+        name="ngay_day",
+        label_vi="Ngày dạy",
+        is_mandatory=False,
+        description_vi="Ngày tháng thực hiện bài giảng (YYYY-MM-DD)",
+        guidance_vi="Ngày tháng theo định dạng chuẩn ISO YYYY-MM-DD",
+    ),
+    TargetFieldSpec(
+        name="linh_vuc",
+        label_vi="Lĩnh vực",
+        is_mandatory=False,
+        description_vi="Lĩnh vực kiến thức nền (ví dụ: Cơ khí, Quang học, Điện tử, QA, Sản xuất)",
+        guidance_vi="Phân loại lĩnh vực chuyên môn trong nhà máy",
+    ),
+    TargetFieldSpec(
+        name="ghi_chu",
+        label_vi="Ghi chú",
+        is_mandatory=False,
+        description_vi="Các điểm lưu ý, cảnh báo sai sót thường gặp hoặc thông tin bổ sung",
+        guidance_vi="Kinh nghiệm thực tiễn hoặc điều kiện ngoại lệ",
+    ),
+)
+
+KHO_TONG_HOP_PROFILE = TargetProfile(
+    store_id=STORE_ID_TONG_HOP,
+    display_name="Kho kiến thức tổng hợp",
+    description="Kho tri thức nền tổng hợp phục vụ chế độ DẠY (khuôn: chủ đề, nội dung, điều kiện áp dụng, ví dụ, nguồn)",
+    ingest_route=INGEST_ROUTE_TONG_HOP,
+    source_prefix="kho_tong_hop",
+    fields=KHO_TONG_HOP_FIELDS,
+)
+
+
+# ---------------------------------------------------------------------------
 # Nhãn nguồn thống nhất (Source Tag Formatter)
 # Format: loai (phong-van / day) + ten nguoi + ngay + kho dich
 # ---------------------------------------------------------------------------
@@ -287,12 +376,27 @@ def format_source_tag(
 
     Cấu trúc chuẩn: `<loai> | <ten_nguoi> | <ngay> | <kho_dich>`
     Ví dụ: `phong-van | Nguyen Van A | 2026-10-18 | kho_lsu`
+    Hoặc chế độ dạy: `day-chuyen-gia | Nguyen Van A | 2026-10-21 | kho_tong_hop`
     """
-    m = "day" if str(mode or "").strip().lower() in ("day", "teaching") else "phong-van"
+    m_raw = str(mode or "").strip().lower()
+    if m_raw in ("day", "teaching", "day-chuyen-gia"):
+        m = "day-chuyen-gia" if str(store_id or "").strip() == STORE_ID_TONG_HOP else "day"
+    else:
+        m = "phong-van"
     exp = str(expert_name or "").strip() or "chưa xác nhận"
     d = str(date_str or "").strip() or date.today().isoformat()
     st = str(store_id or "").strip() or STORE_ID_LSU
     return "%s | %s | %s | %s" % (m, exp, d, st)
+
+
+def format_tonghop_source_tag(
+    expert_name: str,
+    date_str: Optional[str] = None,
+) -> str:
+    """Nhãn nguồn định danh chuẩn cho Kho kiến thức tổng hợp: 'day-chuyen-gia | <ten_nguoi_day> | <ngay_day>'."""
+    exp = str(expert_name or "").strip() or "chưa xác nhận"
+    d = str(date_str or "").strip() or date.today().isoformat()
+    return "day-chuyen-gia | %s | %s" % (exp, d)
 
 
 def parse_source_tag(tag: str) -> Dict[str, str]:
@@ -304,6 +408,13 @@ def parse_source_tag(tag: str) -> Dict[str, str]:
             "expert_name": parts[1],
             "date": parts[2],
             "store_id": parts[3],
+        }
+    if len(parts) == 3 and parts[0] == "day-chuyen-gia":
+        return {
+            "mode": parts[0],
+            "expert_name": parts[1],
+            "date": parts[2],
+            "store_id": STORE_ID_TONG_HOP,
         }
     return {
         "mode": parts[0] if len(parts) > 0 else "phong-van",
@@ -353,10 +464,11 @@ class TargetProfileRegistry:
         self._profiles.clear()
 
     def reset(self) -> None:
-        """Khôi phục lại cấu hình mặc định (hồ sơ mẫu Kho LSU và Kho điều tra lỗi)."""
+        """Khôi phục lại cấu hình mặc định (hồ sơ mẫu Kho LSU, Kho điều tra lỗi, Kho kiến thức tổng hợp)."""
         self._profiles.clear()
         self.register(KHO_LSU_PROFILE)
         self.register(KHO_DIEU_TRA_LOI_PROFILE)
+        self.register(KHO_TONG_HOP_PROFILE)
 
 
 # Global registry instance

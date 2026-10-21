@@ -31,6 +31,7 @@ STATUS_LOAI = "loai"
 # Trạng thái nạp
 INGEST_CHO_NAP = "cho_nap"
 INGEST_KHONG_NAP = "khong_nap"
+INGEST_DA_NAP = "da_nap"
 
 
 @dataclass(frozen=True)
@@ -550,6 +551,25 @@ class IntakeStagingStore:
         )
         self.save_draft_item(updated_item)
         return updated_item
+
+    def update_ingest_status(self, draft_id: str, ingest_status: str) -> bool:
+        """Cập nhật trạng thái nạp của một mục nháp."""
+        now = datetime.now().isoformat()
+        with self._connect() as conn:
+            cur = conn.execute(
+                """
+                UPDATE intake_draft_items
+                SET ingest_status = ?, updated_at = ?
+                WHERE draft_id = ?;
+                """,
+                (ingest_status, now, draft_id),
+            )
+            conn.commit()
+            return cur.rowcount > 0
+
+    def update_draft_item_status(self, draft_id: str, ingest_status: str) -> bool:
+        """Alias cho update_ingest_status."""
+        return self.update_ingest_status(draft_id, ingest_status)
 
     def list_draft_items_by_store(
         self,
