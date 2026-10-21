@@ -1,0 +1,164 @@
+{
+  "ticket": "DESKTOP-HOME-CITATION-SOURCE-VIEWER",
+  "timestamp": "2026-10-21T20:11:43.825639",
+  "query": "C6770 nguyen nhan thuong gap la gi?",
+  "notebook_id": "NB-LAZY-DTL",
+  "conversation_id": "CONV-VERIFY-CITATIONS-FINAL",
+  "metrics": {
+    "total_views": 9,
+    "views_by_type": {
+      "db_error_case": 2,
+      "glossary_document": 7
+    },
+    "successful_resolutions": 9,
+    "missing_resolutions": 0,
+    "recent_events": [
+      {
+        "event_id": "SRC-VIEW-20261021191620-9A81C2",
+        "timestamp": "2026-10-21T19:16:20.320280",
+        "conversation_id": "CONV-TEST",
+        "message_id": "MSG-TEST",
+        "citation_id": "case_row_9609",
+        "citation_type": "db_error_case",
+        "citation_label": "Loi KDTPS.xlsx › History KDTPS › dòng 9609",
+        "source_file": "Loi KDTPS.xlsx",
+        "sheet_name": "History KDTPS",
+        "source_row": 9609,
+        "case_id": null,
+        "found": true
+      },
+      {
+        "event_id": "SRC-VIEW-20261021195058-95043C",
+        "timestamp": "2026-10-21T19:50:58.830446",
+        "conversation_id": "CONV-VERIFY-CITATIONS-FINAL",
+        "message_id": "msg_asst_CONV-VERIFY-CITATIONS-FINAL",
+        "citation_id": "doc_d8912e6e",
+        "citation_type": "glossary_document",
+        "citation_label": "02XC_自己診断表示一覧表-Iris2020 VN.xls",
+        "source_file": "02XC_自己診断表示一覧表-Iris2020 VN.xls",
+        "sheet_name": "",
+        "source_row": null,
+        "case_id": null,
+        "found": true
+      },
+      {
+        "event_id": "SRC-VIEW-20261021195605-DA0410",
+        "timestamp": "2026-10-21T19:56:05.975541",
+        "conversation_id": "CONV-VERIFY-CITATIONS-FINAL",
+        "message_id": "msg_asst_CONV-VERIFY-CITATIONS-FINAL",
+        "citation_id": "doc_d8912e6e",
+        "citation_type": "glossary_document",
+        "citation_label": "02XC_自己診断表示一覧表-Iris2020 VN.xls",
+        "source_file": "02XC_自己診断表示一覧表-Iris2020 VN.xls",
+        "sheet_name": "",
+        "source_row": null,
+        "case_id": null,
+        "found": true
+      },
+      {
+        "event_id": "SRC-VIEW-20261021195658-E17E6A",
+        "timestamp": "2026-10-21T19:56:58.076952",
+        "conversation_id": "CONV-VERIFY-CITATIONS-FINAL",
+        "message_id": "msg_asst_CONV-VERIFY-CITATIONS-FINAL",
+        "citation_id": "doc_d8912e6e",
+        "citation_type": "glossary_document",
+        "citation_label": "02XC_自己診断表示一覧表-Iris2020 VN.xls",
+        "source_file": "02XC_自己診断表示一覧表-Iris2020 VN.xls",
+        "sheet_name": "",
+        "source_row": null,
+        "case_id": null,
+        "found": true
+      },
+      {
+        "event_id": "SRC-VIEW-20261021195823-1AAB1B",
+        "timestamp": "2026-10-21T19:58:23.043499",
+        "conversation_id": "CONV-VERIFY-CITATIONS-FINAL",
+        "message_id": "msg_asst_CONV-VERIFY-CITATIONS-FINAL",
+        "citation_id": "doc_d8912e6e",
+        "citation_type": "glossary_document",
+        "citation_label": "02XC_自己診断表示一覧表-Iris2020 VN.xls",
+        "source_file": "02XC_自己診断表示一覧表-Iris2020 VN.xls",
+        "sheet_name": "",
+        "source_row": null,
+        "case_id": null,
+        "found": true
+      },
+      {
+        "event_id": "SRC-VIEW-20261021195952-FB888C",
+        "timestamp": "2026-10-21T19:59:52.363181",
+        "conversation_id": "CONV-VERIFY-CITATIONS-FINAL",
+        "message_id": "msg_asst_CONV-VERIFY-CITATIONS-FINAL",
+        "citation_id": "doc_d8912e6e",
+        "citation_type": "glossary_document",
+        "citation_label": "02XC_自己診断表示一覧表-Iris2020 VN.xls",
+        "source_file": "02XC_自己診断表示一覧表-Iris2020 VN.xls",
+        "sheet_name": "",
+        "source_row": null,
+        "case_id": null,
+        "found": true
+      },
+      {
+        "event_id": "SRC-VIEW-20261021201026-45F928",
+        "timestamp": "2026-10-21T20:10:26.987725",
+        "conversation_id": "CONV-VERIFY-CITATIONS-FINAL",
+        "message_id": "msg_asst_CONV-VERIFY-CITATIONS-FINAL",
+        "citation_id": "doc_d8912e6e",
+        "citation_type": "glossary_document",
+        "citation_label": "02XC_自己診断表示一覧表-Iris2020 VN.xls",
+        "source_file": "02XC_自己診断表示一覧表-Iris2020 VN.xls",
+        "sheet_name": "",
+        "source_row": null,
+        "case_id": null,
+        "found": true
+      },
+      {
+        "event_id": "SRC-VIEW-20261021201137-5E5C0D",
+        "timestamp": "2026-10-21T20:11:37.273576",
+        "conversation_id": "CONV-VERIFY-CITATIONS-FINAL",
+        "message_id": "msg_asst_CONV-VERIFY-CITATIONS-FINAL",
+        "citation_id": "doc_d8912e6e",
+        "citation_type": "glossary_document",
+        "citation_label": "02XC_自己診断表示一覧表-Iris2020 VN.xls",
+        "source_file": "02XC_自己診断表示一覧表-Iris2020 VN.xls",
+        "sheet_name": "",
+        "source_row": null,
+        "case_id": null,
+        "found": true
+      },
+      {
+        "event_id": "SRC-VIEW-20261021201141-C26207",
+        "timestamp": "2026-10-21T20:11:41.065238",
+        "conversation_id": "CONV-VERIFY-CITATIONS-FINAL",
+        "message_id": "msg_asst_CONV-VERIFY-CITATIONS-FINAL",
+        "citation_id": "case_row_9609",
+        "citation_type": "db_error_case",
+        "citation_label": "Loi KDTPS.xlsx › History KDTPS › dòng 9609",
+        "source_file": "Loi KDTPS.xlsx",
+        "sheet_name": "History KDTPS",
+        "source_row": 9609,
+        "case_id": null,
+        "found": true
+      }
+    ]
+  },
+  "screenshots": [
+    {
+      "file": "anh-01-citations-clickable-answer.png",
+      "size_bytes": 99771,
+      "sha256": "AF545ABDC61E43777C2DFCCAAA7356892C499AE66B3475CF1F66C751AEBBC40A",
+      "description": "Assistant answer with clickable citation buttons in-place inside chat bubble"
+    },
+    {
+      "file": "anh-02-source-viewer-reference-doc.png",
+      "size_bytes": 143226,
+      "sha256": "40ED95F98B913DA7C8882792F136B329854D9300DD68C3030FE748F2B61AD9E9",
+      "description": "Source Viewer panel for Reference Document (02XC_自己診断表示一覧表-Iris2020 VN.xls) with verbatim excerpt and download button"
+    },
+    {
+      "file": "anh-03-source-viewer-db-case-row9609.png",
+      "size_bytes": 142639,
+      "sha256": "A9D436265F561C7D5EFD97A13739ADBFEFC23B2CA1FE3A50801CBC888C845B2B",
+      "description": "Source Viewer panel for DB Case row 9609 with complete A-Y record (Phiếu 2025/1155, Model, Hiện tượng, Nguyên nhân, Đối sách)"
+    }
+  ]
+}

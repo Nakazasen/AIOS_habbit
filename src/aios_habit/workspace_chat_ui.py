@@ -1062,7 +1062,23 @@ def render_chat_bubble(
                         render_fallback_notice(badge_data, locale=locale)
                     if _is_external_ai:
                         st.info(f"🌐 **{t('external_ai_provenance_banner', locale=locale)}**")
-                    st.markdown(display_content)
+                    try:
+                        from aios_habit.citation_source_viewer import render_assistant_answer_with_citations
+                        _active_nb = (
+                            getattr(msg, "metadata", {}).get("notebook_id", "")
+                            if hasattr(msg, "metadata") and isinstance(getattr(msg, "metadata", None), dict)
+                            else str(getattr(st, "session_state", {}).get("wsc_active_notebook_id", "") or "")
+                        )
+                        render_assistant_answer_with_citations(
+                            st_module=st,
+                            content=display_content,
+                            conversation_id=conversation_id,
+                            message_id=str(msg.id or ""),
+                            notebook_id=_active_nb,
+                            locale=locale,
+                        )
+                    except Exception:
+                        st.markdown(display_content)
                     if _is_external_ai:
                         if _ext_model_name:
                             st.caption(t("ext_ai_dest_model", locale=locale, provider=_ext_provider_name, model=_ext_model_name))
