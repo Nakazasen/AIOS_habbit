@@ -1,0 +1,80 @@
+{
+  "GATE_4_SUBMISSION_STILLNESS_60S": {
+    "verdict": "DAT",
+    "conversation_id": "CONV-I18N-175C1B94",
+    "waited_seconds": 65.0,
+    "asst_bubbles_count": 1,
+    "user_bubbles_count": 0,
+    "screenshot": {
+      "file": "anh-hd-i18n-04-submission-stillness-60s.png",
+      "size_bytes": 158959,
+      "sha256": "B5744AD1EB59B481D44A76104CEDA500E60D52BAA62F854ABC0FEFB6D8FCDBC3",
+      "is_valid_png": true
+    }
+  },
+  "GATE_1_JAPANESE_MANUAL": {
+    "verdict": "DAT",
+    "section": "C4",
+    "has_136": true,
+    "has_case_id": true,
+    "has_30k": true,
+    "img_width": 646.9,
+    "img_height": 431.2,
+    "screenshot": {
+      "file": "anh-hd-i18n-01-japanese-c4.png",
+      "size_bytes": 213667,
+      "sha256": "FFC81939F767DEF9356308B676D05BF9DB61E717406E33CFD7ADA1B53F437610",
+      "is_valid_png": true
+    }
+  },
+  "GATE_2_CHINESE_MANUAL": {
+    "verdict": "DAT",
+    "section": "C4",
+    "has_136": true,
+    "has_case_id": true,
+    "img_width": 646.9,
+    "screenshot": {
+      "file": "anh-hd-i18n-02-chinese-menu-and-section.png",
+      "size_bytes": 210544,
+      "sha256": "00E379C7B334AE244994931C960AF11E6BA14A30151E1C2742C08553EA3F0108",
+      "is_valid_png": true
+    }
+  },
+  "GATE_3_VIETNAMESE_REGRESSION": {
+    "verdict": "DAT",
+    "section": "C4",
+    "screenshot": {
+      "file": "anh-hd-i18n-03-vietnamese-regression.png",
+      "size_bytes": 204770,
+      "sha256": "27FB437C8B53AA95C383E467F8E411484CB183F2EEDF26843523A819C6630744",
+      "is_valid_png": true
+    }
+  },
+  "GATE_5_ZERO_FAKE_TURNS": {
+    "verdict": "DAT",
+    "msgs_before_normal_q": 0,
+    "msgs_after_normal_q": 2,
+    "fake_turns_created": 0,
+    "screenshot": {
+      "file": "anh-hd-i18n-05-zero-fake-turns.png",
+      "size_bytes": 140098,
+      "sha256": "8BADB1159C73C3DF7CD4B03AE2600BBB084BA23C984D25F04D8184486C2E496F",
+      "is_valid_png": true
+    }
+  },
+  "METRICS": {
+    "total_calls": 101,
+    "by_section": {
+      "C4": 37,
+      "tat_ca": 27,
+      "danh_muc": 32,
+      "C": 5
+    },
+    "last_called_at": "2026-10-23T05:08:09.827967+07:00",
+    "by_language": {
+      "vi": 10,
+      "ja": 10,
+      "zh": 10
+    }
+  }
+}

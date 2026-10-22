@@ -2762,19 +2762,32 @@ def _hang_ve_tu_lsu_gate() -> list:
 
 
 def _render_huongdan_chat_bubble(hd_data: dict, conversation_id: str, locale: str = "vi") -> None:
-    """Hien thi noi dung cam nang huong dan ngay trong khung chat (chat-first)."""
+    """Hien thi noi dung cam nang huong dan ngay trong khung chat theo dung ngon ngu lenh (chat-first)."""
+    lang = hd_data.get("language") or "vi"
+    badge_titles = {
+        "vi": "📖 Cẩm nang Hướng dẫn sử dụng AIOS",
+        "ja": "📖 AIOS台帳 総合利用マニュアル",
+        "zh": "📖 AIOS 台账综合使用指南",
+    }
+    caption_texts = {
+        "vi": "Chọn nhanh hạng mục bên dưới:",
+        "ja": "下の項目を素早く選択：",
+        "zh": "在下方快速选择项目：",
+    }
+    badge_title = badge_titles.get(lang, badge_titles["vi"])
+    caption_text = caption_texts.get(lang, caption_texts["vi"])
     with st.chat_message("assistant"):
         st.html(
-            '<div style="display:inline-flex; align-items:center; gap:6px; background:rgba(59,130,246,0.12); '
-            'border:1px solid rgba(59,130,246,0.3); color:#2563eb; font-size:12px; font-weight:600; '
-            'padding:2px 10px; border-radius:9999px; margin-bottom:8px;">'
-            '📖 Cẩm nang Hướng dẫn sử dụng AIOS'
-            '</div>'
+            f'<div style="display:inline-flex; align-items:center; gap:6px; background:rgba(59,130,246,0.12); '
+            f'border:1px solid rgba(59,130,246,0.3); color:#2563eb; font-size:12px; font-weight:600; '
+            f'padding:2px 10px; border-radius:9999px; margin-bottom:8px;">'
+            f'{badge_title}'
+            f'</div>'
         )
         st.markdown(hd_data.get("content", ""), unsafe_allow_html=True)
         chips = hd_data.get("chips", [])
         if chips:
-            st.caption("Chọn nhanh hạng mục bên dưới:")
+            st.caption(caption_text)
             chunk_size = 5 if len(chips) > 5 else len(chips)
             for chunk_idx in range(0, len(chips), chunk_size):
                 chunk = chips[chunk_idx:chunk_idx + chunk_size]
@@ -2828,6 +2841,7 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
                 "content": hd_res.markdown_content,
                 "chips": hd_res.chips,
                 "section_key": hd_res.section_key,
+                "language": hd_res.language,
             }
         return ""
 

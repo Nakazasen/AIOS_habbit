@@ -122,6 +122,7 @@ _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
         HUONG_DAN,
         (
             "/huongdan", "/huong-dan", "/guide", "/help",
+            "/使い方", "/使用指南", "使い方", "使用指南",
             "huong dan su dung aios", "cam nang huong dan",
             "cam nang aios", "huong dan aios", "danh muc huong dan",
         ),
@@ -402,9 +403,10 @@ def classify_all_intents(text: str) -> list:
     if not norm:
         return [(HOI_DAP_CHUNG, {})]
     try:
-        from aios_habit.huongdan_command import is_huongdan_command, parse_huongdan_args
+        from aios_habit.huongdan_command import is_huongdan_command, parse_huongdan_args, detect_huongdan_language
         if is_huongdan_command(clean):
-            return [(HUONG_DAN, {"muc": parse_huongdan_args(clean)})]
+            lang = detect_huongdan_language(clean)
+            return [(HUONG_DAN, {"muc": parse_huongdan_args(clean, lang=lang), "language": lang})]
     except Exception:
         pass
     ngan = len(norm) < 80
@@ -522,8 +524,9 @@ def extract_slots(text: str, intent: str) -> Dict[str, str]:
     slots: Dict[str, str] = {}
     clean = (text or "").strip()
     if intent == HUONG_DAN:
-        from aios_habit.huongdan_command import parse_huongdan_args
-        return {"muc": parse_huongdan_args(clean)}
+        from aios_habit.huongdan_command import parse_huongdan_args, detect_huongdan_language
+        lang = detect_huongdan_language(clean)
+        return {"muc": parse_huongdan_args(clean, lang=lang), "language": lang}
     elif intent == TAO_VU_DIEU_TRA:
         return extract_case_entities(clean)
     elif intent in (XEM_TIEN_DO_VU, LAP_CAY_4M_VU):
