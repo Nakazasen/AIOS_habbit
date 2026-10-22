@@ -69,6 +69,8 @@ BUILTIN_ACTION_MODULES: Tuple[str, ...] = (
     "aios_habit.chat_action_knowledge_intake",
     # LOG-STREAM: nap file log lon theo stream, khong cat 50k dong.
     "aios_habit.chat_action_log_stream",
+    # DESKTOP-HOME-STEP4-PERIODIC-REPORT-ACCEPTANCE: bao cao xu huong dinh ky theo tuan
+    "aios_habit.chat_action_periodic_report",
     "aios_habit.chat_action_draft_approval",
     "aios_habit.chat_action_create_case",
     "aios_habit.chat_action_error_lookup",
@@ -114,6 +116,8 @@ SYSTEM_WORKFLOW_HINTS = (
 )
 
 COMMAND_ACTION_START_RE = re.compile(
+    # Periodic trend report (Step 4)
+    r"^(?:bao\s+cao\s+xu\s+huong|sinh\s+bao\s+cao\s+xu\s+huong|bao\s+cao\s+dinh\s+ky|xuat\s+bao\s+cao\s+xu\s+huong|sinh\s+bao\s+cao\s+dinh\s+ky)\b|" \
     # Case form (Step 0)
     r"^(?:nhap\s+bao\s+cao|form\s+nhap|nhap\s+ca\s+loi|them\s+ca\s+loi|mau\s+bao\s+cao|phieu\s+bao\s+cao|bao\s+cao\s+loi\s+moi)\b|"
     # Knowledge intake / clipboard

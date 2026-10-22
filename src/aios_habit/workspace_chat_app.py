@@ -2711,6 +2711,7 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
         VE_BIEU_DO,
         XEM_PHAN_HOI,
         XEM_TIEN_DO_VU,
+        BAO_CAO_XU_HUONG,
         XU_HUONG_LOG_TINH,
         _khong_dau,
     )
@@ -2935,6 +2936,16 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
             return format_feedback_review_summary()
         except Exception:
             return None
+    if y_dinh == BAO_CAO_XU_HUONG:
+        try:
+            import re
+            from aios_habit.production_prediction.periodic_trend_report import tao_bao_cao_dinh_ky_tuan
+            m_week = re.search(r"\b(20\d\d-[wW]\d{2})\b", q_text, re.IGNORECASE)
+            ky_tuan = m_week.group(1).upper() if m_week else None
+            res = tao_bao_cao_dinh_ky_tuan(ky_tuan=ky_tuan)
+            return res.bao_cao_markdown
+        except Exception as exc:
+            return f"⚠️ Không thể sinh báo cáo xu hướng định kỳ: {exc}"
     if y_dinh == XU_HUONG_LOG_TINH:
         try:
             from aios_habit.production_prediction.jig_chat_wire import (

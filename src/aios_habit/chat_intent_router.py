@@ -16,6 +16,7 @@ from typing import Dict, Optional, Tuple
 
 # Recognized intents. "hoi_tai_lieu" is the default fallback.
 CANH_BAO_NGUONG = "canh_bao_nguong"      # threshold alert request
+BAO_CAO_XU_HUONG = "bao_cao_xu_huong"    # periodic trend report (Step 4)
 XU_HUONG_LOG_TINH = "xu_huong_log_tinh"  # static log SMA trend analysis request
 XEM_PHAN_HOI = "xem_phan_hoi"            # feedback review summary request (DESKTOP-FEEDBACK-REVIEW-CHATCMD-HOME)
 VE_BIEU_DO = "ve_bieu_do"                # chart request (runs the JIG chart branch)
@@ -37,6 +38,7 @@ TAT_CA_Y_DINH = (
     DANH_GIA_DIEU_TRA,
     DANH_GIA_NHAN,
     CANH_BAO_NGUONG,
+    BAO_CAO_XU_HUONG,
     XU_HUONG_LOG_TINH,
     XEM_PHAN_HOI,
     VE_BIEU_DO,
@@ -151,6 +153,31 @@ _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
             "danh gia dung nhan", "danh gia sai nhan",
             "sua nhan thanh", "sua nhan:", "sua nhan",
             "/danhgianhan",
+        ),
+    ),
+    (
+        BAO_CAO_XU_HUONG,
+        (
+            "bao cao xu huong dinh ky",
+            "báo cáo xu hướng định kỳ",
+            "sinh bao cao xu huong dinh ky",
+            "sinh báo cáo xu hướng định kỳ",
+            "xuat bao cao xu huong dinh ky",
+            "xuất báo cáo xu hướng định kỳ",
+            "bao cao xu huong tuan",
+            "báo cáo xu hướng tuần",
+            "bao cao dinh ky tuan",
+            "báo cáo định kỳ tuần",
+            "sinh bao cao xu huong",
+            "sinh báo cáo xu hướng",
+            "xuat bao cao xu huong",
+            "xuất báo cáo xu hướng",
+            "bao cao xu huong",
+            "báo cáo xu hướng",
+            "bao cao dinh ky",
+            "báo cáo định kỳ",
+            "/baocaoxuhuong",
+            "/baocaodinhky",
         ),
     ),
     (
