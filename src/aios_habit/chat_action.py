@@ -100,7 +100,7 @@ INTERROGATIVE_RE = re.compile(
     r"\b(?:o\s+dau|cho\s+nao|noi\s+nao|dau\s+ra)\b|"
     r"\b(?:khi\s+nao|bao\s+gio|ngay\s+nao|nam\s+nao|thang\s+nao|thoi\s+gian\s+nao|luc\s+nao)\b|"
     r"\bbao\s+nhieu\b|"
-    r"\b(?:co\s+.*\s+khong\??|khong\?|phai\s+khong\??|dung\s+khong\??|chua\??)\b|"
+    r"\b(?:co\s+[^?.!:\n]{1,60}\s+khong\s*[\?？]|co\s+(?:phai|the|biet|ai|can|duoc|chac)\s+[^?.!:\n]{1,60}\s+khong\b|khong\s*[\?？]|phai\s+khong\??|dung\s+khong\??|chua\s*[\?？])\b|"
     r"\b(?:bo\s+phan|phong\s+ban|don\s+vi|cong\s+doan|chuyen|line|model|loi|tai\s+lieu|file|tep|bao\s+cao|muc|khoan|dieu|trang|dong|buoc|phan|loai)\s+nao\b|"
     r"\bnao\s*[\?？]",
     re.IGNORECASE,
@@ -122,8 +122,8 @@ COMMAND_ACTION_START_RE = re.compile(
     r"^(?:nhap\s+bao\s+cao|form\s+nhap|nhap\s+ca\s+loi|them\s+ca\s+loi|mau\s+bao\s+cao|phieu\s+bao\s+cao|bao\s+cao\s+loi\s+moi)\b|"
     # Knowledge intake / clipboard
     r"^(?:mo\s+phien\s+thu\s+tri\s+thuc|thu\s+tri\s+thuc|nap\s+tri\s+thuc|dan\s+tri\s+thuc|nhap\s+tri\s+thuc|xem\s+muc\s+cho\s+nap)\b|"
-    # Investigation
-    r"^(?:tao\s+vu\s+dieu\s+tra|mo\s+vu\s+dieu\s+tra|dieu\s+tra\s+loi)\b|"
+    # Step 3 Investigation Plan (4M + Why-Why) & Cases
+    r"^(?:huong\s+dieu\s+tra|cay\s+dieu\s+tra|ke\s+hoach\s+dieu\s+tra|lap\s+ke\s+hoach\s+dieu\s+tra|lap\s+cay\s+dieu\s+tra|goi\s+y\s+huong\s+dieu\s+tra|bat\s+dau\s+dieu\s+tra|dieu\s+tra\s+buoc\s+dau|tao\s+vu\s+dieu\s+tra|mo\s+vu\s+dieu\s+tra|dieu\s+tra\s+loi)\b|"
     # Feedback
     r"^(?:xem\s+phan\s+hoi|gui\s+phan\s+hoi|y\s+kien\s+phan\s+hoi)\b|"
     # Expert interview

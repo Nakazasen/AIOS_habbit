@@ -258,7 +258,7 @@ def _handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
                     "gõ mã lỗi trần (VD: `C7620`)."
                 )
             return _guidance_outcome(
-                "Cho tôi **số vụ** hoặc **mã lỗi** của ca cần lập báo cáo, "
+                "Cho tôi **số phiếu** (hoặc **số vụ**) hoặc **mã lỗi** của ca cần lập báo cáo, "
                 "ví dụ: `lập báo cáo điều tra cho ca FORM-20261001-0001` "
                 "hoặc `lập báo cáo điều tra cho ca C7620`."
             )

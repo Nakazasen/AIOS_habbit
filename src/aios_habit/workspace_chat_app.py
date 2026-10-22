@@ -2702,6 +2702,7 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
         DONG_VU,
         DU_LIEU_DAN,
         HO_SO_DIEU_TRA,
+        HUONG_DIEU_TRA,
         LAP_CAY_4M_VU,
         MO_SO,
         TAO_SO,
@@ -2744,6 +2745,27 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
         conv_id = getattr(active_conversation, "id", "") or ""
         explicit_cid = slots.get("case_id") if isinstance(slots, dict) else ""
         return execute_view_case_progress(case_id=explicit_cid, conversation_id=conv_id)
+
+    if y_dinh == HUONG_DIEU_TRA:
+        from aios_habit.chat_action import (
+            ChatActionRequest,
+            dispatch_multi,
+            render_outcome,
+        )
+        try:
+            outcome = dispatch_multi(
+                ChatActionRequest(
+                    question=q_text,
+                    locale="vi",
+                    conversation_id=getattr(active_conversation, "id", "") or "",
+                    notebook_id=active_nb_id or "",
+                    workspace_id=active_nb_id or "default",
+                )
+            )
+            if outcome:
+                return render_outcome(outcome)
+        except Exception:
+            return None
 
     if y_dinh == LAP_CAY_4M_VU:
         from aios_habit.chat_action_create_case import execute_build_case_tree

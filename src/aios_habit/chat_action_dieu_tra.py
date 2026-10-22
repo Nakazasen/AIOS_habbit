@@ -171,7 +171,12 @@ def _render_chat(tree) -> str:
 
 def _handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
     try:
+        norm = normalize_text(request.question)
+        if any(h in norm for h in ("dung huong", "thieu nhanh", "khong huu ich", "phan hoi dieu tra", "gop y dieu tra", "danh gia dieu tra")):
+            return None
         phenomenon = extract_phenomenon(request.question)
+        if normalize_text(phenomenon) in ("dung huong", "thieu nhanh", "khong huu ich"):
+            return None
         if not phenomenon:
             return ChatActionOutcome(
                 action=ACTION_NAME,

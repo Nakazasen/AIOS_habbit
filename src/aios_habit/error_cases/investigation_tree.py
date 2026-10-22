@@ -267,30 +267,33 @@ def build_tree(
     tree.branch_order = order
 
     # 1. Fetch similar cases (Step 1 engine) if not provided
-    matched_cases: List[Dict[str, Any]] = list(similar_cases) if similar_cases is not None else []
-    if not matched_cases and conn is not None:
-        try:
-            from aios_habit.chat_action_error_lookup import search_similar
-            q_search = f"{tree.code} {phenomenon}".strip()
-            cases, _, _ = search_similar(conn, q_search, top_n=5)
-            matched_cases = list(cases)
-        except Exception:
-            matched_cases = []
+    if similar_cases is not None:
+        matched_cases: List[Dict[str, Any]] = list(similar_cases)
+    else:
+        matched_cases = []
+        if conn is not None:
+            try:
+                from aios_habit.chat_action_error_lookup import search_similar
+                q_search = f"{tree.code} {phenomenon}".strip()
+                cases, _, _ = search_similar(conn, q_search, top_n=5)
+                matched_cases = list(cases)
+            except Exception:
+                matched_cases = []
 
-    if not matched_cases and conn is None:
-        try:
-            from aios_habit.chat_action import ChatActionRequest
-            from aios_habit.chat_action_error_lookup import _open_ro, resolve_db_path, search_similar
-            db_p = resolve_db_path(ChatActionRequest(question=f"{tree.code} {phenomenon}"))
-            if db_p and db_p.is_file():
-                c_ro = _open_ro(db_p)
-                try:
-                    cases, _, _ = search_similar(c_ro, f"{tree.code} {phenomenon}".strip(), top_n=5)
-                    matched_cases = list(cases)
-                finally:
-                    c_ro.close()
-        except Exception:
-            matched_cases = []
+        if not matched_cases and conn is None:
+            try:
+                from aios_habit.chat_action import ChatActionRequest
+                from aios_habit.chat_action_error_lookup import _open_ro, resolve_db_path, search_similar
+                db_p = resolve_db_path(ChatActionRequest(question=f"{tree.code} {phenomenon}"))
+                if db_p and db_p.is_file():
+                    c_ro = _open_ro(db_p)
+                    try:
+                        cases, _, _ = search_similar(c_ro, f"{tree.code} {phenomenon}".strip(), top_n=5)
+                        matched_cases = list(cases)
+                    finally:
+                        c_ro.close()
+            except Exception:
+                matched_cases = []
 
     tree.similar_cases = matched_cases
 

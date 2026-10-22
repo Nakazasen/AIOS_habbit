@@ -21,6 +21,7 @@ XU_HUONG_LOG_TINH = "xu_huong_log_tinh"  # static log SMA trend analysis request
 XEM_PHAN_HOI = "xem_phan_hoi"            # feedback review summary request (DESKTOP-FEEDBACK-REVIEW-CHATCMD-HOME)
 VE_BIEU_DO = "ve_bieu_do"                # chart request (runs the JIG chart branch)
 XEM_TIEN_DO_VU = "xem_tien_do_vu"        # view progress of active case
+HUONG_DIEU_TRA = "huong_dieu_tra"      # step 3 4M + Why-Why investigation tree plan
 LAP_CAY_4M_VU = "lap_cay_4m_vu"          # build 4M + Why-Why tree for active case
 DONG_VU = "dong_vu"                      # close investigation case with mandatory cause & remedy gate (Step 2)
 TAO_VU_DIEU_TRA = "tao_vu_dieu_tra"      # create an investigation case via chat
@@ -43,6 +44,7 @@ TAT_CA_Y_DINH = (
     XEM_PHAN_HOI,
     VE_BIEU_DO,
     XEM_TIEN_DO_VU,
+    HUONG_DIEU_TRA,
     LAP_CAY_4M_VU,
     DONG_VU,
     TAO_VU_DIEU_TRA,
@@ -251,6 +253,27 @@ _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
             "xem trang thai vu",
             "xem tien do",
             "tien do vu dieu tra",
+        ),
+    ),
+    (
+        HUONG_DIEU_TRA,
+        (
+            "huong dieu tra",
+            "hướng điều tra",
+            "cay dieu tra",
+            "cây điều tra",
+            "ke hoach dieu tra",
+            "kế hoạch điều tra",
+            "lap ke hoach dieu tra",
+            "lập kế hoạch điều tra",
+            "lap cay dieu tra",
+            "lập cây điều tra",
+            "goi y huong dieu tra",
+            "gợi ý hướng điều tra",
+            "dieu tra buoc dau",
+            "điều tra bước đầu",
+            "bat dau dieu tra",
+            "bắt đầu điều tra",
         ),
     ),
     (
