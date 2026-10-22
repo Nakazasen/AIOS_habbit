@@ -1,0 +1,85 @@
+{
+  "ticket": "DESKTOP-PC0575-CAGENT-LIVENESS-WAIT-UX",
+  "machine": "PC0575",
+  "timestamp_start": "2026-10-22T18:53:39.752419",
+  "gates": {
+    "gate1_standstill": {
+      "status": "PASSED",
+      "question": "Quy trình kiểm tra an toàn điện trước khi bàn giao máy photocopy gồm những bước nào?",
+      "screenshot_waiting": {
+        "file": "anh-pc0575-liveness-01-standstill-waiting.png",
+        "size_bytes": 86803,
+        "sha256": "D8C06CB0F5941534D44C6755AFF748DFDC48911BB128D9681C8EE533BA077D58",
+        "is_valid_png": true
+      },
+      "screenshot_complete": {
+        "file": "anh-pc0575-liveness-02-standstill-complete.png",
+        "size_bytes": 95891,
+        "sha256": "A00B53C789110234F6D5591621675BEA3F5C69AE1D676BB417D4BB17EB9158A7",
+        "is_valid_png": true
+      }
+    },
+    "gate2_dead_session": {
+      "status": "PASSED",
+      "question": "Cách xử lý kẹt giấy tại khay số 2 máy Iris?",
+      "simulated_error": "expired (phiên hết hạn)",
+      "screenshot": {
+        "file": "anh-pc0575-liveness-03-dead-session-fallback.png",
+        "size_bytes": 97519,
+        "sha256": "0813D6EFA06FB8BAB1B03F73821554E583D399F7BBD708976FC25144F2A4FE3D",
+        "is_valid_png": true
+      }
+    },
+    "gate3_timeout": {
+      "status": "PASSED",
+      "question": "Nguyên nhân phát sinh vệt đen dọc bản in trên máy photocopy?",
+      "simulated_timeout": true,
+      "screenshot": {
+        "file": "anh-pc0575-liveness-04-timeout-notice.png",
+        "size_bytes": 92466,
+        "sha256": "FD7B4DB0B4ADE9A50C1DA24A2F4F351564C763EC3A62073D40CAA79F0510D179",
+        "is_valid_png": true
+      }
+    },
+    "gate4a_cold_alo": {
+      "status": "PASSED",
+      "screenshot": {
+        "file": "anh-pc0575-liveness-05-cold-auto-unlock.png",
+        "size_bytes": 90583,
+        "sha256": "B798DDCA45DCCFB65DF7C490969BB9F4E9A5B5D6119E2897B49CFEAF71E81D08",
+        "is_valid_png": true
+      }
+    },
+    "gate4b_chip": {
+      "status": "PASSED",
+      "screenshot": {
+        "file": "anh-pc0575-liveness-06-suggest-chip-clean.png",
+        "size_bytes": 119654,
+        "sha256": "694F9085AAAF07195504C902BC516BF00FCA62DA6707C34E1E3940CAB5B4774E",
+        "is_valid_png": true
+      }
+    },
+    "gate4c_c6400_single_60s": {
+      "status": "PASSED",
+      "messages_count": 2,
+      "screenshot": {
+        "file": "anh-pc0575-liveness-07-c6400-single-60s.png",
+        "size_bytes": 88493,
+        "sha256": "DD009C8C915E05A53CDA95C3176E1493C7C354772D030AF9720A04E337A2249C",
+        "is_valid_png": true
+      }
+    },
+    "gate4d_warm_fast_all_3_steps": {
+      "status": "PASSED",
+      "question": "Tóm tắt các điểm cần lưu ý khi nạp mực máy in.",
+      "screenshot": {
+        "file": "anh-pc0575-liveness-08-warm-fast-all-3-steps.png",
+        "size_bytes": 91227,
+        "sha256": "F93AED009E8158BF67C051F93D9BB349588E1AE88886318251883087E6C53FFC",
+        "is_valid_png": true
+      }
+    }
+  },
+  "timestamp_end": "2026-10-22T18:58:12.018198",
+  "overall_status": "ALL_4_GATES_PASSED"
+}

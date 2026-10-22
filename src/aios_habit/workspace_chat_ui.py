@@ -2326,14 +2326,55 @@ def render_jig_live_status_capsule(dang_ket_noi: bool, toc_do: float = 0.0, so_j
 
 
 _CAC_BUOC_CHO = ("qa_step_find", "qa_step_read", "qa_step_synth")
+_STEP_KEYS = ("find", "read", "synth")
 
 
-def build_answer_wait_steps(trang_thai: str, locale: str = "vi") -> List[Dict[str, Any]]:
-    """Build the three waiting steps from the real pipeline state (007 QA2).
+def build_answer_wait_steps(
+    trang_thai: str = "dang_xu_ly",
+    locale: str = "vi",
+    step_timings: Optional[Dict[str, Any]] = None,
+) -> List[Dict[str, Any]]:
+    """Build the three waiting steps from the real pipeline state (007 QA2, DESKTOP-PC0575-CAGENT-LIVENESS-WAIT-UX).
 
     Only "cho_tai_lieu" (waiting for sources) and "dang_xu_ly" (AI working)
-    are accepted; anything else raises so callers never show a fake step.
+    are accepted without timings; anything else raises so callers never show a fake step.
+    When step_timings is provided, tracks execution time and status of each individual step.
     """
+    if step_timings and isinstance(step_timings, dict):
+        steps = []
+        for idx, khoa in enumerate(_CAC_BUOC_CHO):
+            st_key = _STEP_KEYS[idx]
+            step_info = step_timings.get(st_key, {})
+            status = step_info.get("status", "pending")
+            dur = step_info.get("duration")
+            elap = step_info.get("elapsed")
+
+            if status == "done":
+                dur_val = float(dur if dur is not None else (elap or 0.0))
+                timing_str = f"({dur_val:.1f}s)"
+                icon = "✓"
+                is_running = False
+            elif status == "running":
+                elap_val = float(elap if elap is not None else 0.0)
+                timing_str = f"({elap_val:.1f}s)"
+                icon = "●"
+                is_running = True
+            else:
+                timing_str = ""
+                icon = "○"
+                is_running = False
+
+            steps.append({
+                "nhan": t(khoa, locale=locale),
+                "dang_chay": is_running,
+                "status": status,
+                "timing_str": timing_str,
+                "icon": icon,
+                "duration_s": dur,
+                "elapsed_s": elap,
+            })
+        return steps
+
     if trang_thai == "cho_tai_lieu":
         dang_chay = 0
     elif trang_thai == "dang_xu_ly":
@@ -2341,18 +2382,61 @@ def build_answer_wait_steps(trang_thai: str, locale: str = "vi") -> List[Dict[st
     else:
         raise ValueError("Trạng thái chờ không hợp lệ.")
     return [
-        {"nhan": t(khoa, locale=locale), "dang_chay": idx == dang_chay}
+        {
+            "nhan": t(khoa, locale=locale),
+            "dang_chay": idx == dang_chay,
+            "status": "running" if idx == dang_chay else ("done" if idx < dang_chay else "pending"),
+            "timing_str": "",
+            "icon": "●" if idx == dang_chay else "○",
+            "duration_s": None,
+            "elapsed_s": None,
+        }
         for idx, khoa in enumerate(_CAC_BUOC_CHO)
     ]
 
 
-def render_answer_wait_steps(trang_thai: str, locale: str = "vi") -> None:
-    """Render the waiting steps checklist in Vietnamese (007 QA2, FR-023)."""
+def render_answer_wait_steps(
+    trang_thai: str = "dang_xu_ly",
+    locale: str = "vi",
+    *,
+    step_timings: Optional[Dict[str, Any]] = None,
+    total_elapsed_s: Optional[float] = None,
+    cagent_liveness: Optional[Dict[str, Any]] = None,
+    waiting_status_line: Optional[str] = None,
+    is_cagent: bool = False,
+    timeout_incident: Optional[Dict[str, Any]] = None,
+) -> None:
+    """Render the waiting steps checklist in Vietnamese (007 QA2, FR-023, DESKTOP-PC0575-CAGENT-LIVENESS-WAIT-UX)."""
     st.markdown(f"⏳ *{t('ai_analysis_spinner', locale=locale)}*")
     st.caption(t("qa_wait_title", locale=locale))
-    for buoc in build_answer_wait_steps(trang_thai, locale=locale):
-        dau = "●" if buoc["dang_chay"] else "○"
-        st.markdown(f"{dau} {buoc['nhan']}")
+    for buoc in build_answer_wait_steps(trang_thai, locale=locale, step_timings=step_timings):
+        dau = buoc.get("icon") or ("●" if buoc["dang_chay"] else "○")
+        t_str = f" `{buoc['timing_str']}`" if buoc.get("timing_str") else ""
+        st.markdown(f"{dau} {buoc['nhan']}{t_str}")
+
+    if is_cagent and cagent_liveness:
+        dot = cagent_liveness.get("dot", "🟢")
+        lbl = cagent_liveness.get("label", "đang kết nối")
+        st.markdown(
+            f"<div class='wsc-cagent-liveness-badge' style='display:inline-flex; align-items:center; gap:6px; background:#F8FAFC; border:1px solid #CBD5E1; color:#334155; padding:2px 8px; border-radius:10px; font-size:0.8rem; font-weight:600; margin-top:4px; margin-bottom:4px;'>"
+            f"<span>{dot}</span> <span>C-Agent: {lbl}</span>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+
+    if waiting_status_line:
+        st.caption(waiting_status_line)
+
+    if total_elapsed_s is not None and total_elapsed_s >= 0.0:
+        st.caption(f"⏱️ Tổng thời gian: **{total_elapsed_s:.1f}s**")
+
+    if timeout_incident and isinstance(timeout_incident, dict):
+        waited = timeout_incident.get("waited_s", 0.0)
+        reason = timeout_incident.get("reason", "Dịch vụ phản hồi quá thời gian chờ.")
+        st.warning(
+            f"⚠️ **Lệnh gọi tổng hợp C-Agent vượt quá thời gian chờ** (đã chờ {waited:.1f}s).\n\n"
+            f"Lý do khả thi: {reason}"
+        )
 
 
 def render_mail_approval_screen(the_duyet: Dict[str, Any], locale: str = "vi") -> Optional[str]:

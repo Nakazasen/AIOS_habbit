@@ -1774,6 +1774,36 @@ def _run_chat_turn_async(
 
     effective_on_chunk = _wrap_on_chunk(on_chunk)
 
+    def _update_step(step_name: str, status: str, duration: Optional[float] = None) -> None:
+        if isinstance(stream_state, dict):
+            lock = stream_state.get("lock")
+            now = time.time()
+            if lock is not None:
+                with lock:
+                    st_map = stream_state.setdefault("step_timings", {})
+                    st_entry = st_map.setdefault(step_name, {"status": "pending", "start": now, "duration": None, "elapsed": 0.0})
+                    st_entry["status"] = status
+                    if status == "running":
+                        st_entry["start"] = now
+                        stream_state["current_step"] = step_name
+                    elif status == "done":
+                        dur = duration if duration is not None else max(0.1, now - st_entry.get("start", now))
+                        st_entry["duration"] = round(dur, 2)
+                        st_entry["elapsed"] = round(dur, 2)
+            else:
+                st_map = stream_state.setdefault("step_timings", {})
+                st_entry = st_map.setdefault(step_name, {"status": "pending", "start": now, "duration": None, "elapsed": 0.0})
+                st_entry["status"] = status
+                if status == "running":
+                    st_entry["start"] = now
+                    stream_state["current_step"] = step_name
+                elif status == "done":
+                    dur = duration if duration is not None else max(0.1, now - st_entry.get("start", now))
+                    st_entry["duration"] = round(dur, 2)
+                    st_entry["elapsed"] = round(dur, 2)
+
+    _update_step("find", "running")
+
     def _is_worker_startup_reason(reason: str) -> bool:
         folded = str(reason or "").casefold()
         return (
@@ -1831,6 +1861,9 @@ def _run_chat_turn_async(
                     finally:
                         conn_dtl.close()
                     if has_codes or has_struct_filter:
+                        _update_step("find", "done", duration=max(0.1, time.time() - t_turn_start))
+                        _update_step("read", "done", duration=0.1)
+                        _update_step("synth", "running")
                         from aios_habit.final_answer_composer import deliver_5tier_ladder_answer
 
                         ladder_res = deliver_5tier_ladder_answer(
@@ -1854,6 +1887,7 @@ def _run_chat_turn_async(
                             _safe_print_streaming_marker(
                                 f"[STREAMING_QA_COMPLETE] conv={conversation_id} total_s={turn_total_s:.3f} total_ms={turn_total_s * 1000:.1f} backend={eff_back} ok={ladder_res[0]} timestamp={ts_ladder}"
                             )
+                            _update_step("synth", "done", duration=max(0.1, turn_total_s))
                             return ladder_res
         except Exception:
             pass
@@ -1893,6 +1927,9 @@ def _run_chat_turn_async(
         set_user_retrieval_active(active_domain)
         try:
             ret_res = _attempt_retrieval()
+            t_find_done = time.time()
+            _update_step("find", "done", duration=max(0.1, t_find_done - t_turn_start))
+            _update_step("read", "running")
             if cancellation_event is not None and cancellation_event.is_set():
                 return (False, "", None, "Đã dừng yêu cầu AI.")
 
@@ -2309,10 +2346,27 @@ def _run_chat_turn_async(
 
     emit_pre_synth_step_marker(conversation_id, "executor_enqueued")
     emit_pre_synth_step_marker(conversation_id, "executor_task_started")
+    _update_step("read", "done")
+    _update_step("synth", "running")
+
+    if ai_backend in ("cagent_api", "cagent"):
+        try:
+            from aios_habit.cagent_auth import probe_cagent_liveness
+            _clive_pre = probe_cagent_liveness(base_url=cagent_endpoint_url, timeout_seconds=2.0, force=True)
+            if isinstance(stream_state, dict):
+                lock = stream_state.get("lock")
+                if lock is not None:
+                    with lock:
+                        stream_state["cagent_liveness"] = _clive_pre
+                else:
+                    stream_state["cagent_liveness"] = _clive_pre
+        except Exception:
+            pass
 
     if cancellation_event is not None and cancellation_event.is_set():
         return (False, "", None, "Đã dừng yêu cầu AI.")
 
+    t_synth_start = time.time()
     res = route_workspace_chat_submission(
         question=q_text,
         evidence_items=evidence_items,
@@ -2359,6 +2413,7 @@ def _run_chat_turn_async(
     _safe_print_streaming_marker(
         f"[STREAMING_QA_COMPLETE] conv={conversation_id} total_s={turn_total_s:.3f} total_ms={turn_total_s * 1000:.1f} backend={eff_backend} ok={res[0]} timestamp={ts_complete}"
     )
+    _update_step("synth", "done", duration=max(0.1, time.time() - t_synth_start))
 
     try:
         from aios_habit.post_session_review import spawn_post_session_review
@@ -4954,10 +5009,20 @@ else:
             manual_override=os.environ.get("AIOS_AI_BACKEND", ""),
         )
         selected_ai_backend = _lane_decision.backend
+        _top_cagent_probe_str = ""
+        if selected_ai_backend == "cagent_api":
+            try:
+                from aios_habit.cagent_auth import get_cached_cagent_liveness
+                _clive = get_cached_cagent_liveness()
+                _top_cagent_probe_str = f" · {_clive.get('dot', '🟢')} {_clive.get('label', 'đang kết nối')}"
+            except Exception:
+                _top_cagent_probe_str = " · 🟢 đang kết nối"
+
         st.caption(
             "Đang dùng: "
             + backend_label_vi(selected_ai_backend)
             + (" (tự động)" if _lane_decision.automatic else " (ghim tay)")
+            + _top_cagent_probe_str
             + " — " + _lane_decision.reason_vi
         )
         cagent_endpoint = ""
@@ -5396,6 +5461,9 @@ else:
                                 ok, succ_msg, badge, err_msg = request_future.result()
                             except Exception as exc:
                                 ok, succ_msg, badge, err_msg = (False, "", None, f"Lỗi khi nhận phản hồi AI: {exc}")
+                            if isinstance(badge, dict) and badge.get("cagent_incident"):
+                                st.session_state[f"wsc_cagent_incident_{active_conversation.id}"] = badge.get("cagent_incident")
+
                             if ok:
                                 if succ_msg:
                                     st.session_state.wsc_action_message = succ_msg
@@ -5404,7 +5472,8 @@ else:
                                         badge['conversation_id'] = active_conversation.id
                                     st.session_state.wsc_last_ai_badge = badge
                             else:
-                                if err_msg:
+                                is_cagent_incident = bool(isinstance(badge, dict) and badge.get("cagent_incident"))
+                                if err_msg and not is_cagent_incident:
                                     clean_err = safe_vietnamese_ui_message(
                                         err_msg, "Không thể hoàn tất yêu cầu AI lúc này."
                                     )
@@ -5579,11 +5648,36 @@ else:
                             _live_req = st.session_state.get(ai_request_key)
                             _live_future = _live_req.get("future") if isinstance(_live_req, dict) else None
                             _live_stream = _live_req.get("stream_state") if isinstance(_live_req, dict) else None
+                            step_timings_snap = None
+                            total_elapsed_s = 0.0
+                            cagent_live_snap = None
+                            _backend_cand = (_live_req.get("ai_backend") if isinstance(_live_req, dict) else None) or os.getenv("AIOS_AI_BACKEND", "cagent_api")
+                            is_cagent_lane = (_backend_cand == "cagent_api")
+
                             if _live_stream and "lock" in _live_stream:
                                 with _live_stream["lock"]:
                                     curr_text = str(_live_stream.get("text", "") or "")
                                     curr_phase = str(_live_stream.get("phase", "retrieving") or "retrieving")
                                     warming_col_live = _live_stream.get("warming_collection")
+                                    started_at = _live_stream.get("started_at", time.time())
+                                    total_elapsed_s = max(0.0, time.time() - started_at)
+                                    cagent_live_snap = _live_stream.get("cagent_liveness")
+
+                                    raw_timings = _live_stream.get("step_timings", {})
+                                    step_timings_snap = {}
+                                    for k in ("find", "read", "synth"):
+                                        item = dict(raw_timings.get(k, {"status": "pending"}))
+                                        if item.get("status") == "running":
+                                            s_t = item.get("start", started_at)
+                                            item["elapsed"] = max(0.1, time.time() - s_t)
+                                        step_timings_snap[k] = item
+
+                            waiting_status_line = None
+                            if is_cagent_lane:
+                                synth_info = step_timings_snap.get("synth", {}) if step_timings_snap else {}
+                                if synth_info.get("status") == "running" and not curr_text:
+                                    synth_elapsed = synth_info.get("elapsed", total_elapsed_s)
+                                    waiting_status_line = f"⏳ đang chờ câu trả lời từ C-Agent — đã {synth_elapsed:.1f} giây"
 
                             with st.chat_message("assistant"):
                                 _is_stream_ext = bool(
@@ -5592,30 +5686,39 @@ else:
                                 )
                                 if _is_stream_ext:
                                     st.info(f"🌐 **{t('external_ai_provenance_banner', locale=current_ui_locale)}**")
+
+                                treo_nguon = st.session_state.get(_PENDING_SOURCE_SUBMISSION_KEY)
+                                dang_cho_nguon = bool(
+                                    isinstance(treo_nguon, dict)
+                                    and treo_nguon.get("conversation_id") == active_conversation.id
+                                )
+
+                                # Thẻ xử lý giữ nguyên tất cả các bước kèm thời gian (DESKTOP-PC0575-CAGENT-LIVENESS-WAIT-UX §2e)
+                                st.markdown(
+                                    f"<div class='wsc-send-ack-pill' style='display:inline-flex; align-items:center; gap:6px; background:#ECFDF5; border:1px solid #10B981; color:#065F46; padding:3px 10px; border-radius:12px; font-size:0.82rem; font-weight:600; margin-bottom:8px;'>"
+                                    f"<span>✅</span> <span>{t('question_received_ack', locale=current_ui_locale)}</span>"
+                                    f"</div>",
+                                    unsafe_allow_html=True,
+                                )
+                                render_answer_wait_steps(
+                                    "cho_tai_lieu" if dang_cho_nguon else "dang_xu_ly",
+                                    locale=current_ui_locale,
+                                    step_timings=step_timings_snap,
+                                    total_elapsed_s=total_elapsed_s,
+                                    cagent_liveness=cagent_live_snap,
+                                    waiting_status_line=waiting_status_line,
+                                    is_cagent=is_cagent_lane,
+                                )
+
                                 if curr_text:
                                     st.markdown(
-                                        f"<div class='wsc-streaming-writing-pill' style='display:inline-flex; align-items:center; gap:6px; background:#EFF6FF; border:1px solid #3B82F6; color:#1D4ED8; padding:3px 10px; border-radius:12px; font-size:0.82rem; font-weight:600; margin-bottom:8px;'>"
+                                        f"<div class='wsc-streaming-writing-pill' style='display:inline-flex; align-items:center; gap:6px; background:#EFF6FF; border:1px solid #3B82F6; color:#1D4ED8; padding:3px 10px; border-radius:12px; font-size:0.82rem; font-weight:600; margin-top:8px; margin-bottom:8px;'>"
                                         f"<span>✍️</span> <span>{t('writing_answer_progress', locale=current_ui_locale)}</span>"
                                         f"</div>",
                                         unsafe_allow_html=True,
                                     )
                                     st.markdown(curr_text + " ▌")
                                 else:
-                                    treo_nguon = st.session_state.get(_PENDING_SOURCE_SUBMISSION_KEY)
-                                    dang_cho_nguon = bool(
-                                        isinstance(treo_nguon, dict)
-                                        and treo_nguon.get("conversation_id") == active_conversation.id
-                                    )
-                                    st.markdown(
-                                        f"<div class='wsc-send-ack-pill' style='display:inline-flex; align-items:center; gap:6px; background:#ECFDF5; border:1px solid #10B981; color:#065F46; padding:3px 10px; border-radius:12px; font-size:0.82rem; font-weight:600; margin-bottom:8px;'>"
-                                        f"<span>✅</span> <span>{t('question_received_ack', locale=current_ui_locale)}</span>"
-                                        f"</div>",
-                                        unsafe_allow_html=True,
-                                    )
-                                    render_answer_wait_steps(
-                                        "cho_tai_lieu" if dang_cho_nguon else "dang_xu_ly",
-                                        locale=current_ui_locale,
-                                    )
                                     try:
                                         _forced_req_col = (
                                             _live_req.get("forced_domain")
@@ -5659,6 +5762,58 @@ else:
                                     st.rerun()
 
                         _render_streaming_assistant_box()
+
+                # C-Agent Incident Card (Timeout or Dead Session) with Retry / Fallback
+                _cagent_inc = st.session_state.get(f"wsc_cagent_incident_{active_conversation.id}")
+                if _cagent_inc and isinstance(_cagent_inc, dict):
+                    inc_type = _cagent_inc.get("type", "error")
+                    waited_s = float(_cagent_inc.get("waited_s", 0.0) or 0.0)
+                    inc_msg = _cagent_inc.get("message") or _cagent_inc.get("reason") or "Sự cố kết nối C-Agent."
+                    inc_dot = _cagent_inc.get("dot", "⚠️")
+                    inc_lbl = _cagent_inc.get("label", "")
+                    st.warning(
+                        f"{inc_dot} **Sự cố C-Agent ({inc_lbl or inc_type})** — {inc_msg}\n\n"
+                        f"⏱️ Đã chờ: {waited_s:.1f}s."
+                    )
+                    _col_ret, _col_fb = st.columns(2)
+                    with _col_ret:
+                        if st.button("🔄 Thử lại", key=f"wsc_btn_retry_cagent_{active_conversation.id}", type="primary", use_container_width=True):
+                            st.session_state.pop(f"wsc_cagent_incident_{active_conversation.id}", None)
+                            st.session_state.wsc_action_error = None
+                            orig_q = str(_cagent_inc.get("question", "") or "")
+                            if orig_q:
+                                st.session_state[f"wsc_suggest_send_{active_conversation.id}"] = orig_q
+                            safe_rerun()
+                    with _col_fb:
+                        if st.button("📑 Dùng câu trả lời từ nguồn nội bộ", key=f"wsc_btn_fallback_cagent_{active_conversation.id}", use_container_width=True):
+                            st.session_state.pop(f"wsc_cagent_incident_{active_conversation.id}", None)
+                            st.session_state.wsc_action_error = None
+                            loc_syn = _cagent_inc.get("local_synthesis") or {}
+                            loc_ans = loc_syn.get("answer") or ""
+                            if not loc_ans:
+                                from aios_habit.final_answer_composer import deliver_5tier_ladder_answer
+                                _l_res = deliver_5tier_ladder_answer(
+                                    str(_cagent_inc.get("question", "") or ""),
+                                    conversation_id=active_conversation.id,
+                                    notebook_id=active_conversation.notebook_id or active_nb_id or "",
+                                    user_raw_input=str(_cagent_inc.get("question", "") or ""),
+                                    evidence_items=_cagent_inc.get("evidence_items", []),
+                                )
+                                if _l_res and _l_res[0]:
+                                    st.session_state.wsc_action_message = "Đã trả lời từ nguồn nội bộ theo nấc thang trả lời."
+                            else:
+                                from aios_habit.antigravity_bridge import commit_local_grounded_answer
+                                _lf_ok, _lf_msg, _lf_badge = commit_local_grounded_answer(
+                                    question=str(_cagent_inc.get("question", "") or ""),
+                                    local_answer=loc_ans,
+                                    local_citation_ids=loc_syn.get("citation_ids", []),
+                                    evidence_items=_cagent_inc.get("evidence_items", []),
+                                    notebook_id=active_conversation.notebook_id or active_nb_id or "",
+                                    conversation_id=active_conversation.id,
+                                )
+                                if _lf_ok:
+                                    st.session_state.wsc_action_message = "Đã lưu câu trả lời từ nguồn nội bộ."
+                            safe_rerun()
 
                 # AI Answer Badge
                 if badge_data and badge_data.get("conversation_id") == active_conversation.id:
@@ -6525,10 +6680,11 @@ else:
                                       <div style="font-style:italic; margin-bottom:4px;">⏳ {_js_wait_spinner}</div>
                                       <div style="font-size:0.8rem; color:#64748b; margin-bottom:4px;">{_js_wait_title}</div>
                                       <div style="margin-left:4px; font-size:0.82rem; line-height:1.4;">
-                                        <div>● {_js_step_find}</div>
+                                        <div>● {_js_step_find} <span id="wsc-live-find-time">(0.1s)</span></div>
                                         <div>○ {_js_step_read}</div>
                                         <div>○ {_js_step_synth}</div>
                                       </div>
+                                      <div style="font-size:0.8rem; color:#64748b; margin-top:6px;" id="wsc-instant-timer">⏱️ Tổng thời gian: <strong><span id="wsc-timer-val">0.1</span>s</strong></div>
                                     </div>
                                   </div>
                                 </div>
@@ -6542,6 +6698,19 @@ else:
                             if (hintEl) {{
                               hintEl.innerHTML = '<span class="wsc-client-ack-tag" style="color:#059669; font-weight:600; font-size:0.75rem;">✓ Đã nhận</span>';
                             }}
+                            if (parentWin.__wscTimerInterval) clearInterval(parentWin.__wscTimerInterval);
+                            const t0 = Date.now();
+                            parentWin.__wscTimerInterval = setInterval(function() {{
+                              const el = parentDoc.getElementById("wsc-timer-val");
+                              const elFind = parentDoc.getElementById("wsc-live-find-time");
+                              if (el) {{
+                                const diff = ((Date.now() - t0) / 1000).toFixed(1);
+                                el.innerText = diff;
+                                if (elFind) elFind.innerText = "(" + diff + "s)";
+                              }} else {{
+                                clearInterval(parentWin.__wscTimerInterval);
+                              }}
+                            }}, 100);
                             console.log("[WSC_CLICK_ACK] Instant visual ack rendered in DOM and composer locked.");
                           }};
 
@@ -6623,16 +6792,25 @@ else:
                         except Exception:
                             pass
 
-                # Dòng trạng thái rút gọn dưới thẻ soạn thảo (Requirement 3)
+                # Dòng trạng thái rút gọn dưới thẻ soạn thảo (Requirement 3 & DESKTOP-PC0575-CAGENT-LIVENESS-WAIT-UX §2b)
                 lane_mode_str = "tự động" if _toolbar_lane.automatic else "ghim tay"
                 search_status_str = (
                     "Chế độ Tìm kỹ hơn đã sẵn sàng."
                     if deep_search.available
                     else "Tìm kỹ hơn chưa được bật. Chế độ Tự động vẫn sẵn sàng tìm kiếm."
                 )
+                cagent_footer_str = ""
+                if selected_ai_backend == "cagent_api":
+                    try:
+                        from aios_habit.cagent_auth import get_cached_cagent_liveness
+                        _clive = get_cached_cagent_liveness()
+                        cagent_footer_str = f" · {_clive.get('dot', '🟢')} {_clive.get('label', 'đang kết nối')}"
+                    except Exception:
+                        cagent_footer_str = " · 🟢 đang kết nối"
+
                 st.caption(
                     "Đang dùng: "
-                    + f"{_lane_label(selected_ai_backend)} ({lane_mode_str}) · {search_status_str}"
+                    + f"{_lane_label(selected_ai_backend)} ({lane_mode_str}){cagent_footer_str} · {search_status_str}"
                 )
 
                 if _ask_disabled and not (is_answering or is_waiting_for_sources):
@@ -7397,6 +7575,12 @@ else:
                                     "warming_collection": None,
                                     "lock": Lock(),
                                     "phase": "retrieving",
+                                    "step_timings": {
+                                        "find": {"status": "running", "start": time.time(), "duration": None, "elapsed": 0.0},
+                                        "read": {"status": "pending", "start": time.time(), "duration": None, "elapsed": 0.0},
+                                        "synth": {"status": "pending", "start": time.time(), "duration": None, "elapsed": 0.0},
+                                    },
+                                    "current_step": "find",
                                 }
 
                                 def _on_chunk(delta: str) -> None:

@@ -306,6 +306,199 @@ def get_auth_status() -> dict[str, Any]:
     }
 
 
+
+_LIVENESS_CACHE: dict[str, Any] = {"result": None, "ts": 0.0}
+_LIVENESS_CACHE_TTL = 8.0
+
+
+def probe_cagent_liveness(
+    base_url: str = "",
+    timeout_seconds: float = 2.5,
+    force: bool = False,
+) -> dict[str, Any]:
+    """Kiểm tra trực tiếp trạng thái sống (liveness) của phiên và nền tảng C-Agent.
+
+    Thực hiện kiểm tra thật, không dựa trên nhãn ghim (DESKTOP-PC0575-CAGENT-LIVENESS-WAIT-UX):
+    - 'connected': 🟢 đang kết nối (phiên hợp lệ, kết nối tới máy chủ C-Agent thành công)
+    - 'expired': 🟡 phiên hết hạn (chưa đăng nhập hoặc token đã hết hạn / 401)
+    - 'unreachable': 🔴 không tới được nền tảng (không kết nối được tới máy chủ mạng nội bộ C-Agent)
+    """
+    global _LIVENESS_CACHE
+
+    now = time.time()
+    if not force and _LIVENESS_CACHE["result"] is not None:
+        if (now - _LIVENESS_CACHE["ts"]) < _LIVENESS_CACHE_TTL:
+            return dict(_LIVENESS_CACHE["result"])
+
+    mock_mode = os.environ.get("AIOS_CAGENT_MOCK_LIVENESS", "").strip().lower()
+    mock_file = SESSION_DIR / "mock_liveness.txt"
+    if not mock_mode and mock_file.is_file():
+        try:
+            mock_mode = mock_file.read_text(encoding="utf-8").strip().lower()
+        except Exception:
+            pass
+    if mock_mode in ("expired", "phien_het_han"):
+        res = {
+            "code": "expired",
+            "label": "phiên hết hạn",
+            "dot": "🟡",
+            "message": "Phiên đăng nhập C-Agent đã hết hạn hoặc không hợp lệ.",
+            "checked_at": now,
+            "username": "mock_user",
+        }
+        _LIVENESS_CACHE = {"result": res, "ts": now}
+        return res
+    elif mock_mode in ("unreachable", "khong_toi_duoc"):
+        res = {
+            "code": "unreachable",
+            "label": "không tới được nền tảng",
+            "dot": "🔴",
+            "message": "Không thể kết nối đến máy chủ C-Agent (mạng nội bộ không tới được).",
+            "checked_at": now,
+            "username": "",
+        }
+        _LIVENESS_CACHE = {"result": res, "ts": now}
+        return res
+
+    root_url = _extract_base_url(base_url)
+    session = load_session()
+    username = session.username if session else ""
+
+    # Bước 1: Kiểm tra reachability mạng tới nền tảng (ping/version)
+    ping_url = f"{root_url}/api/v1/ping"
+    is_reachable = False
+    try:
+        req_ping = Request(ping_url, method="GET", headers={"Accept": "application/json"})
+        with urlopen(req_ping, timeout=max(1.0, timeout_seconds)) as resp:
+            is_reachable = (resp.status == 200)
+    except HTTPError:
+        is_reachable = True
+    except (URLError, TimeoutError, OSError):
+        is_reachable = False
+
+    if not is_reachable:
+        res = {
+            "code": "unreachable",
+            "label": "không tới được nền tảng",
+            "dot": "🔴",
+            "message": "Không thể kết nối đến máy chủ C-Agent (mạng nội bộ không tới được).",
+            "checked_at": now,
+            "username": username,
+        }
+        _LIVENESS_CACHE = {"result": res, "ts": now}
+        return res
+
+    # Bước 2: Kiểm tra phiên đăng nhập và token
+    token = get_valid_access_token(root_url)
+    if not token:
+        res = {
+            "code": "expired",
+            "label": "phiên hết hạn",
+            "dot": "🟡",
+            "message": "Chưa có phiên hoặc phiên đăng nhập C-Agent đã hết hạn.",
+            "checked_at": now,
+            "username": username,
+        }
+        _LIVENESS_CACHE = {"result": res, "ts": now}
+        return res
+
+    # Bước 3: Kiểm tra token với endpoint nhẹ yêu cầu xác thực (/api/v1/chatflows)
+    auth_check_url = f"{root_url}/api/v1/chatflows"
+    req_auth = Request(
+        auth_check_url,
+        method="GET",
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+
+    try:
+        with urlopen(req_auth, timeout=max(1.5, timeout_seconds)) as resp:
+            if resp.status == 200:
+                res = {
+                    "code": "connected",
+                    "label": "đang kết nối",
+                    "dot": "🟢",
+                    "message": f"Phiên C-Agent hoạt động bình thường ({username}).",
+                    "checked_at": now,
+                    "username": username,
+                }
+                _LIVENESS_CACHE = {"result": res, "ts": now}
+                return res
+    except HTTPError as http_err:
+        if http_err.code in (401, 403):
+            refreshed, _ = refresh_cagent_token(root_url)
+            if refreshed:
+                new_token = get_valid_access_token(root_url)
+                if new_token:
+                    req_retry = Request(
+                        auth_check_url,
+                        method="GET",
+                        headers={"Authorization": f"Bearer {new_token}", "Accept": "application/json"},
+                    )
+                    try:
+                        with urlopen(req_retry, timeout=max(1.5, timeout_seconds)) as resp_retry:
+                            if resp_retry.status == 200:
+                                res = {
+                                    "code": "connected",
+                                    "label": "đang kết nối",
+                                    "dot": "🟢",
+                                    "message": f"Phiên C-Agent đã làm mới và kết nối thành công ({username}).",
+                                    "checked_at": now,
+                                    "username": username,
+                                }
+                                _LIVENESS_CACHE = {"result": res, "ts": now}
+                                return res
+                    except Exception:
+                        pass
+            res = {
+                "code": "expired",
+                "label": "phiên hết hạn",
+                "dot": "🟡",
+                "message": f"Phiên đăng nhập C-Agent đã hết hạn (HTTP {http_err.code}).",
+                "checked_at": now,
+                "username": username,
+            }
+            _LIVENESS_CACHE = {"result": res, "ts": now}
+            return res
+        else:
+            res = {
+                "code": "connected",
+                "label": "đang kết nối",
+                "dot": "🟢",
+                "message": f"Máy chủ C-Agent trực tuyến ({username}).",
+                "checked_at": now,
+                "username": username,
+            }
+            _LIVENESS_CACHE = {"result": res, "ts": now}
+            return res
+    except (URLError, TimeoutError, OSError):
+        res = {
+            "code": "unreachable",
+            "label": "không tới được nền tảng",
+            "dot": "🔴",
+            "message": "Mất kết nối đến nền tảng C-Agent trong lúc kiểm tra.",
+            "checked_at": now,
+            "username": username,
+        }
+        _LIVENESS_CACHE = {"result": res, "ts": now}
+        return res
+
+    res = {
+        "code": "connected",
+        "label": "đang kết nối",
+        "dot": "🟢",
+        "message": f"Đang kết nối C-Agent ({username}).",
+        "checked_at": now,
+        "username": username,
+    }
+    _LIVENESS_CACHE = {"result": res, "ts": now}
+    return res
+
+
+def get_cached_cagent_liveness(base_url: str = "") -> dict[str, Any]:
+    """Lấy trạng thái sống C-Agent từ cache hoặc probe nhanh."""
+    return probe_cagent_liveness(base_url=base_url, force=False)
+
+
 if __name__ == "__main__":
     import getpass
     import sys

@@ -10,6 +10,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Mapping, Sequence
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
@@ -214,6 +215,12 @@ def call_cagent_prediction(
     )
 
     effective_timeout = max(1, int(timeout_seconds))
+
+    # Simulation hook for timeout testing (Gate 3)
+    mock_timeout_file = Path.home() / ".aios" / "mock_timeout.txt"
+    if mock_timeout_file.is_file() or os.environ.get("AIOS_CAGENT_MOCK_TIMEOUT"):
+        time.sleep(1.0)
+        return _make_error(_TIMEOUT_MESSAGE_TEMPLATE.format(timeout=effective_timeout))
 
     def cancelled() -> bool:
         checker = getattr(cancellation_event, "is_set", None)

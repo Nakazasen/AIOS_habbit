@@ -1330,6 +1330,30 @@ def route_workspace_chat_submission(
                 system_prompt = f"{system_prompt}\n\n{wire_reference.system_note}"
                 user_prompt = f"{wire_reference.prompt_block}\n\n{user_prompt}"
 
+        # Probe C-Agent session liveness before synthesis (DESKTOP-PC0575-CAGENT-LIVENESS-WAIT-UX §2b)
+        from aios_habit.cagent_auth import probe_cagent_liveness
+        cagent_live = probe_cagent_liveness(endpoint, timeout_seconds=2.0, force=True)
+        if cagent_live.get("code") != "connected":
+            err_text = cagent_live.get("message") or f"Phiên C-Agent không khả dụng ({cagent_live.get('label')})."
+            incident_badge = {
+                "conversation_id": conversation_id,
+                "type": "cagent_incident",
+                "cagent_incident": {
+                    "type": "dead_session",
+                    "code": cagent_live.get("code"),
+                    "label": cagent_live.get("label"),
+                    "dot": cagent_live.get("dot"),
+                    "message": err_text,
+                    "question": question,
+                    "waited_s": 0.1,
+                    "evidence_items": evidence_items,
+                    "local_synthesis": local_synthesis,
+                },
+                "cagent_liveness": cagent_live,
+                "provider": "cagent_api",
+            }
+            return (False, "", incident_badge, err_text)
+
         cagent_timeout = int(os.environ.get("AIOS_CAGENT_TIMEOUT_SECONDS", "60"))
         t_cagent_start = time.monotonic()
         ts_cagent_start = format_marker_timestamp()
@@ -1354,7 +1378,22 @@ def route_workspace_chat_submission(
         if was_cancelled():
             return (False, "", None, "Đã dừng yêu cầu AI.")
         if not cagent_res.ok or not str(cagent_res.text or "").strip():
-            return (False, "", None, cagent_res.error_message or "C-AGENT API không trả về câu trả lời.")
+            err_text = cagent_res.error_message or "C-AGENT API không trả về câu trả lời."
+            is_timeout = "quá" in err_text or "timeout" in err_text.lower() or measured_cagent_s >= cagent_timeout
+            incident_badge = {
+                "conversation_id": conversation_id,
+                "type": "cagent_incident",
+                "cagent_incident": {
+                    "type": "timeout" if is_timeout else "call_error",
+                    "waited_s": measured_cagent_s,
+                    "reason": err_text,
+                    "question": question,
+                    "evidence_items": evidence_items,
+                    "local_synthesis": local_synthesis,
+                },
+                "provider": "cagent_api",
+            }
+            return (False, "", incident_badge, err_text)
 
         disclaimer = _get_ai_disclaimer(answer_language)
         if is_ext:
@@ -2248,6 +2287,8 @@ def route_workspace_chat_submission(
                 res = _try_gemini_direct()
             elif candidate == "cagent_api":
                 res = _try_cagent_api()
+                if not res[0] and isinstance(res[2], dict) and res[2].get("type") == "cagent_incident":
+                    return res
             elif candidate == "nakazasen_router":
                 emit_pre_synth_step_marker(conversation_id, "pre_router")
                 res = _try_nakazasen_router()
