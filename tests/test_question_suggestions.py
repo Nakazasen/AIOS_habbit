@@ -88,3 +88,55 @@ def test_contextual_followups_stay_on_topic():
     sent = contextual_send_text(send, "Smart Factory là gì?", "Smart Factory liên quan tự động hóa.")
     assert "Smart Factory là gì?" in sent
     assert "tự động hóa" in sent
+
+
+def test_contextual_followups_in_ra_to_giay_trang_no_double_prefix_or_lost_word():
+    from aios_habit.question_suggestions import (
+        contextual_followups,
+        contextual_send_text,
+        topic_of,
+    )
+
+    items = [
+        {"citation_id": "[1]", "title": "2xd_smkdj_jpnサービスアニュアル.pdf"},
+        {"citation_id": "[2]", "title": "Loi KDTPS.xlsx"},
+    ]
+    # 1. Topic of "In ra tờ giấy trắng" must not cut "trắng"
+    t1 = topic_of("In ra tờ giấy trắng")
+    assert t1 == "In ra tờ giấy trắng"
+
+    # 2. Chips generated
+    chips = contextual_followups(items, "In ra tờ giấy trắng")
+    assert len(chips) == 3
+    # Check comparison chip
+    comp_display, comp_send = chips[2]
+    assert "So sánh In ra tờ giấy trắng giữa" in comp_display
+    assert "So sánh So sánh" not in comp_display
+    assert "trắng" in comp_display
+
+    # 3. First follow-up sent text
+    sent1 = contextual_send_text(
+        comp_send,
+        "In ra tờ giấy trắng",
+        "Thông tin nguồn chưa đủ để xác định nguyên nhân cụ thể của hiện tượng in ra giấy trắng...",
+    )
+    assert "So sánh So sánh" not in sent1
+    assert "trắng" in sent1
+    assert sent1.count("Bối cảnh câu trước:") <= 1
+
+    # 4. Next turn topic extraction from sent1
+    t2 = topic_of(sent1)
+    assert t2 == "In ra tờ giấy trắng"
+    assert "So sánh" not in t2
+
+    # 5. Second click on suggestion chip does not nest or double prefix
+    chips2 = contextual_followups(items, sent1)
+    comp_display2, comp_send2 = chips2[2]
+    assert "So sánh So sánh" not in comp_display2
+    assert "trắng" in comp_display2
+
+    sent2 = contextual_send_text(comp_send2, sent1, "Tra cứu lỗi tương tự...")
+    assert "So sánh So sánh" not in sent2
+    assert "trắng" in sent2
+    assert sent2.count("Bối cảnh câu trước:") <= 1
+    assert sent2.count("Trả lời trước:") <= 1

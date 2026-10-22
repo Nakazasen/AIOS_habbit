@@ -1276,6 +1276,16 @@ def route_workspace_chat_submission(
         else:
             if retrieval_applied and retrieved_sources:
                 candidate_sources = tuple(retrieved_sources)
+                if not evidence_items and candidate_sources:
+                    evidence_items = [
+                        {
+                            "title": getattr(s, "title", str(s)),
+                            "source_name": getattr(s, "title", str(s)),
+                            "citation_label": f"[{i+1}]",
+                            "citation_id": f"[{i+1}]",
+                        }
+                        for i, s in enumerate(candidate_sources)
+                    ]
             else:
                 raw_pool = packed_sources if packed_sources else ()
                 lex_evidence, lex_sources = _extract_top_chunks_lexical(question, raw_pool)
