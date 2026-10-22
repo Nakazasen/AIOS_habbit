@@ -1,0 +1,33 @@
+=== ĐỌC VÀ PHÂN TÍCH TỆP LOG SẢN XUẤT THẬT ===
+Đường dẫn tệp: D:\Sandbox\AIOS_habbit\Tài liệu của tất cả dòng máy\Sirius LSU\Sirius2_linearity\Log\1001-1\2025_02_Error.csv
+Dung lượng tệp: 31,366 bytes
+Số cột dữ liệu: 75 cột
+Các cột chính: ['DATE', 'TIME', 'JigNumber', 'S/N', 'LDLotNo', 'TotalJudge', 'Cyan_TotalJudge', 'Yellow_TotalJudge', 'Mode', 'TaktTime']
+
+--- KẾT QUẢ ĐẾM SỐ DÒNG THEO PHÂN LOẠI LỖI & PHÁN ĐỊNH ---
+Tổng số dòng dữ liệu sản xuất: 114 dòng
+
+1. Thống kê theo Trạng thái Mode / Phán định (TotalJudge):
+   - [Error]: 114 dòng (100.00%)
+
+2. Thống kê theo Thiết bị JIG sản xuất (JigNumber):
+   - JIG #1_CY: 114 dòng (100.00%)
+
+3. Thống kê theo Ngày phát sinh (DATE):
+   - Ngày 2025/02/03: 13 dòng
+   - Ngày 2025/02/04: 18 dòng
+   - Ngày 2025/02/05: 7 dòng
+   - Ngày 2025/02/06: 17 dòng
+   - Ngày 2025/02/07: 21 dòng
+   - Ngày 2025/02/08: 6 dòng
+   - Ngày 2025/02/10: 1 dòng
+   - Ngày 2025/02/11: 10 dòng
+   - Ngày 2025/02/12: 5 dòng
+   - Ngày 2025/02/13: 2 dòng
+   - Ngày 2025/02/14: 5 dòng
+   - Ngày 2025/02/17: 1 dòng
+   - Ngày 2025/02/18: 4 dòng
+   - Ngày 2025/02/19: 3 dòng
+   - Ngày 2025/02/20: 1 dòng
+
+=== HOÀN TẤT PHÂN TÍCH THÀNH CÔNG TRÊN PYTHON 3.11 ===

@@ -1,0 +1,103 @@
+================================================================================
+BÁO CÁO ĐIỀU TRA SỰ CỐ KỸ THUẬT: MÃ LỖI C6770
+Lỗi nguồn điện thấp Fuser IH (IH Fuser Low Power Error)
+================================================================================
+Phân loại hệ thống  : C_CALL (Khối sấy Fuser IH)
+Tài liệu kỹ thuật   : 02XC_自己診断表示一覧表-Iris2020 VN.xls (dòng 9609)
+Cơ sở dữ liệu       : 30,075 ca điều tra lịch sử KDTPS Bước 0-5
+Số ca khớp trực tiếp: 80 ca điều tra thực tế
+Thời điểm lập       : 2026-10-22 10:41:47
+--------------------------------------------------------------------------------
+
+1. HIỆN TƯỢNG KỸ THUẬT & CƠ CHẾ PHÁT SINH
+--------------------------------------------------------------------------------
+Hiện tượng: Màn hình hiển thị mã lỗi C6770 (C-CALL error).
+Cơ chế phát sinh: Sau khi bắt đầu gia nhiệt Fuser, giá trị đọc của công suất ở trạng thái dưới 0.3x giá trị công suất thiết lập liên tục 4 lần, dù thực hiện lại 3 lần vẫn dưới giá trị công suất thiết lập × 0.3.
+
+2. NGUYÊN NHÂN KỸ THUẬT CHÍNH & ĐIỀU TRA CHUYÊN SÂU
+--------------------------------------------------------------------------------
+- Transistor công suất Q1 trên bản mạch IH bị Short (C-E đo sụt còn 3.9kΩ so với chuẩn 30kΩ).
+- Bong linh kiện điện trở R15 và tụ gốm C67 do va chạm ngoại lực trên chuyền lắp ráp.
+- Hàn giả chân pin 4 của biến áp xung T1 trên bản mạch PWB IH 100 ASSY.
+- Chân PIN Drawer khối Fuser bị cong vênh hoặc dị vật bám dính gây gián đoạn tiếp xúc.
+
+Chi tiết từ các tệp báo cáo chuyên sâu:
+  * KTD-2025-05-0540-Iris2024-C34-A1- C6770.pdf: Transistor Q1 bị Short: C-G đo OK 320kΩ / NG 320kΩ; C-E đo OK 30kΩ / NG 3.9kΩ. Tỷ lệ tái hiện 100%.
+  * KTD-2026-06-0606-Iris2024-C33-A2-C6770.xlsx: Phát hiện linh kiện R15 và tụ C67 bị bong, có dấu vết va chạm ngoại lực trên chuyền lắp ráp.
+  * KTD-2026-08-0790-Iris2024-C35-A1-C6770.xlsx: Số lượng 2 máy phát sinh C6770 do hàn giả chân pin 4 của biến áp T1 trên cụm PWB IH 100 ASSY.
+
+3. BIỆN PHÁP ĐỐI SÁCH KỸ THUẬT TIÊU CHUẨN (VI 1 — VI 6)
+--------------------------------------------------------------------------------
+[VI 1] Xác nhận kết nối Connector & dây cáp:
+  Connector không được kết nối chính xác hoặc đứt ngầm dây điện. Kiểm tra kết nối: UNIT IH - Bản mạch IH, Bản mạch IH - Engine, Bản mạch Image Driver - Engine. Vệ sinh và cắm lại giắc.
+[VI 2] Xác nhận Drawer kết nối UNIT FUSER:
+  Drawer kết nối UNIT FUSER bị lệch hoặc dị vật bám ở PIN. Làm sạch PIN Drawer, nắn chỉnh biến dạng hoặc thay thế dây cáp tương ứng (mã linh kiện: 302ND4637_).
+[VI 3] Thay thế bản mạch IH (PWB IH 100 ASSY):
+  Bất thường linh kiện bán dẫn công suất trên bản mạch IH: Transistor Q1 bị Short (điện trở C-E sụt từ mức chuẩn 30kΩ xuống 3.9kΩ), sụt nguồn IH. Thay thế cụm PWB IH 100 ASSY (mã 30C2G01090-4).
+[VI 4] Version up Firmware Engine:
+  Firmware động cơ/sấy không phải phiên bản mới nhất gây sai lệch đo lường công suất. Nâng cấp firmware Engine lên bản mới nhất.
+[VI 5] Thay thế bản mạch Engine:
+  Mạch xử lý tín hiệu phản hồi công suất từ IH sang Engine bị lỗi. Thay thế bản mạch Engine.
+[VI 6] Thay bản mạch Image Driver:
+  Bất thường giao tiếp tín hiệu điều khiển trên mạch Image Driver. Kiểm tra và thay thế mạch Image Driver.
+
+4. BẰNG CHỨNG SỐ LIỆU ĐỐI CHIẾU THỰC TẾ (CƠ SỞ DỮ LIỆU 30,075 CA)
+--------------------------------------------------------------------------------
+Ca 1. Vụ 2022/1483 (Máy: H552713628
+1102YP2USV / Line C22
+Iris2020)
+  - Ngày phát sinh: 2022-07-25
+  - Hiện tượng    : C6770表示
+
+PWB IH 100 ASSY WITH SOFTWARE
+302ND01250
+
+安全重要部品
+  - Nguyên nhân   : 電気技術に連携、
+Ktra LK Q1 bất thường, đo gtri điện trở 2 chân C, E bất thường 0,1 ôm ( gtri Ok là 35 kilo ôm), sẽ tổng hợp thông tin  gửi bên an toàn quan trọng, máy giữ lại
+Không anh hưởng đến tính an toàn của linh kiện.
+Lịch sử sản xuất của bản mạch OK-> Lỗi không có tính khuynh hưỡng, xử lý lỗi phát sinh đơn phát.
+安全部品に環境しない。基板生産歴史：OK不傾向性不具合、単発不具合処理。
+  - Đối sách      : lỗi phát sinh đơn phát.
+  - Báo cáo gốc   : Loi KDTPS.xlsx > History KDTPS
+
+Ca 2. Vụ 2024/228 (Máy: Iris2020
+下位 / Line C34)
+  - Ngày phát sinh: 2024-04-17
+  - Hiện tượng    : C6770表示
+  - Nguyên nhân   : 要因不明(電気)
+  - Đối sách      : 不要
+  - Báo cáo gốc   : Loi KDTPS.xlsx > History KDTPS
+
+Ca 3. Vụ 2022/2391 (Máy: Iris2020
+下位 / Line C21B)
+  - Ngày phát sinh: 2022-11-10
+  - Hiện tượng    : LCD画面が6770表示
+  - Nguyên nhân   : 部品要因(電気)
+  - Đối sách      : 不要
+  - Báo cáo gốc   : Loi KDTPS.xlsx > History KDTPS
+
+Ca 4. Vụ 2022/2114 (Máy: Iris2020
+下位 / Line C21)
+  - Ngày phát sinh: 2022-10-14
+  - Hiện tượng    : C6770表示
+  - Nguyên nhân   : 部品要因(電気)
+  - Đối sách      : 不要
+  - Báo cáo gốc   : Loi KDTPS.xlsx > History KDTPS
+
+Ca 5. Vụ 2026/2681 (Máy: Iris2024
+下位 / Line C35)
+  - Ngày phát sinh: 2026-09-14
+  - Hiện tượng    : C6770
+※IH定着低電力異常
+  - Nguyên nhân   : 部品要因(電気)
+  - Đối sách      : 不要
+  - Báo cáo gốc   : Loi KDTPS.xlsx > History KDTPS
+
+5. NGUỒN TRÍCH DẪN & ĐỊA CHỈ MỞ TỆP XÁC THỰC
+--------------------------------------------------------------------------------
+1. Database SQLite: error_cases_reconciled.db (30,075 ca lịch sử)
+2. Bảng mã lỗi tự chẩn đoán: 02XC_自己診断表示一覧表-Iris2020 VN.xls (dòng 9609)
+3. Sổ theo dõi sự cố: Loi KDTPS.xlsx > History KDTPS (dòng 14432, 11633, 11572, 11557, 11556)
+4. Báo cáo phân tích linh kiện: KTD-2025-05-0540.pdf, KTD-2026-06-0606.xlsx, KTD-2026-08-0790.xlsx
+================================================================================

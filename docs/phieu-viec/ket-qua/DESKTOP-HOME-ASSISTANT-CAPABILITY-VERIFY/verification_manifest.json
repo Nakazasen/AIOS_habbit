@@ -1,0 +1,71 @@
+{
+  "verified_at": "2026-10-22T03:41:47.454065+00:00",
+  "python_version": "3.11.14 (main, Feb 12 2026, 00:37:49) [MSC v.1944 64 bit (AMD64)]",
+  "db_total_cases": 30075,
+  "c6770_cases_matched": 80,
+  "documents": {
+    "docx": {
+      "status": "PASS",
+      "paragraphs": 36,
+      "tables": 3,
+      "sample": "BÁO CÁO ĐIỀU TRA SỰ CỐ KỸ THUẬT: MÃ LỖI C6770",
+      "size_bytes": 39778,
+      "sha256": "78ed37c736ab3c12a795e91371aa77cb8236beef38f4fad70ce97141c9726136"
+    },
+    "xlsx": {
+      "status": "PASS",
+      "sheets": [
+        "Tổng quan sự cố C6770",
+        "5 Ca đối chiếu DB 30075",
+        "Đối sách VI & Báo cáo sâu"
+      ],
+      "sheet1_rows": 12,
+      "sheet2_rows": 6,
+      "size_bytes": 9471,
+      "sha256": "22c53e0023386ff5a50933e768f58b6bb5105d8b21251bbb4aaab91281a941e4"
+    },
+    "pptx": {
+      "status": "PASS",
+      "slide_count": 5,
+      "slide_titles": [
+        "BÁO CÁO ĐIỀU TRA SỰ CỐ KỸ THUẬT: MÃ LỖI C6770",
+        "1. Hiện Tượng & Cơ Chế Phát Sinh Mã Lỗi C6770",
+        "2. Biện Pháp Đối Sách Kỹ Thuật Tiêu Chuẩn (VI 1 — VI 6)",
+        "3. Bằng Chứng Thực Tế Đối Chiếu Cơ Sở Dữ Liệu 30,075 Ca KDTPS",
+        "4. Nguồn Trích Dẫn & Khuyến Nghị Phòng Ngừa Tái Phát"
+      ],
+      "size_bytes": 35249,
+      "sha256": "102e7657c150ccf4798610b1c15b787fd712632d5f8fbc8fd94d96d62ba723c7"
+    },
+    "txt": {
+      "status": "PASS",
+      "line_count": 103,
+      "char_count": 5386,
+      "size_bytes": 6613,
+      "sha256": "eccc9d1ecaa746f8dd39dd995ebcdd5aa18e537b605f287aea0218302c7ad42f"
+    }
+  },
+  "code_task": {
+    "exit_code": 0,
+    "script_sha256": "2654483cef80eddd81d06c0377373936c6f8d2c30592e907d3ca342faafbcc93",
+    "script_size": 3087,
+    "output_sha256": "52436d3a8d2db93db19691ca283f523fecef639c7d86019b553b452efb551f90",
+    "output_size": 1363
+  },
+  "self_learning_cycle": {
+    "pending_drafts_modified": true,
+    "before_pending_sha256": "a87aba82682cad43d0d647c8c300fac5b55e4d8195fd6ca083d88ceb1aad91c6",
+    "after_pending_sha256": "40022c3de3f32479b449f2feaa493af86512db1f8d3392c0b1cc6c26a82b3db6",
+    "new_lessons_created": [
+      "LESSON-HABIT-REPORT-C6770.md"
+    ],
+    "saved_note_path": "D:\\Sandbox\\AIOS_habbit\\local_cases\\second_brain\\lessons\\LESSON-HABIT-REPORT-C6770.md",
+    "note_exists_on_disk": true,
+    "note_size_bytes": 1269,
+    "note_sha256": "e91cb964a9af0d77a5349d0dc8e8bc88532fa4a111e815bd5badad50335780c5",
+    "moc_updated": true,
+    "moc_has_wikilink": true,
+    "has_auto_draft_in_pending": true,
+    "has_correction_form": true
+  }
+}
