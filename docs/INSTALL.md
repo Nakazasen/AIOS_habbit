@@ -28,6 +28,7 @@ mở Workspace Chat.
 aios-habit --help
 ```
 
+- Cấu hình máy nhà & biến môi trường: [SETUP_MAY_NHA.md](SETUP_MAY_NHA.md) (tham khảo [.env.example](../.env.example))
 - Developer/validation/release: [runbooks/developer.md](runbooks/developer.md)
 - Người dùng Workspace Chat: [user guide](user/WORKSPACE_CHAT_USER_GUIDE.md)
 - Vận hành, backup và xử lý sự cố: [operator runbook](OPERATOR_RUNBOOK.md)
