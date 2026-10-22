@@ -1,0 +1,98 @@
+{
+  "ma_ve": "DESKTOP-PC0575-SEND-DRAFT-TRAP-FIX",
+  "ma_hoi_thoai": "4194a1f0-00c8-4586-9712-e9fbf8cf936c",
+  "may_dich": "PC0575",
+  "model_thuc_hien": "Gemini 4 Argon (Medium Thinking)",
+  "python_version": "3.11.15 (D:\\Sandbox\\AIOS_habbit\\.venv\\Scripts\\python.exe)",
+  "code_commit_sha": "8a888c496c776d11a03973548807c5d0033f43b6",
+  "parent_commit_sha": "b7296720a7fd6de32cccb897b8da566abdb78d6e",
+  "branch": "phieu-viec/rag-fix1",
+  "thoi_diem_dong_phien_that": "2026-10-22T20:30:10+07:00",
+  "xac_nhan_ghi_chu_1905": true,
+  "xac_nhan_thu_tu_chay": "Sau khi DESKTOP-PC0575-CAGENT-LIVENESS-WAIT-UX da-dong (19:01:27+07:00), truoc DESKTOP-PC0575-SYNC-R10-REALUI-GATES (giu nguyen cho-slot)",
+  "dong_trang_thai_chi_muc_sau_khoi_dong_bat": "Kho đang dùng: Kho điều tra lỗi (dieu_tra_loi) · 681 tài liệu · 74.439 mảnh · mã a3fd319a5368 · ONNX fp32",
+  "unit_tests": {
+    "before_patch_repro_test": "5 failed in 1.54s (tests/test_send_draft_trap_fix.py)",
+    "after_patch_suite": "82 passed in 7.63s (tests/test_send_draft_trap_fix.py, tests/test_workspace_chat_composer_ui.py, tests/test_cagent_liveness_wait_ux.py, tests/test_workspace_chat_send_ack_client_instant.py, tests/test_question_suggestions.py)",
+    "index_status_suite": "13 passed in 0.87s (tests/test_index_status.py)"
+  },
+  "live_gates": {
+    "gate_4b_1_direct_human_send": {
+      "conversation_id": "CONV-C6C375A0",
+      "question": "Lỗi vạch ngang bước 94mm nguyên nhân là do gì?",
+      "messages_jsonl_before": 0,
+      "messages_jsonl_after": 2,
+      "passed": true
+    },
+    "gate_4b_2_switch_block_then_send": {
+      "conversation_id": "CONV-9C90ACAA",
+      "question": "Lỗi vạch ngang bước 94mm nguyên nhân là do gì?",
+      "messages_jsonl_before": 0,
+      "messages_jsonl_after": 2,
+      "passed": true
+    },
+    "gate_4b_3_close_tab_reopen_conv_3a496585": {
+      "conversation_id": "CONV-3A496585",
+      "question": "Lỗi vạch ngang bước 94mm nguyên nhân là do gì?",
+      "messages_jsonl_before": 0,
+      "messages_jsonl_after": 2,
+      "passed": true
+    },
+    "gate_4c_1_c6400_single_send_60s": {
+      "question": "Mã lỗi C6400 là lỗi gì?",
+      "messages_jsonl_before": 0,
+      "messages_jsonl_after": 2,
+      "dom_bubbles_after_60s": 2,
+      "passed": true
+    },
+    "gate_4c_2_suggestion_chip_send": {
+      "conversation_id": "CONV-963D14DB",
+      "chip_text": "Lỗi vạch ngang bước 94mm nguyên nhân do liên quan gì đến Loi KDTPS?",
+      "messages_jsonl_before": 2,
+      "messages_jsonl_after": 4,
+      "passed": true
+    },
+    "user_direct_acceptance": {
+      "accepted_by_user": true,
+      "note": "User tu thu va nhin thay hoi dap tren giao dien thuc te, xac nhan cong nhan hoi dap duoc va ra lenh dong ve day du lieu ngay."
+    }
+  },
+  "screenshots": [
+    {
+      "file": "anh-pc0575-send-draft-trap-01-honest-wait-step1.png",
+      "size_bytes": 136448,
+      "sha256": "43038CC6E6707CA96AF50E7824654DB8035CE8CDC1DEEC12A574206577936F4",
+      "caption": "Trạng thái chờ trung thực ngay sau khi bấm Gửi câu 'Lỗi vạch ngang bước 94mm nguyên nhân là do gì?' trong sổ 'trinh bày': dòng trạng thái chỉ mục hiện 'Kho đang dùng: Kho điều tra lỗi (dieu_tra_loi) · 681 tài liệu · 74.439 mảnh · mã a3fd319a5368 · ONNX fp32', thẻ chờ hiển thị '✅ Đã nhận câu hỏi · Đang xử lý...', đánh dấu đang chạy ở bước 1 '● Tìm nguồn (1.5s)', bước 2 '○ Đọc trích đoạn' và bước 3 '○ Tổng hợp trả lời' chưa chạy (không còn nhảy giả lên bước 3), ô nhập bên dưới đã được xóa sạch và hiện '✓ Đã nhận'."
+    },
+    {
+      "file": "anh-pc0575-send-draft-trap-02-direct-human-send.png",
+      "size_bytes": 168026,
+      "sha256": "F5129438B443F1D7960F9B448D5FB843FE4B041D35C3BAD1555B997B5241738A",
+      "caption": "Cổng 4b-1 (gõ theo nhịp người thật rồi bấm Gửi ngay không đổi ô chọn kho, hội thoại CONV-C6C375A0, messages.jsonl 0 -> 2): hiển thị dòng trạng thái 'Kho đang dùng: Kho điều tra lỗi (dieu_tra_loi) · 681 tài liệu · 74.439 mảnh · mã a3fd319a5368 · ONNX fp32', bong bóng câu hỏi 'Lỗi vạch ngang bước 94mm nguyên nhân là do gì?', câu trả lời đầy đủ của AI kèm trích dẫn ('Vạch ngang có bước lặp 94 mm được ghi nhận liên quan đến cụm trống và con lăn ép [1]...'), nhãn '✅ AI đã trả lời', 'Nguồn gửi cùng câu hỏi: 2 (4)' và các chip gợi ý câu hỏi tiếp theo."
+    },
+    {
+      "file": "anh-pc0575-send-draft-trap-03-switch-block-send.png",
+      "size_bytes": 162714,
+      "sha256": "E0EAD077B0DFE706D2544AD96E77ABB06F61ECC62679013F4D8713E2B3F1D194",
+      "caption": "Cổng 4b-2 (gõ câu hỏi theo nhịp người thật, bấm đổi ô chọn kho sang 'Kho điều tra lỗi' gây rerun lưu bản nháp, rồi bấm Gửi 1 lần, hội thoại CONV-9C90ACAA, messages.jsonl 0 -> 2): câu hỏi 'Lỗi vạch ngang bước 94mm nguyên nhân là do gì?' không bị kẹt bẫy nháp, được lưu và trả lời hoàn chỉnh ('Với hiện tượng vạch ngang có chu kỳ 94 mm, nguồn chỉ ghi nhận chu kỳ này liên quan đến cụm trống và con lăn ép...'), hiện '✅ AI đã trả lời', ô nhập đã xóa sạch câu cũ và giữ pill '📚 Điều tra lỗi (679 tài liệu)'."
+    },
+    {
+      "file": "anh-pc0575-send-draft-trap-04-reopen-tab-conv-3a496585.png",
+      "size_bytes": 173046,
+      "sha256": "3C7379980B885F782999A2FDDE9BA15DFF6AB4802A02211822321D91470D2ADE",
+      "caption": "Cổng 4b-3 (đóng hẳn tab trình duyệt, mở tab mới vào lại đúng hội thoại cũ CONV-3A496585 'Cuộc trò chuyện 22/10 14:32' đang được chọn ở cột trái, gõ câu 'Lỗi vạch ngang bước 94mm nguyên nhân là do gì?' theo nhịp người thật và bấm Gửi 1 lần, messages.jsonl của CONV-3A496585 tăng từ 0 -> 2): hiển thị câu hỏi của người dùng và câu trả lời hoàn chỉnh của AI ('Lỗi vạch ngang bước 94 mm được ghi nhận có thể liên quan đến chu kỳ của cụm trống hoặc con lăn ép [1]...'), nhãn '✅ AI đã trả lời'."
+    },
+    {
+      "file": "anh-pc0575-send-draft-trap-05-reg-c6400-60s.png",
+      "size_bytes": 228802,
+      "sha256": "6350CB2B5D3F77D74E8CAF50B9FB04839EECB0BE951893D1685F1D5FF3AC72C1",
+      "caption": "Cổng hồi quy 4c-1 (gửi 'Mã lỗi C6400 là lỗi gì?' đúng 1 lần rồi đứng yên 60 giây, messages.jsonl 0 -> 2, tổng bong bóng DOM = 2): hiển thị đúng 1 thẻ trả lời duy nhất 'Tra cứu lỗi tương tự — Dựa trên cơ sở dữ liệu 30.075 ca điều tra lịch sử KDTPS và danh mục mã lỗi chuẩn, dưới đây là thông tin điều tra và xử lý cho mã lỗi C6400:' với các mục 1, 2, 3, 4 đầy đủ, không nhân bản lượt trả lời."
+    },
+    {
+      "file": "anh-pc0575-send-draft-trap-06-reg-suggest-chip.png",
+      "size_bytes": 139096,
+      "sha256": "2F3FCA875049A6B4D86E5FF79E6540E5337DC5CBD3F3AA20C1D28F06ED7C1333",
+      "caption": "Cổng hồi quy 4c-2 (bấm chip gợi ý câu hỏi tiếp theo 'Lỗi vạch ngang bước 94mm nguyên nhân do liên quan gì đến Loi KDTPS?' trong hội thoại CONV-963D14DB, messages.jsonl tăng từ 2 -> 4): câu hỏi từ chip không bị ngậm, AI trả lời hoàn chỉnh kèm nhãn '✅ AI đã trả lời', 'Nguồn gửi cùng câu hỏi: 1 (15)', 'Đang tra cứu khối Điều tra lỗi. Đã dùng 15 đoạn liên quan từ 1 nguồn.', và ô nhập bên dưới đã xóa sạch."
+    }
+  ]
+}
