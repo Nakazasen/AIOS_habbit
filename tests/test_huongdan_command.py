@@ -41,9 +41,9 @@ from aios_habit.chat_intent_router import (
 )
 
 
-EXPECTED_VI_SHA256 = "008D2974F8F1E5FF141F9C5228F8331E8012BF6552187FAA87E1147E612B9B82"
-EXPECTED_ZH_SHA256 = "7873CBA842EB8DF8CE96CDA9FAA2B807A36C4B3A9474CCCC935C05AE25AD642B"
-EXPECTED_JA_SHA256 = "A929E37A2FF94FD3ADBCC9C05C67D7DDF20332D71A32628F2410E1C569FC4EA4"
+EXPECTED_VI_SHA256 = "BFDEF6A91AE7D9B7FA5930A57894281A2BFE6CDB828913E570A30AD9FAD2A5F5"
+EXPECTED_ZH_SHA256 = "8BF0E0D56187E476020D2AF7D23563ABC45583812AD58CC524B8E97166FB0935"
+EXPECTED_JA_SHA256 = "D2F5E056B471D867BAAF83EF9E90FE743478CA526DB46291EEEA40763C06A1CB"
 
 
 def test_manual_file_integrity_and_57_images():
@@ -54,7 +54,7 @@ def test_manual_file_integrity_and_57_images():
     data_vi = path_vi.read_bytes()
     sha_vi = hashlib.sha256(data_vi).hexdigest().upper()
     assert sha_vi == EXPECTED_VI_SHA256, f"SHA-256 VI không khớp: nhận {sha_vi}"
-    assert len(data_vi) == 35103, f"Số byte VI không khớp: {len(data_vi)}"
+    assert len(data_vi) == 38890, f"Số byte VI không khớp: {len(data_vi)}"
 
     # 2. Tiếng Trung (ZH)
     path_zh = resolve_manual_path("zh")
@@ -62,7 +62,7 @@ def test_manual_file_integrity_and_57_images():
     data_zh = path_zh.read_bytes()
     sha_zh = hashlib.sha256(data_zh).hexdigest().upper()
     assert sha_zh == EXPECTED_ZH_SHA256, f"SHA-256 ZH không khớp: nhận {sha_zh}"
-    assert len(data_zh) == 28276, f"Số byte ZH không khớp: {len(data_zh)}"
+    assert len(data_zh) == 31688, f"Số byte ZH không khớp: {len(data_zh)}"
 
     # 3. Tiếng Nhật (JA)
     path_ja = resolve_manual_path("ja")
@@ -70,7 +70,7 @@ def test_manual_file_integrity_and_57_images():
     data_ja = path_ja.read_bytes()
     sha_ja = hashlib.sha256(data_ja).hexdigest().upper()
     assert sha_ja == EXPECTED_JA_SHA256, f"SHA-256 JA không khớp: nhận {sha_ja}"
-    assert len(data_ja) == 37035, f"Số byte JA không khớp: {len(data_ja)}"
+    assert len(data_ja) == 41049, f"Số byte JA không khớp: {len(data_ja)}"
 
     # 4. Thư mục ảnh dùng chung 57 ảnh PNG
     images_dir = resolve_images_dir()
@@ -195,8 +195,10 @@ def test_handle_huongdan_danh_muc_menu_all_3_languages():
     assert res_vi.language == "vi"
     assert "CẨM NANG HƯỚNG DẪN SỬ DỤNG SỔ CÁI AIOS" in res_vi.markdown_content
     assert "| **Phần A** |" in res_vi.markdown_content
-    assert len(res_vi.chips) == 10
+    assert len(res_vi.chips) == 11
     assert all(cmd.startswith("/huongdan") for _, cmd in res_vi.chips)
+    chip_texts_vi = [txt for txt, _ in res_vi.chips]
+    assert any("Danh mục lệnh" in t for t in chip_texts_vi)
 
     # 2. Tiếng Nhật (/使い方)
     res_ja = handle_huongdan_command("/使い方", conversation_id="CONV-UNIT-JA")
@@ -204,11 +206,12 @@ def test_handle_huongdan_danh_muc_menu_all_3_languages():
     assert res_ja.language == "ja"
     assert "AIOS台帳 総合利用マニュアル" in res_ja.markdown_content
     assert "| **グループA** |" in res_ja.markdown_content
-    assert len(res_ja.chips) == 10
+    assert len(res_ja.chips) == 11
     assert all(cmd.startswith("/使い方") for _, cmd in res_ja.chips)
     chip_texts_ja = [txt for txt, _ in res_ja.chips]
     assert any("概要" in t for t in chip_texts_ja)
     assert any("グループA" in t for t in chip_texts_ja)
+    assert any("コマンド一覧" in t for t in chip_texts_ja)
 
     # 3. Tiếng Trung (/使用指南)
     res_zh = handle_huongdan_command("/使用指南", conversation_id="CONV-UNIT-ZH")
@@ -216,11 +219,12 @@ def test_handle_huongdan_danh_muc_menu_all_3_languages():
     assert res_zh.language == "zh"
     assert "AIOS 台账综合使用指南" in res_zh.markdown_content
     assert "| **A组** |" in res_zh.markdown_content
-    assert len(res_zh.chips) == 10
+    assert len(res_zh.chips) == 11
     assert all(cmd.startswith("/使用指南") for _, cmd in res_zh.chips)
     chip_texts_zh = [txt for txt, _ in res_zh.chips]
     assert any("综合介绍" in t for t in chip_texts_zh)
     assert any("A组" in t for t in chip_texts_zh)
+    assert any("命令目录" in t for t in chip_texts_zh)
 
 
 def test_handle_huongdan_c4_recurrence_alert_all_3_languages():

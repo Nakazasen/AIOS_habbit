@@ -178,6 +178,7 @@ def load_and_parse_manual(lang: str = "vi") -> Dict[str, Any]:
         tag_p6 = "## 第6部：グループF"
         tag_p7 = "## 第7部：グループG"
         tag_app = "## 8. 付録"
+        tag_cmd = "## 9. システムコマンド一覧"
     elif norm_lang == "zh":
         tag_intro = "## 1. 综合介绍与作业流程"
         tag_p1 = "## 第1部分:A组"
@@ -188,6 +189,7 @@ def load_and_parse_manual(lang: str = "vi") -> Dict[str, Any]:
         tag_p6 = "## 第6部分:F组"
         tag_p7 = "## 第7部分:G组"
         tag_app = "## 8. 附录:"
+        tag_cmd = "## 9. 系统命令目录"
     else:
         tag_intro = "## 1. GIỚI THIỆU CHUNG"
         tag_p1 = "## PHẦN 1: NHÓM A"
@@ -198,6 +200,7 @@ def load_and_parse_manual(lang: str = "vi") -> Dict[str, Any]:
         tag_p6 = "## PHẦN 6: NHÓM F"
         tag_p7 = "## PHẦN 7: NHÓM G"
         tag_app = "## 8. PHỤ LỤC:"
+        tag_cmd = "## 9. DANH MỤC LỆNH HỆ THỐNG"
 
     idx_intro = full_embedded.find(tag_intro)
     idx_p1 = full_embedded.find(tag_p1)
@@ -208,6 +211,7 @@ def load_and_parse_manual(lang: str = "vi") -> Dict[str, Any]:
     idx_p6 = full_embedded.find(tag_p6)
     idx_p7 = full_embedded.find(tag_p7)
     idx_app = full_embedded.find(tag_app)
+    idx_cmd = full_embedded.find(tag_cmd)
 
     if idx_intro != -1 and idx_p1 != -1:
         sections["gioi_thieu"] = full_embedded[idx_intro:idx_p1].strip()
@@ -226,7 +230,16 @@ def load_and_parse_manual(lang: str = "vi") -> Dict[str, Any]:
     if idx_p7 != -1 and idx_app != -1:
         sections["G"] = full_embedded[idx_p7:idx_app].strip()
     if idx_app != -1:
-        sections["phu_luc"] = full_embedded[idx_app:].strip()
+        if idx_cmd != -1:
+            sections["phu_luc"] = full_embedded[idx_app:idx_cmd].strip()
+            sections["lenh"] = full_embedded[idx_cmd:].strip()
+        else:
+            sections["phu_luc"] = full_embedded[idx_app:].strip()
+
+    if "lenh" not in sections:
+        from aios_habit.slash_command_catalog import generate_manual_commands_markdown
+        sections["lenh"] = generate_manual_commands_markdown(norm_lang)
+    sections["H"] = sections["lenh"]
 
     # 2. Bóc tách 44 tiểu mục (A1-A5, B1-B5, C1-C4, D1-D4, E1-E6, F1-F2, G1-G18)
     subsections: Dict[str, str] = {}
@@ -254,6 +267,7 @@ def load_and_parse_manual(lang: str = "vi") -> Dict[str, Any]:
             "| **グループF** | グループF ― ノートと会話の管理 | 新規ノート/会話作成、過去の会話の再開、マルチスレッド管理 |\n"
             "| **グループG** | グループG ― 18の追加高度機能 | 64MB添付、Indra OCR、LSUインタビュー、Log Chart Builder、30.075件DB |\n"
             "| **付録** | コア操作クイックリファレンス表 | 操作一覧、コマンド構文、処理ステータスまとめ |\n"
+            "| **コマンド一覧** | システムコマンド一覧（スラッシュコマンド） | 全8つのスラッシュコマンド、同等の自然言語、用途、必要なコンテキスト |\n"
             "| **全体** | マニュアル全体を表示 | 全7部および付録（57枚の実例図付き）をシームレスに表示 |\n"
         )
     elif norm_lang == "zh":
@@ -274,6 +288,7 @@ def load_and_parse_manual(lang: str = "vi") -> Dict[str, Any]:
             "| **F组** | F组 — 台账与会话管理 | 新建台账/会话、延续旧会话、多台账管理 |\n"
             "| **G组** | G组 — 18 项高级扩展功能 | 64MB 附件、Indra OCR、LSU 访谈、Log Chart Builder、30.075 起合并数据库 |\n"
             "| **附录** | 核心操作快速查询表 | 核心操作汇总表、命令语法与处理状态 |\n"
+            "| **命令目录** | 系统命令目录（斜杠命令 Slash Commands） | 全部8组斜杠命令、等效自然语言语句、用途及适用上下文 |\n"
             "| **全部** | 完整使用指南 | 连续查看完整 7 大部分及附录（附 57 张实际操作插图） |\n"
         )
     else:
@@ -294,6 +309,7 @@ def load_and_parse_manual(lang: str = "vi") -> Dict[str, Any]:
             "| **Phần F** | Nhóm F — Quản lý sổ tay & Hội thoại | Tạo sổ/hội thoại mới, tiếp nối hội thoại cũ, quản lý đa luồng |\n"
             "| **Phần G** | Nhóm G — 18 tính năng nâng cao bổ sung | Đính kèm 64MB, OCR Indra, phỏng vấn LSU, Log Chart Builder, CSDL 30.075 ca |\n"
             "| **Phụ lục** | Bảng tra cứu nhanh các thao tác cốt lõi | Bảng tổng hợp thao tác, cú pháp lệnh và trạng thái xử lý |\n"
+            "| **Danh mục lệnh** | Danh mục lệnh hệ thống (Slash Commands) | Toàn bộ 8 nhóm lệnh /, câu tự nhiên tương đương, công dụng & ngữ cảnh |\n"
             "| **Toàn bộ** | Toàn bộ cẩm nang hướng dẫn | Xem liền mạch toàn bộ 7 phần và phụ lục (kèm 57 ảnh minh họa) |\n"
         )
 
@@ -413,6 +429,9 @@ def parse_huongdan_args(text: str, lang: Optional[str] = None) -> str:
     if arg_norm in ("phu luc", "appendix", "付録", "附录", "furoku"):
         return "phu_luc"
 
+    if arg_norm in ("lenh", "danh muc lenh", "commands", "slash commands", "h", "phan h", "nhom h", "グループh", "h组", "第8部", "第8部分", "コマンド", "命令", "slash", "danh muc lenh he thong", "slash command", "slash-commands", "command"):
+        return "lenh"
+
     if arg_norm in ("dong", "close", "tat", "exit", "quit", "閉じる", "关闭", "tojiru"):
         return "dong"
 
@@ -446,6 +465,7 @@ def get_chips_for_section(section_key: str, lang: str = "vi") -> List[Tuple[str,
                 ("🅵 グループF（ノート管理）", f"{cmd_prefix} F"),
                 ("🅶 グループG（高度機能）", f"{cmd_prefix} G"),
                 ("📑 付録", f"{cmd_prefix} phu-luc"),
+                ("⌨️ コマンド一覧", f"{cmd_prefix} lenh"),
                 ("📚 全体", f"{cmd_prefix} tat-ca"),
             ]
         if section_key == "A":
@@ -526,6 +546,11 @@ def get_chips_for_section(section_key: str, lang: str = "vi") -> List[Tuple[str,
                 ("📖 目次に戻る", f"{cmd_prefix}"),
                 ("📚 全体を見る", f"{cmd_prefix} tat-ca"),
             ]
+        if section_key in ("lenh", "H"):
+            return [
+                ("📖 目次に戻る", f"{cmd_prefix}"),
+                ("📚 全体を見る", f"{cmd_prefix} tat-ca"),
+            ]
         if section_key == "tat_ca":
             return [
                 ("📖 目次に戻る", f"{cmd_prefix}"),
@@ -533,6 +558,7 @@ def get_chips_for_section(section_key: str, lang: str = "vi") -> List[Tuple[str,
                 ("🅱️ グループB", f"{cmd_prefix} B"),
                 ("🅲 グループC", f"{cmd_prefix} C"),
                 ("🅶 グループG", f"{cmd_prefix} G"),
+                ("⌨️ コマンド一覧", f"{cmd_prefix} lenh"),
             ]
         part_letter = section_key[0] if section_key else "A"
         return [
@@ -553,6 +579,7 @@ def get_chips_for_section(section_key: str, lang: str = "vi") -> List[Tuple[str,
                 ("🅵 F组（台账管理）", f"{cmd_prefix} F"),
                 ("🅶 G组（高级功能）", f"{cmd_prefix} G"),
                 ("📑 附录", f"{cmd_prefix} phu-luc"),
+                ("⌨️ 命令目录", f"{cmd_prefix} lenh"),
                 ("📚 全部", f"{cmd_prefix} tat-ca"),
             ]
         if section_key == "A":
@@ -633,6 +660,11 @@ def get_chips_for_section(section_key: str, lang: str = "vi") -> List[Tuple[str,
                 ("📖 返回目录", f"{cmd_prefix}"),
                 ("📚 查看全部", f"{cmd_prefix} tat-ca"),
             ]
+        if section_key in ("lenh", "H"):
+            return [
+                ("📖 返回目录", f"{cmd_prefix}"),
+                ("📚 查看全部", f"{cmd_prefix} tat-ca"),
+            ]
         if section_key == "tat_ca":
             return [
                 ("📖 返回目录", f"{cmd_prefix}"),
@@ -640,6 +672,7 @@ def get_chips_for_section(section_key: str, lang: str = "vi") -> List[Tuple[str,
                 ("🅱️ B组", f"{cmd_prefix} B"),
                 ("🅲 C组", f"{cmd_prefix} C"),
                 ("🅶 G组", f"{cmd_prefix} G"),
+                ("⌨️ 命令目录", f"{cmd_prefix} lenh"),
             ]
         part_letter = section_key[0] if section_key else "A"
         return [
@@ -660,6 +693,7 @@ def get_chips_for_section(section_key: str, lang: str = "vi") -> List[Tuple[str,
             ("🅵 Phần F (Quản lý sổ tay)", f"{cmd_prefix} F"),
             ("🅶 Phần G (Tính năng nâng cao)", f"{cmd_prefix} G"),
             ("📑 Phụ lục", f"{cmd_prefix} phu-luc"),
+            ("⌨️ Danh mục lệnh", f"{cmd_prefix} lenh"),
             ("📚 Toàn bộ", f"{cmd_prefix} tat-ca"),
         ]
 
@@ -750,6 +784,12 @@ def get_chips_for_section(section_key: str, lang: str = "vi") -> List[Tuple[str,
             ("📚 Xem Toàn bộ", f"{cmd_prefix} tat-ca"),
         ]
 
+    if section_key in ("lenh", "H"):
+        return [
+            ("📖 Về danh mục", f"{cmd_prefix}"),
+            ("📚 Xem Toàn bộ", f"{cmd_prefix} tat-ca"),
+        ]
+
     if section_key == "tat_ca":
         return [
             ("📖 Về danh mục", f"{cmd_prefix}"),
@@ -757,6 +797,7 @@ def get_chips_for_section(section_key: str, lang: str = "vi") -> List[Tuple[str,
             ("🅱️ Phần B", f"{cmd_prefix} B"),
             ("🅲 Phần C", f"{cmd_prefix} C"),
             ("🅶 Phần G", f"{cmd_prefix} G"),
+            ("⌨️ Danh mục lệnh", f"{cmd_prefix} lenh"),
         ]
 
     # Tiểu mục cụ thể (vd C4)

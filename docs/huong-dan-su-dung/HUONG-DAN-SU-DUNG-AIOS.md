@@ -62,6 +62,8 @@
   - [G16. Tự học sau phiên hội thoại & Kho kỹ năng Curator](#g16-tự-học-sau-phiên-hội-thoại--kho-kỹ-năng-curator)
   - [G17. Tự động định tuyến câu hỏi chứa mã lỗi vào CSDL ca sự cố](#g17-tự-động-định-tuyến-câu-hỏi-chứa-mã-lỗi-vào-csdl-ca-sự-cố)
   - [G18. Vận hành CSDL gộp 30.075 ca và cơ chế chuyển mạch cấu hình](#g18-vận-hành-csdl-gộp-30075-ca-và-cơ-chế-chuyển-mạch-cấu-hình)
+- [8. PHỤ LỤC: BẢNG TRA CỨU NHANH CÁC THAO TÁC CỐT LÕI](#8-phụ-lục-bảng-tra-cứu-nhanh-các-thao-tác-cốt-lõi)
+- [9. DANH MỤC LỆNH HỆ THỐNG (SLASH COMMANDS)](#9-danh-mục-lệnh-hệ-thống-slash-commands)
 
 ---
 
@@ -478,6 +480,24 @@ ightarrow$ Bo mạch) giúp người mới có thể tự xử lý ban đầu.
 | **Hỏi tri thức bên ngoài** | Thanh công cụ | Bấm nút `🌐 Hỏi AI ngoài` | Hỏi kiến thức mở an toàn, không rò rỉ tài liệu nội bộ |
 | **Đánh giá câu trả lời** | Dưới tin nhắn AI | Bấm nút `👎` | Chọn 1 trong 4 lý do và nhập góp ý cải thiện |
 | **Xem phản hồi chờ duyệt** | Khung chat | `xem phản hồi` | Bảng tổng hợp các phản hồi đang chờ Chuyên gia phê duyệt |
+
+## 9. DANH MỤC LỆNH HỆ THỐNG (SLASH COMMANDS)
+
+Khi gõ `/` ở đầu ô soạn câu hỏi, hệ thống sẽ tự động hiển thị bảng gợi ý lệnh kèm mô tả và câu tự nhiên tương đương.
+Người dùng cũng có thể gõ câu nói tự nhiên thông thường, AIOS sẽ tự động nhận diện ý định và kích hoạt tính năng tương ứng.
+
+| Lệnh chính & Biến thể | Câu tự nhiên tương đương | Công dụng chức năng | Ngữ cảnh cần thiết | Nhóm tính năng |
+| :--- | :--- | :--- | :--- | :--- |
+| **`/huongdan`**<br>Biến thể: `/huong-dan`, `/guide`, `/help`, `/使い方`, `/使用指南` | `hướng dẫn sử dụng aios` | Mở cẩm nang hướng dẫn sử dụng AIOS (hỗ trợ 3 ngôn ngữ Việt/Nhật/Trung) | Bất kỳ sổ nào | **Hướng dẫn sử dụng** |
+| **`/baocaodinhky`**<br>Biến thể: `/baocaoxuhuong` | `báo cáo xu hướng định kỳ` | Xuất báo cáo xu hướng định kỳ tình hình lỗi theo dây chuyền và tuần sản xuất | Bất kỳ sổ nào | **Báo cáo & Xu hướng** |
+| **`/autoclassify`**<br>Biến thể: `/phanloai`, `/autoclassify-feedback`, `/autoclassify-review` | `xem phản hồi phân loại` | Xem tổng hợp thống kê và đánh giá nhãn phân loại tự động sự cố Bước 5 | Bất kỳ sổ nào (đọc từ local_cases) | **Phân loại Bước 5** |
+| **`/investigation`**<br>Biến thể: `/investigation-feedback`, `/investigation-review` | `xem phản hồi điều tra` | Xem tổng hợp đánh giá và góp ý cây điều tra sự cố 4M Bước 3 | Bất kỳ sổ nào (đọc từ local_cases) | **Điều tra sự cố** |
+| **`/danhgiadieutra`**<br>Biến thể: *(không)* | `cây điều tra đúng hướng` | Đánh giá nhanh gợi ý cây điều tra 4M (đúng hướng, thiếu nhánh, không hữu ích) | Sổ Điều tra lỗi (ngữ cảnh ca điều tra đang mở) | **Điều tra sự cố** |
+| **`/danhgianhan`**<br>Biến thể: *(không)* | `đánh giá đúng nhãn` | Đánh giá độ chính xác của nhãn phân loại tự động Bước 5 (đúng nhãn, sai, một phần) | Sổ Điều tra lỗi (ngữ cảnh phân loại sự cố) | **Phân loại Bước 5** |
+| **`/close-case`**<br>Biến thể: `/closecase`, `/dong-vu`, `/dongvu` | `đóng vụ điều tra` | Đóng vụ điều tra sự cố kèm bắt buộc ghi nhận nguyên nhân thật và biện pháp khắc phục | Sổ Điều tra lỗi (yêu cầu mã vụ, nguyên nhân và đối sách) | **Đóng vụ điều tra** |
+| **`/feedback`**<br>Biến thể: `/phanhoi`, `/xemphanhoi` | `xem phản hồi` | Xem tổng hợp thống kê tỷ lệ hài lòng (đạt/chê) và lý do phản hồi đáp án AI | Bất kỳ sổ nào (đọc từ local_cases) | **Phản hồi hệ thống** |
+
+*Mẹo: Gõ `/` trong ô chat, dùng phím ↑/↓ để di chuyển, Enter để chèn lệnh vào ô soạn thảo, sau đó bấm Gửi để thực thi.*
 
 ---
 *Tài liệu được biên soạn và kiểm chứng thực tế 100% trên giao diện hệ thống AIOS Desktop ngày 23/10/2026.*

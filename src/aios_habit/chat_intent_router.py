@@ -141,7 +141,9 @@ _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
             "bao cao phan hoi dieu tra", "phan hoi cay dieu tra",
             "danh gia cay dieu tra", "thong ke dieu tra",
             "/xemphanhoi", "/feedback", "/phanhoi",
+            "/autoclassify", "/phanloai",
             "/autoclassify-feedback", "/autoclassify-review",
+            "/investigation",
             "/investigation-feedback", "/investigation-review",
         ),
     ),
@@ -613,7 +615,7 @@ def extract_slots(text: str, intent: str) -> Dict[str, str]:
         return slots_dg
     elif intent == XEM_PHAN_HOI:
         norm_c = _khong_dau(clean)
-        if "phan loai" in norm_c or "autoclassify" in norm_c:
+        if "phan loai" in norm_c or "autoclassify" in norm_c or "phanloai" in norm_c:
             return {"loai_phan_hoi": "phan_loai"}
         if "dieu tra" in norm_c or "cay 4m" in norm_c or "investigation" in norm_c:
             return {"loai_phan_hoi": "dieu_tra"}

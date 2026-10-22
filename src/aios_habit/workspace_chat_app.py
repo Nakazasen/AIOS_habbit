@@ -5512,6 +5512,20 @@ else:
                 except Exception:
                     pass
 
+                # Log slash command palette event to local_cases (DESKTOP-HOME-SLASH-COMMAND-PALETTE)
+                if raw_text.startswith("/"):
+                    try:
+                        from aios_habit.slash_command_catalog import record_palette_event
+                        _cmd_token = raw_text.split()[0]
+                        record_palette_event(
+                            action="select",
+                            command=_cmd_token,
+                            query=raw_text,
+                            conversation_id=conv_id,
+                        )
+                    except Exception:
+                        pass
+
             def _render_chat_main_column():
                 from aios_habit.answer_language_policy import detect_question_language
                 ai_request_key = f"wsc_ai_request_{active_conversation.id}"
@@ -6677,6 +6691,8 @@ else:
                     _js_step_find = t("qa_step_find", locale=current_ui_locale)
                     _js_step_read = t("qa_step_read", locale=current_ui_locale)
                     _js_step_synth = t("qa_step_synth", locale=current_ui_locale)
+                    from aios_habit.slash_command_catalog import get_command_catalog
+                    _js_slash_catalog = json.dumps(get_command_catalog(), ensure_ascii=False)
 
                     st.html("<!-- wsc-ack-hook -->")
                     import streamlit.components.v1 as _wsc_components
@@ -6689,6 +6705,262 @@ else:
                           const isAnswering = {_js_is_answering};
                           const hasError = {_js_has_error};
                           const convId = "{active_conversation.id}";
+                          const slashCatalog = {_js_slash_catalog};
+                          parentWin.__wscSlashCatalog = slashCatalog;
+
+                          // 0. Ensure Palette styles in parentDoc.head
+                          if (!parentDoc.getElementById("wsc-palette-styles")) {{
+                            const styleEl = parentDoc.createElement("style");
+                            styleEl.id = "wsc-palette-styles";
+                            styleEl.textContent = `
+                              .wsc-slash-palette {{
+                                position: absolute;
+                                bottom: calc(100% + 8px);
+                                left: 0;
+                                right: 0;
+                                max-height: 290px;
+                                background: #FFFFFF;
+                                border: 1px solid #CBD5E1;
+                                border-radius: 12px;
+                                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+                                z-index: 99999;
+                                display: none;
+                                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                                overflow: hidden;
+                                box-sizing: border-box;
+                              }}
+                              .wsc-palette-header {{
+                                padding: 7px 12px;
+                                background: #F8FAFC;
+                                border-bottom: 1px solid #E2E8F0;
+                                font-size: 0.74rem;
+                                font-weight: 700;
+                                color: #475569;
+                                display: flex;
+                                justify-content: space-between;
+                                align-items: center;
+                              }}
+                              .wsc-palette-list {{
+                                max-height: 245px;
+                                overflow-y: auto;
+                                padding: 4px 0;
+                              }}
+                              .wsc-palette-item {{
+                                padding: 8px 14px;
+                                cursor: pointer;
+                                transition: background 0.1s ease;
+                                border-left: 3px solid transparent;
+                                user-select: none;
+                              }}
+                              .wsc-palette-item:hover, .wsc-palette-item--active {{
+                                background: #F0F9FF !important;
+                                border-left: 3px solid #0284C7 !important;
+                              }}
+                              .wsc-palette-item__top {{
+                                display: flex;
+                                justify-content: space-between;
+                                align-items: center;
+                                margin-bottom: 2px;
+                              }}
+                              .wsc-palette-item__cmd {{
+                                font-weight: 700;
+                                color: #0284C7;
+                                font-size: 0.92rem;
+                                font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+                              }}
+                              .wsc-palette-item__cat {{
+                                font-size: 0.7rem;
+                                background: #E0F2FE;
+                                color: #0369A1;
+                                padding: 2px 7px;
+                                border-radius: 9999px;
+                                font-weight: 600;
+                              }}
+                              .wsc-palette-item__desc {{
+                                font-size: 0.82rem;
+                                color: #334155;
+                                margin-bottom: 3px;
+                                line-height: 1.35;
+                              }}
+                              .wsc-palette-item__nat {{
+                                font-size: 0.75rem;
+                                color: #059669;
+                                display: flex;
+                                gap: 5px;
+                                align-items: center;
+                              }}
+                              .wsc-palette-item__aliases {{
+                                font-size: 0.7rem;
+                                color: #94A3B8;
+                                margin-top: 2px;
+                                font-family: ui-monospace, SFMono-Regular, monospace;
+                              }}
+                              .wsc-palette-empty {{
+                                padding: 16px;
+                                text-align: center;
+                                font-size: 0.85rem;
+                                color: #64748B;
+                              }}
+                            `;
+                            parentDoc.head.appendChild(styleEl);
+                          }}
+
+                          // Setup / Re-anchor palette element
+                          const composerBlock = parentDoc.querySelector('[class*="st-key-wsc_question_input_"]') || parentDoc.querySelector('[class*="st-key-wsc-composer-"]');
+                          let paletteEl = parentDoc.getElementById("wsc-slash-palette");
+                          if (!paletteEl) {{
+                            paletteEl = parentDoc.createElement("div");
+                            paletteEl.id = "wsc-slash-palette";
+                            paletteEl.className = "wsc-slash-palette";
+                          }}
+                          if (composerBlock && paletteEl.parentElement !== composerBlock) {{
+                            composerBlock.style.position = "relative";
+                            composerBlock.appendChild(paletteEl);
+                          }}
+                          parentWin.__wscActivePaletteEl = paletteEl;
+
+                          parentWin.__wscStripDiacritics = function(str) {{
+                            return (str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/đ/g, "d");
+                          }};
+
+                          parentWin.__wscFilterCatalog = function(query) {{
+                            const cleanQ = (query || "").trim();
+                            const catalog = parentWin.__wscSlashCatalog || [];
+                            if (cleanQ === "/" || !cleanQ) {{
+                              return catalog.slice();
+                            }}
+                            const qNorm = parentWin.__wscStripDiacritics(cleanQ.startsWith("/") ? cleanQ.slice(1) : cleanQ);
+                            return catalog.filter(function(item) {{
+                              const cmdNorm = parentWin.__wscStripDiacritics(item.command.replace(/^\//, ""));
+                              if (cmdNorm.includes(qNorm)) return true;
+                              for (let i = 0; i < (item.aliases || []).length; i++) {{
+                                const aNorm = parentWin.__wscStripDiacritics(item.aliases[i].replace(/^\//, ""));
+                                if (aNorm.includes(qNorm)) return true;
+                              }}
+                              const descNorm = parentWin.__wscStripDiacritics(item.description);
+                              if (descNorm.includes(qNorm)) return true;
+                              const natNorm = parentWin.__wscStripDiacritics(item.natural_query);
+                              if (natNorm.includes(qNorm)) return true;
+                              const catNorm = parentWin.__wscStripDiacritics(item.category);
+                              if (catNorm.includes(qNorm)) return true;
+                              return false;
+                            }});
+                          }};
+
+                          parentWin.__wscActiveItems = parentWin.__wscActiveItems || [];
+                          parentWin.__wscActiveIndex = parentWin.__wscActiveIndex || 0;
+
+                          parentWin.__wscRenderPalette = function(items, selIdx) {{
+                            parentWin.__wscActiveItems = items || [];
+                            parentWin.__wscActiveIndex = selIdx || 0;
+                            const el = parentWin.__wscActivePaletteEl;
+                            if (!el) return;
+
+                            if (!items || items.length === 0) {{
+                              el.innerHTML = `
+                                <div class="wsc-palette-header">
+                                  <span>⚡ LỆNH HỆ THỐNG</span>
+                                  <span style="font-size:0.7rem; color:#94A3B8;">Esc để đóng</span>
+                                </div>
+                                <div class="wsc-palette-empty">Không tìm thấy lệnh phù hợp. Nhấn Esc để đóng bảng gợi ý.</div>
+                              `;
+                              return;
+                            }}
+
+                            let html = `
+                              <div class="wsc-palette-header">
+                                <span>⚡ LỆNH HỆ THỐNG (SLASH COMMANDS)</span>
+                                <span style="font-size:0.7rem; color:#94A3B8;">↑↓ để chọn · Enter để chèn · Esc để đóng</span>
+                              </div>
+                              <div class="wsc-palette-list">
+                            `;
+
+                            for (let i = 0; i < items.length; i++) {{
+                              const it = items[i];
+                              const isSel = (i === selIdx);
+                              const selClass = isSel ? " wsc-palette-item--active" : "";
+                              const aliasesStr = (it.aliases && it.aliases.length > 0)
+                                ? `<div class="wsc-palette-item__aliases">Biến thể: ${{it.aliases.join(", ")}}</div>`
+                                : "";
+
+                              html += `
+                                <div class="wsc-palette-item${{selClass}}" data-idx="${{i}}" data-command="${{it.command}}">
+                                  <div class="wsc-palette-item__top">
+                                    <span class="wsc-palette-item__cmd">${{it.command}}</span>
+                                    <span class="wsc-palette-item__cat">${{it.category}}</span>
+                                  </div>
+                                  <div class="wsc-palette-item__desc">${{it.description}}</div>
+                                  <div class="wsc-palette-item__nat">
+                                    <span>💬 Tương đương:</span>
+                                    <span style="font-style:italic;">"${{it.natural_query}}"</span>
+                                  </div>
+                                  ${{aliasesStr}}
+                                </div>
+                              `;
+                            }}
+
+                            html += "</div>";
+                            el.innerHTML = html;
+
+                            const activeEl = el.querySelector(".wsc-palette-item--active");
+                            if (activeEl) {{
+                              activeEl.scrollIntoView({{ block: "nearest" }});
+                            }}
+                          }};
+
+                          parentWin.__wscSelectCommand = function(cmdItem) {{
+                            const textarea = parentDoc.querySelector('[class*="st-key-wsc_question_input_"] textarea');
+                            if (!textarea || !cmdItem) return;
+                            const insertText = cmdItem.command;
+
+                            const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
+                            if (nativeSetter) {{
+                              nativeSetter.call(textarea, insertText);
+                            }} else {{
+                              textarea.value = insertText;
+                            }}
+                            textarea.dispatchEvent(new Event("input", {{ bubbles: true }}));
+                            textarea.dispatchEvent(new Event("change", {{ bubbles: true }}));
+                            textarea.focus();
+                            try {{
+                              textarea.setSelectionRange(insertText.length, insertText.length);
+                            }} catch (e) {{}}
+
+                            if (typeof parentWin.__wscRecordPaletteEvent === "function") {{
+                              parentWin.__wscRecordPaletteEvent("select", cmdItem.command, textarea.value);
+                            }}
+                            parentWin.__wscHidePalette();
+                          }};
+
+                          parentWin.__wscShowPalette = function() {{
+                            const el = parentWin.__wscActivePaletteEl;
+                            if (el) {{
+                              el.style.display = "block";
+                              if (typeof parentWin.__wscRecordPaletteEvent === "function") {{
+                                const textarea = parentDoc.querySelector('[class*="st-key-wsc_question_input_"] textarea');
+                                parentWin.__wscRecordPaletteEvent("open", "", textarea ? textarea.value : "/");
+                              }}
+                            }}
+                          }};
+
+                          parentWin.__wscHidePalette = function() {{
+                            const el = parentWin.__wscActivePaletteEl;
+                            if (el) {{
+                              el.style.display = "none";
+                            }}
+                          }};
+
+                          parentWin.__wscPaletteEvents = parentWin.__wscPaletteEvents || [];
+                          parentWin.__wscRecordPaletteEvent = function(action, cmd, query) {{
+                            const evt = {{
+                              action: action,
+                              command: cmd || "",
+                              query: query || "",
+                              timestamp: new Date().toISOString(),
+                              conversation_id: convId
+                            }};
+                            parentWin.__wscPaletteEvents.push(evt);
+                          }};
 
                           // 1. Reconciliation: If server is answering (real bubble + real streaming box present)
                           // or error returned or settled: clear optimistic slot so no duplicate bubble exists
@@ -6847,10 +7119,49 @@ else:
                                   btn.style.pointerEvents = "";
                                   btn.style.opacity = "";
                                 }}
+
+                                // Slash command palette trigger on input
+                                const val = e.target.value || "";
+                                if (val.startsWith("/")) {{
+                                  const matches = typeof parentWin.__wscFilterCatalog === "function" ? parentWin.__wscFilterCatalog(val) : [];
+                                  if (typeof parentWin.__wscRenderPalette === "function") {{
+                                    parentWin.__wscRenderPalette(matches, 0);
+                                  }}
+                                  if (typeof parentWin.__wscShowPalette === "function") {{
+                                    parentWin.__wscShowPalette();
+                                  }}
+                                }} else {{
+                                  if (typeof parentWin.__wscHidePalette === "function") {{
+                                    parentWin.__wscHidePalette();
+                                  }}
+                                }}
                               }}
                             }}, true);
 
                             parentDoc.addEventListener("click", function(event) {{
+                              // Handle palette item click
+                              const pItem = event.target.closest ? event.target.closest(".wsc-palette-item") : null;
+                              if (pItem) {{
+                                event.preventDefault();
+                                event.stopPropagation();
+                                const idx = parseInt(pItem.getAttribute("data-idx"), 10);
+                                const items = parentWin.__wscActiveItems || [];
+                                if (!isNaN(idx) && items[idx] && typeof parentWin.__wscSelectCommand === "function") {{
+                                  parentWin.__wscSelectCommand(items[idx]);
+                                }}
+                                return false;
+                              }}
+
+                              // Click outside palette to dismiss
+                              const palEl = parentWin.__wscActivePaletteEl;
+                              if (palEl && palEl.style.display !== "none") {{
+                                if (!event.target.closest("#wsc-slash-palette") && !event.target.closest('[class*="st-key-wsc_question_input_"]')) {{
+                                  if (typeof parentWin.__wscHidePalette === "function") {{
+                                    parentWin.__wscHidePalette();
+                                  }}
+                                }}
+                              }}
+
                               const sendBtn = event.target.closest('[class*="st-key-wsc_ask_"] button, [class*="st-key-wsc-action-"] button');
                               if (sendBtn) {{
                                 if (sendBtn.disabled || sendBtn.getAttribute("data-wsc-sending") === "true") {{
@@ -6870,6 +7181,48 @@ else:
                             }}, true);
 
                             parentDoc.addEventListener("keydown", function(event) {{
+                              const ta = event.target.closest ? event.target.closest('[class*="st-key-wsc_question_input_"] textarea') : null;
+                              const paletteEl = parentWin.__wscActivePaletteEl;
+                              const isPaletteOpen = paletteEl && paletteEl.style.display !== "none";
+
+                              if (ta && isPaletteOpen) {{
+                                if (event.key === "ArrowDown") {{
+                                  event.preventDefault();
+                                  event.stopImmediatePropagation();
+                                  const items = parentWin.__wscActiveItems || [];
+                                  if (items.length > 0 && typeof parentWin.__wscRenderPalette === "function") {{
+                                    parentWin.__wscActiveIndex = ((parentWin.__wscActiveIndex || 0) + 1) % items.length;
+                                    parentWin.__wscRenderPalette(items, parentWin.__wscActiveIndex);
+                                  }}
+                                  return false;
+                                }} else if (event.key === "ArrowUp") {{
+                                  event.preventDefault();
+                                  event.stopImmediatePropagation();
+                                  const items = parentWin.__wscActiveItems || [];
+                                  if (items.length > 0 && typeof parentWin.__wscRenderPalette === "function") {{
+                                    parentWin.__wscActiveIndex = ((parentWin.__wscActiveIndex || 0) - 1 + items.length) % items.length;
+                                    parentWin.__wscRenderPalette(items, parentWin.__wscActiveIndex);
+                                  }}
+                                  return false;
+                                }} else if (event.key === "Enter" && !event.ctrlKey && !event.metaKey && !event.shiftKey) {{
+                                  event.preventDefault();
+                                  event.stopImmediatePropagation();
+                                  const items = parentWin.__wscActiveItems || [];
+                                  const idx = parentWin.__wscActiveIndex || 0;
+                                  if (items.length > 0 && idx >= 0 && idx < items.length && typeof parentWin.__wscSelectCommand === "function") {{
+                                    parentWin.__wscSelectCommand(items[idx]);
+                                  }}
+                                  return false;
+                                }} else if (event.key === "Escape") {{
+                                  event.preventDefault();
+                                  event.stopImmediatePropagation();
+                                  if (typeof parentWin.__wscHidePalette === "function") {{
+                                    parentWin.__wscHidePalette();
+                                  }}
+                                  return false;
+                                }}
+                              }}
+
                               if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {{
                                 const sendButton = parentDoc.querySelector(
                                   '[class*="st-key-wsc-action-"] button, [class*="st-key-wsc_ask_"] button'
