@@ -2088,11 +2088,21 @@ def route_workspace_chat_submission(
                             actions=TIER_5_DEFAULT_ACTIONS,
                         )
                     else:
-                        inferred_body = (
-                            f"Về câu hỏi *'{question.strip()}'*, hệ thống chưa tìm thấy dữ liệu đối chiếu trực tiếp trong các tài liệu nội bộ đã bật. "
-                            "Theo nguyên lý kỹ thuật chung: Hãy xác định rõ mã thiết bị/model, kiểm tra trạng thái hoạt động trên màn hình điều khiển, "
-                            "đối chiếu bảng mã lỗi chuẩn và thu thập nhật ký vận hành tại thời điểm xảy ra sự cố."
-                        )
+                        from aios_habit.chat_action_error_lookup import extract_codes
+                        err_codes = extract_codes(question)
+                        if err_codes and notebook_id in ("mom_opcenter", "mom"):
+                            codes_str = ", ".join(err_codes)
+                            inferred_body = (
+                                f"Kho tài liệu MOM (Biên bản cuộc họp OpCenter - 44 tài liệu) hiện chưa có dữ liệu kỹ thuật về mã lỗi **{codes_str}**.\n\n"
+                                f"💡 **Gợi ý**: Toàn bộ cơ sở dữ liệu điều tra lỗi sản xuất (30.075 ca KDTPS) thuộc phạm vi độc lập của **Sổ Điều tra lỗi** (`NB-LAZY-DTL`). "
+                                f"Vui lòng chuyển sang **Sổ Điều tra lỗi** để tra cứu chi tiết lịch sử, hồ sơ và biện pháp xử lý cho mã lỗi {codes_str}."
+                            )
+                        else:
+                            inferred_body = (
+                                f"Về câu hỏi *'{question.strip()}'*, hệ thống chưa tìm thấy dữ liệu đối chiếu trực tiếp trong các tài liệu nội bộ đã bật. "
+                                "Theo nguyên lý kỹ thuật chung: Hãy xác định rõ mã thiết bị/model, kiểm tra trạng thái hoạt động trên màn hình điều khiển, "
+                                "đối chiếu bảng mã lỗi chuẩn và thu thập nhật ký vận hành tại thời điểm xảy ra sự cố."
+                            )
                         steps = [
                             "Kiểm tra lại tên chính xác của thiết bị hoặc tài liệu nghiệp vụ tương ứng.",
                             "Đối chiếu các tham số và mã cảnh báo hiển thị trên giao diện điều khiển thực tế.",

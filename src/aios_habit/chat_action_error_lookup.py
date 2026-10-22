@@ -30,6 +30,7 @@ the ``AIOS_ERROR_CASES_DB`` env var, then the well-known deploy path
 
 from __future__ import annotations
 
+import calendar
 import datetime
 import json
 import os
@@ -91,6 +92,22 @@ _DATE_RANGE_RE = re.compile(
     r"(?:từ|tu)\s*(\d{4}[-/]\d{1,2}[-/]\d{1,2})\s*(?:đến|den|tới|toi|-)\s*(\d{4}[-/]\d{1,2}[-/]\d{1,2})",
     re.IGNORECASE,
 )
+_DATE_RANGE_DMY_RE = re.compile(
+    r"(?:từ|tu)\s*(\d{1,2}[-/]\d{1,2}[-/]\d{4})\s*(?:đến|den|tới|toi|-)\s*(\d{1,2}[-/]\d{1,2}[-/]\d{4})",
+    re.IGNORECASE,
+)
+_MONTH_RANGE_NORM_RE = re.compile(
+    r"(?:tu\s+)?thang\s*(\d{1,2})\s*(?:den|toi|-)\s*(?:thang\s*)?(\d{1,2})[\s/-]+(?:nam\s*)?(\d{4})",
+    re.IGNORECASE,
+)
+_MONTH_RANGE_TWO_YEARS_NORM_RE = re.compile(
+    r"(?:tu\s+)?thang\s*(\d{1,2})[\s/-]+(?:nam\s*)?(\d{4})\s*(?:den|toi|-)\s*(?:thang\s*)?(\d{1,2})[\s/-]+(?:nam\s*)?(\d{4})",
+    re.IGNORECASE,
+)
+_QUARTER_NORM_RE = re.compile(
+    r"(?:quy|q)\s*([1-4])[\s/-]+(?:nam\s*)?(\d{4})",
+    re.IGNORECASE,
+)
 _EXACT_DATE_RE = re.compile(r"(?:ngày|ngay)?\s*(\d{4}-\d{2}-\d{2})", re.IGNORECASE)
 
 # Code letter/prefix -> (glossary family, history H-category).
@@ -110,10 +127,12 @@ _STOPWORDS = frozenset(
     """
     la gi cai gi nhu the nao tai sao khi nao o dau bao nhieu
     cho toi xem giup voi a à ạ á ớ ờ cái này đó kia và hoặc với của cua
-    trong trên dưới từ tu đến den tới toi bị được có không gì mà thì là các cac những nhung
-    một hai máy may lỗi error loi ma code tra cuu tim kiem tuong tu
+    trong trên dưới từ tu đến den tới toi bị bi được duoc có co không khong gì mà thì là các cac những nhung
+    một hai ba bốn máy may lỗi error loi ma code tra cuu tim kiem tuong tu
     ca vụ vu phiếu phieu dòng dong họ ho model serial seri số so
     năm nam tháng thang ngày ngay phát phat sinh thuộc thuoc danh sách sach liệt liet kê ke
+    to tờ bi bị giup giúp hoi hỏi cho ra vao vào len lên xuong xuống lai lại roi rồi ve về hay hoac hoặc
+    nhu như thay thấy tim tìm kiem kiếm dung dùng chua chưa va và voi với
     """.split()
 )
 
@@ -212,8 +231,68 @@ def _raw_json(row: sqlite3.Row) -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Entity recognition (Machine, Serial, Date)
+# Entity recognition (Machine, Serial, Date, Phenomenon)
 # ---------------------------------------------------------------------------
+# Bilingual technical phenomenon concepts (Vietnamese <-> Japanese <-> English)
+_PHENOMENON_CONCEPTS: List[Dict[str, Any]] = [
+    {
+        "id": "POSTCARD",
+        "name": "tờ postcard / はがき",
+        "triggers": ["postcard", "post card", "hagaki", "はがき", "ハガキ", "葉書"],
+        "db_patterns": ["%postcard%", "%post card%", "%hagaki%", "%はがき%", "%ハガキ%", "%葉書%"],
+    },
+    {
+        "id": "SKEW_MARGIN",
+        "name": "lệch lề / skew / マージンズレ",
+        "triggers": ["lech le", "lệch lề", "lech", "lệch", "skew", "nghieng", "nghiêng", "マージンズレ", "スキュー", "斜め給紙", "ズレ"],
+        "db_patterns": ["%lệch lề%", "%lech le%", "%lệch%", "%lech%", "%skew%", "%スキュー%", "%マージンズレ%", "%ズレ%", "%斜め給紙%", "%cấp giấy nghiêng%", "%cap giay nghieng%"],
+    },
+    {
+        "id": "WHITE_SCREEN",
+        "name": "màn hình trắng / 真っ白",
+        "triggers": ["man hinh trang", "màn hình trắng", "treo màn hình trắng", "trang man hinh", "trắng màn hình", "mat man hinh", "mất màn hình"],
+        "db_patterns": ["%màn hình trắng%", "%man hinh trang%", "%treo màn hình trắng%", "%真っ白%", "%白画面%"],
+    },
+    {
+        "id": "ABNORMAL_SOUND",
+        "name": "âm thanh lạ / tiếng kêu bất thường / 異常音",
+        "triggers": ["am thanh la", "âm thanh lạ", "tieng keu", "tiếng kêu", "am thanh bat thuong", "âm thanh bất thường", "keu bat thuong", "kêu bất thường", "di am", "dị âm", "異常音", "異音"],
+        "db_patterns": ["%âm thanh lạ%", "%am thanh la%", "%tiếng kêu%", "%tieng keu%", "%âm thanh bất thường%", "%am thanh bat thuong%", "%異常音%", "%異音%"],
+    },
+    {
+        "id": "COLOR_SHIFT",
+        "name": "lệch màu / 色ズレ",
+        "triggers": ["lech mau", "lệch màu", "sai mau", "sai màu"],
+        "db_patterns": ["%lệch màu%", "%lech mau%", "%色ズレ%", "%色ずれ%", "%color shift%"],
+    },
+    {
+        "id": "BLACK_LINE",
+        "name": "vệt đen / sọc đen / 黒筋",
+        "triggers": ["vet den", "vệt đen", "soc den", "sọc đen", "duong den", "đường đen"],
+        "db_patterns": ["%vệt đen%", "%vet den%", "%sọc đen%", "%soc den%", "%黒筋%", "%黒スジ%", "%黒横筋%"],
+    },
+    {
+        "id": "PAPER_JAM",
+        "name": "kẹt giấy / JAM / 紙詰まり",
+        "triggers": ["ket giay", "kẹt giấy", "dat giay", "dắt giấy"],
+        "db_patterns": ["%kẹt giấy%", "%ket giay%", "%jam%", "%紙詰まり%", "%給紙せず%"],
+    },
+]
+
+
+def extract_phenomenon_concepts(question: str) -> List[Dict[str, Any]]:
+    """Extract recognized phenomenon concepts matching technical expressions in DB."""
+    norm = _khong_dau(question)
+    q_lower = question.lower()
+    matched = []
+    for concept in _PHENOMENON_CONCEPTS:
+        for trig in concept["triggers"]:
+            trig_norm = _khong_dau(trig)
+            if trig in q_lower or trig_norm in norm:
+                matched.append(concept)
+                break
+    return matched
+
 
 
 def _khong_dau(text: str) -> str:
@@ -323,25 +402,113 @@ def extract_serial_entities(question: str) -> Optional[str]:
 
 
 def extract_date_entities(question: str) -> Optional[Dict[str, Any]]:
-    """Extract date range, month/year, or year from question."""
+    """Extract date range, month range, quarter, month/year, or year from question."""
+    norm = _khong_dau(question)
+
+    # 1. Month range: "từ tháng 8 đến tháng 10 năm 2023", "tu thang 8 den 10 nam 2023", etc.
+    m_mr = _MONTH_RANGE_NORM_RE.search(norm)
+    if m_mr:
+        m1 = int(m_mr.group(1))
+        m2 = int(m_mr.group(2))
+        yr = int(m_mr.group(3))
+        if 1 <= m1 <= 12 and 1 <= m2 <= 12 and m1 <= m2:
+            last_day = calendar.monthrange(yr, m2)[1]
+            d1 = f"{yr:04d}-{m1:02d}-01"
+            d2 = f"{yr:04d}-{m2:02d}-{last_day:02d}"
+            return {
+                "type": "range",
+                "clause": "ec.occurred_at >= ? AND ec.occurred_at <= ?",
+                "params": [d1, d2],
+                "label": f"từ tháng {m1} đến tháng {m2} năm {yr} ({d1}..{d2})",
+            }
+
+    m_mr2 = _MONTH_RANGE_TWO_YEARS_NORM_RE.search(norm)
+    if m_mr2:
+        m1 = int(m_mr2.group(1))
+        yr1 = int(m_mr2.group(2))
+        m2 = int(m_mr2.group(3))
+        yr2 = int(m_mr2.group(4))
+        if 1 <= m1 <= 12 and 1 <= m2 <= 12:
+            last_day = calendar.monthrange(yr2, m2)[1]
+            d1 = f"{yr1:04d}-{m1:02d}-01"
+            d2 = f"{yr2:04d}-{m2:02d}-{last_day:02d}"
+            return {
+                "type": "range",
+                "clause": "ec.occurred_at >= ? AND ec.occurred_at <= ?",
+                "params": [d1, d2],
+                "label": f"từ tháng {m1}/{yr1} đến tháng {m2}/{yr2} ({d1}..{d2})",
+            }
+
+    # 2. Quarter: "quý 3 năm 2023", "quy 4 nam 2023", "Q1 2024"
+    m_q = _QUARTER_NORM_RE.search(norm)
+    if m_q:
+        q = int(m_q.group(1))
+        yr = int(m_q.group(2))
+        q_map = {
+            1: (1, 3, 31),
+            2: (4, 6, 30),
+            3: (7, 9, 30),
+            4: (10, 12, 31),
+        }
+        start_m, end_m, end_d = q_map[q]
+        d1 = f"{yr:04d}-{start_m:02d}-01"
+        d2 = f"{yr:04d}-{end_m:02d}-{end_d:02d}"
+        return {
+            "type": "range",
+            "clause": "ec.occurred_at >= ? AND ec.occurred_at <= ?",
+            "params": [d1, d2],
+            "label": f"Quý {q} năm {yr} ({d1}..{d2})",
+        }
+
+    # 3. Exact full date range (YYYY-MM-DD or DD/MM/YYYY)
     m_range = _DATE_RANGE_RE.search(question)
     if m_range:
         d1, d2 = m_range.group(1), m_range.group(2)
-        return {"type": "range", "clause": "ec.occurred_at >= ? AND ec.occurred_at <= ?", "params": [d1, d2], "label": f"từ {d1} đến {d2}"}
+        return {
+            "type": "range",
+            "clause": "ec.occurred_at >= ? AND ec.occurred_at <= ?",
+            "params": [d1, d2],
+            "label": f"từ {d1} đến {d2}",
+        }
+    m_range_dmy = _DATE_RANGE_DMY_RE.search(question)
+    if m_range_dmy:
+        d1_raw, d2_raw = m_range_dmy.group(1), m_range_dmy.group(2)
+        p1 = [int(x) for x in re.split(r"[-/]", d1_raw)]
+        p2 = [int(x) for x in re.split(r"[-/]", d2_raw)]
+        d1 = f"{p1[2]:04d}-{p1[1]:02d}-{p1[0]:02d}"
+        d2 = f"{p2[2]:04d}-{p2[1]:02d}-{p2[0]:02d}"
+        return {
+            "type": "range",
+            "clause": "ec.occurred_at >= ? AND ec.occurred_at <= ?",
+            "params": [d1, d2],
+            "label": f"từ {d1} đến {d2}",
+        }
+
+    # 4. Exact single date
     m_exact = _EXACT_DATE_RE.search(question)
     if m_exact:
         dt = m_exact.group(1)
         return {"type": "exact", "clause": "ec.occurred_at LIKE ?", "params": [f"{dt}%"], "label": f"ngày {dt}"}
+
+    # 5. Month/year (e.g. "tháng 1/2023", "tháng 1 năm 2023")
     m_my = _MONTH_YEAR_RE.search(question)
     if m_my:
         month = int(m_my.group(1))
         year = m_my.group(2)
         m_str = f"{month:02d}"
-        return {"type": "month", "clause": "ec.occurred_at LIKE ?", "params": [f"{year}-{m_str}%"], "label": f"tháng {m_str}/{year}"}
+        return {
+            "type": "month",
+            "clause": "ec.occurred_at LIKE ?",
+            "params": [f"{year}-{m_str}%"],
+            "label": f"tháng {m_str}/{year}",
+        }
+
+    # 6. Year (e.g. "C7620 năm 2025")
     m_yr = _YEAR_RE.search(question)
     if m_yr:
         year = m_yr.group(1)
         return {"type": "year", "clause": "ec.occurred_at LIKE ?", "params": [f"{year}%"], "label": f"năm {year}"}
+
     return None
 
 
@@ -351,6 +518,7 @@ def extract_filter_entities(conn: Optional[sqlite3.Connection], question: str) -
         "machine": extract_machine_entities(conn, question),
         "serial": extract_serial_entities(question),
         "date_range": extract_date_entities(question),
+        "phenomenon_concepts": extract_phenomenon_concepts(question),
     }
 
 
@@ -376,8 +544,13 @@ def log_filter_event(
             "conversation_id": conversation_id,
             "entities": dict(entities),
             "matched_count": matched_count,
+            "is_zero_result": matched_count == 0,
             "top_dvds": [c.get("no_dvd") for c in top_cases if c.get("no_dvd")],
             "top_ids": [c.get("id") for c in top_cases if c.get("id")],
+            "near_match_dvds": [
+                c.get("no_dvd") for c in top_cases
+                if c.get("no_dvd") and (c.get("is_near_match") or c.get("near_match_label"))
+            ],
         }
         with open(log_file, "a", encoding="utf-8") as f:
             f.write(json.dumps(event, ensure_ascii=False) + "\n")
@@ -465,7 +638,7 @@ def _candidate_rows(
     codes: Sequence[str],
     keywords: Sequence[str],
     filter_entities: Optional[Mapping[str, Any]] = None,
-) -> Tuple[List[sqlite3.Row], int]:
+) -> Tuple[List[sqlite3.Row], int, List[sqlite3.Row]]:
     """Fetch candidate rows combining codes/keywords with structured filters."""
     clauses: List[str] = []
     params: List[Any] = []
@@ -473,12 +646,17 @@ def _candidate_rows(
     order_params: List[Any] = []
     has_i = _has_error_code_i(conn)
 
+    phenom_concepts: List[Dict[str, Any]] = (
+        filter_entities.get("phenomenon_concepts", []) if filter_entities else []
+    )
+
     has_structured_filter = bool(
         filter_entities
         and (
             filter_entities.get("machine")
             or filter_entities.get("serial")
             or filter_entities.get("date_range")
+            or phenom_concepts
         )
     )
 
@@ -495,9 +673,15 @@ def _candidate_rows(
         if filter_entities.get("date_range"):
             for part in normalize_text(filter_entities["date_range"]["label"]).split():
                 ent_tokens.add(part)
+        for c in phenom_concepts:
+            for trig in c["triggers"]:
+                for part in normalize_text(trig).split():
+                    ent_tokens.add(part)
+                ent_tokens.add(_normalize_key(trig))
+
         effective_keywords = [
             kw for kw in effective_keywords
-            if kw not in ent_tokens and _normalize_key(kw) not in ent_tokens and not kw.isdigit()
+            if kw not in ent_tokens and _normalize_key(kw) not in ent_tokens and not kw.isdigit() and len(kw) >= 3
         ]
 
     # 1. Error codes condition
@@ -530,15 +714,17 @@ def _candidate_rows(
             order_clause = (
                 f" ORDER BY CASE WHEN ({' OR '.join(exact_ors)}) THEN 0 ELSE 1 END, ec.id DESC"
             )
-    elif effective_keywords:
+    elif not phenom_concepts and effective_keywords:
         ors = []
         for kw in effective_keywords[:4]:
             ors.append("ec.raw_json LIKE ?")
             params.append(f"%{kw}%")
+            ors.append("ec.phenomenon LIKE ?")
+            params.append(f"%{kw}%")
         clauses.append("(" + " OR ".join(ors) + ")")
         order_clause = " ORDER BY ec.id DESC"
 
-    # 2. Structured filters (Machine, Serial, Date)
+    # 2. Structured filters (Machine, Serial, Date, Phenomenon Concepts)
     if filter_entities:
         m_ent = filter_entities.get("machine")
         if m_ent:
@@ -560,8 +746,18 @@ def _candidate_rows(
             clauses.append(d_ent["clause"])
             params.extend(d_ent["params"])
 
+        if phenom_concepts:
+            for concept in phenom_concepts:
+                c_ors = []
+                for pat in concept["db_patterns"]:
+                    c_ors.append("ec.raw_json LIKE ?")
+                    params.append(pat)
+                    c_ors.append("ec.phenomenon LIKE ?")
+                    params.append(pat)
+                clauses.append("(" + " OR ".join(c_ors) + ")")
+
     if not clauses:
-        return [], 0
+        return [], 0, []
 
     where_sql = " AND ".join(clauses)
     cnt_sql = f"SELECT COUNT(*) AS n FROM error_cases ec WHERE {where_sql}"
@@ -576,7 +772,34 @@ def _candidate_rows(
         f"WHERE {where_sql}{order_clause} LIMIT {_MAX_CANDIDATES}"
     )
     rows = list(conn.execute(sql, params + order_params).fetchall())
-    return rows, int(matched_count)
+
+    # Requirement 2.5: Near-matches relaxation when matched_count == 0
+    near_matches: List[sqlite3.Row] = []
+    if matched_count == 0 and has_structured_filter and phenom_concepts:
+        rel_clauses = []
+        rel_params = []
+        d_ent = filter_entities.get("date_range") if filter_entities else None
+        if d_ent:
+            rel_clauses.append(d_ent["clause"])
+            rel_params.extend(d_ent["params"])
+        for concept in phenom_concepts:
+            c_ors = []
+            for pat in concept["db_patterns"]:
+                c_ors.append("ec.raw_json LIKE ?")
+                rel_params.append(pat)
+                c_ors.append("ec.phenomenon LIKE ?")
+                rel_params.append(pat)
+            rel_clauses.append("(" + " OR ".join(c_ors) + ")")
+
+        if rel_clauses:
+            rel_sql = (
+                "SELECT ec.*, b.source_file, b.sheet_name FROM error_cases ec "
+                "LEFT JOIN import_batches b ON b.id = ec.batch_id "
+                f"WHERE {' AND '.join(rel_clauses)} ORDER BY ec.id DESC LIMIT 5"
+            )
+            near_matches = list(conn.execute(rel_sql, rel_params).fetchall())
+
+    return rows, int(matched_count), near_matches
 
 
 def _score_row(
@@ -646,14 +869,22 @@ def search_similar(
         or filter_entities.get("date_range")
     )
 
-    rows, matched_count = _candidate_rows(conn, codes, keywords, filter_entities)
+    rows, matched_count, near_rows = _candidate_rows(conn, codes, keywords, filter_entities)
+    has_missing_col = _has_code_missing_col(conn)
     if not rows and not matched_count:
+        if near_rows and has_structured_filter:
+            near_dicts = []
+            for r in near_rows[:top_n]:
+                cd = _case_dict(r, has_missing_col)
+                cd["is_near_match"] = True
+                cd["near_match_label"] = f"Gần đúng - Dòng máy khác: {cd.get('machine_type') or 'Khác'}"
+                near_dicts.append(cd)
+            return near_dicts, codes, 0
         return [], codes, 0
 
     total_count = matched_count if has_structured_filter else conn.execute("SELECT COUNT(*) AS n FROM error_cases").fetchone()["n"]
 
-    has_missing_col = _has_code_missing_col(conn)
-    if codes or keywords:
+    if codes or (keywords and not filter_entities.get("phenomenon_concepts")):
         scored: List[Tuple[bool, int, sqlite3.Row]] = []
         for row in rows:
             s = _score_row(row, codes, keywords)
@@ -993,15 +1224,27 @@ def _render_cards(
             filter_descs.append(f"số serial **{filter_entities['serial']}**")
         if filter_entities.get("date_range"):
             filter_descs.append(filter_entities["date_range"]["label"])
+        if filter_entities.get("phenomenon_concepts"):
+            c_names = " + ".join([c["name"] for c in filter_entities["phenomenon_concepts"]])
+            filter_descs.append(f"hiện tượng **{c_names}**")
         if codes:
             filter_descs.append(f"mã lỗi **{code_label}**")
 
         desc_str = ", ".join(filter_descs)
-        lines.append(
-            f"Đang lọc theo: {desc_str}. "
-            f"Tìm thấy **{total:,}** ca phù hợp trong CSDL 30.075 ca lịch sử "
-            f"(hiển thị {len(cases)} ca):".replace(",", ".")
-        )
+        if total == 0:
+            lines.append(f"Không tìm thấy ca nào (0 ca) trong vùng đã khoanh ({desc_str}).")
+            if cases:
+                lines.append("")
+                lines.append(
+                    f"### Đề xuất các ca tương tự gần đúng (có nhãn gần đúng):\n"
+                    f"Hệ thống tìm thấy **{len(cases)}** ca có cùng hiện tượng trong khoảng thời gian này trên dòng máy khác:"
+                )
+        else:
+            lines.append(
+                f"Đang lọc theo: {desc_str}. "
+                f"Tìm thấy **{total:,}** ca phù hợp trong CSDL 30.075 ca lịch sử "
+                f"(hiển thị {len(cases)} ca):".replace(",", ".")
+            )
     else:
         lines.append(
             f"Tìm thấy **{len(cases)}** ca lỗi liên quan"
@@ -1028,7 +1271,11 @@ def _render_cards(
             lines.append(gloss + (f" — {extra}" if extra else ""))
 
     for i, case in enumerate(cases, 1):
-        head = f"### {i}. Phiếu {case['no_dvd'] or '—'}"
+        near_label = case.get("near_match_label")
+        if near_label:
+            head = f"### {i}. Phiếu {case['no_dvd'] or '—'} · [{near_label}]"
+        else:
+            head = f"### {i}. Phiếu {case['no_dvd'] or '—'}"
         bits = [b for b in (case["where"], case["category"]) if b]
         if bits:
             head += " · " + " · ".join(bits)
@@ -1096,6 +1343,38 @@ def _log_suggestion_call(
         pass
 
 
+def _is_dieu_tra_loi_scope(request: ChatActionRequest) -> bool:
+    """Strictly isolate error lookup to the 'dieu_tra_loi' notebook and domain (Requirements 2.7 & 2.8)."""
+    forced = (request.context or {}).get("forced_domain") if request.context else None
+    nb_id = (request.notebook_id or "").strip()
+
+    # 1. Explicit forced domain check
+    if forced:
+        f_str = str(forced).strip().lower()
+        if f_str in ("dieu_tra_loi", "dtl"):
+            return True
+        if f_str in ("mom", "lsu", "tong_hop", "tri_thuc"):
+            return False
+
+    # 2. Notebook ID check
+    if nb_id:
+        if nb_id in ("NB-LAZY-DTL", "dieu_tra_loi"):
+            return True
+        if nb_id in ("mom_opcenter", "NB-LAZY-LSU", "NB-C26E1C84"):
+            return False
+        try:
+            from aios_habit.draft_source_layer import resolve_notebook_draft_domain
+            dom = resolve_notebook_draft_domain(nb_id)
+            if dom in ("dieuchinh", "dieu_tra_loi"):
+                return True
+            if dom in ("mom", "lsu", "tong_hop"):
+                return False
+        except Exception:
+            pass
+        return False
+
+    return True
+
 class _ErrorLookupAction(ChatAction):
     """ChatAction that fires on error codes, machine/serial/date filters, or symptom search."""
 
@@ -1105,24 +1384,20 @@ class _ErrorLookupAction(ChatAction):
         if any(h in norm for h in _OFFTOPIC_HINTS):
             return False
 
-        # 2. Store-scope isolation
-        forced = (request.context or {}).get("forced_domain") if request.context else None
+        # 2. Domain scope isolation (Requirements 2.7 & 2.8)
+        if not _is_dieu_tra_loi_scope(request):
+            return False
+
         nb_id = request.notebook_id or ""
-
-        if forced and str(forced).strip().lower() not in ("auto", "dieu_tra_loi"):
-            return False
-
-        if nb_id and nb_id in ("mom_opcenter", "NB-LAZY-LSU", "NB-C26E1C84"):
-            return False
 
         # Check for error codes
         codes = extract_codes(request.question)
         if codes:
             return True
 
-        # Check for structured filters (machine, serial, date)
+        # Check for structured filters (machine, serial, date, phenomenon concepts)
         ents = extract_filter_entities(None, request.question)
-        if ents.get("machine") or ents.get("serial"):
+        if ents.get("machine") or ents.get("serial") or ents.get("phenomenon_concepts"):
             return True
         if ents.get("date_range") and (
             nb_id in ("NB-LAZY-DTL", "dieu_tra_loi")
@@ -1142,11 +1417,7 @@ def _handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
     if any(h in norm for h in _OFFTOPIC_HINTS):
         return None
 
-    forced = (request.context or {}).get("forced_domain") if request.context else None
-    nb_id = request.notebook_id or ""
-    if forced and str(forced).strip().lower() not in ("auto", "dieu_tra_loi"):
-        return None
-    if nb_id and nb_id in ("mom_opcenter", "NB-LAZY-LSU", "NB-C26E1C84"):
+    if not _is_dieu_tra_loi_scope(request):
         return None
 
     try:
@@ -1162,7 +1433,12 @@ def _handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
         filter_ents = extract_filter_entities(conn, request.question)
         total = 0
         glossary: Mapping[str, Dict[str, Any]] = {}
-        has_filter = bool(filter_ents.get("machine") or filter_ents.get("serial") or filter_ents.get("date_range"))
+        has_filter = bool(
+            filter_ents.get("machine")
+            or filter_ents.get("serial")
+            or filter_ents.get("date_range")
+            or filter_ents.get("phenomenon_concepts")
+        )
 
         if codes or extract_keywords(request.question) or has_filter:
             if codes:
@@ -1178,16 +1454,16 @@ def _handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
                 conn, request.question, extra_keywords=extra, filter_entities=filter_ents
             )
 
-        if not cases and not glossary:
+        if not cases and not glossary and total == 0 and not has_filter:
             return None
 
         # Route between bare cards vs synthesized answer
-        if codes and is_natural_question(request.question):
+        if codes and is_natural_question(request.question) and total > 0:
             text = _render_synthesized_answer(cases, codes, glossary, total, request.question, filter_entities=filter_ents)
         else:
             text = _render_cards(cases, codes, glossary, total, filter_entities=filter_ents)
 
-        # Log filter usage for continuous improvement loop (Requirement 2.5)
+        # Log filter usage for continuous improvement loop (Requirements 2.5 & 2.6)
         if has_filter:
             log_filter_event(
                 question=request.question,
@@ -1195,6 +1471,7 @@ def _handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
                     "machine": filter_ents.get("machine", {}).get("name") if filter_ents.get("machine") else None,
                     "serial": filter_ents.get("serial"),
                     "date_range": filter_ents.get("date_range", {}).get("label") if filter_ents.get("date_range") else None,
+                    "phenomenon_concepts": [c["name"] for c in filter_ents.get("phenomenon_concepts", [])],
                     "codes": codes,
                 },
                 matched_count=total,
@@ -1202,7 +1479,8 @@ def _handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
                 conversation_id=request.conversation_id or "",
             )
 
-        _log_suggestion_call(db_path, cases, request.conversation_id or "")
+        if cases:
+            _log_suggestion_call(db_path, cases, request.conversation_id or "")
     except Exception:
         return None
     finally:

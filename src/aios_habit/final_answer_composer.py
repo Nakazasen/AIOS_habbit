@@ -921,6 +921,21 @@ def deliver_5tier_ladder_answer(
                         )
             except Exception:
                 pass
+
+        if not inferred_reasoning and not draft_body_found:
+            try:
+                from aios_habit.chat_action_error_lookup import extract_codes
+                err_codes = extract_codes(question)
+                if err_codes and notebook_id in ("mom_opcenter", "mom"):
+                    codes_str = ", ".join(err_codes)
+                    draft_body_found = (
+                        f"Kho tài liệu MOM (Biên bản cuộc họp OpCenter - 44 tài liệu) hiện chưa có dữ liệu kỹ thuật về mã lỗi **{codes_str}**.\n\n"
+                        f"💡 **Gợi ý**: Toàn bộ cơ sở dữ liệu điều tra lỗi sản xuất (30.075 ca KDTPS) thuộc phạm vi độc lập của **Sổ Điều tra lỗi** (`NB-LAZY-DTL`). "
+                        f"Vui lòng chuyển sang **Sổ Điều tra lỗi** để tra cứu chi tiết lịch sử, hồ sơ và biện pháp xử lý cho mã lỗi {codes_str}."
+                    )
+            except Exception:
+                pass
+
         inferred_body = inferred_reasoning or draft_body_found or (
             f"Về câu hỏi *'{question.strip()}'*, hệ thống chưa tìm thấy dữ liệu đối chiếu trực tiếp trong các tài liệu nội bộ đã bật. "
             "Theo nguyên lý kỹ thuật chung: Hãy xác định rõ mã thiết bị/model, kiểm tra trạng thái hoạt động trên màn hình điều khiển, "
