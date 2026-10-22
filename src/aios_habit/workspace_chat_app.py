@@ -1711,6 +1711,13 @@ def _run_chat_turn_async(
         retrieve_workspace_chat_evidence as retrieve_local_evidence,
     )
 
+    from aios_habit.answer_language_policy import detect_question_language
+    turn_q_lang = detect_question_language(q_text)
+    if turn_q_lang in ("ja", "zh-CN"):
+        answer_language = turn_q_lang
+    elif turn_q_lang == "vi":
+        answer_language = "vi"
+
     t_turn_start = time.time()
     worker_wait_s: float = 0.0
     ts_start = format_marker_timestamp()
@@ -2754,6 +2761,32 @@ def _hang_ve_tu_lsu_gate() -> list:
         return []
 
 
+def _render_huongdan_chat_bubble(hd_data: dict, conversation_id: str, locale: str = "vi") -> None:
+    """Hien thi noi dung cam nang huong dan ngay trong khung chat (chat-first)."""
+    with st.chat_message("assistant"):
+        st.html(
+            '<div style="display:inline-flex; align-items:center; gap:6px; background:rgba(59,130,246,0.12); '
+            'border:1px solid rgba(59,130,246,0.3); color:#2563eb; font-size:12px; font-weight:600; '
+            'padding:2px 10px; border-radius:9999px; margin-bottom:8px;">'
+            '📖 Cẩm nang Hướng dẫn sử dụng AIOS'
+            '</div>'
+        )
+        st.markdown(hd_data.get("content", ""), unsafe_allow_html=True)
+        chips = hd_data.get("chips", [])
+        if chips:
+            st.caption("Chọn nhanh hạng mục bên dưới:")
+            chunk_size = 5 if len(chips) > 5 else len(chips)
+            for chunk_idx in range(0, len(chips), chunk_size):
+                chunk = chips[chunk_idx:chunk_idx + chunk_size]
+                cols = st.columns(len(chunk))
+                for col_idx, (display_text, send_cmd) in enumerate(chunk):
+                    with cols[col_idx]:
+                        btn_key = f"wsc_hd_chip_{conversation_id}_{chunk_idx}_{col_idx}"
+                        if st.button(display_text, key=btn_key, use_container_width=True):
+                            st.session_state[f"wsc_suggest_send_{conversation_id}"] = send_cmd
+                            safe_rerun()
+
+
 def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, active_nb_id):
     """Xu ly MOT y dinh trong cau chat.
 
@@ -2763,6 +2796,7 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
     """
     from aios_habit.chat_intent_router import (
         CANH_BAO_NGUONG,
+        HUONG_DAN,
         CONG_CU_NANG_CAO,
         DONG_VU,
         DU_LIEU_DAN,
@@ -2783,6 +2817,20 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
     )
 
     norm_q = _khong_dau(q_text)
+    if y_dinh == HUONG_DAN:
+        from aios_habit.huongdan_command import handle_huongdan_command
+        conv_id = getattr(active_conversation, "id", "") or ""
+        hd_res = handle_huongdan_command(q_text, conversation_id=conv_id)
+        if hd_res.is_close:
+            st.session_state.pop(f"wsc_huongdan_display_{conv_id}", None)
+        else:
+            st.session_state[f"wsc_huongdan_display_{conv_id}"] = {
+                "content": hd_res.markdown_content,
+                "chips": hd_res.chips,
+                "section_key": hd_res.section_key,
+            }
+        return ""
+
     if norm_q in ("xac nhan", "xac nhan tao vu", "dong y tao vu") and st.session_state.get("wsc_pending_case_preview"):
         from aios_habit.chat_action_create_case import execute_confirm_case
         preview_data = st.session_state.pop("wsc_pending_case_preview")
@@ -5630,7 +5678,8 @@ else:
 
                 chat_container = st.container()
                 with chat_container:
-                    if not messages:
+                    _hd_data = st.session_state.get(f"wsc_huongdan_display_{active_conversation.id}")
+                    if not messages and not _hd_data:
                         st.write(t("chat_start_prompt", locale=current_ui_locale))
                     last_assistant_idx = max((i for i, m in enumerate(messages) if m.role == "assistant"), default=-1)
                     total_msgs = len(messages)
@@ -5648,6 +5697,8 @@ else:
                                            conversation_id=active_conversation.id,
                                            feedback_question=_fb_question,
                                            render_interactive=should_render_interactive)
+                    if _hd_data:
+                        _render_huongdan_chat_bubble(_hd_data, active_conversation.id, current_ui_locale)
                     _opt_answering_str = "true" if is_answering else "false"
                     _opt_has_error_str = "true" if bool(st.session_state.get("wsc_action_error")) else "false"
                     st.html(
@@ -6572,15 +6623,26 @@ else:
                                         )
                                     safe_rerun()
                             else:
-                                _ask_disabled = (not _target_worker_resident)
-                                _ask_tooltip = (
-                                    format_worker_warming_status_line(
-                                        _target_composer_col, locale=current_ui_locale
+                                _is_hd = False
+                                try:
+                                    from aios_habit.huongdan_command import is_huongdan_command
+                                    _is_hd = is_huongdan_command(user_input)
+                                except Exception:
+                                    _is_hd = False
+
+                                if _is_hd:
+                                    _ask_disabled = False
+                                    _ask_tooltip = labels["ai_action"]
+                                else:
+                                    _ask_disabled = (not _target_worker_resident)
+                                    _ask_tooltip = (
+                                        format_worker_warming_status_line(
+                                            _target_composer_col, locale=current_ui_locale
+                                        )
+                                        or "Đang nạp mô hình & chỉ mục kho vào bộ nhớ..."
+                                        if _ask_disabled
+                                        else labels["ai_action"]
                                     )
-                                    or "Đang nạp mô hình & chỉ mục kho vào bộ nhớ..."
-                                    if _ask_disabled
-                                    else labels["ai_action"]
-                                )
                                 ask_submitted = st.button(
                                     labels["ai_action"],
                                     key=f"wsc_ask_{active_conversation.id}",
@@ -6907,6 +6969,13 @@ else:
                     except Exception:
                         pass
                     q_text = user_input.strip()
+                    if q_text:
+                        try:
+                            from aios_habit.huongdan_command import is_huongdan_command
+                            if not is_huongdan_command(q_text):
+                                st.session_state.pop(f"wsc_huongdan_display_{active_conversation.id}", None)
+                        except Exception:
+                            pass
                     if q_text and get_workspace_memory_enabled_preference():
                         from aios_habit.workspace_memory_ui import queue_memory_command_if_present
 
@@ -6916,6 +6985,22 @@ else:
                             st.session_state.pop(draft_backup_key, None)
                             st.session_state[f"wsc_clear_input_{active_conversation.id}"] = True
                             safe_rerun()
+
+                    try:
+                        from aios_habit.huongdan_command import is_huongdan_command
+                        if q_text and is_huongdan_command(q_text):
+                            st.session_state.pop(_suggest_send_key, None)
+                            st.session_state.pop(f"wsc_submitting_ack_{active_conversation.id}", None)
+                            st.session_state.pop(draft_backup_key, None)
+                            st.session_state[f"wsc_clear_input_{active_conversation.id}"] = True
+                            if _xu_ly_y_dinh_chat(
+                                q_text,
+                                active_conversation=active_conversation,
+                                active_nb_id=active_nb_id,
+                            ):
+                                safe_rerun()
+                    except Exception:
+                        pass
 
                     if not is_workspace_chat_worker_warmed(collection_id=_target_composer_col):
                         if q_text and not st.session_state.get(_suggest_send_key):
@@ -7031,6 +7116,7 @@ else:
                                 context={
                                     "notebook_title": getattr(_action_notebook, "title", "") or "",
                                     "forced_domain": _action_forced_domain if _action_forced_domain != "auto" else None,
+                                    "answer_language": detect_question_language(q_text),
                                 },
                                 save_user=lambda content: _action_save("user", content),
                                 save_assistant=lambda content: _action_save("assistant", content),
@@ -7673,6 +7759,15 @@ else:
 
                                 setattr(_on_chunk, "_is_progressive", True)
 
+                                from aios_habit.answer_language_policy import detect_question_language
+                                turn_answer_lang = detect_question_language(q_text)
+                                if active_conversation:
+                                    try:
+                                        active_conversation.answer_language = turn_answer_lang
+                                        save_conversation(active_conversation)
+                                    except Exception:
+                                        pass
+
                                 from aios_habit.antigravity_bridge import resolve_allowed_source_ids
                                 snap_selections = load_conversation_source_selections(active_conversation.id)
                                 turn_allowed_source_ids = resolve_allowed_source_ids(active_conversation.id, snap_selections)
@@ -7692,7 +7787,7 @@ else:
                                     chat_history=tuple(chat_history),
                                     user_raw_input=user_input,
                                     user_message_id=user_msg.id,
-                                    answer_language=getattr(active_conversation, "answer_language", "vi"),
+                                    answer_language=turn_answer_lang,
                                     ai_backend=ai_backend,
                                     cagent_endpoint_url=cagent_endpoint_url,
                                     cancellation_event=cancellation_event,

@@ -73,6 +73,7 @@ BUILTIN_ACTION_MODULES: Tuple[str, ...] = (
     "aios_habit.chat_action_periodic_report",
     "aios_habit.chat_action_draft_approval",
     "aios_habit.chat_action_create_case",
+    "aios_habit.huongdan_command",
     "aios_habit.chat_action_error_lookup",
 )
 

@@ -1,0 +1,70 @@
+{
+  "GATE_1_COLD_HUONGDAN_60S": {
+    "verdict": "DAT",
+    "conversation_id": "CONV-HD-87FD8A57",
+    "waited_seconds": 61.9,
+    "asst_bubbles_count": 1,
+    "user_bubbles_count": 0,
+    "screenshot": {
+      "file": "anh-hd-cmd-01-cold-huongdan-60s.png",
+      "size_bytes": 142587,
+      "sha256": "AD4E99AB574192868246DF729E48411E048438D9BC9DC33F75525E17D90FF7C3",
+      "is_valid_png": true
+    }
+  },
+  "GATE_2_CHIP_INTERACTION": {
+    "verdict": "DAT",
+    "chip_clicked": "Phần C",
+    "screenshot": {
+      "file": "anh-hd-cmd-02-chip-during-worker-warming.png",
+      "size_bytes": 236066,
+      "sha256": "C4012DD9D9AC6801D09EBDC6D24FAC9362AE10E5CF3E7B2D46E36E68543045BD",
+      "is_valid_png": true
+    }
+  },
+  "GATE_3_C4_RECURRENCE_CARD": {
+    "verdict": "DAT",
+    "section": "C4",
+    "has_c7620_stats": true,
+    "img_width": 646.9,
+    "img_height": 431.2,
+    "screenshot": {
+      "file": "anh-hd-cmd-03-section-c4-recurrence-card.png",
+      "size_bytes": 204167,
+      "sha256": "EA22C6D134857D1EA971D8CA8E2B2F5DB34D808B3CC732441C8D01D07D957F7F",
+      "is_valid_png": true
+    }
+  },
+  "GATE_4_TOAN_BO_FULL_MANUAL": {
+    "verdict": "DAT",
+    "rendered_images_count": 57,
+    "screenshot": {
+      "file": "anh-hd-cmd-04-toan-bo-full-manual.png",
+      "size_bytes": 148899,
+      "sha256": "2C9306DAAAF131ACB4A8CF9AB4EA3CF83F9715B25D659A162F4A36067CDB1DE9",
+      "is_valid_png": true
+    }
+  },
+  "GATE_5_REGRESSION_NO_FAKE_TURNS": {
+    "verdict": "DAT",
+    "msgs_before_normal_q": 0,
+    "msgs_after_normal_q": 2,
+    "fake_turns_created": 0,
+    "screenshot": {
+      "file": "anh-hd-cmd-05-regression-no-fake-turns.png",
+      "size_bytes": 140160,
+      "sha256": "6D33962BD31A72CFB9D2E559F4C59F40DDE9E4D22370489891C632C644790EB7",
+      "is_valid_png": true
+    }
+  },
+  "METRICS": {
+    "total_calls": 47,
+    "by_section": {
+      "C4": 18,
+      "tat_ca": 11,
+      "danh_muc": 13,
+      "C": 5
+    },
+    "last_called_at": "2026-10-23T04:10:27.086863+07:00"
+  }
+}

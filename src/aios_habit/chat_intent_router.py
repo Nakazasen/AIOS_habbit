@@ -16,6 +16,7 @@ from typing import Dict, Optional, Tuple
 
 # Recognized intents. "hoi_tai_lieu" is the default fallback.
 CANH_BAO_NGUONG = "canh_bao_nguong"      # threshold alert request
+HUONG_DAN = "huong_dan"                  # user guide manual request (DESKTOP-HOME-HUONGDAN-COMMAND)
 BAO_CAO_XU_HUONG = "bao_cao_xu_huong"    # periodic trend report (Step 4)
 XU_HUONG_LOG_TINH = "xu_huong_log_tinh"  # static log SMA trend analysis request
 XEM_PHAN_HOI = "xem_phan_hoi"            # feedback review summary request (DESKTOP-FEEDBACK-REVIEW-CHATCMD-HOME)
@@ -39,6 +40,7 @@ TAT_CA_Y_DINH = (
     DANH_GIA_DIEU_TRA,
     DANH_GIA_NHAN,
     CANH_BAO_NGUONG,
+    HUONG_DAN,
     BAO_CAO_XU_HUONG,
     XU_HUONG_LOG_TINH,
     XEM_PHAN_HOI,
@@ -116,6 +118,14 @@ def _la_lenh_xem_phan_hoi(clean: str, norm: str) -> bool:
 
 # Priority order: specific intents first, generic ones last.
 _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
+    (
+        HUONG_DAN,
+        (
+            "/huongdan", "/huong-dan", "/guide", "/help",
+            "huong dan su dung aios", "cam nang huong dan",
+            "cam nang aios", "huong dan aios", "danh muc huong dan",
+        ),
+    ),
     (
         XEM_PHAN_HOI,
         (
@@ -391,6 +401,12 @@ def classify_all_intents(text: str) -> list:
     norm = _khong_dau(clean)
     if not norm:
         return [(HOI_DAP_CHUNG, {})]
+    try:
+        from aios_habit.huongdan_command import is_huongdan_command, parse_huongdan_args
+        if is_huongdan_command(clean):
+            return [(HUONG_DAN, {"muc": parse_huongdan_args(clean)})]
+    except Exception:
+        pass
     ngan = len(norm) < 80
     found: list = []
     for y_dinh, cum_tu in _QUY_TAC:
@@ -505,7 +521,10 @@ def extract_slots(text: str, intent: str) -> Dict[str, str]:
     """Extract simple slots for a few intents (notebook title, case entities...)."""
     slots: Dict[str, str] = {}
     clean = (text or "").strip()
-    if intent == TAO_VU_DIEU_TRA:
+    if intent == HUONG_DAN:
+        from aios_habit.huongdan_command import parse_huongdan_args
+        return {"muc": parse_huongdan_args(clean)}
+    elif intent == TAO_VU_DIEU_TRA:
         return extract_case_entities(clean)
     elif intent in (XEM_TIEN_DO_VU, LAP_CAY_4M_VU):
         cid = extract_case_id_from_text(clean)
@@ -621,6 +640,7 @@ def giai_thich_y_dinh(intent: str) -> str:
     return {
         DANH_GIA_DIEU_TRA: "Tôi hiểu bạn muốn đánh giá gợi ý cây điều tra 4M.",
         DANH_GIA_NHAN: "Tôi hiểu bạn muốn đánh giá nhãn phân loại tự động.",
+        HUONG_DAN: "Tôi mở cẩm nang hướng dẫn sử dụng AIOS.",
         CANH_BAO_NGUONG: "Tôi hiểu đây là yêu cầu cảnh báo ngưỡng.",
         XU_HUONG_LOG_TINH: "Tôi hiểu bạn muốn phân tích xu hướng SMA(20) trên log tĩnh.",
         XEM_PHAN_HOI: "Tôi hiểu bạn muốn xem lại tóm tắt phản hồi đáp án.",
@@ -644,6 +664,7 @@ def nhan_y_dinh(intent: str) -> str:
     return {
         DANH_GIA_DIEU_TRA: "Đánh giá cây điều tra",
         DANH_GIA_NHAN: "Đánh giá nhãn phân loại",
+        HUONG_DAN: "Cẩm nang hướng dẫn",
         CANH_BAO_NGUONG: "Cảnh báo ngưỡng",
         XU_HUONG_LOG_TINH: "Phân tích xu hướng SMA(20)",
         XEM_PHAN_HOI: "Xem lại phản hồi",
