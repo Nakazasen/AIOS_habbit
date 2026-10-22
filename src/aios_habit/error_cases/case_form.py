@@ -437,7 +437,7 @@ def submit_case(
             "errors": [],
             "warnings": [
                 "Trùng ca đã có (cùng Model, Line, Error code, Ngày phát sinh) "
-                f"— mã phiếu {dup['no_dvd']}. Không nhập đúp."
+                f"— mã vụ {dup['no_dvd']}. Không nhập đúp."
             ],
         }
 

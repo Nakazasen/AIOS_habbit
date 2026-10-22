@@ -574,7 +574,7 @@ def detect_recurrence(
 
         message_vi = (
             f"Tái phát: mã {code} đã xuất hiện {count} lần trong cơ sở dữ liệu lịch sử (30.075 ca). "
-            f"Ca gần nhất: phiếu {no_dvd} (ngày {date_str}, model {model_line})."
+            f"Ca gần nhất: vụ {no_dvd} (ngày {date_str}, model {model_line})."
         )
         return RecurrenceAlert(
             code=code,

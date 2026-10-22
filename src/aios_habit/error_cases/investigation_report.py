@@ -357,7 +357,7 @@ def _section_similar(doc: Any, data: InvestigationReportData) -> None:
     doc.add_paragraph(f"Đối chiếu trong tổng số {data.total_cases} ca của DB ca lỗi.")
     table = doc.add_table(rows=1, cols=5)
     table.style = "Table Grid"
-    headers = ["Phiếu (No.ĐVD)", "Hiện tượng", "Nguyên nhân", "Đối sách đã áp", "Nguồn gốc"]
+    headers = ["Vụ (No.ĐVD)", "Hiện tượng", "Nguyên nhân", "Đối sách đã áp", "Nguồn gốc"]
     for idx, text in enumerate(headers):
         table.rows[0].cells[idx].text = text
     for card in data.similar:
@@ -485,7 +485,7 @@ def render_report_docx(data: InvestigationReportData, out_path: str | Path,
     out.parent.mkdir(parents=True, exist_ok=True)
     doc = Document()
     case = data.case
-    no_dvd = _text(case.get("no_dvd")) or "(chưa có số phiếu)"
+    no_dvd = _text(case.get("no_dvd")) or "(chưa có số vụ)"
 
     title = doc.add_heading(f"Báo cáo điều tra lỗi/調査報告書 — {no_dvd}", level=0)
     title.alignment = WD_ALIGN_PARAGRAPH.LEFT

@@ -1,0 +1,29 @@
+{
+  "ticket": "DESKTOP-HOME-CASE-LABEL-VU-FIX",
+  "timestamp": "2026-10-22T02:37:14.291790+00:00",
+  "evidence_files": [
+    {
+      "filename": "anh-c6770-case-label-vu-evidence.png",
+      "path": "D:\\Sandbox\\aios-dieu-phoi-desktop\\hop-thu\\lan-desktop\\ket-qua\\anh-c6770-case-label-vu-evidence.png",
+      "size_bytes": 163505,
+      "sha256": "3802C0D87C3CDDAA6154C41E96638C58028BB0090241F1618E51BCA93CDD594D",
+      "description": "Ảnh giao diện thật đáp án C6770: mọi thẻ ca mang nhãn 'Vụ <số>' kèm dòng giải thích số đăng ký sổ gốc, không còn chữ 'Phiếu'"
+    },
+    {
+      "filename": "anh-step5-recurrence-c7620-vu-evidence.png",
+      "path": "D:\\Sandbox\\aios-dieu-phoi-desktop\\hop-thu\\lan-desktop\\ket-qua\\anh-step5-recurrence-c7620-vu-evidence.png",
+      "size_bytes": 137240,
+      "sha256": "ADAE7E23F697D230069C72DB0E488B077A9B679CE9DCC50ECDE0B33819F5991E",
+      "description": "Ảnh giao diện thật Thẻ xem trước Bước 5 C7620: cảnh báo tái phát 136 ca, vụ gần nhất FY27H2/263"
+    }
+  ],
+  "acceptance_results": {
+    "c6770_has_vu_label": true,
+    "c6770_has_explanation_line": true,
+    "c6770_zero_phieu_occurrences": true,
+    "c6770_provenance_intact": true,
+    "step5_c7620_recurrence_count": 136,
+    "step5_c7620_latest_case_ref": "FY27H2/263",
+    "step5_c7620_has_vu_label": true
+  }
+}

@@ -87,7 +87,7 @@ _FORM_NO_RE = re.compile(r"FORM-\d{8}-\d{4}", re.IGNORECASE)
 # Historic KDTPS ticket numbers look like "2023/5".
 _YEAR_NO_RE = re.compile(r"\b\d{4}/\d+\b")
 # "phiếu 2023/5" -> the token after "phiếu" (diacritics already folded).
-_TICKET_TOKEN_RE = re.compile(r"(?:phieu|so phieu)\s+([a-z0-9][a-z0-9\-/]*)")
+_TICKET_TOKEN_RE = re.compile(r"(?:phieu|so phieu|vu|so vu)\s+([a-z0-9][a-z0-9\-/]*)")
 
 
 # ---------------------------------------------------------------------------
@@ -146,9 +146,9 @@ def find_case(
         ).fetchall()
         if rows:
             case = _fetch_case_by_id(conn, int(rows[0][0]))
-            note = f"số phiếu {ticket}"
+            note = f"số vụ {ticket}"
             if len(rows) > 1:
-                note += f" (phiếu này có {len(rows)} bản ghi, lấy bản mới nhất)"
+                note += f" (vụ này có {len(rows)} bản ghi, lấy bản mới nhất)"
             return case, note
     codes = extract_codes(question)
     if codes:
@@ -254,11 +254,11 @@ def _handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
                 label = ticket or ", ".join(codes)
                 return _guidance_outcome(
                     f"Không tìm thấy ca **{label}** trong DB ca lỗi Bước 0–5. "
-                    "Kiểm tra lại số phiếu/mã lỗi, hoặc xem ca tương tự bằng cách "
+                    "Kiểm tra lại số vụ/mã lỗi, hoặc xem ca tương tự bằng cách "
                     "gõ mã lỗi trần (VD: `C7620`)."
                 )
             return _guidance_outcome(
-                "Cho tôi **số phiếu** hoặc **mã lỗi** của ca cần lập báo cáo, "
+                "Cho tôi **số vụ** hoặc **mã lỗi** của ca cần lập báo cáo, "
                 "ví dụ: `lập báo cáo điều tra cho ca FORM-20261001-0001` "
                 "hoặc `lập báo cáo điều tra cho ca C7620`."
             )

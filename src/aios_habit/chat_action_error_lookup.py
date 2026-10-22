@@ -1085,6 +1085,34 @@ def is_natural_question(question: str) -> bool:
     return False
 
 
+def explain_case_number(val: str) -> str:
+    """Generate a concise explanation for a case registration number (no_dvd).
+
+    Patterns:
+      - YEAR/SEQ (e.g. 2025/1155) -> 'Số đăng ký vụ việc trong sổ gốc: 2025 là năm, 1155 là số thứ tự vụ trong năm'
+      - FY.../... (e.g. FY27H2/263) -> 'Số đăng ký vụ việc trong sổ gốc: kỳ tài khóa FY27H2, vụ thứ 263'
+      - Y/D + YEAR/SEQ (e.g. Y2015/0_r463, D2019/100) -> 'Số đăng ký vụ việc trong sổ gốc: năm 2015, vụ thứ 0 (bản ghi r463)'
+      - Fallback -> 'Số đăng ký vụ việc trong sổ gốc: mã {val}'
+    """
+    s = str(val or "").strip()
+    if not s or s in ("—", "-", "ー", "None"):
+        return ""
+    m_year = re.match(r"^(\d{4})/(\d+(?:\.\d+)?)$", s)
+    if m_year:
+        year, seq = m_year.groups()
+        return f"Số đăng ký vụ việc trong sổ gốc: {year} là năm, {seq} là số thứ tự vụ trong năm"
+    m_fy = re.match(r"^(FY[^/]+)/(\d+(?:\.\d+)?)$", s, re.IGNORECASE)
+    if m_fy:
+        fy, seq = m_fy.groups()
+        return f"Số đăng ký vụ việc trong sổ gốc: kỳ tài khóa {fy}, vụ thứ {seq}"
+    m_yd = re.match(r"^[YD](\d{4})/([^_\s]+?)(?:_r(\d+))?$", s)
+    if m_yd:
+        year, seq, r_num = m_yd.groups()
+        r_part = f" (bản ghi r{r_num})" if r_num else ""
+        return f"Số đăng ký vụ việc trong sổ gốc: năm {year}, vụ thứ {seq}{r_part}"
+    return f"Số đăng ký vụ việc trong sổ gốc: mã {s}"
+
+
 def _render_synthesized_answer(
     cases: Sequence[Dict[str, Any]],
     codes: Sequence[str],
@@ -1176,10 +1204,13 @@ def _render_synthesized_answer(
     lines.append(f"### 4. Danh sách các ca điều tra thực tế đối chiếu (DB {total:,} ca)".replace(",", "."))
     lines.append(f"Tìm thấy **{len(cases)}** ca điều tra thực tế liên quan trực tiếp đến mã lỗi **{code_label}**:\n")
     for i, case in enumerate(cases[:5], 1):
-        phieu = f"Phiếu {case['no_dvd'] or '—'}"
+        vu = f"Vụ {case['no_dvd'] or '—'}"
         where = case.get("where") or ""
-        head = f"**{i}. {phieu}**" + (f" ({where})" if where else "")
+        head = f"**{i}. {vu}**" + (f" ({where})" if where else "")
         lines.append(head)
+        exp = explain_case_number(case.get("no_dvd") or "")
+        if exp:
+            lines.append(f"- _{exp}_")
         lines.append(
             f"- **Máy:** {case.get('machine_type') or 'không ghi'} | **Serial:** {case.get('serial') or 'không ghi'} | **Ngày phát sinh:** {case.get('occurred_at') or 'không ghi'}"
         )
@@ -1273,14 +1304,17 @@ def _render_cards(
     for i, case in enumerate(cases, 1):
         near_label = case.get("near_match_label")
         if near_label:
-            head = f"### {i}. Phiếu {case['no_dvd'] or '—'} · [{near_label}]"
+            head = f"### {i}. Vụ {case['no_dvd'] or '—'} · [{near_label}]"
         else:
-            head = f"### {i}. Phiếu {case['no_dvd'] or '—'}"
+            head = f"### {i}. Vụ {case['no_dvd'] or '—'}"
         bits = [b for b in (case["where"], case["category"]) if b]
         if bits:
             head += " · " + " · ".join(bits)
         lines.append("")
         lines.append(head)
+        exp = explain_case_number(case.get("no_dvd") or "")
+        if exp:
+            lines.append(f"- _{exp}_")
         # Ticket Requirement 2.3: exact summary line
         lines.append(
             f"- **Máy:** {case.get('machine_type') or 'không ghi'} | **Serial:** {case.get('serial') or 'không ghi'} | **Ngày phát sinh:** {case.get('occurred_at') or 'không ghi'}"
@@ -1301,7 +1335,7 @@ def _render_cards(
     lines.append("")
     lines.append(
         "_Nguồn: DB ca lỗi Bước 0–5 (lịch sử KDTPS thật). "
-        "Muốn đào sâu một ca, hỏi theo mã phiếu (VD: `phiếu 2023/5`)._"
+        "Muốn đào sâu một ca, hỏi theo mã vụ (VD: `vụ 2023/5`)._"
     )
     lines.append("")
     lines.append("---")

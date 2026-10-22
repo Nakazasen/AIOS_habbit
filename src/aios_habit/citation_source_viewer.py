@@ -40,7 +40,7 @@ _DEFAULT_DB_CANDIDATES = (
 # Friendly Vietnamese labels for columns in KDTPS History 29-column format
 HISTORY_29_LABELS: Dict[str, str] = {
     "A": "Năm sản xuất",
-    "B": "Số phiếu điều tra",
+    "B": "Số vụ điều tra",
     "C": "Ngày sản xuất / phát sinh",
     "D": "Máy / Model",
     "E": "Line sản xuất",
@@ -54,7 +54,7 @@ HISTORY_29_LABELS: Dict[str, str] = {
     "N": "Nội dung điều tra (tiếng Nhật)",
     "O": "Nội dung điều tra (tiếng Việt)",
     "P": "Bộ phận phụ trách",
-    "Q": "Trạng thái phiếu",
+    "Q": "Trạng thái vụ việc",
     "R": "Tên linh kiện / Board",
     "S": "Mã linh kiện",
     "T": "Lot linh kiện",
@@ -71,7 +71,7 @@ HISTORY_29_LABELS: Dict[str, str] = {
 
 # Friendly Vietnamese labels for standard 25-column format (A-Y)
 LEGACY_25_LABELS: Dict[str, str] = {
-    "A": "Số phiếu điều tra (No.ĐVD)",
+    "A": "Số vụ điều tra (No.ĐVD)",
     "B": "Ngày phát sinh",
     "C": "Máy / Model",
     "D": "Line sản xuất",
@@ -531,7 +531,7 @@ def resolve_citation_source(ref: CitationRef, notebook_id: str = "") -> SourceVi
                 # Core primary highlights
                 no_dvd_val = str(row["no_dvd"] or raw.get("B") or "").strip()
                 if no_dvd_val:
-                    fields_list.append(SourceRecordField("A-B", "Số phiếu điều tra", no_dvd_val, is_highlight=True))
+                    fields_list.append(SourceRecordField("A-B", "Số vụ điều tra", no_dvd_val, is_highlight=True))
 
                 occurred_val = str(row["occurred_at"] or raw.get("C") or "").strip()
                 if occurred_val and occurred_val not in _NA_VALUES:
@@ -583,7 +583,7 @@ def resolve_citation_source(ref: CitationRef, notebook_id: str = "") -> SourceVi
                 if row["countermeasure"] and not any(f.column_letter == "AB" for f in fields_list):
                     fields_list.append(SourceRecordField("AB", "Đối sách", str(row["countermeasure"]), is_highlight=True))
 
-                title = f"Hồ sơ ca điều tra lịch sử: Phiếu {no_dvd_val or '—'} (Dòng {row_num})"
+                title = f"Hồ sơ ca điều tra lịch sử: Vụ {no_dvd_val or '—'} (Dòng {row_num})"
                 return SourceViewerPayload(
                     found=True,
                     citation_ref=ref,

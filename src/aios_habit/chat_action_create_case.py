@@ -193,7 +193,7 @@ def render_preview_card_text(
             f"> - {rec_alert.message_vi}",
         ])
         if rec_alert.suggested_remedy:
-            src_str = f" *(từ phiếu `{rec_alert.suggested_from}`)*" if rec_alert.suggested_from else ""
+            src_str = f" *(từ vụ `{rec_alert.suggested_from}`)*" if rec_alert.suggested_from else ""
             lines.append(f"> - Đối sách đã áp dụng của ca gần nhất: **{rec_alert.suggested_remedy}**{src_str}")
 
     lines.extend([
@@ -406,7 +406,7 @@ def execute_confirm_case(
             f"> ⚠️ **LƯU Ý TÁI PHÁT:** Phát hiện {rec_cnt} ca tương tự trong lịch sử.",
         ])
         if rec_rem:
-            from_str = f" (từ phiếu `{rec_from}`)" if rec_from else ""
+            from_str = f" (từ vụ `{rec_from}`)" if rec_from else ""
             header_lines.append(f"> - Đối sách lịch sử: **{rec_rem}**{from_str}")
 
     header_lines.extend([

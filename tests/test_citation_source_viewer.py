@@ -44,19 +44,22 @@ Dựa trên cơ sở dữ liệu **30.075 ca điều tra lịch sử KDTPS** và
 ### 4. Danh sách các ca điều tra thực tế đối chiếu (DB 30.075 ca)
 Tìm thấy **5** ca điều tra thực tế liên quan trực tiếp đến mã lỗi **C6770**:
 
-**1. Phiếu 2025/1155** (Iris2024 Mono / C33)
+**1. Vụ 2025/1155** (Iris2024 Mono / C33)
+- _Số đăng ký vụ việc trong sổ gốc: 2025 là năm, 1155 là số thứ tự vụ trong năm_
 - **Hiện tượng:** Panel画面 "An Error has occurred"表示
 - **Nguyên nhân:** 不要
 - **Đối sách:** Link(jp+vn)
 - **Báo cáo gốc:** `Loi KDTPS.xlsx › History KDTPS › dòng 9609`
 
-**2. Phiếu 2025/2076** (Iris2024 上位 / C33)
+**2. Vụ 2025/2076** (Iris2024 上位 / C33)
+- _Số đăng ký vụ việc trong sổ gốc: 2025 là năm, 2076 là số thứ tự vụ trong năm_
 - **Hiện tượng:** LCC画面にAn Error has ocurred表示
 - **Nguyên nhân:** 不要
 - **Đối sách:** Tiếp tục tổng hợp theo dõi hiệu quả đối sách.
 - **Báo cáo gốc:** `Loi KDTPS.xlsx › History KDTPS › dòng 10530`
 
-**3. Phiếu 2025/1464** (Iris2024 Mono / C33)
+**3. Vụ 2025/1464** (Iris2024 Mono / C33)
+- _Số đăng ký vụ việc trong sổ gốc: 2025 là năm, 1464 là số thứ tự vụ trong năm_
 - **Hiện tượng:** パネル画面 An Error has ocurred表示
 - **Nguyên nhân:** 不要
 - **Đối sách:** LK phát sinh sử dụng lot tháng 6 . Đối tác cải tiến tiếp mát JIG dự kiện lot tháng 7 . khi lk mới về KTĐ sẽ ban hành ĐUKC để sx , khi sx tiếp tục theo dõi

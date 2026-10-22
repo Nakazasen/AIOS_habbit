@@ -208,7 +208,8 @@ def test_render_cards_with_glossary_meaning():
     }
     text = lookup._render_cards(cases, ["C0030"], glossary, 15707)
     assert "Bất thường hệ thống bản mạch FAX" in text
-    assert "### 1. Phiếu 2023/5" in text
+    assert "### 1. Vụ 2023/5" in text
+    assert "Số đăng ký vụ việc trong sổ gốc: 2023 là năm, 5 là số thứ tự vụ trong năm" in text
     assert "Báo cáo gốc:" in text
 
 

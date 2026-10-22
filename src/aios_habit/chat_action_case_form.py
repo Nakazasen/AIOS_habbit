@@ -124,7 +124,7 @@ def _render_auto_section(auto: Optional[dict]) -> list:
             f"- {rec['message_vi']}",
         ]
         if rec.get("suggested_from"):
-            lines.append(f"  (đối sách lấy từ phiếu {rec['suggested_from']})")
+            lines.append(f"  (đối sách lấy từ vụ {rec['suggested_from']})")
     return lines
 
 
@@ -134,7 +134,7 @@ def _render_result(result: dict) -> ChatActionOutcome:
         lines = [
             "### Đã ghi nhận báo cáo mới",
             "",
-            f"- **Mã phiếu:** `{result['no_dvd']}`",
+            f"- **Mã vụ:** `{result['no_dvd']}`",
             "- Đủ 12 trường chuẩn đã lưu vào DB Bước 0.",
         ]
         for w in result.get("warnings", []):

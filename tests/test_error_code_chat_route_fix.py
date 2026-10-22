@@ -85,7 +85,7 @@ def test_natural_c7620_routes_to_db_cases_with_citations():
     assert "Lỗi thời gian đăng ký màu" in rendered
     assert "30.075" in rendered or "30075" in rendered
     assert "Loi KDTPS.xlsx" in rendered or "History KDTPS" in rendered
-    assert "Phiếu" in rendered
+    assert "Vụ" in rendered
 
 
 def test_natural_jam4212_routes_to_db_cases_with_citations():
@@ -102,7 +102,7 @@ def test_natural_jam4212_routes_to_db_cases_with_citations():
     rendered = ca.render_outcome(outcome)
     assert "JAM4212" in rendered
     assert "定着センサー滞留" in rendered or "JAM" in rendered
-    assert "Phiếu" in rendered
+    assert "Vụ" in rendered
     assert "Loi KDTPS.xlsx" in rendered or "History KDTPS" in rendered
 
 
@@ -117,7 +117,7 @@ def test_bare_code_c7620_renders_step1_cards():
     assert outcome is not None
     rendered = ca.render_outcome(outcome)
     # Bare code renders Step 1 cards format
-    assert "### 1. Phiếu" in rendered
+    assert "### 1. Vụ" in rendered
     assert "Tìm thấy" in rendered
     assert "ca lỗi liên quan đến **C7620**" in rendered
 

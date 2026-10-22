@@ -544,9 +544,9 @@ def purify_markdown_text(
             purified_lines.append(f"{prefix}{trans}")
             continue
 
-        # Case title: **X. Phiếu Y** (Machine / Line)
-        # e.g., **1. Phiếu 2026/1143** (Iris2024 上位 / C33)
-        if line_clean.startswith("**") and "Phiếu" in line_clean:
+        # Case title: **X. Vụ Y** (Machine / Line) or legacy **X. Phiếu Y**
+        # e.g., **1. Vụ 2026/1143** (Iris2024 上位 / C33)
+        if line_clean.startswith("**") and ("Phiếu" in line_clean or "Vụ" in line_clean):
             trans, act = translate_kdtps_field(line_clean, field_name="case_header")
             detected_count += 1
             actions_taken.append(act)
