@@ -328,13 +328,14 @@ def test_answer_text_has_readable_measure_without_truncation() -> None:
 
 
 def test_cho_hien_ba_buoc_theo_trang_thai_that() -> None:
-    """FR-023: waiting steps must follow the real pipeline state."""
+    """FR-023 & DESKTOP-PC0575-SEND-DRAFT-TRAP-FIX §2.5: waiting steps must follow the real pipeline state
+    and never mark step 3 "Tổng hợp trả lời" as running in the initial waiting state before real step_timings."""
     from aios_habit.workspace_chat_ui import build_answer_wait_steps
 
     cho_nguon = build_answer_wait_steps("cho_tai_lieu")
     assert [s["dang_chay"] for s in cho_nguon] == [True, False, False]
     dang_xu_ly = build_answer_wait_steps("dang_xu_ly")
-    assert [s["dang_chay"] for s in dang_xu_ly] == [False, False, True]
+    assert [s["dang_chay"] for s in dang_xu_ly] == [True, False, False]
 
 
 def test_khoi_cho_dung_trang_thai_that_trong_app() -> None:
@@ -666,7 +667,7 @@ def test_worker_warming_status_line_hourglass_dedup() -> None:
     from aios_habit.workspace_chat_app import format_worker_warming_status_line
 
     # Verify helper itself formats with single hourglass
-    line = format_worker_warming_status_line("dieu_tra_loi", locale="vi")
+    line = format_worker_warming_status_line("dieu_tra_loi", progress={"ready": False, "pending": True}, locale="vi")
     assert line.startswith("⏳ ")
     assert not line.startswith("⏳ ⏳")
 

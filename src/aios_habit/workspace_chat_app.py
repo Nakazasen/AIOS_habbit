@@ -2,6 +2,14 @@ import os
 import sys
 import logging
 
+# Thiết lập biến môi trường mặc định an toàn theo đúng RUN_AIOS_WORKSPACE_CHAT.bat
+# (DESKTOP-PC0575-SEND-DRAFT-TRAP-FIX §2.4): không ghi đè giá trị đã có.
+os.environ.setdefault("AIOS_RAGV2_WORKER_PERSIST", "1")
+os.environ.setdefault("AIOS_DOMAIN_ROUTING_ENABLED", "1")
+os.environ.setdefault("AIOS_RAG_V2_NUMPY_DENSE", "1")
+os.environ.setdefault("AIOS_BGE_INIT_TIMEOUT", "420")
+os.environ.setdefault("AIOS_BGE_QUERY_TIMEOUT", "1200")
+
 try:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -5419,6 +5427,8 @@ else:
                 st.session_state[_last_sent_key] = {"text": raw_text, "time": _now}
 
                 st.session_state[input_key] = ""
+                st.session_state.pop(f"wsc_draft_input_backup_{conv_id}", None)
+                st.session_state[f"wsc_clear_input_{conv_id}"] = True
                 st.session_state[f"wsc_submitting_ack_{conv_id}"] = {
                     "q_text": raw_text,
                     "user_msg_id": f"MSG-U-{uuid.uuid4().hex[:8].upper()}",
@@ -5533,13 +5543,28 @@ else:
                         or "tri_thuc"
                     )
                 )
-                _active_idx_path = resolve_active_index_db_path(
-                    getattr(active_conversation, "collection_id", None) or _active_view_col
-                )
+                _active_idx_path = resolve_active_index_db_path(_active_view_col)
                 _idx_status_text, _idx_is_err = get_cached_index_status_line(
                     _active_idx_path,
                     session_state=st.session_state,
                 )
+                _domain_col_labels = {
+                    "dieu_tra_loi": "Kho điều tra lỗi (dieu_tra_loi)",
+                    "lsu": "Kho LSU (lsu)",
+                    "mom": "Kho MOM/Opcenter (mom)",
+                    "tong_hop": "Kho tổng hợp chung (tong_hop)",
+                    "tri_thuc": "Kho kiến thức tổng hợp (tri_thuc)",
+                }
+                if (
+                    not _idx_is_err
+                    and os.environ.get("AIOS_DOMAIN_ROUTING_ENABLED", "").strip() in ("1", "true", "yes")
+                    and _active_view_col in _domain_col_labels
+                ):
+                    _idx_status_text = _idx_status_text.replace(
+                        "Kho đang dùng: library.sqlite",
+                        f"Kho đang dùng: {_domain_col_labels[_active_view_col]}",
+                        1,
+                    )
                 st.caption(_idx_status_text)
                 try:
                     if not is_workspace_chat_worker_warmed(collection_id=_active_view_col):
@@ -5671,6 +5696,19 @@ else:
                                             s_t = item.get("start", started_at)
                                             item["elapsed"] = max(0.1, time.time() - s_t)
                                         step_timings_snap[k] = item
+                            else:
+                                _ack_live = st.session_state.get(f"wsc_submitting_ack_{active_conversation.id}")
+                                _ack_start = (
+                                    float(_ack_live.get("timestamp", time.time()) or time.time())
+                                    if isinstance(_ack_live, dict)
+                                    else time.time()
+                                )
+                                total_elapsed_s = max(0.1, time.time() - _ack_start)
+                                step_timings_snap = {
+                                    "find": {"status": "running", "start": _ack_start, "duration": None, "elapsed": total_elapsed_s},
+                                    "read": {"status": "pending", "start": _ack_start, "duration": None, "elapsed": 0.0},
+                                    "synth": {"status": "pending", "start": _ack_start, "duration": None, "elapsed": 0.0},
+                                }
 
                             waiting_status_line = None
                             if is_cagent_lane:
@@ -6114,7 +6152,11 @@ else:
                     if st.session_state.pop(clear_input_key, False):
                         st.session_state[f"wsc_question_input_{active_conversation.id}"] = ""
                         st.session_state.pop(draft_backup_key, None)
-                    elif draft_backup_key in st.session_state and not st.session_state.get(f"wsc_question_input_{active_conversation.id}"):
+                    elif (
+                        draft_backup_key in st.session_state
+                        and not st.session_state.get(f"wsc_question_input_{active_conversation.id}")
+                        and not st.session_state.get(f"wsc_submitting_ack_{active_conversation.id}")
+                    ):
                         st.session_state[f"wsc_question_input_{active_conversation.id}"] = st.session_state[draft_backup_key]
                     uploaded_image = None
 
@@ -6151,7 +6193,7 @@ else:
                         key=f"wsc_question_input_{active_conversation.id}",
                         label_visibility="visible",
                     )
-                    if user_input:
+                    if user_input and not st.session_state.get(f"wsc_submitting_ack_{active_conversation.id}"):
                         st.session_state[draft_backup_key] = user_input
 
                     _attach_err = st.session_state.get(f"wsc_attach_error_{active_conversation.id}")
@@ -6854,7 +6896,7 @@ else:
                     if time.time() - _ack_ts > 15.0:
                         st.session_state.pop(f"wsc_submitting_ack_{active_conversation.id}", None)
                         _current_submitting_ack = None
-                if _current_submitting_ack and _current_submitting_ack.get("q_text") and not user_input.strip():
+                if _current_submitting_ack and _current_submitting_ack.get("q_text"):
                     user_input = _current_submitting_ack["q_text"]
                     ask_submitted = True
 
@@ -6871,9 +6913,16 @@ else:
                         if queue_memory_command_if_present(q_text):
                             st.session_state.pop(_suggest_send_key, None)
                             st.session_state.pop(f"wsc_submitting_ack_{active_conversation.id}", None)
+                            st.session_state.pop(draft_backup_key, None)
+                            st.session_state[f"wsc_clear_input_{active_conversation.id}"] = True
                             safe_rerun()
 
                     if not is_workspace_chat_worker_warmed(collection_id=_target_composer_col):
+                        if q_text and not st.session_state.get(_suggest_send_key):
+                            st.session_state[_suggest_send_key] = q_text
+                        st.session_state.pop(f"wsc_submitting_ack_{active_conversation.id}", None)
+                        st.session_state.pop(draft_backup_key, None)
+                        st.session_state[f"wsc_clear_input_{active_conversation.id}"] = True
                         try:
                             trigger_collection_warming_on_demand(
                                 _target_composer_col, notebook_id=active_nb_id
@@ -6888,9 +6937,11 @@ else:
                         )
                         safe_rerun()
 
-                    # Pop suggestion & submitting ack as soon as worker is confirmed warmed and execution begins
+                    # Pop suggestion, submitting ack & draft backup as soon as worker is confirmed warmed and execution begins
                     st.session_state.pop(_suggest_send_key, None)
                     _active_ack = st.session_state.pop(f"wsc_submitting_ack_{active_conversation.id}", None)
+                    st.session_state.pop(draft_backup_key, None)
+                    st.session_state[f"wsc_clear_input_{active_conversation.id}"] = True
 
                     # UX-CHAT-CORE: bo dinh tuyen y dinh chat-first. Nguoi dung chi
                     # go cau tieng Viet, app tu dieu phoi (khong con radio nhanh).

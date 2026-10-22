@@ -2375,10 +2375,8 @@ def build_answer_wait_steps(
             })
         return steps
 
-    if trang_thai == "cho_tai_lieu":
+    if trang_thai in ("cho_tai_lieu", "dang_xu_ly"):
         dang_chay = 0
-    elif trang_thai == "dang_xu_ly":
-        dang_chay = 2
     else:
         raise ValueError("Trạng thái chờ không hợp lệ.")
     return [
