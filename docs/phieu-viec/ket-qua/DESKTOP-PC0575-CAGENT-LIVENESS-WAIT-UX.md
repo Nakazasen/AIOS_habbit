@@ -110,7 +110,7 @@ Toàn bộ ảnh chụp là PNG thô nguyên bản từ Playwright, kích thư�
 
 - Nhánh: `phieu-viec/rag-fix1`
 - Trạng thái push: Tự động commit và đẩy lên remote `origin/phieu-viec/rag-fix1`.
-- Commit SHA trên remote được kiểm chứng bằng lệnh `git ls-remote`.
+- Commit SHA trên remote được kiểm chứng bằng lệnh `git ls-remote`: `d34e69f74bca73bd7805689309e5df22fefb8196` (khớp mốc commit `d34e69f7`).
 
 ---
 
