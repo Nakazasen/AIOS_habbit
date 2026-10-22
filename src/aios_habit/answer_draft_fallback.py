@@ -337,10 +337,13 @@ class FallbackDecision:
     has_draft_label: bool = False
 
 
-def format_draft_answer(entry: DraftEntry) -> str:
+def format_draft_answer(entry: DraftEntry, target_locale: str = "vi") -> str:
     """Render a draft answer with the mandatory label inside the text."""
+    from aios_habit.i18n import t, normalize_locale
+    loc = normalize_locale(target_locale)
+    lbl = t("draft_fallback_label", locale=loc)
     body = (entry.answer or "").strip()
-    return f"{body}\n\n{DRAFT_LABEL}"
+    return f"{body}\n\n{lbl}"
 
 
 def resolve_answer(
@@ -597,13 +600,16 @@ def deliver_draft_answer(
     if decision.lane != "draft_fallback":
         return None
 
-    from aios_habit.answer_language_policy import purify_markdown_text
+    from aios_habit.answer_language_policy import purify_markdown_text, detect_question_language
+    from aios_habit.i18n import normalize_locale
+    eff_draft_lang = normalize_locale(answer_language or detect_question_language(question))
     purified_draft = purify_markdown_text(
         decision.answer_text,
         question=question,
         route="draft_fallback",
         conversation_id=conversation_id,
         base_cases_dir=base_cases_dir,
+        target_locale=eff_draft_lang,
     )
 
     if on_chunk and purified_draft:

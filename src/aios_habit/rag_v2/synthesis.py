@@ -354,10 +354,10 @@ def format_provider_synthesis_contract(
             if shape_markers
             else "No fixed section markers are required."
         )
+        language_rule = "Answer in the language used by the QUESTION."
         architecture_rule = (
-            "For an architecture or integration answer, answer in the language used by the "
-            "QUESTION. Use one cited overview line, then the exact COMPONENTS, DATA_FLOW, "
-            "and INTERFACES_AND_VERIFICATION markers. Under each marker write one or two "
+            "For an architecture or integration answer, use one cited overview line, then the exact "
+            "COMPONENTS, DATA_FLOW, and INTERFACES_AND_VERIFICATION markers. Under each marker write one or two "
             "short cited factual lines when the evidence supports them, prioritizing system "
             "hierarchy, shop-floor/control components, intermediary stores, and concrete "
             "operational flows. Keep the whole response within the stated maximum material "
@@ -385,7 +385,7 @@ def format_provider_synthesis_contract(
             f"{budget_rule} "
             "Dates, percentages, quantities, and identifiers must appear in the evidence blocks cited "
             "by that same factual line. "
-            f"Do not emit unknown labels. {shape_rule} {architecture_rule} {limitation_rule}"
+            f"Do not emit unknown labels. {language_rule} {shape_rule} {architecture_rule} {limitation_rule}"
         )
 
     # Disciplined citation contract variant (strict instruction discipline for open/free models)
@@ -400,10 +400,10 @@ def format_provider_synthesis_contract(
         if shape_markers
         else "No fixed section markers are required."
     )
+    language_rule = "Answer in the language used by the QUESTION."
     architecture_rule = (
-        "For an architecture or integration answer, answer in the language used by the "
-        "QUESTION. Use one cited overview line, then the exact COMPONENTS, DATA_FLOW, "
-        "and INTERFACES_AND_VERIFICATION markers. Under each marker write one or two "
+        "For an architecture or integration answer, use one cited overview line, then the exact "
+        "COMPONENTS, DATA_FLOW, and INTERFACES_AND_VERIFICATION markers. Under each marker write one or two "
         "short cited factual lines when the evidence supports them, prioritizing system "
         "hierarchy, shop-floor/control components, intermediary stores, and concrete "
         "operational flows. Keep the whole response within the stated maximum material "
@@ -438,7 +438,7 @@ def format_provider_synthesis_contract(
         f"3. {budget_rule}\n"
         "4. DATES AND IDENTIFIERS: Dates, percentages, quantities, codes, and identifiers must appear "
         "in the evidence blocks cited by that same factual line. Do not invent or alter literals.\n"
-        f"5. LABELS AND SECTIONS: Do not emit unknown labels. {shape_rule} {architecture_rule} {limitation_rule}"
+        f"5. LABELS AND SECTIONS: Do not emit unknown labels. {language_rule} {shape_rule} {architecture_rule} {limitation_rule}"
     )
 
 
@@ -666,18 +666,36 @@ def merge_cited_provider_answer_lines(
 def _provider_answer_has_script_mismatch(question: str, answer: str) -> bool:
     """Detect a response-script mismatch without relying on domain vocabulary.
 
-    The check is deliberately narrow: it only protects Latin-script questions from
-    predominantly Han/Kana prose. Technical identifiers, citations, and isolated
-    source-language names therefore remain valid; a response must contain enough
-    foreign-script prose to trip the threshold. Other language pairing is left to
-    the provider because scripts alone cannot reliably distinguish those languages.
+    Supports bidirectional check:
+    1. Japanese question (contains Japanese Kana) answered in Latin without Kana prose.
+    2. Chinese question (contains Han characters without Kana) answered in Latin without Han prose.
+    3. Latin/Vietnamese question answered in predominantly Han/Kana prose.
     """
-    question_latin = len(re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ]", question))
-    if question_latin < 8:
-        return False
+    question_kana = len(re.findall(r"[\u3040-\u30ff]", question))
+    question_han = len(re.findall(r"[\u3400-\u9fff]", question))
+    answer_kana = len(re.findall(r"[\u3040-\u30ff]", answer))
+    answer_han = len(re.findall(r"[\u3400-\u9fff]", answer))
     answer_latin = len(re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ]", answer))
-    answer_han_kana = len(re.findall(r"[\u3040-\u30ff\u3400-\u9fff]", answer))
-    return answer_han_kana >= 24 and answer_han_kana > answer_latin
+
+    # 1. Japanese question -> answer must contain Japanese Kana if substantial
+    if question_kana >= 2:
+        if answer_kana < 4 and answer_latin >= 15:
+            return True
+        return False
+
+    # 2. Chinese question -> answer must contain Han characters if substantial
+    if question_kana == 0 and question_han >= 2:
+        if answer_han < 4 and answer_latin >= 15:
+            return True
+        return False
+
+    # 3. Latin-script / Vietnamese question -> answer should not be predominantly Han/Kana
+    question_latin = len(re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ]", question))
+    if question_latin >= 8:
+        answer_han_kana = answer_han + answer_kana
+        return answer_han_kana >= 15 and answer_han_kana > answer_latin
+
+    return False
 
 
 def validate_provider_synthesis_answer(

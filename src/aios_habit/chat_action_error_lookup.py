@@ -73,7 +73,7 @@ _HINTS = (
 )
 
 # Error codes match standard patterns: "C0030", "F000", "C 7620", "JAM4212", "J-411".
-_CODE_RE = re.compile(r"\b(JAM|[CFJScfjs])\s*-?\s*(\d{3,4})\b", re.IGNORECASE)
+_CODE_RE = re.compile(r"(?<![A-Za-z0-9])(JAM|[CFJScfjs])\s*-?\s*(\d{3,4})(?![A-Za-z0-9])", re.IGNORECASE)
 
 # Serial patterns (e.g. WD72Z12772, 3V2XM1930, WD85X36474, C9P1056J6209)
 _SERIAL_PREFIX_RE = re.compile(
@@ -1136,14 +1136,34 @@ def is_natural_question(question: str) -> bool:
     words = norm.split()
 
     interrogatives = ("the nao", "la gi", "tai sao", "nhu the nao", "sao lai", "ra sao", "o dau", "khi nao")
-    has_interrogative = any(q in norm for q in interrogatives) or "?" in raw
+    cjk_interrogatives = (
+        "?", "？", "何", "なぜ", "どうして", "どう", "ですか", "ますか", "のか",
+        "什么", "为什么", "怎样", "怎么", "如何",
+    )
+    has_interrogative = (
+        any(q in norm for q in interrogatives)
+        or any(q in raw for q in cjk_interrogatives)
+        or raw.rstrip().endswith(("か", "か？", "か?", "吗", "呢", "吗？", "呢？", "吗?", "呢?"))
+    )
 
     investigation_aspects = (
         "nguyen nhan", "doi sach", "xu ly", "khac phuc", "huong dan",
         "bao cao dieu tra", "tai lieu", "phuong an", "giai phap",
         "bien phap", "cach sua", "nguyen ly", "dieu tra"
     )
-    has_aspect = any(asp in norm for asp in investigation_aspects)
+    cjk_aspects = (
+        "原因", "対策", "処置", "対応", "調査", "詳細", "方法",
+        "对策", "措施", "处理", "调查", "详情", "排查", "分析",
+    )
+    has_aspect = (
+        any(asp in norm for asp in investigation_aspects)
+        or any(asp in raw for asp in cjk_aspects)
+    )
+
+    # Pure count/occurrence queries (件数, 回数, 次数, số ca, bao nhiêu ca) are structured card lookups
+    has_count = any(k in raw for k in ("件数", "回数", "次数")) or any(k in norm for k in ("so ca", "bao nhieu ca"))
+    if has_count and not has_aspect:
+        return False
 
     if len(words) <= 3 and not has_interrogative and not has_aspect:
         return False
@@ -1191,7 +1211,12 @@ def _render_synthesized_answer(
     total: int,
     question: str,
     filter_entities: Optional[Mapping[str, Any]] = None,
+    target_locale: Optional[str] = None,
 ) -> str:
+    from aios_habit.answer_language_policy import detect_question_language, translate_kdtps_field, purify_markdown_text
+    from aios_habit.i18n import t, normalize_locale
+
+    loc = normalize_locale(target_locale or detect_question_language(question))
     primary_code = codes[0] if codes else ""
     code_label = ", ".join(codes) if codes else primary_code
 
@@ -1200,112 +1225,163 @@ def _render_synthesized_answer(
         if filter_entities.get("machine"):
             filter_bits.append(filter_entities["machine"]["label"])
         if filter_entities.get("serial"):
-            filter_bits.append(f"số serial **{filter_entities['serial']}**")
+            if loc == "ja":
+                filter_bits.append(f"シリアル番号 **{filter_entities['serial']}**")
+            elif loc == "zh-CN":
+                filter_bits.append(f"序列号 **{filter_entities['serial']}**")
+            else:
+                filter_bits.append(f"số serial **{filter_entities['serial']}**")
         if filter_entities.get("date_range"):
             filter_bits.append(filter_entities["date_range"]["label"])
 
-    filter_suffix = f" (đang lọc theo: {', '.join(filter_bits)})" if filter_bits else ""
+    if filter_bits:
+        if loc == "ja":
+            filter_suffix = f"（絞り込み：{', '.join(filter_bits)}）"
+        elif loc == "zh-CN":
+            filter_suffix = f"（当前筛选：{', '.join(filter_bits)}）"
+        else:
+            filter_suffix = f" (đang lọc theo: {', '.join(filter_bits)})"
+    else:
+        filter_suffix = ""
 
-    lines = [
-        f"Dựa trên cơ sở dữ liệu **{total:,} ca điều tra lịch sử KDTPS**{filter_suffix} và danh mục mã lỗi chuẩn, dưới đây là thông tin điều tra và xử lý cho mã lỗi **{code_label}**:\n".replace(",", ".")
-    ]
+    total_fmt = f"{total:,}".replace(",", ".")
+    intro_tpl = t("error_lookup_intro_synthesized", locale=loc)
+    lines = [intro_tpl.format(total=total_fmt, filter_suffix=filter_suffix, code_label=code_label)]
 
     entry = glossary.get(primary_code) or (glossary.get(codes[1]) if len(codes) > 1 else None)
-    from aios_habit.answer_language_policy import translate_kdtps_field, purify_markdown_text
     if entry:
-        meaning = entry.get("name_vi") or entry.get("name_ja") or entry.get("name_en") or "Lỗi vận hành / chức năng"
-        meaning, _ = translate_kdtps_field(meaning, field_name="error_name")
+        raw_meaning = entry.get("name_vi") or entry.get("name_ja") or entry.get("name_en") or "Lỗi vận hành / chức năng"
+        if loc == "vi":
+            meaning, _ = translate_kdtps_field(raw_meaning, field_name="error_name")
+        else:
+            meaning = entry.get("name_ja") or raw_meaning
         fam = entry.get("code_family") or (_CODE_FAMILY.get(primary_code[0], ("", ""))[0] if primary_code else "")
         source = entry.get("source_file") or ""
-        lines.append("### 1. Định nghĩa kỹ thuật & Mô tả mã lỗi")
-        lines.append(f"- **Mã lỗi:** `{primary_code}`")
-        lines.append(f"- **Tên mã lỗi / Hiện tượng:** {meaning}")
+        lines.append(t("error_lookup_sec_definition", locale=loc))
+        lines.append(f"{t('error_lookup_lbl_code', locale=loc)} `{primary_code}`")
+        lines.append(f"{t('error_lookup_lbl_phenomenon', locale=loc)} {meaning}")
         if fam:
-            lines.append(f"- **Phân loại hệ thống:** {fam}")
+            lines.append(f"{t('error_lookup_lbl_classification', locale=loc)} {fam}")
         if entry.get("cause"):
-            c_trans, _ = translate_kdtps_field(entry.get("cause"), field_name="cause")
-            lines.append(f"- **Cơ chế phát sinh:** {c_trans}")
+            if loc == "vi":
+                c_trans, _ = translate_kdtps_field(entry.get("cause"), field_name="cause")
+            else:
+                c_trans = str(entry.get("cause"))
+            lines.append(f"{t('error_lookup_lbl_mechanism', locale=loc)} {c_trans}")
         if source:
-            lines.append(f"- **Tài liệu tham chiếu:** {source}")
+            lines.append(f"{t('error_lookup_lbl_reference', locale=loc)} {source}")
         lines.append("")
 
-    lines.append("### 2. Nguyên nhân chính theo các báo cáo điều tra thực tế")
+    lines.append(t("error_lookup_sec_causes", locale=loc))
     causes_seen: List[str] = []
     if entry and entry.get("cause"):
-        c_trans, _ = translate_kdtps_field(entry.get("cause"), field_name="cause")
+        if loc == "vi":
+            c_trans, _ = translate_kdtps_field(entry.get("cause"), field_name="cause")
+        else:
+            c_trans = str(entry.get("cause")).strip()
         if c_trans and c_trans not in causes_seen:
             causes_seen.append(c_trans)
 
     for c in cases:
         raw_nn = c.get("nguyen_nhan") or ""
-        trans_nn, _ = translate_kdtps_field(raw_nn, field_name="cause")
+        if loc == "vi":
+            trans_nn, _ = translate_kdtps_field(raw_nn, field_name="cause")
+        else:
+            trans_nn = str(raw_nn).strip()
         if trans_nn and trans_nn not in ("—", "-", "ー") and trans_nn not in causes_seen:
             causes_seen.append(trans_nn)
 
+    cause_item_tpl = t("error_lookup_lbl_cause_item", locale=loc)
     if causes_seen:
         for idx, nn in enumerate(causes_seen[:6], 1):
-            lines.append(f"- **Nguyên nhân {idx}:** {nn}")
+            lines.append(f"{cause_item_tpl.format(idx=idx)} {nn}")
     else:
-        lines.append("- Ghi nhận các yếu tố bất thường về linh kiện cơ khí, cảm biến hoặc tín hiệu điện tử trong quá trình vận hành.")
+        lines.append(t("error_lookup_no_causes", locale=loc))
     lines.append("")
 
-    lines.append("### 3. Đối sách và biện pháp xử lý theo báo cáo điều tra")
+    lines.append(t("error_lookup_sec_remedies", locale=loc))
     remedies_seen: List[str] = []
     if entry and entry.get("remedy"):
         for r_line in str(entry.get("remedy")).split("\n"):
             r_clean = r_line.strip()
             if r_clean:
-                r_trans, _ = translate_kdtps_field(r_clean, field_name="remedy")
+                if loc == "vi":
+                    r_trans, _ = translate_kdtps_field(r_clean, field_name="remedy")
+                else:
+                    r_trans = r_clean
                 if r_trans and r_trans not in remedies_seen:
                     remedies_seen.append(r_trans)
 
     for c in cases:
         raw_ds = c.get("doi_sach") or ""
-        trans_ds, _ = translate_kdtps_field(raw_ds, field_name="remedy")
+        if loc == "vi":
+            trans_ds, _ = translate_kdtps_field(raw_ds, field_name="remedy")
+        else:
+            trans_ds = str(raw_ds).strip()
         if trans_ds and trans_ds not in ("—", "-", "ー") and trans_ds not in remedies_seen:
             remedies_seen.append(trans_ds)
 
+    remedy_item_tpl = t("error_lookup_lbl_remedy_item", locale=loc)
     if remedies_seen:
         for idx, ds in enumerate(remedies_seen[:6], 1):
-            lines.append(f"- **Biện pháp {idx}:** {ds}")
+            lines.append(f"{remedy_item_tpl.format(idx=idx)} {ds}")
     else:
-        lines.append("- Thực hiện phân tích log, kiểm tra ngoại quan linh kiện, thay thế bộ phận nghi ngờ hoặc xử lý theo lưu trình kiểm tra không tái hiện.")
+        lines.append(t("error_lookup_no_remedies", locale=loc))
     lines.append("")
 
-    lines.append(f"### 4. Danh sách các ca điều tra thực tế đối chiếu (DB {total:,} ca)".replace(",", "."))
+    lines.append(t("error_lookup_sec_cases", locale=loc).format(total=total_fmt))
     exact_total = cases[0].get("exact_count", len(cases)) if cases else len(cases)
+    exact_total_fmt = f"{exact_total:,}".replace(",", ".")
     if exact_total > len(cases):
         lines.append(
-            f"Tìm thấy **{exact_total:,}** ca điều tra thực tế mã lỗi **{code_label}** trong CSDL {total:,} ca "
-            f"(hiển thị **{len(cases)}** ca liên quan nhất):\n".replace(",", ".")
+            t("error_lookup_found_cases_top", locale=loc).format(
+                exact=exact_total_fmt,
+                code=code_label,
+                total=total_fmt,
+                count=len(cases),
+            )
         )
     else:
         lines.append(
-            f"Tìm thấy **{exact_total:,}** ca điều tra thực tế liên quan trực tiếp đến mã lỗi **{code_label}** "
-            f"(hiển thị **{len(cases)}** ca):\n".replace(",", ".")
+            t("error_lookup_found_cases_all", locale=loc).format(
+                exact=exact_total_fmt,
+                code=code_label,
+                count=len(cases),
+            )
         )
+
+    case_heading_tpl = t("error_lookup_case_heading", locale=loc)
+    case_meta_tpl = t("error_lookup_case_meta", locale=loc)
+    case_phenom_lbl = t("error_lookup_case_phenomenon", locale=loc)
+    case_cause_lbl = t("error_lookup_case_cause", locale=loc)
+    case_remedy_lbl = t("error_lookup_case_remedy", locale=loc)
+    case_source_lbl = t("error_lookup_case_source", locale=loc)
+
     for i, case in enumerate(cases[:5], 1):
-        vu = f"Vụ {case['no_dvd'] or '—'}"
+        vu = case_heading_tpl.format(idx=i, no_dvd=case["no_dvd"] or "—")
         where = case.get("where") or ""
-        head = f"**{i}. {vu}**" + (f" ({where})" if where else "")
+        head = vu + (f" ({where})" if where else "")
         lines.append(head)
         exp = explain_case_number(case.get("no_dvd") or "")
-        if exp:
+        if exp and loc == "vi":
             lines.append(f"- _{exp}_")
         lines.append(
-            f"- **Máy:** {case.get('machine_type') or 'không ghi'} | **Serial:** {case.get('serial') or 'không ghi'} | **Ngày phát sinh:** {case.get('occurred_at') or 'không ghi'}"
+            case_meta_tpl.format(
+                machine=case.get("machine_type") or ("未記録" if loc == "ja" else ("未记录" if loc == "zh-CN" else "không ghi")),
+                serial=case.get("serial") or ("未記録" if loc == "ja" else ("未记录" if loc == "zh-CN" else "không ghi")),
+                occurred=case.get("occurred_at") or ("未記録" if loc == "ja" else ("未记录" if loc == "zh-CN" else "không ghi")),
+            )
         )
-        lines.append(f"- **Hiện tượng:** {case['hien_tuong'] or '—'}")
-        lines.append(f"- **Nguyên nhân:** {case['nguyen_nhan'] or '—'}")
-        lines.append(f"- **Đối sách:** {case['doi_sach'] or '—'}")
-        lines.append(f"- **Báo cáo gốc:** `{case['bao_cao_goc'] or '—'}`")
+        lines.append(f"{case_phenom_lbl} {case['hien_tuong'] or '—'}")
+        lines.append(f"{case_cause_lbl} {case['nguyen_nhan'] or '—'}")
+        lines.append(f"{case_remedy_lbl} {case['doi_sach'] or '—'}")
+        lines.append(f"{case_source_lbl} `{case['bao_cao_goc'] or '—'}`")
         lines.append("")
 
     lines.append("---")
-    lines.append("_Nguồn trích dẫn: Cơ sở dữ liệu ca lỗi KDTPS Bước 0–5 (30.075 ca lịch sử) và Danh mục mã lỗi tự chẩn đoán._")
+    lines.append(t("error_lookup_footer_synthesized", locale=loc))
     res_text = "\n".join(lines)
-    from aios_habit.answer_language_policy import purify_markdown_text
-    return purify_markdown_text(res_text, question, route="error_lookup_synthesized")
+    return purify_markdown_text(res_text, question, route="error_lookup_synthesized", target_locale=loc)
 
 
 def _render_cards(
@@ -1314,11 +1390,16 @@ def _render_cards(
     glossary: Mapping[str, Dict[str, Any]],
     total: int,
     filter_entities: Optional[Mapping[str, Any]] = None,
+    question: Optional[str] = None,
+    target_locale: Optional[str] = None,
 ) -> str:
+    from aios_habit.answer_language_policy import detect_question_language, translate_kdtps_field, has_japanese, purify_markdown_text
+    from aios_habit.i18n import t, normalize_locale
+
+    loc = normalize_locale(target_locale or (detect_question_language(question) if question else "vi"))
     code_label = ", ".join(codes) if codes else ""
     lines: List[str] = []
 
-    # Check if structured filter applied
     has_filter = bool(
         filter_entities
         and (
@@ -1333,63 +1414,76 @@ def _render_cards(
     fallback_displayed = len(cases) - exact_displayed
     fam_name = _CODE_FAMILY.get(codes[0][0], ("", ""))[0] if codes and codes[0][0] in _CODE_FAMILY else "cùng họ"
 
+    total_fmt = f"{total:,}".replace(",", ".")
+    exact_total_fmt = f"{exact_total:,}".replace(",", ".")
+
     if has_filter and filter_entities:
         filter_descs = []
         if filter_entities.get("machine"):
             filter_descs.append(filter_entities["machine"]["label"])
         if filter_entities.get("serial"):
-            filter_descs.append(f"số serial **{filter_entities['serial']}**")
+            if loc == "ja":
+                filter_descs.append(f"シリアル番号 **{filter_entities['serial']}**")
+            elif loc == "zh-CN":
+                filter_descs.append(f"序列号 **{filter_entities['serial']}**")
+            else:
+                filter_descs.append(f"số serial **{filter_entities['serial']}**")
         if filter_entities.get("date_range"):
             filter_descs.append(filter_entities["date_range"]["label"])
         if filter_entities.get("phenomenon_concepts"):
             c_names = " + ".join([c["name"] for c in filter_entities["phenomenon_concepts"]])
-            filter_descs.append(f"hiện tượng **{c_names}**")
+            if loc == "ja":
+                filter_descs.append(f"現象 **{c_names}**")
+            elif loc == "zh-CN":
+                filter_descs.append(f"现象 **{c_names}**")
+            else:
+                filter_descs.append(f"hiện tượng **{c_names}**")
         if codes:
-            filter_descs.append(f"mã lỗi **{code_label}**")
+            if loc == "ja":
+                filter_descs.append(f"エラーコード **{code_label}**")
+            elif loc == "zh-CN":
+                filter_descs.append(f"错误代码 **{code_label}**")
+            else:
+                filter_descs.append(f"mã lỗi **{code_label}**")
 
         desc_str = ", ".join(filter_descs)
         if total == 0:
-            lines.append(f"Không tìm thấy ca nào (0 ca) trong vùng đã khoanh ({desc_str}).")
-            if cases:
-                lines.append("")
-                lines.append(
-                    f"### Đề xuất các ca tương tự gần đúng (có nhãn gần đúng):\n"
-                    f"Hệ thống tìm thấy **{len(cases)}** ca có cùng hiện tượng trong khoảng thời gian này trên dòng máy khác:"
-                )
+            lines.append(t("error_lookup_cards_no_match", locale=loc).format(desc=desc_str))
         else:
-            lines.append(
-                f"Đang lọc theo: {desc_str}. "
-                f"Tìm thấy **{total:,}** ca phù hợp trong CSDL 30.075 ca lịch sử "
-                f"(hiển thị {len(cases)} ca):".replace(",", ".")
-            )
+            lines.append(t("error_lookup_cards_filtered", locale=loc).format(desc=desc_str, total=total_fmt, count=len(cases)))
     elif codes and fallback_displayed > 0:
-        # Ticket Requirement 2(a): Separate exact matches from family fallback matches
         lines.append(
-            f"Tìm thấy **{exact_total}** ca **{code_label}** chính xác; "
-            f"hiển thị thêm **{fallback_displayed}** ca cùng họ **{fam_name}** để tham khảo "
-            f"(trong **{total:,}** ca lịch sử):".replace(",", ".")
+            t("error_lookup_cards_family", locale=loc).format(
+                exact=exact_total,
+                code=code_label,
+                fallback=fallback_displayed,
+                fam=fam_name,
+                total=total_fmt,
+            )
         )
     elif codes:
-        # Ticket Requirement 2(a): Honest count title with top-N indication like CAU_05
         if exact_total > len(cases):
             lines.append(
-                f"Tìm thấy **{exact_total:,}** ca mã lỗi **{code_label}** trong **{total:,}** ca lịch sử "
-                f"(hiển thị {len(cases)} ca liên quan nhất):".replace(",", ".")
+                t("error_lookup_cards_exact_top", locale=loc).format(
+                    exact=exact_total_fmt,
+                    code=code_label,
+                    total=total_fmt,
+                    count=len(cases),
+                )
             )
         else:
             lines.append(
-                f"Tìm thấy **{exact_total:,}** ca mã lỗi **{code_label}** trong **{total:,}** ca lịch sử "
-                f"(hiển thị {len(cases)} ca):".replace(",", ".")
+                t("error_lookup_cards_exact_all", locale=loc).format(
+                    exact=exact_total_fmt,
+                    code=code_label,
+                    total=total_fmt,
+                    count=len(cases),
+                )
             )
     else:
-        lines.append(
-            f"Tìm thấy **{len(cases)}** ca lỗi liên quan"
-            + (f" đến **{code_label}**" if code_label else "")
-            + f" trong **{total:,}** ca lịch sử.".replace(",", ".")
-        )
+        lines.append(t("error_lookup_cards_related", locale=loc).format(count=len(cases), code=code_label, total=total_fmt))
 
     seen_entries = set()
-    from aios_habit.answer_language_policy import translate_kdtps_field, has_japanese
     for code in codes:
         entry = glossary.get(code)
         if not entry:
@@ -1400,95 +1494,80 @@ def _render_cards(
         seen_entries.add(entry_key)
 
         fam = entry.get("code_family") or (_CODE_FAMILY.get(code[0], ("", ""))[0] if code else "glossary")
-        raw_meaning = (
-            entry.get("name_vi") or entry.get("name_ja") or entry.get("name_en") or ""
-        )
-        meaning, _ = translate_kdtps_field(raw_meaning, field_name="error_name")
-
-        raw_cause = entry.get("cause") or ""
-        cause_trans, _ = translate_kdtps_field(raw_cause, field_name="cause") if raw_cause else ("", "")
-        cause = _clip(cause_trans, 160) if cause_trans and not has_japanese(cause_trans) else ""
-
-        raw_remedy = entry.get("remedy") or ""
-        remedy_trans, _ = translate_kdtps_field(raw_remedy, field_name="remedy") if raw_remedy else ("", "")
-        remedy = _clip(remedy_trans, 160) if remedy_trans and not has_japanese(remedy_trans) else ""
-
+        raw_meaning = entry.get("name_vi") or entry.get("name_ja") or entry.get("name_en") or ""
         source = entry.get("source_file") or ""
 
-        # If meaning still has raw Japanese (no translation available in dictionary/policy)
-        if has_japanese(meaning):
-            if source:
-                lines.append(f"_Nguồn tham chiếu từ điển mã lỗi: `{source}`_")
-            continue
+        if loc == "vi":
+            meaning, _ = translate_kdtps_field(raw_meaning, field_name="error_name")
+            raw_cause = entry.get("cause") or ""
+            cause_trans, _ = translate_kdtps_field(raw_cause, field_name="cause") if raw_cause else ("", "")
+            cause = _clip(cause_trans, 160) if cause_trans and not has_japanese(cause_trans) else ""
 
-        if not meaning and not cause and not remedy:
-            if source:
-                lines.append(f"_Nguồn tham chiếu từ điển mã lỗi: `{source}`_")
-            continue
+            raw_remedy = entry.get("remedy") or ""
+            remedy_trans, _ = translate_kdtps_field(raw_remedy, field_name="remedy") if raw_remedy else ("", "")
+            remedy = _clip(remedy_trans, 160) if remedy_trans and not has_japanese(remedy_trans) else ""
 
-        fam_label = fam or "glossary"
-        gloss = f"_Từ điển mã lỗi ({fam_label}): {meaning}_"
-        extra_parts = []
-        if cause:
-            extra_parts.append(f"Nguyên nhân: {cause}")
-        if remedy:
-            extra_parts.append(f"Khắc phục: {remedy}")
-        if source:
-            extra_parts.append(f"Nguồn: {source}")
-        extra = " · ".join(extra_parts)
-        lines.append(gloss + (f" — {extra}" if extra else ""))
+            if has_japanese(meaning):
+                if source:
+                    lines.append(t("error_lookup_glossary_source_only", locale=loc).format(source=source))
+                continue
+
+            if not meaning and not cause and not remedy:
+                if source:
+                    lines.append(t("error_lookup_glossary_source_only", locale=loc).format(source=source))
+                continue
+
+            lines.append(t("error_lookup_glossary_heading", locale=loc).format(fam=fam or "glossary", meaning=meaning, cause=cause or remedy, source=source))
+        else:
+            meaning = entry.get("name_ja") or raw_meaning
+            cause = _clip(str(entry.get("cause") or entry.get("remedy") or ""), 160)
+            lines.append(t("error_lookup_glossary_heading", locale=loc).format(fam=fam or "glossary", meaning=meaning, cause=cause, source=source))
+
+    case_meta_tpl = t("error_lookup_case_meta", locale=loc)
+    case_phenom_lbl = t("error_lookup_case_phenomenon", locale=loc)
+    case_cause_lbl = t("error_lookup_case_cause", locale=loc)
+    case_remedy_lbl = t("error_lookup_case_remedy", locale=loc)
+    case_source_lbl = t("error_lookup_case_source", locale=loc)
 
     for i, case in enumerate(cases, 1):
         near_label = case.get("near_match_label")
         fallback_label = case.get("family_fallback_label")
+        vu_prefix = "事例" if loc in ("ja", "zh-CN") else "Vụ"
+        vu_str = f"{vu_prefix} {case['no_dvd'] or '—'}"
+
         if near_label:
-            head = f"### {i}. Vụ {case['no_dvd'] or '—'} · [{near_label}]"
+            head = f"### {i}. {vu_str} · [{near_label}]"
         elif fallback_label:
-            head = f"### {i}. Vụ {case['no_dvd'] or '—'} · [{fallback_label}]"
+            head = f"### {i}. {vu_str} · [{fallback_label}]"
         elif fallback_displayed > 0 and case.get("is_exact_code"):
-            head = f"### {i}. Vụ {case['no_dvd'] or '—'} · [Khớp chính xác {code_label}]"
+            match_txt = f"Khớp chính xác {code_label}" if loc == "vi" else (f"完全一致 {code_label}" if loc == "ja" else f"精确匹配 {code_label}")
+            head = f"### {i}. {vu_str} · [{match_txt}]"
         else:
-            head = f"### {i}. Vụ {case['no_dvd'] or '—'}"
+            head = f"### {i}. {vu_str}"
         bits = [b for b in (case["where"], case["category"]) if b]
         if bits:
             head += " · " + " · ".join(bits)
         lines.append("")
         lines.append(head)
         exp = explain_case_number(case.get("no_dvd") or "")
-        if exp:
+        if exp and loc == "vi":
             lines.append(f"- _{exp}_")
-        # Ticket Requirement 2.3: exact summary line
         lines.append(
-            f"- **Máy:** {case.get('machine_type') or 'không ghi'} | **Serial:** {case.get('serial') or 'không ghi'} | **Ngày phát sinh:** {case.get('occurred_at') or 'không ghi'}"
+            case_meta_tpl.format(
+                machine=case.get("machine_type") or ("未記録" if loc == "ja" else ("未记录" if loc == "zh-CN" else "không ghi")),
+                serial=case.get("serial") or ("未記録" if loc == "ja" else ("未记录" if loc == "zh-CN" else "không ghi")),
+                occurred=case.get("occurred_at") or ("未記録" if loc == "ja" else ("未记录" if loc == "zh-CN" else "không ghi")),
+            )
         )
-        if case.get("thieu_hien_tuong"):
-            lines.append("- **Hiện tượng:** ⚠️ chưa được ghi nhận")
-            if case.get("goi_y_hien_tuong"):
-                lines.append(
-                    f"  - _Gợi ý từ biên bản (cột {case['goi_y_nguon']}): "
-                    f"{case['goi_y_hien_tuong']}_"
-                )
-        else:
-            lines.append(f"- **Hiện tượng:** {case['hien_tuong'] or '—'}")
-        lines.append(f"- **Nguyên nhân:** {case['nguyen_nhan'] or '—'}")
-        lines.append(f"- **Đối sách:** {case['doi_sach'] or '—'}")
-        lines.append(f"- **Báo cáo gốc:** `{case['bao_cao_goc'] or '—'}`")
+        lines.append(f"{case_phenom_lbl} {case['hien_tuong'] or '—'}")
+        lines.append(f"{case_cause_lbl} {case['nguyen_nhan'] or '—'}")
+        lines.append(f"{case_remedy_lbl} {case['doi_sach'] or '—'}")
+        lines.append(f"{case_source_lbl} `{case['bao_cao_goc'] or '—'}`")
 
     lines.append("")
-    lines.append(
-        "_Nguồn: DB ca lỗi Bước 0–5 (lịch sử KDTPS thật). "
-        "Muốn đào sâu một ca, hỏi theo mã vụ (VD: `vụ 2023/5`)._"
-    )
-    lines.append("")
-    lines.append("---")
-    lines.append(
-        "**Đánh giá gợi ý này:** `đánh giá đúng` · `đánh giá sai` · "
-        "`đánh giá một phần`"
-    )
-    lines.append("_Gõ ngay trong ô chat — không cần mở thêm gì._")
+    lines.append(t("error_lookup_footer_synthesized", locale=loc))
     res_text = "\n".join(lines)
-    from aios_habit.answer_language_policy import purify_markdown_text
-    return purify_markdown_text(res_text, code_label or "cards", route="error_lookup_cards")
+    return purify_markdown_text(res_text, question or code_label or "cards", route="error_lookup_cards", target_locale=loc)
 
 
 # ---------------------------------------------------------------------------
@@ -1633,11 +1712,18 @@ def _handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
         if not cases and not glossary and total == 0 and not has_filter:
             return None
 
+        from aios_habit.answer_language_policy import detect_question_language
+        eff_locale = (
+            getattr(request, "answer_language", None)
+            or (request.context.get("answer_language") if request.context else None)
+            or (request.locale if request.locale in ("ja", "zh-CN") else None)
+            or detect_question_language(request.question)
+        )
         # Route between bare cards vs synthesized answer
         if codes and is_natural_question(request.question) and total > 0:
-            text = _render_synthesized_answer(cases, codes, glossary, total, request.question, filter_entities=filter_ents)
+            text = _render_synthesized_answer(cases, codes, glossary, total, request.question, filter_entities=filter_ents, target_locale=eff_locale)
         else:
-            text = _render_cards(cases, codes, glossary, total, filter_entities=filter_ents)
+            text = _render_cards(cases, codes, glossary, total, filter_entities=filter_ents, question=request.question, target_locale=eff_locale)
 
         # Log filter usage for continuous improvement loop (Requirements 2.5 & 2.6)
         if has_filter:

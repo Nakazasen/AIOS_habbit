@@ -65,7 +65,7 @@ def _fold(value: str) -> str:
 
 # Regex patterns indicating explicit lookup tokens (error codes, specific variable assignments)
 _SPECIFIC_CODE_RE = re.compile(
-    r"\b(?:e-\d+|c-\d+|err-\d+|[a-z]{1,4}\d{3,5}|\w+\s*=\s*\w+|ctrlmode|dmt|pmt|ip|port)\b",
+    r"(?<![A-Za-z0-9])(?:e-\d+|c-\d+|err-\d+|[a-z]{1,4}\d{3,5}|\w+\s*=\s*\w+|ctrlmode|dmt|pmt|ip|port)(?![A-Za-z0-9])",
     re.IGNORECASE,
 )
 
