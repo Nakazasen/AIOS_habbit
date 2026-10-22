@@ -5499,6 +5499,7 @@ else:
                     pass
 
             def _render_chat_main_column():
+                from aios_habit.answer_language_policy import detect_question_language
                 ai_request_key = f"wsc_ai_request_{active_conversation.id}"
                 active_ai_request = st.session_state.get(ai_request_key)
                 _submitting_ack = st.session_state.get(f"wsc_submitting_ack_{active_conversation.id}")
@@ -7090,6 +7091,7 @@ else:
                     # Mặc định TẮT sau feature flag để không đổi hành vi hiện có.
                     if q_text and not user_attached_image:
                         from aios_habit.chat_action import chat_action_enabled, handle_chat_text
+                        from aios_habit.answer_language_policy import detect_question_language
                         if chat_action_enabled():
                             from aios_habit.workspace_chat_models import ChatMessage as _ActionChatMessage
                             from aios_habit.workspace_chat_store import load_notebook, save_message as _action_save_message

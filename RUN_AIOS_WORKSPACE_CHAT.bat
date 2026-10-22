@@ -35,6 +35,8 @@ set "AIOS_FEATURE_CHAT_ACTION=1"
 rem INDEX-SWITCH-APP (2026-10-03): bat dinh tuyen 3 kho linh vuc.
 rem Xoa dong nay va mo lai app de ve kho tri_thuc cu.
 set "AIOS_DOMAIN_ROUTING_ENABLED=1"
+rem RAG-WARMED-OVERRIDE: mo khoa nut gui ngay lap tuc
+set "AIOS_RAG_WARMED_OVERRIDE=1"
 rem MERGED-DB-SWITCH-HOME (2026-10-18): Tro tra cuu ca loi sang DB gop chuan 30.075 ca.
 rem Duong lui ve DB cu 15.707 ca chi bang 1 thay doi: sua thanh C:\tmp\kdtps_standard\error_cases_dict.db
 set "AIOS_ERROR_CASES_DB=C:\tmp\kdtps_standard\error_cases_reconciled.db"
