@@ -1,0 +1,340 @@
+{
+  "ma_ve": "DESKTOP-HOME-STEP1-REALUSE-ACCEPTANCE",
+  "thoi_diem": "2026-10-22T06:05:44.777728+00:00",
+  "model_stamp": {
+    "model": "gemini-2.5-flash",
+    "harness": "Google DeepMind Antigravity Boosted Engine v0.3.0",
+    "thinking": "default/high",
+    "python_env": "3.11.14 (main, Feb 12 2026, 00:37:49) [MSC v.1944 64 bit (AMD64)]",
+    "python_exe": "D:\\Sandbox\\AIOS_habbit\\.venv\\Scripts\\python.exe"
+  },
+  "sql_ground_truth": {
+    "c7620": {
+      "error_code_i_count": 136,
+      "raw_json_count": 145,
+      "union_count": 145
+    },
+    "c0060": {
+      "error_code_i_count": 1,
+      "raw_json_count": 2,
+      "union_count": 2
+    },
+    "skew_postcard": {
+      "count": 8
+    },
+    "filter": {
+      "count": 1,
+      "rows": [
+        {
+          "id": 1,
+          "no_dvd": "2023/1",
+          "machine_type": "6th Next ",
+          "occurred_at": "2023-01-05",
+          "error_code_h": "ERROR",
+          "error_code_i": null,
+          "source_row": 5
+        }
+      ]
+    },
+    "abnormal_sound": {
+      "count": 1187
+    },
+    "jam4212": {
+      "error_code_i_count": 24,
+      "raw_json_count": 26
+    }
+  },
+  "results": [
+    {
+      "id": "CAU_01",
+      "loai": "ma_loi_pho_bien",
+      "so": "NB-LAZY-DTL",
+      "cau_hoi": "Mã lỗi C7620 nguyên nhân thường gặp là gì?",
+      "thoi_gian_s": 3.02,
+      "cau_tra_loi_nguyen_van": "**Tra cứu lỗi tương tự**\n\nDựa trên cơ sở dữ liệu **30.075 ca điều tra lịch sử KDTPS** và danh mục mã lỗi chuẩn. dưới đây là thông tin điều tra và xử lý cho mã lỗi **C7620**:\n\n### 1. Định nghĩa kỹ thuật & Mô tả mã lỗi\n- **Mã lỗi:** `C7620`\n- **Tên mã lỗi / Hiện tượng:** Lỗi thời gian đăng ký màu\n- **Phân loại hệ thống:** C_CALL\n- **Cơ chế phát sinh:** Khi tự động sửa màu đăng ký không thành công\n- **Tài liệu tham chiếu:** 02XC_自己診断表示一覧表-Iris2020 VN.xls\n\n### 2. Nguyên nhân chính theo các báo cáo điều tra thực tế\n- **Nguyên nhân 1:** Khi tự động sửa màu đăng ký không thành công\n- **Nguyên nhân 2:** 不要\n- **Nguyên nhân 3:** 要因不明(製造)\n\n### 3. Đối sách và biện pháp xử lý theo báo cáo điều tra\n- **Biện pháp 1:** VI 1. Reset nguồn điện chính — NN: IDセンサーが正常に動作していない。 → XL: Yêu cầu tắt nút nguồn và nguồn điện chính.Sau khi vượt quá 5s yêu cầu bật nút nguồn và nút nguồn điện chính\n- **Biện pháp 2:** VI 2. Xác nhận Unit sao chép sơ cấp — NN: 1次転写ベルト表面が汚れている。 → XL: 1次転写ベルト表面を清掃してください。または、Yêu cầu thay thế UNIT sao chép sơ cấp\n- **Biện pháp 3:** VI 3. キャリブレーションの実行 — NN: 前回のキャリブレーションが失敗している。 → XL: U464にて[Calib]を実行してください。\n- **Biện pháp 4:** VI 4. (Trường hợp in bị nhạt)xác nhận Unit hiện ảnh(trên 35 tờ) — NN: 現像ローラーがドラムに接触していない。 → XL: ロックレバーを上下に切り替えて、現像ローラーをセット位置に復帰させてください。ロックレバーの破損や現像ローラー押圧ワイヤーの異常により、現像ローラーが復帰しない場合は、現像ユニットYêu cầu thay thế\n- **Biện pháp 5:** VI 5. (印字が薄い場合)メンテナンス用前カバーの連結ギア確認(25/32枚機) — NN: メンテナンス用前カバーの開閉動作と適正に連動していないため、現像ローラーがドラムに接触しない。 → XL: メンテナンス用前カバーを閉じても現像ローラーがドラムに接触しない場合は、メンテナンス用前カバーと連結しているギアを取り付け直してください。\n- **Biện pháp 6:** VI 6. (Trường hợp in bị nhạt)làm sạch/ thay thế LSU — NN: LSUからレーザーが適正に出力されない。または、LSU防塵(ぼうじん)ガラスが汚れている。 → XL: LSUを清掃してください。解消しない場合は、交換してください。\n\n### 4. Danh sách các ca điều tra thực tế đối chiếu (DB 30.075 ca)\nTìm thấy **5** ca điều tra thực tế liên quan trực tiếp đến mã lỗi **C7620**:\n\n**1. Phiếu 2025/3279** (Virgo / C21)\n- **Máy:** Virgo | **Serial:** 1102Z63NL0 H845Z30346 | **Ngày phát sinh:** 2025-12-05\n- **Hiện tượng:** C7620\n- **Nguyên nhân:** 不要\n- **Đối sách:** Đối sách lâu dài: Ghi chú vào hạng mục kiểm tra định kỳ trạng thái của block siết vít.\n- **Báo cáo gốc:** `Loi KDTPS.xlsx › History KDTPS › dòng 11733`\n\n**2. Phiếu 2025/3269** (Virgo / C21)\n- **Máy:** Virgo | **Serial:** 1102Z63NL0 H845Z30170 | **Ngày phát sinh:** 2025-12-04\n- **Hiện tượng:** C7620\n- **Nguyên nhân:** 不要\n- **Đối sách:** Đối sách lâu dài: Ghi chú vào hạng mục kiểm tra định kỳ trạng thái của block siết vít.\n- **Báo cáo gốc:** `Loi KDTPS.xlsx › History KDTPS › dòng 11723`\n\n**3. Phiếu 2025/953** (Virgo / C22)\n- **Máy:** Virgo | **Serial:** 1102Z43NL0 H7Y5613162 | **Ngày phát sinh:** 2025-06-18\n- **Hiện tượng:** C7620\n- **Nguyên nhân:** 不要\n- **Đối sách:** Nhắc nhở NTT trong quá trình lắp ráp chú ý khi có bất thường như va chạm thì phải liên lạc với Leader để xử lý. Đồng thời cải tiến Line out lại vị trí để Tovit thấp xuống dưới để không va chạm.\n- **Báo cáo gốc:** `Loi KDTPS.xlsx › History KDTPS › dòng 9407`\n\n**4. Phiếu 2024/286** (Iris2020 下位 / C35)\n- **Máy:** Iris2020 下位 | **Serial:** 1102XD3KR2 18Z4401722 | **Ngày phát sinh:** 2024-04-22\n- **Hiện tượng:** LCD画面にResult - C1FF表示\n- **Nguyên nhân:** 要因不明(製造)\n- **Đối sách:** 不要\n- **Báo cáo gốc:** `old/2024年4月～6月機器製造 品質状況 Tình hình chất lượng chế tạo máy 2024(quý 1).xlsx › Sheet1 › dòng 288`\n\n**5. Phiếu 2026/2394** (Virgo / C21)\n- **Máy:** Virgo | **Serial:** 1102Z32US0 H7U6810314 | **Ngày phát sinh:** 2026-08-25\n- **Hiện tượng:** C7620 ( Color registration timing error)\n- **Nguyên nhân:** 不要\n- **Đối sách:** ＋Y Drumを新品に交換後、OFF/ON：0/20台 NG ＋再度旧Y Drumを取り付けて確認した結果：1/20台 NG ＋原因：Y Drumの傷によるもの →機器製造 調査中\n- **Báo cáo gốc:** `Loi KDTPS.xlsx › History KDTPS › dòng 15683`\n\n---\n_Nguồn trích dẫn: Cơ sở dữ liệu ca lỗi KDTPS Bước 0–5 (30.075 ca lịch sử) và Danh mục mã lỗi tự chẩn đoán._",
+      "anh": [
+        {
+          "filename": "anh-step1-01-cu-ma-loi-pho-bien-c7620.png",
+          "size_bytes": 86123,
+          "sha256": "7DE004F9C5A732A1C593EBB94E854C93B6BC8B6DFFB7DD3AE53EF996D58EB1BF",
+          "local_path": "D:\\Sandbox\\AIOS_habbit\\docs\\phieu-viec\\ket-qua\\anh-step1-01-cu-ma-loi-pho-bien-c7620.png",
+          "desktop_path": "D:\\Sandbox\\aios-dieu-phoi-desktop\\hop-thu\\lan-desktop\\ket-qua\\anh-step1-01-cu-ma-loi-pho-bien-c7620.png"
+        },
+        {
+          "filename": "anh-step1-02-cu-cite-c7620-source-viewer.png",
+          "size_bytes": 145088,
+          "sha256": "DE0B25BA0CB0DEA9FF373A7D77585C384C2A426A366EC763EBA19A5F5365B1AB",
+          "local_path": "D:\\Sandbox\\AIOS_habbit\\docs\\phieu-viec\\ket-qua\\anh-step1-02-cu-cite-c7620-source-viewer.png",
+          "desktop_path": "D:\\Sandbox\\aios-dieu-phoi-desktop\\hop-thu\\lan-desktop\\ket-qua\\anh-step1-02-cu-cite-c7620-source-viewer.png"
+        }
+      ],
+      "sql_ground_truth": {
+        "error_code_i_count": 136,
+        "raw_json_count": 145,
+        "union_count": 145
+      }
+    },
+    {
+      "id": "CAU_02",
+      "loai": "ma_loi_hiem",
+      "so": "NB-LAZY-DTL",
+      "cau_hoi": "Tra cứu mã lỗi C0060",
+      "thoi_gian_s": 2.64,
+      "cau_tra_loi_nguyen_van": "**Tra cứu lỗi tương tự**\n\nTìm thấy **5** ca lỗi liên quan đến **C0060** trong **30.075** ca lịch sử.\n_Từ điển mã lỗi (C_CALL): Lỗi bảng mạch chính_ — Nguyên nhân: Tham khảo controller · Khắc phục: VI 1. Xác nhận SSD — NN: Gắn SSD đã cho Firm ware vào mà không dùng cho loại máy tương tự → XL: Yêu cầu gắn SSD đã cho Firm ware vào mà không dùng cho loại máy… · Nguồn: 02XC_自己診断表示一覧表-Iris2020 VN.xls\n\n### 1. Phiếu 2025/1978 · Iris2024 Mono / C33 · C CALL\n- **Máy:** Iris2024 Mono | **Serial:** 110C2S2US0 1G55809417 | **Ngày phát sinh:** 2025-08-22\n- **Hiện tượng:** C0060\n- **Nguyên nhân:** 不要\n- **Đối sách:** - Do liên quan đến quá trình hoạt động của thiết bị điện tử phát sinh lỗi và không tái hiện lại được lỗi nên bên phía IT chưa có đối sách lâu dài.\n- **Báo cáo gốc:** `Loi KDTPS.xlsx › History KDTPS › dòng 10432`\n\n### 2. Phiếu 2024/550 · Libra / A23 · C CALL\n- **Máy:** Libra | **Serial:** 1102S03NL0 VC64586117 | **Ngày phát sinh:** 2024-05-15\n- **Hiện tượng:** C6400表示\n- **Nguyên nhân:** 部品要因(電気)\n- **Đối sách:** 不要\n- **Báo cáo gốc:** `old/2024年4月～6月機器製造 品質状況 Tình hình chất lượng chế tạo máy 2024(quý 1).xlsx › Sheet1 › dòng 552`\n\n### 3. Phiếu 2022/2701 · 6th Next / A16 · C CALL\n- **Máy:** 6th Next | **Serial:** 110C0W3NL0 WD42Z10883 | **Ngày phát sinh:** 2022-12-12\n- **Hiện tượng:** LCD画面がPlease Wait表示後、6000表示\n- **Nguyên nhân:** 部品要因(電気)\n- **Đối sách:** 不要\n- **Báo cáo gốc:** `old/2022年機器製造 品質状況 Tình hình chất lượng chế tạo máy 2022(10～）.xlsx › Sheet1 › dòng 730`\n\n### 4. Phiếu FY27H2/18 · Virgo / C21 · C CALL\n- **Máy:** Virgo | **Serial:** 1102Z63NL0 H846X40544 | **Ngày phát sinh:** 2026-10-01\n- **Hiện tượng:** C7613 ※Bias calibrationabnormal read value (Magenta)\n- **Nguyên nhân:** 作業\n- **Đối sách:** 不要\n- **Báo cáo gốc:** `FY2027下期機器製造 品質状況 Tình hình chất lượng chế tạo máy FY2027 (6 tháng cuối năm).xlsx › Sheet1 › dòng 20`\n\n### 5. Phiếu 2026/2394 · Virgo / C21 · C CALL\n- **Máy:** Virgo | **Serial:** 1102Z32US0 H7U6810314 | **Ngày phát sinh:** 2026-08-25\n- **Hiện tượng:** C7620 ( Color registration timing error)\n- **Nguyên nhân:** 不要\n- **Đối sách:** ＋Y Drumを新品に交換後、OFF/ON：0/20台 NG ＋再度旧Y Drumを取り付けて確認した結果：1/20台 NG ＋原因：Y Drumの傷によるもの →機器製造 調査中\n- **Báo cáo gốc:** `Loi KDTPS.xlsx › History KDTPS › dòng 15683`\n\n_Nguồn: DB ca lỗi Bước 0–5 (lịch sử KDTPS thật). Muốn đào sâu một ca, hỏi theo mã phiếu (VD: `phiếu 2023/5`)._\n\n---\n**Đánh giá gợi ý này:** `đánh giá đúng` · `đánh giá sai` · `đánh giá một phần`\n_Gõ ngay trong ô chat — không cần mở thêm gì._",
+      "anh": [
+        {
+          "filename": "anh-step1-03-cu-ma-loi-hiem-c0060.png",
+          "size_bytes": 88762,
+          "sha256": "E2C7124B38A934B57117F5F0C6F94C34D3F8474CAA81315A1B9F1D7C5CBF60EF",
+          "local_path": "D:\\Sandbox\\AIOS_habbit\\docs\\phieu-viec\\ket-qua\\anh-step1-03-cu-ma-loi-hiem-c0060.png",
+          "desktop_path": "D:\\Sandbox\\aios-dieu-phoi-desktop\\hop-thu\\lan-desktop\\ket-qua\\anh-step1-03-cu-ma-loi-hiem-c0060.png"
+        }
+      ],
+      "sql_ground_truth": {
+        "error_code_i_count": 1,
+        "raw_json_count": 2,
+        "union_count": 2
+      }
+    },
+    {
+      "id": "CAU_03",
+      "loai": "hien_tuong_co_dau",
+      "so": "NB-LAZY-DTL",
+      "cau_hoi": "Máy in bị lệch lề khi in tờ postcard",
+      "thoi_gian_s": 2.81,
+      "cau_tra_loi_nguyen_van": "Dựa trên các tài liệu kỹ thuật đính kèm (`Loi KDTPS.xlsx`), tình trạng máy in bị lệch lề khi in tờ postcard được ghi nhận qua các trường hợp cụ thể như sau:\n\n* **Trường hợp 1 (Máy H7S3X00044 và H7S3X00431):**\n  * **Hiện trạng:** NTT in tờ Post Card phát hiện bị lệch lề.\n  * **Tiêu chuẩn:** $\\le 1\\text{mm}$.\n  * **Thực tế đo đạc:** \n    * Máy `H7S3X00044`: Lần 1: $1.5\\text{mm}$, Lần 2: $1.5\\text{mm}$.\n    * Máy `H7S3X00431`: Lần 1: $1.5\\text{mm}$, Lần 2: $0.7\\text{mm}$, Lần 3: $1.0\\text{mm}$, Lần 4: $0.8\\text{mm}$, Lần 5: $1.2\\text{mm}$.\n  * **Kết quả điều tra/xử lý:** Line out máy chờ điều tra, lấy máy OK (`H7V3X03901`) để tái hiện và tiến hành chéo các linh kiện `ROLLER MPF FEED B`, cho thấy các giá trị dịch chuyển qua nhiều lần in thử nghiệm.\n\n* **Trường hợp 2:**\n  * **Hiện trạng:** NTT in Postcard kiểm tra hình ảnh thấy bị lệch lề.\n  * **Tiêu chuẩn:** $1.0\\text{mm}$.\n  * **Thực tế:** $1.2 - 1.4\\text{mm}$ (hoặc thực tế đo là $1.3\\text{mm}$).\n  * **Kết quả điều tra/xử lý:** Đo linh kiện `ROLLER MPF FEED B - 302NR08200` kết quả OK. Thay `ROLLER MPF FEED B` mới cho 2 máy -> in lại OK. Lắp lại `ROLLER MPF FEED B` cũ -> in lại OK. In lại thêm 15 tờ POST CARD, kết quả OK nên xử lý là lỗi không tái hiện.\n\n* **Trường hợp 3:**\n  * **Hiện trạng:** Lệch lề tờ Post Card khi nhân viên in.\n  * **Tiêu chuẩn:** Dưới $1\\text{mm}$.\n  * **Thực tế:** Đo được $2.0\\text{mm}$. In lại 3 tờ Post Card cho giá trị NG lần lượt là $1.8$, $1.9$, $1.5$.\n  * **Kết quả điều tra/xử lý:** Line out điều tra, thay 3 pcs `ROLLER MPF FEED B` trên `Guide MPF Feed Up` vẫn bị NG. Cross Check cụm `Pick Up Feed Assy` (máy OK và máy NG), trả lại trạng thái ban đầu thì mất hiện trạng (tái hiện 15 lần đều OK), viết biểu không tái hiện.",
+      "anh": [
+        {
+          "filename": "anh-step1-04-cu-hien-tuong-co-dau-postcard.png",
+          "size_bytes": 69465,
+          "sha256": "BCBB144869C314A2842D106D3D2CA401F647E9449A62F76077E11B96668A7EA3",
+          "local_path": "D:\\Sandbox\\AIOS_habbit\\docs\\phieu-viec\\ket-qua\\anh-step1-04-cu-hien-tuong-co-dau-postcard.png",
+          "desktop_path": "D:\\Sandbox\\aios-dieu-phoi-desktop\\hop-thu\\lan-desktop\\ket-qua\\anh-step1-04-cu-hien-tuong-co-dau-postcard.png"
+        }
+      ],
+      "sql_ground_truth": {
+        "count": 8
+      }
+    },
+    {
+      "id": "CAU_04",
+      "loai": "hien_tuong_khong_dau",
+      "so": "NB-LAZY-DTL",
+      "cau_hoi": "may in bi lech le khi in to postcard",
+      "thoi_gian_s": 2.77,
+      "cau_tra_loi_nguyen_van": "Dựa trên các tài liệu kỹ thuật đính kèm (`Loi KDTPS.xlsx`), hiện tượng máy in bị lệch lề khi in tờ postcard được ghi nhận qua các trường hợp cụ thể sau:\n\n1. **Trường hợp 1 (Ghi nhận trong tệp [6] Loi KDTPS.xlsx):**\n   * **Nội dung sự việc:** Cardを検査時に発生 | NG cấp giấy nghiêng tờ Postcard NTT in Postcard -> Kiểm tra hình ảnh thấy bị lệch lề.\n   * **Thông số kỹ thuật:** Tiêu chuẩn: $\\le 1\\text{mm}$ | Thực tế: $1.1\\text{mm}$.\n   * **Quá trình kiểm tra & xử lý:** Line out máy -> Tháo Conveying, Cover Rear, Roller Middle, Pick up -> kiểm tra không thấy bất thường -> Lắp lại In hình ảnh -> OK (Mất hiện trạng). Xác nhận chưa tháo cụm GUIDE MPF FEED UP & ROLLER MPF FEED B -> Liên lạc các bên liên quan xác nhận điều tra thêm. Lập biểu không tái hiện cho máy đi.\n\n2. **Trường hợp 2 (Ghi nhận trong tệp [7] Loi KDTPS.xlsx):**\n   * **Nội dung sự việc:** Cardを検査時に発生 | NTT in Postcard -> Kiểm tra hình ảnh thấy bị lệch lề.\n   * **Thông số kỹ thuật:** Tiêu chuẩn: $\\le 1\\text{mm}$ | Thực tế: $1.3\\text{mm}$ (hoặc $1.2 - 1.4\\text{mm}$).\n   * **Quá trình kiểm tra & xử lý:** Line out máy. Đo linh kiện `ROLLER MPF FEED B` - `302NR08200` -> Kết quả OK. 2 máy thay `ROLLER MPF FEED B` mới -> In lại -> OK. Lắp lại `ROLLER MPF FEED B` cũ -> In lại -> OK. In lại 15 tờ POST CARD, nếu OK thì lập biểu không tái hiện cho máy quay lại LINE.",
+      "anh": [
+        {
+          "filename": "anh-step1-05-cu-hien-tuong-khong-dau-postcard.png",
+          "size_bytes": 84368,
+          "sha256": "E2E56288B5FACD6BD60AF2262973C0160C2EAC6DD54180A77C250E3E54651B6F",
+          "local_path": "D:\\Sandbox\\AIOS_habbit\\docs\\phieu-viec\\ket-qua\\anh-step1-05-cu-hien-tuong-khong-dau-postcard.png",
+          "desktop_path": "D:\\Sandbox\\aios-dieu-phoi-desktop\\hop-thu\\lan-desktop\\ket-qua\\anh-step1-05-cu-hien-tuong-khong-dau-postcard.png"
+        }
+      ],
+      "sql_ground_truth": {
+        "count": 8
+      }
+    },
+    {
+      "id": "CAU_05",
+      "loai": "loc_may_serial_ngay",
+      "so": "NB-LAZY-DTL",
+      "cau_hoi": "máy 6th Next serial WD72Z12772 từ 2023-01-01 đến 2023-01-31",
+      "thoi_gian_s": 2.52,
+      "cau_tra_loi_nguyen_van": "**Tra cứu lỗi tương tự**\n\nĐang lọc theo: dòng máy **6thNext**. số serial **WD72Z12772**. từ 2023-01-01 đến 2023-01-31. Tìm thấy **1** ca phù hợp trong CSDL 30.075 ca lịch sử (hiển thị 1 ca):\n\n### 1. Phiếu 2023/1 · 6th Next / A15 · ERROR\n- **Máy:** 6th Next | **Serial:** 110C0Y3NL0 WD72Z12772 | **Ngày phát sinh:** 2023-01-05\n- **Hiện tượng:** LCD画面に\"Close top cover\"表示\n- **Nguyên nhân:** 部品要因(電気)\n- **Đối sách:** 不要\n- **Báo cáo gốc:** `Loi KDTPS.xlsx › History KDTPS › dòng 5`\n\n_Nguồn: DB ca lỗi Bước 0–5 (lịch sử KDTPS thật). Muốn đào sâu một ca, hỏi theo mã phiếu (VD: `phiếu 2023/5`)._\n\n---\n**Đánh giá gợi ý này:** `đánh giá đúng` · `đánh giá sai` · `đánh giá một phần`\n_Gõ ngay trong ô chat — không cần mở thêm gì._",
+      "anh": [
+        {
+          "filename": "anh-step1-06-cu-loc-may-serial-ngay.png",
+          "size_bytes": 90910,
+          "sha256": "7F25D3E5AF92C6247356A4E46DBF95648B3EB5200F2112F9B35282C57F3EF488",
+          "local_path": "D:\\Sandbox\\AIOS_habbit\\docs\\phieu-viec\\ket-qua\\anh-step1-06-cu-loc-may-serial-ngay.png",
+          "desktop_path": "D:\\Sandbox\\aios-dieu-phoi-desktop\\hop-thu\\lan-desktop\\ket-qua\\anh-step1-06-cu-loc-may-serial-ngay.png"
+        },
+        {
+          "filename": "anh-step1-07-cu-cite-serial-row5-source-viewer.png",
+          "size_bytes": 133583,
+          "sha256": "444357C304738B2071EC73AB39FF5511688BD0BC7128BE8CB46B017A88FA25C4",
+          "local_path": "D:\\Sandbox\\AIOS_habbit\\docs\\phieu-viec\\ket-qua\\anh-step1-07-cu-cite-serial-row5-source-viewer.png",
+          "desktop_path": "D:\\Sandbox\\aios-dieu-phoi-desktop\\hop-thu\\lan-desktop\\ket-qua\\anh-step1-07-cu-cite-serial-row5-source-viewer.png"
+        }
+      ],
+      "sql_ground_truth": {
+        "count": 1,
+        "rows": [
+          {
+            "id": 1,
+            "no_dvd": "2023/1",
+            "machine_type": "6th Next ",
+            "occurred_at": "2023-01-05",
+            "error_code_h": "ERROR",
+            "error_code_i": null,
+            "source_row": 5
+          }
+        ]
+      }
+    },
+    {
+      "id": "CAU_06",
+      "loai": "tim_kiem_mang_mang",
+      "so": "NB-LAZY-DTL",
+      "cau_hoi": "tiếng kêu bất thường khi khởi động máy",
+      "thoi_gian_s": 2.77,
+      "cau_tra_loi_nguyen_van": "Dựa trên tài liệu kỹ thuật đính kèm về hiện tượng tiếng kêu bất thường khi khởi động máy, dưới đây là các thông tin chi tiết:\n\n* **Phát hiện âm thanh lạ bất thường khi bật máy (khởi động):**\n  - Hiện tượng xảy ra khi bật máy để thực hiện thao tác, đồng thời phát sinh ở cả quá trình khởi động, copy và in.\n  - **Nguyên nhân liên quan:** Do **MAIN DRIVE ASSY**.\n  - **Điều tra và xử lý:** \n    - Thay thế MAIN DRIVE ASSY mới thì cho kết quả OK.\n    - Lắp tái hiện MAIN DRIVE ASSY sang máy khác thì tiếp tục xuất hiện âm thanh lạ.\n    - Biện pháp tạm thời: Ngoại trừ đánh giá âm thanh lạ này.\n    - Biện pháp lâu dài: Cải tiến linh kiện GEAR WORM của DC MOTOR.\n\n* **Trường hợp phát hiện âm thanh lạ khác khi bật máy / line out máy:**\n  - Có trường hợp phát sinh do **Fuser Drive L Assy** (hoặc DC motor assy B).\n  - Nguyên nhân xác định có thể doギアZ23S (bánh răng Z23S) bị mẻ/khuyết gây ra tiếng ồn. Nhà cung cấp đã thay đổi phương pháp đóng gói sang dạng khơi/thùng (トレー梱包) để cải thiện do nghi ngờ ảnh hưởng từ lực va đập nhẹ trong quá trình vận chuyển đường dài.",
+      "anh": [
+        {
+          "filename": "anh-step1-08-cu-tim-kiem-mang-mang.png",
+          "size_bytes": 83915,
+          "sha256": "EA6F25C7B37D94A9CCE31E669AF59225CA047C4341BC3B1C7870223480C90141",
+          "local_path": "D:\\Sandbox\\AIOS_habbit\\docs\\phieu-viec\\ket-qua\\anh-step1-08-cu-tim-kiem-mang-mang.png",
+          "desktop_path": "D:\\Sandbox\\aios-dieu-phoi-desktop\\hop-thu\\lan-desktop\\ket-qua\\anh-step1-08-cu-tim-kiem-mang-mang.png"
+        }
+      ],
+      "sql_ground_truth": {
+        "count": 1187
+      }
+    },
+    {
+      "id": "CAU_07",
+      "loai": "cau_hoi_tai_lieu_1",
+      "so": "NB-LAZY-LSU",
+      "cau_hoi": "SIM tape được dán ở đâu, dày bao nhiêu và trình tự thao tác thế nào?",
+      "thoi_gian_s": 3.56,
+      "cau_tra_loi_nguyen_van": "> ⚠️ **LƯU Ý: CÂU TRẢ LỜI ĐƯỢC SUY LUẬN TỰ ĐỘNG BỞI AI**  \n> *Nội dung này hiện CHƯA CÓ trong kho tri thức nội bộ của công ty. Đây chỉ là nhận định kỹ thuật chung mang tính tham khảo. Bạn nên kiểm chứng lại với tài liệu thiết kế gốc hoặc chuyên gia phụ trách.*\n\n### 💡 Nhận định & Suy luận Kỹ thuật (Tham khảo):\n\n> ⚠️ **[Bản thảo - chưa kiểm chứng qua chuyên gia] | Nguồn: lsu/batch-17.md**\n\nDán SIM tape dày `40 µm` tại điểm đỡ `119.h2` của `MIRROR C`. Trình tự: ⓪ tháo LID → ① tháo Spring → ② dán SIM, dùng vật tư chung `302HS19850` → ③ cố định lại Spring → ④ lắp LID → ⑤ điều chỉnh và đo. Nguồn file: `Sirius 2 _ C7620_報告版 4.pptx`.\n\n### 🔍 Các bước khuyến nghị kiểm tra / xác thực:\n\n1. Kiểm tra lại tên chính xác của thiết bị hoặc tài liệu nghiệp vụ tương ứng.\n2. Đối chiếu các tham số và mã cảnh báo hiển thị trên giao diện điều khiển thực tế.\n3. Trao đổi trực tiếp với kỹ sư phụ trách miền để được cung cấp tài liệu SOP hoặc bản vẽ kỹ thuật.\n\n---\n### ⚡ Hành động tiếp nối:\n- **[🎓 Dạy AIOS điều này]**: Bổ sung thông tin chuẩn xác vào kho tri thức cá nhân hoặc công ty\n- **[👨‍💼 Hỏi chuyên gia miền]**: Chuyển thắc mắc vào hàng đợi của kỹ sư/chuyên gia phụ trách\n- **[🌐 Hỏi AI ngoài]**: Chuyển ngữ cảnh sang mô hình ngoại vi (Gemini/ChatGPT) để tham khảo",
+      "anh": [
+        {
+          "filename": "anh-step1-09-cu-tai-lieu-lsu-sim-tape.png",
+          "size_bytes": 106545,
+          "sha256": "CB64DFCF4FF943970F5CAC3285A44FDC9F218060AAC7A596333E36AD14E3719E",
+          "local_path": "D:\\Sandbox\\AIOS_habbit\\docs\\phieu-viec\\ket-qua\\anh-step1-09-cu-tai-lieu-lsu-sim-tape.png",
+          "desktop_path": "D:\\Sandbox\\aios-dieu-phoi-desktop\\hop-thu\\lan-desktop\\ket-qua\\anh-step1-09-cu-tai-lieu-lsu-sim-tape.png"
+        }
+      ]
+    },
+    {
+      "id": "CAU_08",
+      "loai": "cau_hoi_tai_lieu_2",
+      "so": "NB-LAZY-LSU",
+      "cau_hoi": "Theo tài liệu OKNGUNITのCO・BRACKETの倒れ・傾き確認結果.xlsx, Bracketの測定値を見るだけで斜め光NG原因を確定できますか。",
+      "thoi_gian_s": 0.16,
+      "cau_tra_loi_nguyen_van": "> ⚠️ **LƯU Ý: CÂU TRẢ LỜI ĐƯỢC SUY LUẬN TỰ ĐỘNG BỞI AI**  \n> *Nội dung này hiện CHƯA CÓ trong kho tri thức nội bộ của công ty. Đây chỉ là nhận định kỹ thuật chung mang tính tham khảo. Bạn nên kiểm chứng lại với tài liệu thiết kế gốc hoặc chuyên gia phụ trách.*\n\n### 💡 Nhận định & Suy luận Kỹ thuật (Tham khảo):\n\n> ⚠️ **[Bản thảo - chưa kiểm chứng qua chuyên gia] | Nguồn: lsu/batch-17.md**\n\n`NG UNIT (5554)`と`OK UNIT (5562)`を比較しています。Beam調整治具から取り出した状態で、LENS COやLD BRACKETの倒れ・傾きを確認しています。出典ファイル：`OKNGUNITのCO・BRACKETの倒れ・傾き確認結果.xlsx`.\n\n### 🔍 Các bước khuyến nghị kiểm tra / xác thực:\n\n1. Kiểm tra lại tên chính xác của thiết bị hoặc tài liệu nghiệp vụ tương ứng.\n2. Đối chiếu các tham số và mã cảnh báo hiển thị trên giao diện điều khiển thực tế.\n3. Trao đổi trực tiếp với kỹ sư phụ trách miền để được cung cấp tài liệu SOP hoặc bản vẽ kỹ thuật.\n\n---\n### ⚡ Hành động tiếp nối:\n- **[🎓 Dạy AIOS điều này]**: Bổ sung thông tin chuẩn xác vào kho tri thức cá nhân hoặc công ty\n- **[👨‍💼 Hỏi chuyên gia miền]**: Chuyển thắc mắc vào hàng đợi của kỹ sư/chuyên gia phụ trách\n- **[🌐 Hỏi AI ngoài]**: Chuyển ngữ cảnh sang mô hình ngoại vi (Gemini/ChatGPT) để tham khảo",
+      "anh": [
+        {
+          "filename": "anh-step1-10-cu-tai-lieu-lsu-bracket.png",
+          "size_bytes": 87672,
+          "sha256": "2E72811D41428C45B128DC55929639D2A8F43D16C5800EE94266D9830D921DEA",
+          "local_path": "D:\\Sandbox\\AIOS_habbit\\docs\\phieu-viec\\ket-qua\\anh-step1-10-cu-tai-lieu-lsu-bracket.png",
+          "desktop_path": "D:\\Sandbox\\aios-dieu-phoi-desktop\\hop-thu\\lan-desktop\\ket-qua\\anh-step1-10-cu-tai-lieu-lsu-bracket.png"
+        }
+      ]
+    },
+    {
+      "id": "CAU_09",
+      "loai": "bay_xuyen_so",
+      "so": "NB-LAZY-MOM",
+      "cau_hoi": "Trong hệ thống MOM Opcenter, xử lý lỗi kẹt giấy JAM4212 như thế nào?",
+      "thoi_gian_s": 0.34,
+      "cau_tra_loi_nguyen_van": "> ⚠️ **LƯU Ý: CÂU TRẢ LỜI ĐƯỢC SUY LUẬN TỰ ĐỘNG BỞI AI**  \n> *Nội dung này hiện CHƯA CÓ trong kho tri thức nội bộ của công ty. Đây chỉ là nhận định kỹ thuật chung mang tính tham khảo. Bạn nên kiểm chứng lại với tài liệu thiết kế gốc hoặc chuyên gia phụ trách.*\n\n### 💡 Nhận định & Suy luận Kỹ thuật (Tham khảo):\n\nVề câu hỏi *'Trong hệ thống MOM Opcenter, xử lý lỗi kẹt giấy JAM4212 như thế nào?'*, hệ thống chưa tìm thấy dữ liệu đối chiếu trực tiếp trong các tài liệu nội bộ đã bật. Theo nguyên lý kỹ thuật chung: Hãy xác định rõ mã thiết bị/model, kiểm tra trạng thái hoạt động trên màn hình điều khiển, đối chiếu bảng mã lỗi chuẩn và thu thập nhật ký vận hành tại thời điểm xảy ra sự cố.\n\n### 🔍 Các bước khuyến nghị kiểm tra / xác thực:\n\n1. Kiểm tra lại tên chính xác của thiết bị hoặc tài liệu nghiệp vụ tương ứng.\n2. Đối chiếu các tham số và mã cảnh báo hiển thị trên giao diện điều khiển thực tế.\n3. Trao đổi trực tiếp với kỹ sư phụ trách miền để được cung cấp tài liệu SOP hoặc bản vẽ kỹ thuật.\n\n---\n### ⚡ Hành động tiếp nối:\n- **[🎓 Dạy AIOS điều này]**: Bổ sung thông tin chuẩn xác vào kho tri thức cá nhân hoặc công ty\n- **[👨‍💼 Hỏi chuyên gia miền]**: Chuyển thắc mắc vào hàng đợi của kỹ sư/chuyên gia phụ trách\n- **[🌐 Hỏi AI ngoài]**: Chuyển ngữ cảnh sang mô hình ngoại vi (Gemini/ChatGPT) để tham khảo",
+      "anh": [
+        {
+          "filename": "anh-step1-11-cu-bay-xuyen-so-mom-jam4212.png",
+          "size_bytes": 21284,
+          "sha256": "D44D79A920CAAF67F60D2BD453916E8996D7023551B411EAB31F611C76F911CD",
+          "local_path": "D:\\Sandbox\\AIOS_habbit\\docs\\phieu-viec\\ket-qua\\anh-step1-11-cu-bay-xuyen-so-mom-jam4212.png",
+          "desktop_path": "D:\\Sandbox\\aios-dieu-phoi-desktop\\hop-thu\\lan-desktop\\ket-qua\\anh-step1-11-cu-bay-xuyen-so-mom-jam4212.png"
+        }
+      ],
+      "sql_ground_truth": {
+        "error_code_i_count": 24,
+        "raw_json_count": 26
+      }
+    },
+    {
+      "id": "CAU_10",
+      "loai": "khong_du_lieu_trung_thuc",
+      "so": "NB-LAZY-DTL",
+      "cau_hoi": "Thủ tục xin visa du lịch Thụy Sĩ năm 2026 cần những giấy tờ gì?",
+      "thoi_gian_s": 2.87,
+      "cau_tra_loi_nguyen_van": "> ⚠️ **LƯU Ý: CÂU TRẢ LỜI ĐƯỢC SUY LUẬN TỰ ĐỘNG BỞI AI**  \n> *Nội dung này hiện CHƯA CÓ trong kho tri thức nội bộ của công ty. Đây chỉ là nhận định kỹ thuật chung mang tính tham khảo. Bạn nên kiểm chứng lại với tài liệu thiết kế gốc hoặc chuyên gia phụ trách.*\n\n### 💡 Nhận định & Suy luận Kỹ thuật (Tham khảo):\n\nVề câu hỏi *'Thủ tục xin visa du lịch Thụy Sĩ năm 2026 cần những giấy tờ gì?'*, hệ thống chưa tìm thấy dữ liệu đối chiếu trực tiếp trong các tài liệu nội bộ đã bật. Theo nguyên lý kỹ thuật chung: Hãy xác định rõ mã thiết bị/model, kiểm tra trạng thái hoạt động trên màn hình điều khiển, đối chiếu bảng mã lỗi chuẩn và thu thập nhật ký vận hành tại thời điểm xảy ra sự cố.\n\n### 🔍 Các bước khuyến nghị kiểm tra / xác thực:\n\n1. Kiểm tra lại tên chính xác của thiết bị hoặc tài liệu nghiệp vụ tương ứng.\n2. Đối chiếu các tham số và mã cảnh báo hiển thị trên giao diện điều khiển thực tế.\n3. Trao đổi trực tiếp với kỹ sư phụ trách miền để được cung cấp tài liệu SOP hoặc bản vẽ kỹ thuật.\n\n---\n### ⚡ Hành động tiếp nối:\n- **[🎓 Dạy AIOS điều này]**: Bổ sung thông tin chuẩn xác vào kho tri thức cá nhân hoặc công ty\n- **[👨‍💼 Hỏi chuyên gia miền]**: Chuyển thắc mắc vào hàng đợi của kỹ sư/chuyên gia phụ trách\n- **[🌐 Hỏi AI ngoài]**: Chuyển ngữ cảnh sang mô hình ngoại vi (Gemini/ChatGPT) để tham khảo",
+      "anh": [
+        {
+          "filename": "anh-step1-12-cu-khong-du-lieu-trung-thuc.png",
+          "size_bytes": 85483,
+          "sha256": "094519ED5B049C8A00C19A1384335AB2E2C3CAA526833AF74566C600D7434F10",
+          "local_path": "D:\\Sandbox\\AIOS_habbit\\docs\\phieu-viec\\ket-qua\\anh-step1-12-cu-khong-du-lieu-trung-thuc.png",
+          "desktop_path": "D:\\Sandbox\\aios-dieu-phoi-desktop\\hop-thu\\lan-desktop\\ket-qua\\anh-step1-12-cu-khong-du-lieu-trung-thuc.png"
+        }
+      ]
+    },
+    {
+      "id": "BUOC_2_CLOSE_GATE",
+      "loai": "cong_dong_vu_buoc_2",
+      "so": "NB-LAZY-DTL",
+      "lenh_thu_thieu_truong": "đóng vụ CASE-CU-STEP2-FIXTURE",
+      "phan_hoi_cong_chan": "### 🚫 CỔNG CHẶN ĐÓNG VỤ (Điều kiện hoàn thành Bước 2)\n\n**Không thể đóng vụ điều tra `CASE-CU-STEP2-FIXTURE` vì thiếu thông tin bắt buộc!**\n\n- **Trường còn thiếu:** **nguyên nhân thật (actual_cause)** và **đối sách thật (actual_countermeasure)**\n- **Trạng thái hiện tại:** Vẫn giữ nguyên trạng thái mở/điều tra, không cho phép đóng hồ sơ.\n\n> ⚠️ **Quy tắc tất định Bước 2:** Để đảm bảo chất lượng dữ liệu cải tiến liên tục, mọi vụ điều tra sự cố bắt buộc phải xác định rõ **nguyên nhân thật** và **đối sách thật** trước khi đóng hồ sơ.\n\n**Vui lòng bổ sung đầy đủ theo cú pháp:**\n```text\nĐóng vụ CASE-CU-STEP2-FIXTURE: nguyên nhân: <nguyên nhân thật>, đối sách: <đối sách thật>\n```",
+      "lenh_dong_hop_le": "đóng vụ CASE-CU-STEP2-FIXTURE: nguyên nhân: hỏng bánh răng truyền động motor giải áp M2; đối sách: thay mới cụm bánh răng truyền động 150-3M",
+      "phan_hoi_thanh_cong": "### ✅ ĐÃ ĐÓNG VỤ ĐIỀU TRA THÀNH CÔNG (Cổng Bước 2 Đạt)\n\n📌 **Hồ sơ:** Vụ **`CASE-CU-STEP2-FIXTURE`**\n- **Tiêu đề:** Sự cố kẹt sấy và motor giải áp timeout\n- **Trạng thái:** **Đã giải quyết (`resolved`)**\n- **Nguyên nhân thật:** **hỏng bánh răng truyền động motor giải áp M2**\n- **Đối sách thật:** **thay mới cụm bánh răng truyền động 150-3M**\n- **Thời điểm đóng:** `2026-10-22T12:46:47.696586`\n- **Kho lưu trữ:** Đã cập nhật hồ sơ vào `local_cases/cases.jsonl` và ghi nhật ký đóng tại `local_cases/case_closures.jsonl`.\n- **Kho tri thức RAG:** *Bảo toàn độc lập tuyệt đối (không ghi đè cơ sở dữ liệu tri thức tĩnh `library.sqlite`).*\n",
+      "thoi_gian_chan_s": 2.95,
+      "thoi_gian_dong_s": 3.2,
+      "anh": [
+        {
+          "filename": "anh-step2-13-cu-dong-vu-thieu-nguyen-nhan-blocked.png",
+          "size_bytes": 125987,
+          "sha256": "E4D34DC306D7098428892DB9CF716705BEF25E44C880ED7F1E92BF5D8BD4804D",
+          "local_path": "D:\\Sandbox\\AIOS_habbit\\docs\\phieu-viec\\ket-qua\\anh-step2-13-cu-dong-vu-thieu-nguyen-nhan-blocked.png",
+          "desktop_path": "D:\\Sandbox\\aios-dieu-phoi-desktop\\hop-thu\\lan-desktop\\ket-qua\\anh-step2-13-cu-dong-vu-thieu-nguyen-nhan-blocked.png"
+        },
+        {
+          "filename": "anh-step2-14-cu-dong-vu-hop-le-thanh-cong.png",
+          "size_bytes": 125596,
+          "sha256": "82F47583D43AF1A3BABA66773C9DB2CBC380D237138A1C7464335515F1658B3E",
+          "local_path": "D:\\Sandbox\\AIOS_habbit\\docs\\phieu-viec\\ket-qua\\anh-step2-14-cu-dong-vu-hop-le-thanh-cong.png",
+          "desktop_path": "D:\\Sandbox\\aios-dieu-phoi-desktop\\hop-thu\\lan-desktop\\ket-qua\\anh-step2-14-cu-dong-vu-hop-le-thanh-cong.png"
+        }
+      ],
+      "kiem_chung_ghi_nguoc": {
+        "case_id": "CASE-CU-STEP2-FIXTURE",
+        "status": "resolved",
+        "actual_cause": "hỏng bánh răng truyền động motor giải áp M2",
+        "actual_countermeasure": "thay mới cụm bánh răng truyền động 150-3M",
+        "closed_at": "2026-10-22T12:46:47.696586"
+      }
+    }
+  ],
+  "feedback_coverage": {
+    "tong_hien_thi": 158,
+    "tong_da_danh_gia": 60,
+    "ti_le_bao_phu": 0.379746835443038,
+    "ti_le_phan_tram": 38.0,
+    "muc_tieu": 0.8,
+    "dat_muc_tieu": false,
+    "moc_thoi_gian": "2026-10-22 13:05:44",
+    "dinh_nghia_mau_so": "Tổng số lượt đáp án hội thoại và gợi ý nghiệp vụ (tra cứu ca tương tự, cây điều tra 4M, gợi ý phân loại) được hiển thị kèm cơ chế đánh giá trong các phiên tương tác thực tế tại kho local_cases.",
+    "boc_tach": {
+      "dap_an_hoi_thoai": {
+        "hien_thi": 97,
+        "da_danh_gia": 58,
+        "ti_le": 59.8
+      },
+      "goi_y_nghiep_vu": {
+        "hien_thi": 61,
+        "da_danh_gia": 2,
+        "ti_le": 3.3,
+        "chi_tiet": {
+          "phan_loai_buoc5": {
+            "hien_thi": 18,
+            "da_danh_gia": 0
+          },
+          "cay_dieu_tra_buoc3": {
+            "hien_thi": 41,
+            "da_danh_gia": 0
+          },
+          "goi_y_next_action": {
+            "hien_thi": 2,
+            "da_danh_gia": 2
+          }
+        }
+      }
+    }
+  }
+}
