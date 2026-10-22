@@ -139,7 +139,7 @@ def build_realtime_alert_card(
         "thoi_diem": eff_time,
         "timestamp": eff_time,
         "nguon": nguon,
-        "huong_dan": "Mở phiên trực ban công đoạn để xem biểu đồ và duyệt email cảnh báo.",
+        "huong_dan": "Theo tài liệu quy trình: Mở phiên trực ban công đoạn để xem biểu đồ và duyệt email cảnh báo (hoặc tương tác trực tiếp qua khung chat).",
     }
 
 

@@ -247,3 +247,4 @@ def test_render_alert_card_data_builders():
     assert data["ma_jig"] == "2ND-1002_JIG_BEAM"
     assert data["thong_so"] == "TaktTime"
     assert "Mở phiên trực ban" in data["huong_dan"]
+    assert "Theo tài liệu quy trình:" in data["huong_dan"]
