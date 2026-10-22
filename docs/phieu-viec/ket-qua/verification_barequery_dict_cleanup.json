@@ -1,0 +1,52 @@
+{
+  "C1_BARE_QUERY": {
+    "verdict": "DAT",
+    "dict_count": 1,
+    "has_24_cases": true,
+    "has_pure_vn_meaning": true,
+    "has_pure_vn_cause": true,
+    "has_raw_jp_leak": false,
+    "ans_preview": "smart_toy\n✨ Câu trả lời mới nhất\n\nTra cứu lỗi tương tự\n\nTìm thấy 24 ca mã lỗi JAM4212. J4212 trong 30.075 ca lịch sử (hiển thị 5 ca liên quan nhất): Từ điển mã lỗi (JAM): Kẹt giấy tại cảm biến sấy (Cấp giấy khay 2) — Nguyên nhân: Đã qua thời gian quy định từ khi cảm biến phát hiện cuốn giấy trung gian ngắt (OFF) nhưng cảm biến sấy vẫn chưa ngắt (OF",
+    "screenshot": {
+      "file": "anh-barequery-dict-cleanup-01-jam4212-24ca.png",
+      "size_bytes": 163474,
+      "sha256": "A602EE4CE55D3D2D8A944ED03307190BF293F7D032C4377805151A002DFB2AB3",
+      "is_valid_png": true
+    }
+  },
+  "C2_SIMILAR_QUERY": {
+    "verdict": "DAT",
+    "has_sec1": true,
+    "has_pure_sim_meaning": true,
+    "has_pure_sim_cause": true,
+    "has_raw_sim_leak": false,
+    "ans_preview": "smart_toy\n✨ Câu trả lời mới nhất\n\nTra cứu lỗi tương tự\n\nDựa trên cơ sở dữ liệu 15 ca điều tra lịch sử KDTPS (đang lọc theo: dòng máy Iris2024) và danh mục mã lỗi chuẩn. dưới đây là thông tin điều tra và xử lý cho mã lỗi JAM4212. J4212:\n\n1. Định nghĩa kỹ thuật & Mô tả mã lỗi\nMã lỗi: JAM4212\nTên mã lỗi / Hiện tượng: Kẹt giấy tại cảm biến sấy (Cấp giấ",
+    "screenshot": {
+      "file": "anh-barequery-dict-cleanup-02-jam4212-tuongtu.png",
+      "size_bytes": 147812,
+      "sha256": "AE78D83BB2F0FD232D1FB2846B41C91DB3947666C7AD50CE5471C52F8D23A1AB",
+      "is_valid_png": true
+    }
+  },
+  "C3_REGRESSION_60S": {
+    "verdict": "DAT",
+    "user_msg_count": 1,
+    "asst_msg_count": 1,
+    "total_waited_s": 65.0,
+    "screenshot": {
+      "file": "anh-barequery-dict-cleanup-03-gui-cho-60s.png",
+      "size_bytes": 117629,
+      "sha256": "7BAF5D0706EA5751A0542ACC7AFA13D9BEEA2026B40DEA91F08AAF4435CB31A2",
+      "is_valid_png": true
+    }
+  },
+  "C4_REGRESSION_CHIP": {
+    "verdict": "DAT",
+    "screenshot": {
+      "file": "anh-barequery-dict-cleanup-04-chip-goi-y.png",
+      "size_bytes": 98539,
+      "sha256": "6B27F85B6EEA829114F0B0657EB748B65526FEB8163253344F54D2D8E4190B1A",
+      "is_valid_png": true
+    }
+  }
+}

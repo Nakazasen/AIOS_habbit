@@ -1388,23 +1388,55 @@ def _render_cards(
             + f" trong **{total:,}** ca lịch sử.".replace(",", ".")
         )
 
+    seen_entries = set()
+    from aios_habit.answer_language_policy import translate_kdtps_field, has_japanese
     for code in codes:
         entry = glossary.get(code)
-        if entry:
-            fam = _CODE_FAMILY.get(code[0], ("", ""))[0]
-            meaning = (
-                entry.get("name_vi") or entry.get("name_ja") or entry.get("name_en") or ""
-            )
-            cause = _clip(entry.get("cause"), 160)
-            remedy = _clip(entry.get("remedy"), 160)
-            source = entry.get("source_file") or ""
-            gloss = f"_Từ điển mã lỗi ({fam or 'glossary'}): {meaning}_"
-            extra = " · ".join(
-                p for p in (f"Nguyên nhân: {cause}" if cause else "",
-                            f"Khắc phục: {remedy}" if remedy else "",
-                            f"Nguồn: {source}" if source else "") if p
-            )
-            lines.append(gloss + (f" — {extra}" if extra else ""))
+        if not entry:
+            continue
+        entry_key = entry.get("id") or (entry.get("code_family"), entry.get("code")) or code
+        if entry_key in seen_entries:
+            continue
+        seen_entries.add(entry_key)
+
+        fam = entry.get("code_family") or (_CODE_FAMILY.get(code[0], ("", ""))[0] if code else "glossary")
+        raw_meaning = (
+            entry.get("name_vi") or entry.get("name_ja") or entry.get("name_en") or ""
+        )
+        meaning, _ = translate_kdtps_field(raw_meaning, field_name="error_name")
+
+        raw_cause = entry.get("cause") or ""
+        cause_trans, _ = translate_kdtps_field(raw_cause, field_name="cause") if raw_cause else ("", "")
+        cause = _clip(cause_trans, 160) if cause_trans and not has_japanese(cause_trans) else ""
+
+        raw_remedy = entry.get("remedy") or ""
+        remedy_trans, _ = translate_kdtps_field(raw_remedy, field_name="remedy") if raw_remedy else ("", "")
+        remedy = _clip(remedy_trans, 160) if remedy_trans and not has_japanese(remedy_trans) else ""
+
+        source = entry.get("source_file") or ""
+
+        # If meaning still has raw Japanese (no translation available in dictionary/policy)
+        if has_japanese(meaning):
+            if source:
+                lines.append(f"_Nguồn tham chiếu từ điển mã lỗi: `{source}`_")
+            continue
+
+        if not meaning and not cause and not remedy:
+            if source:
+                lines.append(f"_Nguồn tham chiếu từ điển mã lỗi: `{source}`_")
+            continue
+
+        fam_label = fam or "glossary"
+        gloss = f"_Từ điển mã lỗi ({fam_label}): {meaning}_"
+        extra_parts = []
+        if cause:
+            extra_parts.append(f"Nguyên nhân: {cause}")
+        if remedy:
+            extra_parts.append(f"Khắc phục: {remedy}")
+        if source:
+            extra_parts.append(f"Nguồn: {source}")
+        extra = " · ".join(extra_parts)
+        lines.append(gloss + (f" — {extra}" if extra else ""))
 
     for i, case in enumerate(cases, 1):
         near_label = case.get("near_match_label")
