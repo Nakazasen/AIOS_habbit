@@ -194,7 +194,9 @@ def render_preview_card_text(
         ])
         if rec_alert.suggested_remedy:
             src_str = f" *(từ vụ `{rec_alert.suggested_from}`)*" if rec_alert.suggested_from else ""
-            lines.append(f"> - Đối sách đã áp dụng của ca gần nhất: **{rec_alert.suggested_remedy}**{src_str}")
+            from aios_habit.answer_language_policy import translate_kdtps_field
+            remedy_clean, _ = translate_kdtps_field(rec_alert.suggested_remedy, field_name="remedy")
+            lines.append(f"> - Đối sách đã áp dụng của ca gần nhất: **{remedy_clean}**{src_str}")
 
     lines.extend([
         "",

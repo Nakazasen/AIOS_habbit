@@ -1,0 +1,45 @@
+{
+  "ticket": "DESKTOP-HOME-STRUCTURED-LOOKUP-TRUTH-FIX",
+  "timestamp": "2026-10-22T06:54:41.153832+00:00",
+  "evidence_files": [
+    {
+      "filename": "anh-c0060-honest-count-evidence.png",
+      "path": "D:\\Sandbox\\aios-dieu-phoi-desktop\\hop-thu\\lan-desktop\\ket-qua\\anh-c0060-honest-count-evidence.png",
+      "size_bytes": 156505,
+      "sha256": "6EDE481B32381746633F09FCFFB7260E8B62F8EAEC9E09D2FC6D434DF389EF28",
+      "description": "Ảnh giao diện thật tra cứu C0060: Tiêu đề tách rõ 'Tìm thấy 2 ca C0060 chính xác; hiển thị thêm 3 ca cùng họ C_CALL để tham khảo', thẻ mang nhãn [Khớp chính xác C0060] và [Tham khảo cùng họ C_CALL], nhãn Vụ kèm gloss, đối sách đã dịch thuần Việt không còn 不要."
+    },
+    {
+      "filename": "anh-c7620-honest-count-evidence.png",
+      "path": "D:\\Sandbox\\aios-dieu-phoi-desktop\\hop-thu\\lan-desktop\\ket-qua\\anh-c7620-honest-count-evidence.png",
+      "size_bytes": 158865,
+      "sha256": "F3FC0C575D180C33EA9630139F493E470702EAEC1C1291EAAAAADF8776EF5E6A",
+      "description": "Ảnh giao diện thật tổng hợp C7620: Mục 4 ghi 'Tìm thấy 136 ca điều tra thực tế mã lỗi C7620 trong CSDL 30.075 ca (hiển thị 5 ca liên quan nhất)', nhãn Vụ kèm giải thích số đăng ký sổ gốc, nguyên nhân/đối sách dịch sạch thuần Việt."
+    },
+    {
+      "filename": "anh-step5-recurrence-c7620-vu-evidence.png",
+      "path": "D:\\Sandbox\\aios-dieu-phoi-desktop\\hop-thu\\lan-desktop\\ket-qua\\anh-step5-recurrence-c7620-vu-evidence.png",
+      "size_bytes": 144176,
+      "sha256": "2FC0454B900E30C571BA3234382555205AF4006FE6C7194B7C05699B86911823",
+      "description": "Ảnh giao diện thật Thẻ xem trước Bước 5 C7620: Cảnh báo tái phát 136 ca, ca gần nhất vụ FY27H2/263, dòng 'Đối sách đã áp dụng của ca gần nhất' dịch hoàn chỉnh 'Không cần đối sách bổ sung / Đã xử lý tại chỗ không cần đối sách chính thức', không còn raw 不要."
+    },
+    {
+      "filename": "anh-structured-filter-evidence.png",
+      "path": "D:\\Sandbox\\aios-dieu-phoi-desktop\\hop-thu\\lan-desktop\\ket-qua\\anh-structured-filter-evidence.png",
+      "size_bytes": 127135,
+      "sha256": "B02099A5C1F578D649ADFFBECADCE75BD7E49755D993E00886B5C9CE53DAB139",
+      "description": "Ảnh giao diện thật lọc máy Iris2024 + serial 1G55809417 + ngày 2025-08-22: Giữ nguyên hành vi đúng 'Tìm thấy 1 ca phù hợp trong CSDL 30.075 ca (hiển thị 1 ca)', nhãn Vụ 2025/1978."
+    }
+  ],
+  "acceptance_results": {
+    "c0060_honest_title_separated": true,
+    "c0060_exact_matches_count": 2,
+    "c0060_fallback_c_call_count": 3,
+    "c7620_honest_total_count": 136,
+    "c7620_displayed_top_n": 5,
+    "case_label_vu_applied_with_gloss": true,
+    "zero_raw_japanese_tokens_standing_alone": true,
+    "step5_c7620_clean_remedy_no_raw_fuyo": true,
+    "structured_filter_baseline_intact": true
+  }
+}

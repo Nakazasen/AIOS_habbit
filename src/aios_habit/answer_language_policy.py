@@ -196,6 +196,21 @@ KDTPS_EXACT_MAP: Dict[str, str] = {
     "JA: 1Panel⇔Main基板間、※(Main基板⇔HDD間)のハーネス、コネクタの接続状態を確認し、動作確認を行う。": (
         "1. Kiểm tra trạng thái kết nối của dây cáp (harness), connector giữa bản mạch Panel ⇔ Main, (giữa Main ⇔ HDD) và chạy thử kiểm tra hoạt động."
     ),
+    "IDセンサーが正常に動作していない。": "Cảm biến ID không hoạt động bình thường.",
+    "IDセンサーが正常に動作していない": "Cảm biến ID không hoạt động bình thường",
+    "1次転写ベルト表面が汚れている。": "Bề mặt băng truyền sao chép sơ cấp (1st Transfer Belt) bị bẩn.",
+    "1次転写ベルト表面が汚れている": "Bề mặt băng truyền sao chép sơ cấp (1st Transfer Belt) bị bẩn",
+    "前回のキャリブレーションが失敗している。": "Lần hiệu chuẩn trước đó bị thất bại.",
+    "前回のキャリブレーションが失敗している": "Lần hiệu chuẩn trước đó bị thất bại",
+    "現像ローラーがドラムに接触していない。": "Con lăn hiện ảnh không tiếp xúc với trống Drum.",
+    "現像ローラーがドラムに接触していない": "Con lăn hiện ảnh không tiếp xúc với trống Drum",
+    "ドラム表面の結露の改善": "Khắc phục đọng sương bề mặt Drum",
+    "IDセンサーシャッターの確認": "Kiểm tra màn trập cảm biến ID",
+    "ファームウェアを最新にバージョンアップしてください。": "Hãy nâng cấp firmware lên phiên bản mới nhất.",
+    "ファームウェアを最新にバージョンアップしてください": "Hãy nâng cấp firmware lên phiên bản mới nhất",
+    "メイン高圧基板 / 転写高圧基板の確認": "Kiểm tra bản mạch cao áp chính / bản mạch cao áp truyền ảnh",
+    "LSU / ドラムユニットの確認": "Kiểm tra LSU / Unit Drum",
+    "色ズレ発生時": "Khi phát sinh lệch màu",
 }
 
 # Sub-phrase replacement patterns (ordered from most specific to generic)
@@ -265,6 +280,37 @@ KDTPS_SUB_PHRASES: List[Tuple[re.Pattern, str]] = [
     (re.compile(r"異常"), "bất thường"),
     (re.compile(r"下位"), "Hạ vị (Bản tiêu chuẩn)"),
     (re.compile(r"上位"), "Thượng vị (Bản nâng cao)"),
+    (re.compile(r"IDセンサーが正常に動作していない[。.\s]*"), "Cảm biến ID không hoạt động bình thường. "),
+    (re.compile(r"1次転写ベルト表面が汚れている[。.\s]*"), "Bề mặt băng truyền sao chép sơ cấp bị bẩn. "),
+    (re.compile(r"1次転写ベルト表面を清掃してください[。.\s]*または[、,\s]*"), "Vui lòng làm sạch bề mặt băng truyền sao chép sơ cấp, hoặc "),
+    (re.compile(r"キャリブレーションの実行"), "Thực hiện hiệu chuẩn (Calibration)"),
+    (re.compile(r"前回のキャリブレーションが失敗している[。.\s]*"), "Lần hiệu chuẩn trước đó bị thất bại. "),
+    (re.compile(r"U464にて\[Calib\]を実行してください[。.\s]*"), "Thực hiện [Calib] tại U464. "),
+    (re.compile(r"現像ローラーがドラムに接触していない[。.\s]*"), "Con lăn hiện ảnh không tiếp xúc với trống Drum. "),
+    (re.compile(r"ロックレバーを上下に切り替えて、現像ローラーをセット位置に復帰させてください。ロックレバーの破損や現像ローラー押圧ワイヤーの異常により、現像ローラーが復帰しない場合は、現像ユニット"), "Gạt cần khóa lên xuống để đưa con lăn hiện ảnh về vị trí cài đặt. Nếu cần khóa bị hỏng hoặc dây kéo ép con lăn bất thường làm con lăn không hồi vị thì Unit hiện ảnh "),
+    (re.compile(r"\(印字が薄い場合\)"), "(Trường hợp in bị nhạt) "),
+    (re.compile(r"印字が薄い場合"), "Trường hợp in bị nhạt"),
+    (re.compile(r"メンテナンス用前カバーの連結ギア確認\(25/32枚機\)"), "Kiểm tra bánh răng liên kết nắp trước bảo dưỡng (máy 25/32 bản)"),
+    (re.compile(r"メンテナンス用前カバーの連結ギア確認"), "Kiểm tra bánh răng liên kết nắp trước bảo dưỡng"),
+    (re.compile(r"メンテナンス用前カバーの開閉動作と適正に連動していないため、現像ローラーがドラムに接触しない[。.\s]*"), "Do không liên động đúng với thao tác đóng mở nắp trước bảo dưỡng nên con lăn hiện ảnh không tiếp xúc trống Drum. "),
+    (re.compile(r"メンテナンス用前カバーを閉じても現像ローラーがドラムに接触しない場合は、メンテナンス用前カバーと連結しているギアを取り付け直してください[。.\s]*"), "Nếu đã đóng nắp trước bảo dưỡng mà con lăn hiện ảnh vẫn không tiếp xúc trống thì hãy lắp lại bánh răng liên kết với nắp trước bảo dưỡng. "),
+    (re.compile(r"LSUからレーザーが適正に出力されない[。.\s]*または[、,\s]*LSU防塵(?:\(ぼうじん\))?ガラスが汚れている[。.\s]*"), "Tia laser từ LSU không phát ra phù hợp, hoặc kính chắn bụi LSU bị bẩn. "),
+    (re.compile(r"LSUを清掃してください[。.\s]*解消しない場合は、交換してください[。.\s]*"), "Vui lòng làm sạch LSU. Nếu không khắc phục được thì yêu cầu thay thế. "),
+    (re.compile(r"ドラム表面の結露の改善\(trên 35 tờ\)"), "Khắc phục đọng sương bề mặt Drum (trên 35 tờ)"),
+    (re.compile(r"ドラムリフレッシュを実行してください[。.\s]*次に、U339\[Drum Heater\]を\[bật\]に設定し、ドラムヒーターをbậtにしてください[。.\s]*"), "Hãy thực hiện làm mới Drum (Drum Refresh). Tiếp theo cài đặt U339 [Drum Heater] sang bật. "),
+    (re.compile(r"IDセンサーシャッターの確認"), "Kiểm tra màn trập cảm biến ID"),
+    (re.compile(r"U033の\[ID Sensor\]を実行してください[。.\s]*IDセンサーシャッターが正常に動作しない場合は、クリーニングソレノイドを取り付け直してください[。.\s]*"), "Thực hiện [ID Sensor] tại U033. Nếu màn trập cảm biến ID không hoạt động bình thường thì lắp lại rơ-le làm sạch. "),
+    (re.compile(r"メイン高圧基板\s*/\s*転写高圧基板の確認"), "Kiểm tra bản mạch cao áp chính / bản mạch cao áp truyền ảnh"),
+    (re.compile(r"メイン高圧基板、または、転写高圧基板の接点に異常があるため、適正な電流が流れない[。.\s]*"), "Tiếp điểm bản mạch cao áp chính hoặc bản mạch cao áp truyền ảnh bất thường nên dòng điện không chạy đúng. "),
+    (re.compile(r"メイン高圧基板、および、転写高圧基板を取り付け直してください[。.\s]*"), "Lắp lại bản mạch cao áp chính và bản mạch cao áp truyền ảnh. "),
+    (re.compile(r"\(色ズレ発生時\)LSU\s*/\s*ドラムユニットの確認"), "(Khi phát sinh lệch màu) Kiểm tra LSU / Unit Drum"),
+    (re.compile(r"色ズレ発生時"), "Khi phát sinh lệch màu"),
+    (re.compile(r"LSU、または、ドラムユニットが適正な位置に装着されていない[。.\s]*または、LSUに異常がある[。.\s]*"), "LSU hoặc Unit Drum chưa lắp đúng vị trí, hoặc LSU bị bất thường. "),
+    (re.compile(r"色ズレが発生している場合、LSU、および、ドラムユニットを正規位置に装着し直してください[。.\s]*修復しない場合は、LSUYêu cầu thay thế"), "Trường hợp bị lệch màu, hãy lắp lại LSU và Unit Drum vào đúng vị trí quy định. Nếu không khắc phục được thì yêu cầu thay thế LSU"),
+    (re.compile(r"IDセンサーが適正に取り付けられていない[。.\s]*または[、,\s]*"), "Cảm biến ID chưa lắp đúng vị trí, hoặc "),
+    (re.compile(r"前IDセンサー、および、後ろIDセンサーを取り付け直し、コネクターを再挿入してください[。.\s]*"), "Lắp lại cảm biến ID trước và cảm biến ID sau, cắm lại connector. "),
+    (re.compile(r"ファームウェアを最新にバージョンアップしてください[。.\s]*"), "Nâng cấp firmware lên phiên bản mới nhất. "),
+    (re.compile(r"ファームウェア"), "Firmware"),
     (re.compile(r"不要"), "Không xác định nguyên nhân bất thường / Đã giải quyết trên chuyền (không phát sinh đối sách dài hạn)"),
     (re.compile(r"部品要因\(電気\)"), "Yếu tố linh kiện (Phần điện)"),
     (re.compile(r"要因不明\(電気\)"), "Không rõ nguyên nhân (Phần điện)"),
@@ -383,8 +429,11 @@ def translate_kdtps_field(
         # Per rule 2.2(b): absolutely do NOT print raw Japanese characters into body
         # Clean any remaining Japanese tokens
         cleaned_no_jp = JP_CHAR_RE.sub("", working).strip()
-        cleaned_no_jp = re.sub(r"\s+", " ", cleaned_no_jp)
-        if cleaned_no_jp:
+        cleaned_no_jp = re.sub(r"[。、]", " ", cleaned_no_jp)
+        cleaned_no_jp = re.sub(r"\(\s*\)", "", cleaned_no_jp)
+        cleaned_no_jp = re.sub(r"—\s*NN:\s*→\s*XL:", "— Xử lý:", cleaned_no_jp)
+        cleaned_no_jp = re.sub(r"\s+", " ", cleaned_no_jp).strip()
+        if cleaned_no_jp and cleaned_no_jp not in ("-", "—", "ー", ":", "."):
             return cleaned_no_jp, "dich"
         return "Ghi nhận trong báo cáo kỹ thuật", "dich"
 

@@ -633,6 +633,57 @@ def _has_real_code(row: sqlite3.Row, has_missing_col: bool) -> bool:
     return bool(code_c or code_i)
 
 
+
+def is_exact_code_match(row: sqlite3.Row, codes: Sequence[str]) -> bool:
+    """Return True if row matches any of the given error codes specifically."""
+    if not codes:
+        return False
+    row_keys = row.keys() if hasattr(row, "keys") else []
+    ecc = (row["error_code_c"] or "").upper().replace(" ", "")
+    ech = (row["error_code_h"] or "").upper().replace(" ", "")
+    eci = (row["error_code_i"] or "").upper().replace(" ", "") if "error_code_i" in row_keys else ""
+    raw_str = (row["raw_json"] or "").upper()
+    for code in codes:
+        c_up = code.upper().replace(" ", "")
+        if c_up == ecc or c_up == ech or c_up == eci:
+            return True
+        if c_up in raw_str:
+            return True
+    return False
+
+
+def count_exact_cases(conn: sqlite3.Connection, codes: Sequence[str]) -> int:
+    """Return honest count of exact matching cases in DB for the given error codes.
+    Prioritizes canonical error code columns (error_code_i, error_code_c, error_code_h).
+    If code column count is small (< 5) but raw_json contains rare occurrences (e.g. C0060),
+    includes raw_json occurrences so rare codes are accurately counted.
+    """
+    if not codes:
+        return 0
+    has_i = _has_error_code_i(conn)
+    total_exact = 0
+    for code in codes:
+        code_clean = (code or "").upper().strip()
+        cols = ["UPPER(COALESCE(error_code_c, '')) = ?", "UPPER(COALESCE(error_code_h, '')) = ?"]
+        params = [code_clean, code_clean]
+        if has_i:
+            cols.append("UPPER(COALESCE(error_code_i, '')) = ?")
+            params.append(code_clean)
+        where_clause = " OR ".join(cols)
+        cnt_cols = conn.execute(
+            f"SELECT COUNT(*) FROM error_cases WHERE {where_clause}",
+            params,
+        ).fetchone()[0]
+        if cnt_cols >= 5:
+            total_exact += int(cnt_cols)
+        else:
+            cnt_raw = conn.execute(
+                "SELECT COUNT(*) FROM error_cases WHERE raw_json LIKE ?",
+                (f"%{code_clean}%",),
+            ).fetchone()[0]
+            total_exact += int(max(cnt_cols, cnt_raw))
+    return total_exact
+
 def _candidate_rows(
     conn: sqlite3.Connection,
     codes: Sequence[str],
@@ -704,6 +755,8 @@ def _candidate_rows(
                 order_params.append(code)
             ors.append("ec.raw_json LIKE ?")
             params.append(f"%{code}%")
+            exact_ors.append("ec.raw_json LIKE ?")
+            order_params.append(f"%{code}%")
             if not has_structured_filter:
                 fam = _CODE_FAMILY.get(code[0])
                 if fam:
@@ -825,6 +878,7 @@ def _score_row(
             str(v)
             for v in (
                 raw.get("I"),
+                raw.get("M"),
                 raw.get("O"),
                 raw.get("N"),
                 raw.get("AA"),
@@ -884,21 +938,36 @@ def search_similar(
 
     total_count = matched_count if has_structured_filter else conn.execute("SELECT COUNT(*) AS n FROM error_cases").fetchone()["n"]
 
+    exact_count = count_exact_cases(conn, codes) if codes else total_count
+
     if codes or (keywords and not filter_entities.get("phenomenon_concepts")):
-        scored: List[Tuple[bool, int, sqlite3.Row]] = []
+        scored: List[Tuple[bool, bool, int, sqlite3.Row]] = []
         for row in rows:
+            is_exact = is_exact_code_match(row, codes)
             s = _score_row(row, codes, keywords)
-            if s > 0 or has_structured_filter:
-                scored.append((_has_real_code(row, has_missing_col), s, row))
+            if s > 0 or has_structured_filter or is_exact:
+                scored.append((is_exact, _has_real_code(row, has_missing_col), s, row))
         if codes:
-            scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
+            scored.sort(key=lambda item: (item[0], item[1], item[2]), reverse=True)
         else:
-            scored.sort(key=lambda item: item[1], reverse=True)
-        final_rows = [r for _, _, r in scored[:top_n]]
+            scored.sort(key=lambda item: item[2], reverse=True)
+        final_rows = [r for _, _, _, r in scored[:top_n]]
     else:
         final_rows = rows[:top_n]
 
-    return [_case_dict(r, has_missing_col) for r in final_rows], codes, int(total_count)
+    result_cases = []
+    fam_fallback_name = _CODE_FAMILY.get(codes[0][0], ("", ""))[0] if codes and codes[0][0] in _CODE_FAMILY else "cùng họ"
+    for r in final_rows:
+        cd = _case_dict(r, has_missing_col)
+        cd["exact_count"] = exact_count
+        if codes:
+            is_exact = is_exact_code_match(r, codes)
+            cd["is_exact_code"] = is_exact
+            if not is_exact:
+                cd["family_fallback_label"] = f"Tham khảo cùng họ {fam_fallback_name}"
+        result_cases.append(cd)
+
+    return result_cases, codes, int(total_count)
 
 
 def lookup_glossary(
@@ -1100,6 +1169,8 @@ def explain_case_number(val: str) -> str:
     m_year = re.match(r"^(\d{4})/(\d+(?:\.\d+)?)$", s)
     if m_year:
         year, seq = m_year.groups()
+        if seq.endswith(".0"):
+            seq = seq[:-2]
         return f"Số đăng ký vụ việc trong sổ gốc: {year} là năm, {seq} là số thứ tự vụ trong năm"
     m_fy = re.match(r"^(FY[^/]+)/(\d+(?:\.\d+)?)$", s, re.IGNORECASE)
     if m_fy:
@@ -1202,7 +1273,17 @@ def _render_synthesized_answer(
     lines.append("")
 
     lines.append(f"### 4. Danh sách các ca điều tra thực tế đối chiếu (DB {total:,} ca)".replace(",", "."))
-    lines.append(f"Tìm thấy **{len(cases)}** ca điều tra thực tế liên quan trực tiếp đến mã lỗi **{code_label}**:\n")
+    exact_total = cases[0].get("exact_count", len(cases)) if cases else len(cases)
+    if exact_total > len(cases):
+        lines.append(
+            f"Tìm thấy **{exact_total:,}** ca điều tra thực tế mã lỗi **{code_label}** trong CSDL {total:,} ca "
+            f"(hiển thị **{len(cases)}** ca liên quan nhất):\n".replace(",", ".")
+        )
+    else:
+        lines.append(
+            f"Tìm thấy **{exact_total:,}** ca điều tra thực tế liên quan trực tiếp đến mã lỗi **{code_label}** "
+            f"(hiển thị **{len(cases)}** ca):\n".replace(",", ".")
+        )
     for i, case in enumerate(cases[:5], 1):
         vu = f"Vụ {case['no_dvd'] or '—'}"
         where = case.get("where") or ""
@@ -1247,6 +1328,11 @@ def _render_cards(
         )
     )
 
+    exact_total = cases[0].get("exact_count", len(cases)) if cases else 0
+    exact_displayed = sum(1 for c in cases if c.get("is_exact_code"))
+    fallback_displayed = len(cases) - exact_displayed
+    fam_name = _CODE_FAMILY.get(codes[0][0], ("", ""))[0] if codes and codes[0][0] in _CODE_FAMILY else "cùng họ"
+
     if has_filter and filter_entities:
         filter_descs = []
         if filter_entities.get("machine"):
@@ -1276,6 +1362,25 @@ def _render_cards(
                 f"Tìm thấy **{total:,}** ca phù hợp trong CSDL 30.075 ca lịch sử "
                 f"(hiển thị {len(cases)} ca):".replace(",", ".")
             )
+    elif codes and fallback_displayed > 0:
+        # Ticket Requirement 2(a): Separate exact matches from family fallback matches
+        lines.append(
+            f"Tìm thấy **{exact_total}** ca **{code_label}** chính xác; "
+            f"hiển thị thêm **{fallback_displayed}** ca cùng họ **{fam_name}** để tham khảo "
+            f"(trong **{total:,}** ca lịch sử):".replace(",", ".")
+        )
+    elif codes:
+        # Ticket Requirement 2(a): Honest count title with top-N indication like CAU_05
+        if exact_total > len(cases):
+            lines.append(
+                f"Tìm thấy **{exact_total:,}** ca mã lỗi **{code_label}** trong **{total:,}** ca lịch sử "
+                f"(hiển thị {len(cases)} ca liên quan nhất):".replace(",", ".")
+            )
+        else:
+            lines.append(
+                f"Tìm thấy **{exact_total:,}** ca mã lỗi **{code_label}** trong **{total:,}** ca lịch sử "
+                f"(hiển thị {len(cases)} ca):".replace(",", ".")
+            )
     else:
         lines.append(
             f"Tìm thấy **{len(cases)}** ca lỗi liên quan"
@@ -1303,8 +1408,13 @@ def _render_cards(
 
     for i, case in enumerate(cases, 1):
         near_label = case.get("near_match_label")
+        fallback_label = case.get("family_fallback_label")
         if near_label:
             head = f"### {i}. Vụ {case['no_dvd'] or '—'} · [{near_label}]"
+        elif fallback_label:
+            head = f"### {i}. Vụ {case['no_dvd'] or '—'} · [{fallback_label}]"
+        elif fallback_displayed > 0 and case.get("is_exact_code"):
+            head = f"### {i}. Vụ {case['no_dvd'] or '—'} · [Khớp chính xác {code_label}]"
         else:
             head = f"### {i}. Vụ {case['no_dvd'] or '—'}"
         bits = [b for b in (case["where"], case["category"]) if b]
