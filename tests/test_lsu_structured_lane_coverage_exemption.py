@@ -30,7 +30,7 @@ EXPECTED_CANONICAL_DOCUMENT_IDS = frozenset({
 })
 
 LSU_PRODUCTION_INDEX_PATH = Path(
-    r"C:\AIOS_workspace_chat_rag_v2_production\bge_m3_hybrid\collections\lsu\library.sqlite"
+    r"D:\AIOS_workspace_chat_rag_v2_production\bge_m3_hybrid\collections\lsu\library.sqlite"
 )
 
 

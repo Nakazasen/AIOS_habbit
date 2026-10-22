@@ -47,7 +47,7 @@ QUERIES = [
 
 
 def measure_cjk_prefilter_speed() -> list[dict]:
-    src = r"C:\AIOS_workspace_chat_rag_v2_production\bge_m3_hybrid\collections\mom\library.sqlite"
+    src = r"D:\AIOS_workspace_chat_rag_v2_production\bge_m3_hybrid\collections\mom\library.sqlite"
     if not os.path.exists(src):
         src = r"D:\Sandbox\AIOS_index_split_new\mom\library.sqlite"
 

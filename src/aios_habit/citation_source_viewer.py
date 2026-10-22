@@ -196,7 +196,7 @@ def _get_active_library_db_path(collection_id: str = "tri_thuc") -> Optional[Pat
             return p
     except Exception:
         pass
-    cand = Path(f"C:/AIOS_workspace_chat_rag_v2_production/bge_m3_hybrid/collections/{collection_id}/library.sqlite")
+    cand = Path(f"D:/AIOS_workspace_chat_rag_v2_production/bge_m3_hybrid/collections/{collection_id}/library.sqlite")
     if cand.is_file():
         return cand
     cand2 = Path("data/library.sqlite")

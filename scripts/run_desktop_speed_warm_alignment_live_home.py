@@ -112,7 +112,7 @@ def kill_all_workers_and_servers():
     except Exception as e:
         log(f"Lỗi khi dọn dẹp tiến trình: {e}")
     try:
-        for pid_f in Path(r"C:\AIOS_workspace_chat_rag_v2_production").glob("**/logs/*.pid"):
+        for pid_f in Path(r"D:\AIOS_workspace_chat_rag_v2_production").glob("**/logs/*.pid"):
             try:
                 pid_f.unlink()
             except Exception:

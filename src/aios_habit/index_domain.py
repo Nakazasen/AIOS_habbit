@@ -451,7 +451,7 @@ def _get_spec_original_alias(spec: Any) -> Optional[str]:
         target_path: Optional[Path] = p if isinstance(p, Path) and p.is_file() else None
         if target_path is None and fname:
             candidate_dirs = (
-                Path("C:/AIOS_workspace_chat_rag_v2_production/materialized_sources"),
+                Path("D:/AIOS_workspace_chat_rag_v2_production/materialized_sources"),
                 Path("materialized_sources"),
                 Path("local_runs/workspace_chat_rag_v2_production/materialized_sources"),
                 Path("local_runs/workspace_chat_rag_v2_canary/materialized_sources"),
@@ -1123,7 +1123,7 @@ def load_all_index_specs(
         _DOMAIN_ALL_SPECS_STAT_CACHE = {}
 
     if db_path is None:
-        prod_path = Path("C:/AIOS_workspace_chat_rag_v2_production/bge_m3_hybrid/collections/tri_thuc/library.sqlite")
+        prod_path = Path("D:/AIOS_workspace_chat_rag_v2_production/bge_m3_hybrid/collections/tri_thuc/library.sqlite")
         db_path = prod_path if prod_path.is_file() else Path("local_runs/workspace_chat_rag_v2_production/bge_m3_hybrid/collections/tri_thuc/library.sqlite")
     else:
         db_path = Path(db_path)

@@ -115,7 +115,7 @@ DAEMON_LOGS = {
     "lsu": Path(r"D:\Sandbox\AIOS_index_split_new\lsu\logs\bge_worker_daemon.stderr.log"),
     "dieu_tra_loi": Path(r"D:\Sandbox\AIOS_index_split_new\dieu_tra_loi\logs\bge_worker_daemon.stderr.log"),
     "tong_hop": Path(r"D:\Sandbox\AIOS_index_split_new\tong_hop\logs\bge_worker_daemon.stderr.log"),
-    "tri_thuc": Path(r"C:\AIOS_workspace_chat_rag_v2_production\bge_m3_hybrid\collections\tri_thuc\logs\bge_worker_daemon.stderr.log"),
+    "tri_thuc": Path(r"D:\AIOS_workspace_chat_rag_v2_production\bge_m3_hybrid\collections\tri_thuc\logs\bge_worker_daemon.stderr.log"),
 }
 
 PIPE_NAMES = {

@@ -1858,7 +1858,7 @@ def _resolve_document_file_path(source_path: str, source_name: str) -> str:
 
     known_roots = [
         r"D:\Sandbox\AIOS_habbit\Tài liệu của tất cả dòng máy",
-        r"C:\AIOS_workspace_chat_rag_v2_production\Tài liệu của tất cả dòng máy",
+        r"D:\AIOS_workspace_chat_rag_v2_production\Tài liệu của tất cả dòng máy",
     ]
     for root in known_roots:
         if os.path.exists(root):

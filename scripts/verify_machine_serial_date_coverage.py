@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Tuple
 sys.stdout.reconfigure(encoding="utf-8")
 
 DB_PATH = Path(r"C:\tmp\kdtps_standard\error_cases_reconciled.db")
-LIB_PATH = Path(r"C:\AIOS_workspace_chat_rag_v2_production\bge_m3_hybrid\collections\tri_thuc\library.sqlite")
+LIB_PATH = Path(r"D:\AIOS_workspace_chat_rag_v2_production\bge_m3_hybrid\collections\tri_thuc\library.sqlite")
 OUT_JSON = Path(r"D:\Sandbox\aios-dieu-phoi-desktop\hop-thu\lan-desktop\ket-qua\verification_machine_serial_date_coverage.json")
 
 NA_VALUES = frozenset({"", "-", "—", "ー", "None", "null", "nan", None})

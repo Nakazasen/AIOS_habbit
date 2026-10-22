@@ -156,7 +156,7 @@ def test_real_index_sample_equivalence(monkeypatch):
     import json
     import struct
 
-    db_path = Path(r"C:\AIOS_workspace_chat_rag_v2_production\bge_m3_hybrid\collections\lsu\library.sqlite")
+    db_path = Path(r"D:\AIOS_workspace_chat_rag_v2_production\bge_m3_hybrid\collections\lsu\library.sqlite")
     if not db_path.is_file():
         pytest.skip("Chỉ mục LSU production không khả dụng trên máy này")
 

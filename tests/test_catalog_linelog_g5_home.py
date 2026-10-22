@@ -196,8 +196,8 @@ def _create_synthetic_chunks_db(db_path: Path, num_docs: int = 80, chunks_per_do
 def test_arch09_semantic_equivalence_on_real_and_copied_db(tmp_path: Path) -> None:
     """Verify 100% identical SourceSpec list between legacy GROUP BY and new catalog/skip-scan."""
     candidates = [
-        Path("C:/AIOS_workspace_chat_rag_v2_production/bge_m3_hybrid/collections/mom/library.sqlite"),
-        Path("C:/AIOS_workspace_chat_rag_v2_production/bge_m3_hybrid/collections/lsu/library.sqlite"),
+        Path("D:/AIOS_workspace_chat_rag_v2_production/bge_m3_hybrid/collections/mom/library.sqlite"),
+        Path("D:/AIOS_workspace_chat_rag_v2_production/bge_m3_hybrid/collections/lsu/library.sqlite"),
         Path("local_runs/workspace_chat_rag_v2_production/bge_m3_hybrid/collections/tri_thuc/library.sqlite"),
     ]
     real_db = next((p for p in candidates if p.is_file()), None)

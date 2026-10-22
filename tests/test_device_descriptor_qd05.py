@@ -104,7 +104,7 @@ def test_safety_gate_qd05_on_production_index_copy(tmp_path) -> None:
         _expected_backend_fingerprint,
     )
 
-    prod_db = Path("C:/AIOS_workspace_chat_rag_v2_production/bge_m3_hybrid/collections/mom/library.sqlite")
+    prod_db = Path("D:/AIOS_workspace_chat_rag_v2_production/bge_m3_hybrid/collections/mom/library.sqlite")
     if not prod_db.is_file():
         pytest.skip("Production SQLite index not present on this host")
 

@@ -87,7 +87,7 @@ def resolve_runtime_root(explicit: Path | None) -> Path:
     raise ActivationError(
         "Thiếu --runtime-root và không xác định được đường production từ "
         f"{DEFAULT_MANIFEST.name} (runtime.root). Vui lòng truyền --runtime-root "
-        "trỏ tới thư mục production thật (ví dụ C:\\AIOS_workspace_chat_rag_v2_production). "
+        "trỏ tới thư mục production thật (ví dụ D:\\AIOS_workspace_chat_rag_v2_production). "
         "Không tự dùng bản cũ trong local_runs (bản ghim 28/09 thiếu 16.656 mảnh) "
         "để tránh đọc nhầm."
     )

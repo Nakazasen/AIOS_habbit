@@ -36,3 +36,6 @@ chua cac file nay.
   private / muon poll nhanh — xem ghi chu `$token` trong script).
 - File runtime (`watcher_state.json`, `_ticket-moi.md`, `*.log`) chi nam local,
   khong commit (da co `.gitignore`).
+
+## Cau hinh luu tru RAG Production
+Thu muc luu tru RAG Production tai may nha: D:\AIOS_workspace_chat_rag_v2_production.

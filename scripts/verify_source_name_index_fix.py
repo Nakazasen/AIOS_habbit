@@ -14,7 +14,7 @@ from aios_habit.workspace_chat_ai_answer import WorkspaceAIContextSource
 from aios_habit.workspace_chat_models import SOURCE_SCOPE_NOTEBOOK, SOURCE_SCOPE_TEMPORARY
 
 def main():
-    db_path = Path(r"C:\AIOS_workspace_chat_rag_v2_production\bge_m3_hybrid\collections\lsu\library.sqlite")
+    db_path = Path(r"D:\AIOS_workspace_chat_rag_v2_production\bge_m3_hybrid\collections\lsu\library.sqlite")
     print(f"Target DB: {db_path} (exists: {db_path.is_file()}, size: {db_path.stat().st_size / (1024*1024):.2f} MB)")
 
     # 1. Check index existence before
@@ -121,7 +121,7 @@ def main():
     # Test C: Also ensure the other collections (mom, dieu_tra_loi, tong_hop, tri_thuc) have the index
     print("\n--- ENSURING OTHER PRODUCTION COLLECTIONS ---")
     for coll in ["mom", "dieu_tra_loi", "tong_hop", "tri_thuc"]:
-        p = Path(f"C:/AIOS_workspace_chat_rag_v2_production/bge_m3_hybrid/collections/{coll}/library.sqlite")
+        p = Path(f"D:/AIOS_workspace_chat_rag_v2_production/bge_m3_hybrid/collections/{coll}/library.sqlite")
         if p.is_file():
             t_c0 = time.perf_counter()
             ok = ensure_index_source_name_index(p)
