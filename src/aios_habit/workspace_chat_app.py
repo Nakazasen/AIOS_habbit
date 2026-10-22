@@ -2340,6 +2340,8 @@ def _run_chat_turn_async(
     t_turn_end = time.time()
     turn_total_s = t_turn_end - t_turn_start
     badge = res[2] if len(res) > 2 and isinstance(res[2], dict) else {}
+    if isinstance(badge, dict) and conversation_id and "conversation_id" not in badge:
+        badge["conversation_id"] = conversation_id
     eff_backend = (badge.get("provider") or badge.get("ai_source") or ai_backend) if badge else ai_backend
     ts_complete = format_marker_timestamp()
     try:
@@ -5340,11 +5342,22 @@ else:
                 has_image = bool(st.session_state.get(pasted_img_key))
                 if not raw_text and not has_image:
                     return
+
+                # Turn deduplication (Gate 5): If exact same question was dispatched within last 3 seconds, ignore duplicate
+                _last_sent_key = f"wsc_last_sent_{conv_id}"
+                _last_sent = st.session_state.get(_last_sent_key)
+                _now = time.time()
+                if _last_sent and isinstance(_last_sent, dict):
+                    if _last_sent.get("text") == raw_text and (_now - _last_sent.get("time", 0)) < 3.0:
+                        st.session_state.wsc_action_message = "Yêu cầu vừa được gửi, đang xử lý..."
+                        return
+                st.session_state[_last_sent_key] = {"text": raw_text, "time": _now}
+
                 st.session_state[input_key] = ""
                 st.session_state[f"wsc_submitting_ack_{conv_id}"] = {
                     "q_text": raw_text,
                     "user_msg_id": f"MSG-U-{uuid.uuid4().hex[:8].upper()}",
-                    "timestamp": time.time(),
+                    "timestamp": _now,
                 }
                 # Log send ack event to local_cases for continuous improvement loop (Requirement 4.6)
                 try:
@@ -5387,6 +5400,8 @@ else:
                                 if succ_msg:
                                     st.session_state.wsc_action_message = succ_msg
                                 if badge:
+                                    if isinstance(badge, dict) and active_conversation and 'conversation_id' not in badge:
+                                        badge['conversation_id'] = active_conversation.id
                                     st.session_state.wsc_last_ai_badge = badge
                             else:
                                 if err_msg:
@@ -6409,7 +6424,7 @@ else:
                             slot.removeAttribute("data-wsc-filled");
                           }}
 
-                          // 2. State recovery on composer controls
+                          // 2. State recovery on composer controls across document
                           const currentSendBtn = parentDoc.querySelector('[class*="st-key-wsc_ask_"] button, [class*="st-key-wsc-action-"] button');
                           if (currentSendBtn && !isAnswering) {{
                             if (currentSendBtn.getAttribute("data-wsc-sending") === "true") {{
@@ -6428,6 +6443,21 @@ else:
                             currentTextarea.style.opacity = "";
                           }}
 
+                          if (!isAnswering) {{
+                            parentDoc.querySelectorAll('[data-wsc-sending="true"]').forEach(function(btn) {{
+                              btn.removeAttribute("data-wsc-sending");
+                              btn.removeAttribute("disabled");
+                              btn.style.pointerEvents = "";
+                              btn.style.opacity = "";
+                            }});
+                            parentDoc.querySelectorAll('[class*="st-key-wsc_question_input_"] textarea').forEach(function(ta) {{
+                              ta.removeAttribute("readonly");
+                              ta.removeAttribute("disabled");
+                              ta.style.pointerEvents = "";
+                              ta.style.opacity = "";
+                            }});
+                          }}
+
                           // 3. Client-side instant visual ack trigger
                           parentWin.__wscDoInstantAck = function(textarea, sendBtn) {{
                             const rawText = (textarea ? textarea.value : "").trim();
@@ -6443,6 +6473,24 @@ else:
                               textarea.setAttribute("readonly", "true");
                               textarea.style.opacity = "0.7";
                             }}
+
+                            // Safety auto-release timeout (6s) so UI cannot permanently lock up if server errors or stalls
+                            setTimeout(function() {{
+                              try {{
+                                if (sendBtn && sendBtn.getAttribute("data-wsc-sending") === "true") {{
+                                  sendBtn.removeAttribute("data-wsc-sending");
+                                  sendBtn.removeAttribute("disabled");
+                                  sendBtn.style.pointerEvents = "";
+                                  sendBtn.style.opacity = "";
+                                }}
+                                if (textarea) {{
+                                  textarea.removeAttribute("readonly");
+                                  textarea.removeAttribute("disabled");
+                                  textarea.style.pointerEvents = "";
+                                  textarea.style.opacity = "";
+                                }}
+                              }} catch (e) {{}}
+                            }}, 6000);
 
                             // (a) Render instant question bubble + ack badge into chat area
                             const targetSlot = parentDoc.getElementById("wsc-optimistic-slot-" + convId) || parentDoc.querySelector('.wsc-optimistic-slot');
@@ -6616,13 +6664,18 @@ else:
                     user_attached_image = None
 
                 _suggest_send_key = f"wsc_suggest_send_{active_conversation.id}"
-                _suggested_question = st.session_state.pop(_suggest_send_key, "")
+                _suggested_question = st.session_state.get(_suggest_send_key, "")
                 if _suggested_question and not is_answering:
                     ask_submitted = True
                     user_input = _suggested_question
                     user_attached_image = None
 
                 _current_submitting_ack = st.session_state.get(f"wsc_submitting_ack_{active_conversation.id}")
+                if _current_submitting_ack and isinstance(_current_submitting_ack, dict):
+                    _ack_ts = _current_submitting_ack.get("timestamp", 0)
+                    if time.time() - _ack_ts > 15.0:
+                        st.session_state.pop(f"wsc_submitting_ack_{active_conversation.id}", None)
+                        _current_submitting_ack = None
                 if _current_submitting_ack and _current_submitting_ack.get("q_text") and not user_input.strip():
                     user_input = _current_submitting_ack["q_text"]
                     ask_submitted = True
@@ -6638,6 +6691,8 @@ else:
                         from aios_habit.workspace_memory_ui import queue_memory_command_if_present
 
                         if queue_memory_command_if_present(q_text):
+                            st.session_state.pop(_suggest_send_key, None)
+                            st.session_state.pop(f"wsc_submitting_ack_{active_conversation.id}", None)
                             safe_rerun()
 
                     if not is_workspace_chat_worker_warmed(collection_id=_target_composer_col):
@@ -6654,6 +6709,11 @@ else:
                             or "Mô hình và dữ liệu kho đang được nạp vào bộ nhớ. Vui lòng chờ trong giây lát..."
                         )
                         safe_rerun()
+
+                    # Pop suggestion & submitting ack as soon as worker is confirmed warmed and execution begins
+                    st.session_state.pop(_suggest_send_key, None)
+                    _active_ack = st.session_state.pop(f"wsc_submitting_ack_{active_conversation.id}", None)
+
                     # UX-CHAT-CORE: bo dinh tuyen y dinh chat-first. Nguoi dung chi
                     # go cau tieng Viet, app tu dieu phoi (khong con radio nhanh).
                     if q_text and _xu_ly_y_dinh_chat(
@@ -7309,7 +7369,8 @@ else:
                                 from aios_habit.workspace_chat_models import ChatMessage
                                 from aios_habit.workspace_chat_store import save_message
 
-                                _active_ack = st.session_state.get(f"wsc_submitting_ack_{active_conversation.id}")
+                                if not locals().get("_active_ack"):
+                                    _active_ack = st.session_state.pop(f"wsc_submitting_ack_{active_conversation.id}", None)
                                 _turn_msg_id = (
                                     _active_ack.get("user_msg_id")
                                     if (_active_ack and isinstance(_active_ack, dict))
