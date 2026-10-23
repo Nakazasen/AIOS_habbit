@@ -6545,6 +6545,9 @@ else:
                                             safe_rerun()
                                     else:
                                         with st.expander("🔑 Đăng nhập tài khoản C-Agent", expanded=True):
+                                            c_msg = auth_status.get("message")
+                                            if c_msg:
+                                                st.caption(f"Trạng thái phiên: **{c_msg}**")
                                             st.caption("Nhập tài khoản C-Agent để tự động tạo và gia hạn phiên làm việc:")
                                             u_in = st.text_input("Tên đăng nhập", value="tvn183660", key="wsc_cagent_user_inp")
                                             p_in = st.text_input("Mật khẩu", type="password", key="wsc_cagent_pass_inp")

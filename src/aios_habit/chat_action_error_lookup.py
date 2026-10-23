@@ -1565,7 +1565,7 @@ def _render_cards(
         lines.append(f"{case_source_lbl} `{case['bao_cao_goc'] or '—'}`")
 
     lines.append("")
-    lines.append(t("error_lookup_footer_synthesized", locale=loc))
+    lines.append(t("error_lookup_footer_cards", locale=loc))
     res_text = "\n".join(lines)
     return purify_markdown_text(res_text, question or code_label or "cards", route="error_lookup_cards", target_locale=loc)
 

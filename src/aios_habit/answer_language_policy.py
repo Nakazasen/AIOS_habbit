@@ -686,7 +686,9 @@ def purify_markdown_text(
         # Case title: **X. Vụ Y** (Machine / Line) or legacy **X. Phiếu Y**
         # e.g., **1. Vụ 2026/1143** (Iris2024 上位 / C33)
         if line_clean.startswith("**") and ("Phiếu" in line_clean or "Vụ" in line_clean):
-            trans, act = translate_kdtps_field(line_clean, field_name="case_header")
+            if target_locale not in ("ja", "zh-CN"):
+                line_clean = re.sub(r"\bPhiếu\b", "Vụ", line_clean)
+            trans, act = translate_kdtps_field(line_clean, field_name="case_header", target_locale=target_locale)
             detected_count += 1
             actions_taken.append(act)
             event_details.append({"line": idx, "field": "case_header", "raw": line_clean[:60], "trans": trans[:60]})
