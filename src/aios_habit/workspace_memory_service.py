@@ -481,7 +481,7 @@ def _read_skill_records(skills_dir: Path | None = None) -> list[dict[str, Any]]:
             if note.trang_thai not in ("confirmed", "active"):
                 continue
             title = (note.title or "").strip()
-            statement = (note.content_body[:500] if note.content_body else note.title).strip()
+            statement = (note.content_body[:2000] if note.content_body else note.title).strip()
             if not title or not statement:
                 logger.warning("Bỏ qua kỹ năng rỗng: id=%s", note.id)
                 continue
@@ -541,7 +541,7 @@ def _read_second_brain_lessons(
                 continue
 
             title = (note.title or "").strip()
-            statement = (note.content_body[:500] if note.content_body else note.title).strip()
+            statement = (note.content_body[:2000] if note.content_body else note.title).strip()
             if not title or not statement:
                 logger.warning("Bỏ qua bài học second brain rỗng: id=%s", note.id)
                 continue
@@ -728,6 +728,16 @@ def recall_workspace_memory(
     has_conflict = any(count >= 2 for count in groups.values())
 
     fingerprint = _consent_fingerprint(bounded)
+    for b_item in bounded:
+        if getattr(b_item, "source_kind", "") == SOURCE_KIND_SKILL and getattr(b_item, "source_id", ""):
+            try:
+                from aios_habit.hermes_curator import record_skill_usage
+                from aios_habit.user_skill_manager import record_user_skill_event
+                record_skill_usage(b_item.source_id)
+                record_user_skill_event("used", b_item.source_id)
+            except Exception:
+                pass
+
     trace = MemoryRecallTrace(
         trace_id=f"trc_{uuid.uuid4().hex[:12]}",
         created_at=_now_iso(),

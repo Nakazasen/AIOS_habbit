@@ -159,27 +159,54 @@ class SecondBrainNote:
             fm = yaml.safe_load(fm_text) or {}
         except Exception:
             fm = {}
+
+        # Support both legacy SecondBrainNote frontmatter and Hermes Agent standard (name, description)
+        hermes_name = str(fm.get("name", "")).strip()
+        note_id = str(fm.get("id") or hermes_name or f"NOTE-{uuid_short()}")
+        note_title = str(fm.get("title") or (hermes_name.replace("-", " ").title() if hermes_name else "Ghi chú thói quen"))
+        note_kind = str(fm.get("kind") or (DRAFT_KIND_SKILL if hermes_name else DRAFT_KIND_LESSON))
+        applies_when_val = str(fm.get("applies_when") or fm.get("description") or "")
+
+        # Determine active state and pinned from Hermes curator usage if present
+        note_state = str(fm.get("trang_thai") or ("active" if hermes_name else "draft"))
+        is_pinned_val = bool(fm.get("pinned", False))
+        creator_val = str(fm.get("created_by") or "agent")
+        if hermes_name:
+            try:
+                from aios_habit.hermes_curator import is_pinned, load_usage
+                u = load_usage().get(hermes_name, {})
+                if u.get("state"):
+                    note_state = str(u["state"])
+                if is_pinned(hermes_name):
+                    is_pinned_val = True
+                if u.get("created_by"):
+                    creator_val = str(u["created_by"])
+            except Exception:
+                pass
+
+        ev_refs = list(fm.get("evidence_refs") or ([f"skill_{hermes_name}"] if hermes_name else []))
+
         return cls(
-            id=str(fm.get("id") or f"NOTE-{uuid_short()}"),
-            title=str(fm.get("title") or "Ghi chú thói quen"),
-            kind=str(fm.get("kind") or DRAFT_KIND_LESSON),
+            id=note_id,
+            title=note_title,
+            kind=note_kind,
             created=str(fm.get("created") or now_iso()),
             updated=str(fm.get("updated") or now_iso()),
             mien=str(fm.get("mien") or "general"),
-            applies_when=str(fm.get("applies_when") or ""),
+            applies_when=applies_when_val,
             does_not_apply_when=str(fm.get("does_not_apply_when") or ""),
-            trang_thai=str(fm.get("trang_thai") or "draft"),
-            evidence_refs=list(fm.get("evidence_refs") or []),
+            trang_thai=note_state,
+            evidence_refs=ev_refs,
             partition=str(fm.get("partition") or "local_habit"),
             links=list(fm.get("links") or []),
             content_body=body_text,
-            pinned=bool(fm.get("pinned", False)),
+            pinned=is_pinned_val,
             use_count=int(fm.get("use_count", 0)),
             last_activity_at=str(fm.get("last_activity_at") or ""),
             absorbed_into=fm.get("absorbed_into"),
             supersedes=fm.get("supersedes"),
             superseded_by=fm.get("superseded_by"),
-            created_by=str(fm.get("created_by") or "agent"),
+            created_by=creator_val,
         )
 
     def to_dict(self) -> Dict[str, Any]:

@@ -1911,6 +1911,27 @@ def deliver_5tier_ladder_answer(
 
 
 
+        if not draft_body_found:
+            try:
+                from aios_habit.workspace_memory_service import recall_workspace_memory, WorkspaceMemoryRecallRequest
+                rec_res = recall_workspace_memory(WorkspaceMemoryRecallRequest(
+                    question=question,
+                    workspace_id=notebook_id or "default",
+                    collection_id="tri_thuc",
+                    provider_mode="local",
+                    include_local_only=True,
+                ))
+                if rec_res and rec_res.items:
+                    best_item = rec_res.items[0]
+                    draft_used_title = best_item.title
+                    draft_body_found = (
+                        f"### 🛠️ Áp dụng kỹ năng cá nhân đã tạo: **{best_item.title}**\n\n"
+                        f"{best_item.statement}"
+                    )
+                    inferred_reasoning = ""
+            except Exception:
+                pass
+
         if not inferred_reasoning and not draft_body_found:
 
             try:
@@ -1939,7 +1960,7 @@ def deliver_5tier_ladder_answer(
 
 
 
-        inferred_body = inferred_reasoning or draft_body_found or (
+        inferred_body = draft_body_found or inferred_reasoning or (
 
             f"Về câu hỏi *'{question.strip()}'*, hệ thống chưa tìm thấy dữ liệu đối chiếu trực tiếp trong các tài liệu nội bộ đã bật. "
 
