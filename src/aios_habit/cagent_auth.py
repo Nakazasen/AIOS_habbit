@@ -331,12 +331,15 @@ def probe_cagent_liveness(
             return dict(_LIVENESS_CACHE["result"])
 
     mock_mode = os.environ.get("AIOS_CAGENT_MOCK_LIVENESS", "").strip().lower()
-    mock_file = SESSION_DIR / "mock_liveness.txt"
-    if not mock_mode and mock_file.is_file():
-        try:
-            mock_mode = mock_file.read_text(encoding="utf-8").strip().lower()
-        except Exception:
-            pass
+    if mock_mode in ("file", "1", "true"):
+        mock_file = SESSION_DIR / "mock_liveness.txt"
+        if mock_file.is_file():
+            try:
+                mock_mode = mock_file.read_text(encoding="utf-8").strip().lower()
+            except Exception:
+                mock_mode = ""
+        else:
+            mock_mode = ""
     if mock_mode in ("expired", "phien_het_han"):
         res = {
             "code": "expired",

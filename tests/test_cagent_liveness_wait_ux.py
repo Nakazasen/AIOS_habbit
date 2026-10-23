@@ -143,3 +143,23 @@ def test_client_instant_visual_ack_has_timer_ticker() -> None:
     source = _app_source()
     assert "wsc-timer-val" in source
     assert "__wscTimerInterval" in source
+
+
+def test_probe_cagent_liveness_ignores_stale_mock_file_when_env_unset(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Production safety (G19-SWEEP audit): stale mock_liveness.txt must be ignored unless AIOS_CAGENT_MOCK_LIVENESS is explicitly set."""
+    import aios_habit.cagent_auth as ca
+
+    monkeypatch.delenv("AIOS_CAGENT_MOCK_LIVENESS", raising=False)
+    monkeypatch.setattr(ca, "SESSION_DIR", tmp_path)
+    stale_mock = tmp_path / "mock_liveness.txt"
+    stale_mock.write_text("connected", encoding="utf-8")
+
+    res = probe_cagent_liveness(force=True)
+    assert res.get("username") != "mock_connected_user"
+
+    monkeypatch.setenv("AIOS_CAGENT_MOCK_LIVENESS", "file")
+    res_mock = probe_cagent_liveness(force=True)
+    assert res_mock["code"] == "connected"
+    assert res_mock.get("username") == "mock_connected_user"
