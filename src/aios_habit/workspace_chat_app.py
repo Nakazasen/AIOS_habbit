@@ -2826,10 +2826,170 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
         XEM_TIEN_DO_VU,
         BAO_CAO_XU_HUONG,
         XU_HUONG_LOG_TINH,
+        DUYET_BAN_NHAP,
+        NAP_TAI_LIEU,
+        DU_DOAN_RUI_RO,
+        BAN_DO_TRI_THUC,
+        BAO_CAO_DIEU_TRA,
+        KYNANG_DANH_SACH,
+        KYNANG_TAO,
+        KYNANG_XEM,
+        KYNANG_LUU_TRU,
         _khong_dau,
     )
 
     norm_q = _khong_dau(q_text)
+    conv_id = getattr(active_conversation, "id", "") or ""
+
+    from aios_habit.user_skill_manager import (
+        has_active_interview,
+        handle_interview_turn,
+        start_or_reset_interview,
+        list_user_skills_markdown,
+        view_skill_markdown,
+        archive_skill_markdown,
+        cancel_interview,
+    )
+
+    if y_dinh == KYNANG_TAO:
+        return start_or_reset_interview(conv_id, q_text)
+
+    if norm_q in ("huy", "hủy", "/kynang huy", "/kynang-huy", "cancel") and has_active_interview(conv_id):
+        return cancel_interview(conv_id)
+
+    if has_active_interview(conv_id) and (
+        y_dinh in (HOI_TAI_LIEU, HOI_DAP_CHUNG, KYNANG_TAO)
+        or norm_q in ("duyet", "duyệt", "xac nhan", "xác nhận", "dong y", "đồng ý", "luu", "lưu", "/kynang duyet", "/kynang-duyet")
+        or norm_q.startswith(("sua", "sửa", "/kynang sua", "/kynang-sua"))
+    ):
+        return handle_interview_turn(conv_id, q_text)
+
+    if y_dinh == KYNANG_DANH_SACH:
+        return list_user_skills_markdown()
+
+    if y_dinh == KYNANG_XEM:
+        sk_name = slots.get("skill_name", "") if isinstance(slots, dict) else ""
+        return view_skill_markdown(sk_name or q_text)
+
+    if y_dinh == KYNANG_LUU_TRU:
+        sk_name = slots.get("skill_name", "") if isinstance(slots, dict) else ""
+        return archive_skill_markdown(sk_name or q_text)
+
+    if y_dinh == DUYET_BAN_NHAP:
+        from aios_habit.chat_action import ChatActionRequest, render_outcome
+        from aios_habit.chat_action_draft_approval import _handler as draft_handler
+        try:
+            q_eff = q_text
+            if q_text.strip() in ("/duyet", "/duyet-ban-nhap", "/承認", "/下書き承認", "/审批", "/草稿审核"):
+                q_eff = "liet ke ban thao chua duyet"
+            outcome = draft_handler(
+                ChatActionRequest(
+                    question=q_eff,
+                    locale="vi",
+                    conversation_id=getattr(active_conversation, "id", "") or "",
+                    notebook_id=active_nb_id or "",
+                    workspace_id=active_nb_id or "default",
+                )
+            )
+            if outcome:
+                return render_outcome(outcome)
+        except Exception as exc:
+            return f"⚠️ Không thể mở hàng đợi duyệt bản thảo: {exc}"
+        return "Không còn bản thảo chưa duyệt trong hàng đợi."
+
+    if y_dinh == NAP_TAI_LIEU:
+        from aios_habit.chat_action import ChatActionRequest, render_outcome
+        from aios_habit.chat_action_knowledge_intake import _handler as intake_handler
+        try:
+            q_eff = q_text
+            if q_text.strip() in ("/naptailieu", "/nap-tai-lieu", "/naptri-thuc", "/資料取込", "/知識取込", "/导入资料", "/知识录入"):
+                q_eff = "mo phien thu tri thuc"
+            outcome = intake_handler(
+                ChatActionRequest(
+                    question=q_eff,
+                    locale="vi",
+                    conversation_id=getattr(active_conversation, "id", "") or "",
+                    notebook_id=active_nb_id or "",
+                    workspace_id=active_nb_id or "default",
+                )
+            )
+            if outcome:
+                return render_outcome(outcome)
+        except Exception as exc:
+            return f"⚠️ Không thể mở phiên nạp tài liệu: {exc}"
+        return "Chưa mở được phiên thu tri thức lúc này."
+
+    if y_dinh == DU_DOAN_RUI_RO:
+        from aios_habit.chat_action import ChatActionRequest, render_outcome
+        from aios_habit.chat_action_prediction import _handler as prediction_handler
+        try:
+            q_eff = q_text
+            if q_text.strip() in ("/dudoan", "/du-doan", "/再発予測", "/リスク予測", "/预测", "/复发预测"):
+                q_eff = "dự đoán rủi ro"
+            outcome = prediction_handler(
+                ChatActionRequest(
+                    question=q_eff,
+                    locale="vi",
+                    conversation_id=getattr(active_conversation, "id", "") or "",
+                    notebook_id=active_nb_id or "",
+                    workspace_id=active_nb_id or "default",
+                )
+            )
+            if outcome:
+                return render_outcome(outcome)
+        except Exception as exc:
+            return f"⚠️ Không thể chạy dự đoán rủi ro: {exc}"
+        return "Chưa chạy được mô hình dự đoán rủi ro lúc này."
+
+    if y_dinh == BAN_DO_TRI_THUC:
+        from aios_habit.chat_action import ChatActionRequest, render_outcome
+        from aios_habit.chat_action_visual_maps import _tri_thuc_handler
+        try:
+            q_eff = q_text
+            if q_text.strip() in ("/bando", "/ban-do", "/ナレッジマップ", "/知識マップ", "/知识地图", "/关系图"):
+                q_eff = "bản đồ tri thức"
+            outcome = _tri_thuc_handler(
+                ChatActionRequest(
+                    question=q_eff,
+                    locale="vi",
+                    conversation_id=getattr(active_conversation, "id", "") or "",
+                    notebook_id=active_nb_id or "",
+                    workspace_id=active_nb_id or "default",
+                )
+            )
+            if outcome:
+                return render_outcome(outcome)
+        except Exception as exc:
+            return f"⚠️ Không thể dựng bản đồ tri thức: {exc}"
+        return "Chưa thể hiển thị bản đồ tri thức lúc này."
+
+    if y_dinh == BAO_CAO_DIEU_TRA:
+        from aios_habit.chat_action import ChatActionRequest, render_outcome
+        from aios_habit.chat_action_bao_cao_dieu_tra import _handler as report_handler
+        try:
+            cid = slots.get("case_id") if isinstance(slots, dict) else ""
+            if not cid:
+                cid = st.session_state.get("wsc_active_case_id", "")
+            q_eff = q_text
+            if cid and cid not in q_eff:
+                q_eff = f"{q_eff} cho ca {cid}"
+            elif q_eff.strip() in ("/baocaodieutra", "/bao-cao-dieu-tra", "/baocao-dieutra", "/調査報告書", "/调查报告"):
+                q_eff = "lập báo cáo điều tra"
+            outcome = report_handler(
+                ChatActionRequest(
+                    question=q_eff,
+                    locale="vi",
+                    conversation_id=getattr(active_conversation, "id", "") or "",
+                    notebook_id=active_nb_id or "",
+                    workspace_id=active_nb_id or "default",
+                )
+            )
+            if outcome:
+                return render_outcome(outcome)
+        except Exception as exc:
+            return f"⚠️ Lỗi khi xuất báo cáo điều tra: {exc}"
+        return "Chưa tạo được báo cáo điều tra lúc này. Bạn vui lòng chỉ định mã ca lỗi, ví dụ: `/baocaodieutra C7620`."
+
     if y_dinh == HUONG_DAN:
         from aios_habit.huongdan_command import handle_huongdan_command
         conv_id = getattr(active_conversation, "id", "") or ""
@@ -3021,6 +3181,8 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
                     van_ban += chart_md
             except Exception:
                 pass
+        return van_ban
+
     if y_dinh == DANH_GIA_DIEU_TRA:
         try:
             from aios_habit.chat_action_create_case import get_active_case_id
@@ -3201,6 +3363,23 @@ def _xu_ly_y_dinh_chat(q_text: str, *, active_conversation, active_nb_id) -> boo
                     break
         except Exception:
             pass
+
+    conv_id = getattr(active_conversation, "id", "") or ""
+    try:
+        from aios_habit.chat_intent_router import _khong_dau
+        from aios_habit.user_skill_manager import cancel_interview, handle_interview_turn, has_active_interview
+
+        if conv_id and has_active_interview(conv_id):
+            norm_q = _khong_dau(q_text).strip()
+            if norm_q in ("huy", "hủy", "/kynang huy", "/kynang-huy", "cancel"):
+                ans = cancel_interview(conv_id)
+            else:
+                ans = handle_interview_turn(conv_id, q_text)
+            if ans:
+                _luu_cap_tin_nhan_chat(conv_id, q_text, ans)
+                return True
+    except Exception:
+        pass
 
     cac_y_dinh = classify_all_intents(q_text)
     if len(cac_y_dinh) == 1 and cac_y_dinh[0][0] == HOI_TAI_LIEU:
@@ -5725,7 +5904,8 @@ else:
                         render_chat_bubble(m, is_latest=is_latest_ans, locale=current_ui_locale,
                                            conversation_id=active_conversation.id,
                                            feedback_question=_fb_question,
-                                           render_interactive=should_render_interactive)
+                                           render_interactive=should_render_interactive,
+                                           badge_data=badge_data if is_latest_ans else None)
                     if _hd_data:
                         _render_huongdan_chat_bubble(_hd_data, active_conversation.id, current_ui_locale)
                     _opt_answering_str = "true" if is_answering else "false"
@@ -6711,6 +6891,7 @@ else:
                           const isAnswering = {_js_is_answering};
                           const hasError = {_js_has_error};
                           const convId = "{active_conversation.id}";
+                          const currentLocale = "{current_ui_locale}";
                           const slashCatalog = {_js_slash_catalog};
                           parentWin.__wscSlashCatalog = slashCatalog;
 
@@ -6832,25 +7013,50 @@ else:
                           parentWin.__wscFilterCatalog = function(query) {{
                             const cleanQ = (query || "").trim();
                             const catalog = parentWin.__wscSlashCatalog || [];
-                            if (cleanQ === "/" || !cleanQ) {{
-                              return catalog.slice();
+
+                            const textarea = parentDoc.querySelector('[class*="st-key-wsc_question_input_"] textarea');
+                            const inputVal = textarea ? textarea.value : "";
+                            let activeLang = "vi";
+                            if (/[\u3040-\u30ff]/.test(inputVal)) {{
+                              activeLang = "ja";
+                            }} else if (/[\u4e00-\u9fff]/.test(inputVal)) {{
+                              activeLang = "zh";
+                            }} else if (typeof currentLocale === "string" && (currentLocale === "ja" || currentLocale === "zh")) {{
+                              activeLang = currentLocale;
                             }}
-                            const qNorm = parentWin.__wscStripDiacritics(cleanQ.startsWith("/") ? cleanQ.slice(1) : cleanQ);
-                            return catalog.filter(function(item) {{
-                              const cmdNorm = parentWin.__wscStripDiacritics(item.command.replace(/^\//, ""));
-                              if (cmdNorm.includes(qNorm)) return true;
-                              for (let i = 0; i < (item.aliases || []).length; i++) {{
-                                const aNorm = parentWin.__wscStripDiacritics(item.aliases[i].replace(/^\//, ""));
-                                if (aNorm.includes(qNorm)) return true;
-                              }}
-                              const descNorm = parentWin.__wscStripDiacritics(item.description);
-                              if (descNorm.includes(qNorm)) return true;
-                              const natNorm = parentWin.__wscStripDiacritics(item.natural_query);
-                              if (natNorm.includes(qNorm)) return true;
-                              const catNorm = parentWin.__wscStripDiacritics(item.category);
-                              if (catNorm.includes(qNorm)) return true;
-                              return false;
+
+                            let filtered = [];
+                            if (cleanQ === "/" || !cleanQ) {{
+                              filtered = catalog.slice();
+                            }} else {{
+                              const qNorm = parentWin.__wscStripDiacritics(cleanQ.startsWith("/") ? cleanQ.slice(1) : cleanQ);
+                              filtered = catalog.filter(function(item) {{
+                                const cmdNorm = parentWin.__wscStripDiacritics(item.command.replace(/^\//, ""));
+                                if (cmdNorm.includes(qNorm)) return true;
+                                for (let i = 0; i < (item.aliases || []).length; i++) {{
+                                  const aNorm = parentWin.__wscStripDiacritics(item.aliases[i].replace(/^\//, ""));
+                                  if (aNorm.includes(qNorm)) return true;
+                                }}
+                                if (parentWin.__wscStripDiacritics(item.description || "").includes(qNorm)) return true;
+                                if (parentWin.__wscStripDiacritics(item.description_ja || "").includes(qNorm)) return true;
+                                if (parentWin.__wscStripDiacritics(item.description_zh || "").includes(qNorm)) return true;
+                                if (parentWin.__wscStripDiacritics(item.natural_query || "").includes(qNorm)) return true;
+                                if (parentWin.__wscStripDiacritics(item.natural_query_ja || "").includes(qNorm)) return true;
+                                if (parentWin.__wscStripDiacritics(item.natural_query_zh || "").includes(qNorm)) return true;
+                                if (parentWin.__wscStripDiacritics(item.category || "").includes(qNorm)) return true;
+                                if (parentWin.__wscStripDiacritics(item.category_ja || "").includes(qNorm)) return true;
+                                if (parentWin.__wscStripDiacritics(item.category_zh || "").includes(qNorm)) return true;
+                                return false;
+                              }});
+                            }}
+
+                            filtered.sort(function(a, b) {{
+                              const catA = a["category_" + activeLang] || a.category || "";
+                              const catB = b["category_" + activeLang] || b.category || "";
+                              if (catA !== catB) return catA.localeCompare(catB);
+                              return a.command.localeCompare(b.command);
                             }});
+                            return filtered;
                           }};
 
                           parentWin.__wscActiveItems = parentWin.__wscActiveItems || [];
@@ -6862,43 +7068,78 @@ else:
                             const el = parentWin.__wscActivePaletteEl;
                             if (!el) return;
 
+                            const textarea = parentDoc.querySelector('[class*="st-key-wsc_question_input_"] textarea');
+                            const inputVal = textarea ? textarea.value : "";
+                            let activeLang = "vi";
+                            if (/[\u3040-\u30ff]/.test(inputVal)) {{
+                              activeLang = "ja";
+                            }} else if (/[\u4e00-\u9fff]/.test(inputVal)) {{
+                              activeLang = "zh";
+                            }} else if (typeof currentLocale === "string" && (currentLocale === "ja" || currentLocale === "zh")) {{
+                              activeLang = currentLocale;
+                            }}
+
+                            const headerTitle = activeLang === "ja"
+                              ? "⚡ システムコマンド（SLASH COMMANDS）"
+                              : (activeLang === "zh" ? "⚡ 系统命令（SLASH COMMANDS）" : "⚡ LỆNH HỆ THỐNG (SLASH COMMANDS)");
+                            const headerHint = activeLang === "ja"
+                              ? "↑↓で選択 · Enterで挿入 · Escで閉じる"
+                              : (activeLang === "zh" ? "↑↓选择 · Enter插入 · Esc关闭" : "↑↓ để chọn · Enter để chèn · Esc để đóng");
+                            const emptyMsg = activeLang === "ja"
+                              ? "該当するコマンドが見つかりません。Escを押して閉じてください。"
+                              : (activeLang === "zh" ? "未找到匹配命令。按 Esc 键关闭面板。" : "Không tìm thấy lệnh phù hợp. Nhấn Esc để đóng bảng gợi ý.");
+                            const equivLabel = activeLang === "ja"
+                              ? "💬 同等表現:"
+                              : (activeLang === "zh" ? "💬 等效表达:" : "💬 Tương đương:");
+                            const aliasLabel = activeLang === "ja"
+                              ? "別名:"
+                              : (activeLang === "zh" ? "变体:" : "Biến thể:");
+
                             if (!items || items.length === 0) {{
                               el.innerHTML = `
                                 <div class="wsc-palette-header">
-                                  <span>⚡ LỆNH HỆ THỐNG</span>
-                                  <span style="font-size:0.7rem; color:#94A3B8;">Esc để đóng</span>
+                                  <span>${{headerTitle}}</span>
+                                  <span style="font-size:0.7rem; color:#94A3B8;">Esc</span>
                                 </div>
-                                <div class="wsc-palette-empty">Không tìm thấy lệnh phù hợp. Nhấn Esc để đóng bảng gợi ý.</div>
+                                <div class="wsc-palette-empty">${{emptyMsg}}</div>
                               `;
                               return;
                             }}
 
                             let html = `
                               <div class="wsc-palette-header">
-                                <span>⚡ LỆNH HỆ THỐNG (SLASH COMMANDS)</span>
-                                <span style="font-size:0.7rem; color:#94A3B8;">↑↓ để chọn · Enter để chèn · Esc để đóng</span>
+                                <span>${{headerTitle}}</span>
+                                <span style="font-size:0.7rem; color:#94A3B8;">${{headerHint}}</span>
                               </div>
                               <div class="wsc-palette-list">
                             `;
 
+                            let currentGroup = "";
                             for (let i = 0; i < items.length; i++) {{
                               const it = items[i];
+                              const catName = it["category_" + activeLang] || it.category;
+                              if (catName !== currentGroup) {{
+                                currentGroup = catName;
+                                html += `<div class="wsc-palette-group-header">📁 ${{catName}}</div>`;
+                              }}
                               const isSel = (i === selIdx);
                               const selClass = isSel ? " wsc-palette-item--active" : "";
+                              const itemDesc = it["description_" + activeLang] || it.description;
+                              const itemNat = it["natural_query_" + activeLang] || it.natural_query;
                               const aliasesStr = (it.aliases && it.aliases.length > 0)
-                                ? `<div class="wsc-palette-item__aliases">Biến thể: ${{it.aliases.join(", ")}}</div>`
+                                ? `<div class="wsc-palette-item__aliases">${{aliasLabel}} ${{it.aliases.join(", ")}}</div>`
                                 : "";
 
                               html += `
                                 <div class="wsc-palette-item${{selClass}}" data-idx="${{i}}" data-command="${{it.command}}">
                                   <div class="wsc-palette-item__top">
                                     <span class="wsc-palette-item__cmd">${{it.command}}</span>
-                                    <span class="wsc-palette-item__cat">${{it.category}}</span>
+                                    <span class="wsc-palette-item__cat">${{catName}}</span>
                                   </div>
-                                  <div class="wsc-palette-item__desc">${{it.description}}</div>
+                                  <div class="wsc-palette-item__desc">${{itemDesc}}</div>
                                   <div class="wsc-palette-item__nat">
-                                    <span>💬 Tương đương:</span>
-                                    <span style="font-style:italic;">"${{it.natural_query}}"</span>
+                                    <span>${{equivLabel}}</span>
+                                    <span style="font-style:italic;">"${{itemNat}}"</span>
                                   </div>
                                   ${{aliasesStr}}
                                 </div>
@@ -8701,22 +8942,10 @@ else:
                             safe_rerun()
 
             effective_layout = st.session_state.get("wsc_layout_mode", "full")
-            if effective_layout == "split":
-                col_chat, col_results = st.columns([3.8, 1.2])
-                with col_chat:
-                    _render_chat_main_column()
-                with col_results:
-                    _render_workspace_results_and_evidence()
-                    if SHOW_AGENT_IDE_DEV_TOOLS:
-                        _render_agent_ide_developer_tools()
-            else:
-                with st.container():
-                    _render_chat_main_column()
-                st.write(" ")
-                with st.expander(f"📌 {t('results_and_evidence', locale=current_ui_locale)}", expanded=False):
-                    _render_workspace_results_and_evidence()
-                    if SHOW_AGENT_IDE_DEV_TOOLS:
-                        _render_agent_ide_developer_tools()
+            with st.container():
+                _render_chat_main_column()
+            if SHOW_AGENT_IDE_DEV_TOOLS:
+                _render_agent_ide_developer_tools()
 
 
 

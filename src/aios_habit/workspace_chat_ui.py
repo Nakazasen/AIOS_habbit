@@ -873,6 +873,260 @@ def parse_jig_realtime_alert_marker(content: str) -> Optional[Dict[str, Any]]:
         return None
 
 
+def extract_evidence_items_for_message(
+    msg: ChatMessage,
+    display_content: str = "",
+    trace: Optional[EvidenceTrace] = None,
+    badge_data: Optional[Mapping[str, Any]] = None,
+    notebook_id: str = "",
+) -> List[Dict[str, Any]]:
+    """Extract and normalize all evidence items associated specifically with this message.
+
+    Meets requirements of DESKTOP-HOME-UX-EVIDENCE-PER-ANSWER:
+    1. Extracts from message metadata or trace_id (+ trace evidence items / nodes).
+    2. Scopes badge_data strictly to this message (trace_id / message_id match).
+    3. Falls back to citations extracted from answer text for older/legacy messages without a trace.
+    4. If no evidence sources exist, returns an empty list (zero empty expanders, zero leakage from other answers).
+    5. Returns items enriched with CitationRef for seamless one-click source viewing.
+    """
+    from aios_habit.citation_source_viewer import CitationRef, extract_citations_from_text
+
+    raw_candidates: List[Dict[str, Any]] = []
+
+    # Source 1: Message metadata
+    msg_meta = getattr(msg, "metadata", None)
+    if isinstance(msg_meta, dict):
+        ev_items = msg_meta.get("evidence_items")
+        if isinstance(ev_items, (list, tuple)):
+            for it in ev_items:
+                if isinstance(it, dict):
+                    raw_candidates.append(dict(it))
+
+    # Source 2: EvidenceTrace (from msg.trace_id)
+    if trace is not None:
+        tr_meta = getattr(trace, "metadata", None)
+        if isinstance(tr_meta, dict):
+            tr_ev = tr_meta.get("evidence_items")
+            if isinstance(tr_ev, (list, tuple)):
+                for it in tr_ev:
+                    if isinstance(it, dict):
+                        raw_candidates.append(dict(it))
+
+        # Also inspect trace nodes of type 'source', 'chunk', 'evidence'
+        nodes = getattr(trace, "nodes", None)
+        if isinstance(nodes, list) and not raw_candidates:
+            for node in nodes:
+                ntype = getattr(node, "node_type", "")
+                if ntype in ("source", "chunk", "evidence"):
+                    n_meta = getattr(node, "metadata", None) or {}
+                    n_title = getattr(node, "title", "") or getattr(node, "source_id", "") or "Tài liệu"
+                    n_text = getattr(node, "snippet", "") or getattr(node, "content", "")
+                    n_loc = (
+                        n_meta.get("location_info")
+                        or n_meta.get("location")
+                        or n_meta.get("sheet")
+                        or n_meta.get("page")
+                        or ""
+                    )
+                    raw_candidates.append({
+                        "title": n_title,
+                        "text": n_text,
+                        "location_info": n_loc,
+                        "source_id": getattr(node, "source_id", ""),
+                        "source_type": n_meta.get("source_type", "library_document"),
+                    })
+
+    # Source 3: Scoped badge_data (only if explicitly matching this message)
+    if isinstance(badge_data, (dict, Mapping)):
+        b_trace = str(badge_data.get("trace_id") or "").strip()
+        b_msg_id = str(badge_data.get("message_id") or "").strip()
+        m_trace = str(getattr(msg, "trace_id", "") or "").strip()
+        m_id = str(getattr(msg, "id", "") or "").strip()
+
+        is_match = False
+        if b_trace and m_trace and b_trace == m_trace:
+            is_match = True
+        elif b_msg_id and m_id and b_msg_id == m_id:
+            is_match = True
+
+        if is_match:
+            b_items = badge_data.get("evidence_items")
+            if isinstance(b_items, (list, tuple)):
+                for it in b_items:
+                    if isinstance(it, dict):
+                        raw_candidates.append(dict(it))
+
+    # Source 4: Fallback for older/legacy messages without trace
+    if not raw_candidates:
+        content_to_parse = display_content or str(getattr(msg, "content", "") or "")
+        text_citations = extract_citations_from_text(content_to_parse)
+        for c in text_citations:
+            loc_str = c.page_or_sheet or (f"dòng {c.source_row}" if c.source_row else "")
+            raw_candidates.append({
+                "title": c.label or c.source_file or "Trích dẫn tài liệu",
+                "location_info": loc_str,
+                "text": c.raw_text,
+                "source_type": c.ref_type,
+                "source_id": c.id,
+                "source_file": c.source_file,
+                "sheet_name": c.sheet_name,
+                "source_row": c.source_row,
+                "case_id": c.case_id,
+                "citation_ref": c,
+            })
+
+    if not raw_candidates:
+        return []
+
+    # Deduplicate and build normalized CitationRef
+    deduped: List[Dict[str, Any]] = []
+    seen_keys = set()
+
+    for idx, item in enumerate(raw_candidates):
+        title = str(item.get("title") or item.get("source_file") or "").strip()
+        loc = str(item.get("location_info") or item.get("location") or item.get("page_or_sheet") or "").strip()
+        text = str(item.get("text") or item.get("snippet") or "").strip()
+
+        if not title and not text:
+            continue
+
+        dedup_key = f"{title.lower()}::{loc.lower()}::{text[:80].lower()}"
+        if dedup_key in seen_keys:
+            continue
+        seen_keys.add(dedup_key)
+
+        # Retrieve or construct CitationRef
+        cite_ref = item.get("citation_ref")
+        if not isinstance(cite_ref, CitationRef):
+            src_type = str(item.get("source_type") or "").strip().lower()
+            row_num = None
+            if item.get("source_row") is not None:
+                try:
+                    row_num = int(item["source_row"])
+                except (ValueError, TypeError):
+                    row_num = None
+            if row_num is None and loc:
+                m_row = re.search(r"dòng\s*(\d+)", loc, re.IGNORECASE)
+                if m_row:
+                    row_num = int(m_row.group(1))
+
+            ref_type = "library_document"
+            if src_type == "db_error_case" or row_num is not None or "xlsx" in title.lower() or "ca lỗi" in title.lower():
+                ref_type = "db_error_case"
+            elif src_type == "glossary_document" or "từ điển" in title.lower() or "glossary" in title.lower():
+                ref_type = "glossary_document"
+
+            cite_id = str(item.get("id") or item.get("source_id") or f"ev_{getattr(msg, 'id', 'msg')}_{idx}")
+            cite_ref = CitationRef(
+                id=cite_id,
+                ref_type=ref_type,
+                label=title + (f" ({loc})" if loc else ""),
+                source_file=str(item.get("source_file") or title),
+                sheet_name=str(item.get("sheet_name") or ""),
+                source_row=row_num,
+                case_id=item.get("case_id"),
+                page_or_sheet=loc,
+                raw_text=text,
+            )
+
+        deduped.append({
+            "title": title or "Trích dẫn tài liệu",
+            "location_info": loc,
+            "text": text,
+            "source_type": item.get("source_type") or cite_ref.ref_type,
+            "source_id": item.get("source_id") or cite_ref.id,
+            "citation_ref": cite_ref,
+        })
+
+    return deduped
+
+
+def render_per_answer_evidence_block(
+    evidence_items: List[Dict[str, Any]],
+    conversation_id: str,
+    message_id: str,
+    notebook_id: str = "",
+    locale: str = "vi",
+    display_content: str = "",
+) -> None:
+    """Render a dedicated, per-answer evidence expander directly under the assistant answer.
+
+    Clicking any item in the evidence block opens the source viewer panel in-place under the answer.
+    """
+    if not evidence_items:
+        return
+
+    base_title = t('citations_from_docs', locale=locale)
+    if not base_title.startswith('🔍'):
+        base_title = f'🔍 {base_title}'
+    expander_title = f'{base_title} ({len(evidence_items)})'
+    active_state_key = f"wsc_active_citation_{message_id}"
+    active_cite_data = (
+        getattr(st, "session_state", {}).get(active_state_key)
+        if hasattr(st, "session_state")
+        else None
+    )
+
+    with st.expander(expander_title, expanded=False):
+        for idx, item in enumerate(evidence_items):
+            title = item.get("title") or t("sources", locale=locale)
+            loc = item.get("location_info", "")
+            snippet = item.get("text", "")
+            cite_ref = item.get("citation_ref")
+
+            st.markdown(f"**📌 {title}**")
+            if loc:
+                st.caption(f"📍 {loc}")
+            if snippet:
+                st.info(snippet)
+
+            if cite_ref is not None:
+                btn_caption = cite_ref.label or cite_ref.source_file or title
+                btn_key = f"btn_ev_open_{message_id}_{idx}_{cite_ref.id}"
+                open_lbl = t("open_source_file", locale=locale)
+                if st.button(f"📖 {open_lbl}: {btn_caption}", key=btn_key):
+                    if hasattr(st, "session_state"):
+                        st.session_state[active_state_key] = cite_ref.to_dict()
+                    try:
+                        from aios_habit.citation_source_viewer import record_source_verification_event
+                        record_source_verification_event(
+                            conversation_id=conversation_id,
+                            message_id=message_id,
+                            citation_ref=cite_ref,
+                            found=True,
+                        )
+                    except Exception:
+                        pass
+                    if hasattr(st, "rerun"):
+                        st.rerun()
+
+    if active_cite_data and isinstance(active_cite_data, dict):
+        try:
+            from aios_habit.citation_source_viewer import (
+                CitationRef,
+                resolve_citation_source,
+                render_source_viewer_panel,
+            )
+            active_ref = CitationRef.from_dict(active_cite_data)
+            payload = resolve_citation_source(active_ref, notebook_id=notebook_id)
+
+            def _close_panel():
+                if hasattr(st, "session_state"):
+                    st.session_state[active_state_key] = None
+                if hasattr(st, "rerun"):
+                    st.rerun()
+
+            render_source_viewer_panel(
+                st_module=st,
+                payload=payload,
+                on_close=_close_panel,
+                key_prefix=f"ev_panel_{message_id}_{active_ref.id}",
+            )
+        except Exception as err:
+            st.error(f"Error: {err}")
+
+
+
 def render_chat_bubble(
     msg: ChatMessage,
     is_latest: bool = False,
@@ -903,6 +1157,36 @@ def render_chat_bubble(
                 clean_content = _chat_intake_ui.strip_intake_markers(clean_content)
                 clean_content = strip_all_aios_markers(clean_content)
                 st.markdown(clean_content)
+                try:
+                    _non_int_trace = None
+                    if msg.trace_id:
+                        if trace_loader:
+                            _non_int_trace = trace_loader(str(msg.trace_id))
+                        else:
+                            from aios_habit.workspace_chat_store import load_evidence_trace
+                            _non_int_trace = load_evidence_trace(str(msg.trace_id))
+                    _ev_items = extract_evidence_items_for_message(
+                        msg=msg,
+                        trace=_non_int_trace,
+                        badge_data=badge_data,
+                        display_content=clean_content,
+                    )
+                    if _ev_items:
+                        _active_nb = (
+                            getattr(msg, "metadata", {}).get("notebook_id", "")
+                            if hasattr(msg, "metadata") and isinstance(getattr(msg, "metadata", None), dict)
+                            else str(getattr(st, "session_state", {}).get("wsc_active_notebook_id", "") or "")
+                        )
+                        render_per_answer_evidence_block(
+                            evidence_items=_ev_items,
+                            conversation_id=conversation_id,
+                            message_id=str(msg.id or ""),
+                            notebook_id=_active_nb,
+                            locale=locale,
+                            display_content=clean_content,
+                        )
+                except Exception:
+                    pass
                 return
             from aios_habit.agent_work_artifact import extract_chat_artifact_metadata
             from aios_habit import chat_interview_ui as _chat_interview_ui
@@ -1177,6 +1461,45 @@ def render_chat_bubble(
                         )
                     except Exception:
                         st.markdown(display_content)
+
+                    # DESKTOP-HOME-UX-EVIDENCE-PER-ANSWER: Render per-answer evidence block
+                    try:
+                        _ev_items = extract_evidence_items_for_message(
+                            msg=msg,
+                            trace=_msg_trace,
+                            badge_data=badge_data,
+                            display_content=display_content,
+                        )
+                        if _ev_items:
+                            render_per_answer_evidence_block(
+                                evidence_items=_ev_items,
+                                conversation_id=conversation_id,
+                                message_id=str(msg.id or ""),
+                                notebook_id=_active_nb,
+                                locale=locale,
+                                display_content=display_content,
+                            )
+                    except Exception:
+                        pass
+
+                    if "aios_user_skill_draft:" in raw_content:
+                        st.caption("⚡ Thao tác nhanh cho bản nháp kỹ năng:")
+                        c1, c2, c3 = st.columns(3)
+                        with c1:
+                            if st.button("✅ Duyệt lưu kỹ năng", key=f"btn_duyet_skill_{msg.id}", type="primary", use_container_width=True):
+                                st.session_state[f"wsc_suggest_send_{conversation_id}"] = "/kynang duyet"
+                                if hasattr(st, "rerun"):
+                                    st.rerun()
+                        with c2:
+                            if st.button("✏️ Sửa bản nháp", key=f"btn_sua_skill_{msg.id}", use_container_width=True):
+                                st.session_state[f"wsc_suggest_send_{conversation_id}"] = "/kynang sua"
+                                if hasattr(st, "rerun"):
+                                    st.rerun()
+                        with c3:
+                            if st.button("🛑 Hủy bỏ", key=f"btn_huy_skill_{msg.id}", use_container_width=True):
+                                st.session_state[f"wsc_suggest_send_{conversation_id}"] = "/kynang huy"
+                                if hasattr(st, "rerun"):
+                                    st.rerun()
                     if _is_external_ai:
                         if _ext_model_name:
                             st.caption(t("ext_ai_dest_model", locale=locale, provider=_ext_provider_name, model=_ext_model_name))

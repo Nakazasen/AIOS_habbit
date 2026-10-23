@@ -1,0 +1,34 @@
+{
+  "ma_ve": "DESKTOP-HOME-UX-EVIDENCE-PER-ANSWER",
+  "status": "PASSED",
+  "started_at": "2026-10-24T02:48:39.796722",
+  "conversation_id": "CONV-EV5Q-97E117B8",
+  "notebook_id": "NB-LAZY-DTL",
+  "gates": {
+    "gate1_q1_evidence": {
+      "passed": true,
+      "screenshot": "anh-ev-01-cau1-evidence-in-place.png",
+      "bytes": 145387,
+      "sha256": "C11BCE0F8F5FB78AE0158B79E1EEC56E7CDA8B6709C1A2E2D5093457C5236D4A"
+    },
+    "gate2_q5_evidence": {
+      "passed": true,
+      "screenshot": "anh-ev-02-cau5-evidence-in-place.png",
+      "bytes": 103083,
+      "sha256": "91A504773C2B3B274667F8FB4D4CF54AC8D34F53B99AE07833296FAA2CF75254"
+    },
+    "gate3_footer_no_centralized": {
+      "passed": true,
+      "screenshot": "anh-ev-03-footer-no-centralized-expander.png",
+      "bytes": 101166,
+      "sha256": "0130980D5E51B9C3B30BB0CFD5AD848CE0EE264802C27E9752E893EFB3339D26"
+    },
+    "gate4_reloaded_saved_conv": {
+      "passed": true,
+      "screenshot": "anh-ev-04-reloaded-saved-conversation.png",
+      "bytes": 126026,
+      "sha256": "36DF626E1AD0CFCE27C1808BC872552DD14374351A040AF93AC6F3E15E4D73A6"
+    }
+  },
+  "completed_at": "2026-10-24T02:49:15.963541"
+}
