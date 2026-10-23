@@ -20,6 +20,9 @@ KYNANG_DANH_SACH = "kynang_danh_sach"    # list user personal skills
 KYNANG_TAO = "kynang_tao"                # create skill via short interview
 KYNANG_XEM = "kynang_xem"                # view skill SKILL.md and files
 KYNANG_LUU_TRU = "kynang_luu_tru"        # archive skill to .archive/
+PHONG_VAN_CHUYEN_GIA = "phong_van_chuyen_gia"  # expert interview session
+THONG_KE_HE_THONG = "thong_ke_he_thong"        # system operational stats & KPI
+TRANG_THAI_HE_THONG = "trang_thai_he_thong"    # health status & service connectivity
 BAO_CAO_DIEU_TRA = "bao_cao_dieu_tra"  # investigation report export (.docx)
 DUYET_BAN_NHAP = "duyet_ban_nhap"      # expert review draft queue
 NAP_TAI_LIEU = "nap_tai_lieu"          # knowledge / doc intake into store
@@ -47,6 +50,9 @@ HOI_TAI_LIEU = "hoi_tai_lieu"            # document Q&A (RAG) fallback
 DU_LIEU_DAN = "du_lieu_dan"              # pasted CSV/log block in the message
 
 TAT_CA_Y_DINH = (
+    PHONG_VAN_CHUYEN_GIA,
+    THONG_KE_HE_THONG,
+    TRANG_THAI_HE_THONG,
     BAO_CAO_DIEU_TRA,
     DUYET_BAN_NHAP,
     NAP_TAI_LIEU,
@@ -138,6 +144,44 @@ def _la_lenh_xem_phan_hoi(clean: str, norm: str) -> bool:
 
 # Priority order: specific intents first, generic ones last.
 _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
+    (
+        PHONG_VAN_CHUYEN_GIA,
+        (
+            "/phongvan", "/phong-van",
+            "/インタビュー", "/专家访谈", "/采访",
+            "phong van chuyen gia", "phỏng vấn chuyên gia",
+            "chay phong van chuyen gia", "chạy phỏng vấn chuyên gia",
+            "bat dau phong van chuyen gia", "bắt đầu phỏng vấn chuyên gia",
+            "bat dau phong van", "bắt đầu phỏng vấn",
+            "専門家インタビュー", "专家访谈",
+        ),
+    ),
+    (
+        THONG_KE_HE_THONG,
+        (
+            "/thongke", "/thong-ke",
+            "/統計", "/统计", "/kpi",
+            "thong ke van hanh", "thống kê vận hành",
+            "thong ke he thong", "thống kê hệ thống",
+            "thong ke tinh hinh van hanh", "thống kê tình hình vận hành",
+            "thong ke so lieu van hanh", "thống kê số liệu vận hành",
+            "bao cao thong ke", "báo cáo thống kê",
+            "運用統計", "运营统计", "系统统计",
+        ),
+    ),
+    (
+        TRANG_THAI_HE_THONG,
+        (
+            "/trangthai", "/trang-thai",
+            "/ステータス", "/状态", "/系统状态",
+            "kiem tra trang thai he thong", "kiểm tra trạng thái hệ thống",
+            "trang thai he thong", "trạng thái hệ thống",
+            "suc khoe dich vu", "sức khỏe dịch vụ",
+            "trang thai ket noi", "trạng thái kết nối",
+            "kiem tra suc khoe he thong", "kiểm tra sức khỏe hệ thống",
+            "システム状態確認", "检查系统状态", "系统状态",
+        ),
+    ),
     (
         BAO_CAO_DIEU_TRA,
         (
@@ -838,7 +882,10 @@ def giai_thich_y_dinh(intent: str) -> str:
 def nhan_y_dinh(intent: str) -> str:
     """Short Vietnamese label for one intent (section header in a merged reply)."""
     return {
-                BAO_CAO_DIEU_TRA: "Báo cáo điều tra",
+        PHONG_VAN_CHUYEN_GIA: "Phỏng vấn chuyên gia",
+        THONG_KE_HE_THONG: "Thống kê vận hành",
+        TRANG_THAI_HE_THONG: "Trạng thái hệ thống",
+        BAO_CAO_DIEU_TRA: "Báo cáo điều tra",
         DUYET_BAN_NHAP: "Duyệt bản nháp",
         NAP_TAI_LIEU: "Thu nạp tri thức",
         DU_DOAN_RUI_RO: "Dự đoán rủi ro",

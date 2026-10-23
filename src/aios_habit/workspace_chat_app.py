@@ -2831,6 +2831,9 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
         NAP_TAI_LIEU,
         DU_DOAN_RUI_RO,
         BAN_DO_TRI_THUC,
+        PHONG_VAN_CHUYEN_GIA,
+        THONG_KE_HE_THONG,
+        TRANG_THAI_HE_THONG,
         BAO_CAO_DIEU_TRA,
         KYNANG_DANH_SACH,
         KYNANG_TAO,
@@ -2963,6 +2966,63 @@ def _xu_ly_mot_y_dinh(y_dinh: str, slots, q_text: str, *, active_conversation, a
         except Exception as exc:
             return f"⚠️ Không thể dựng bản đồ tri thức: {exc}"
         return "Chưa thể hiển thị bản đồ tri thức lúc này."
+
+    if y_dinh == PHONG_VAN_CHUYEN_GIA:
+        from aios_habit.chat_action import ChatActionRequest, render_outcome
+        from aios_habit.chat_action_expert_interview import handle_interview
+        try:
+            outcome = handle_interview(
+                ChatActionRequest(
+                    question=q_text,
+                    locale=current_ui_locale or "vi",
+                    conversation_id=getattr(active_conversation, "id", "") or "",
+                    notebook_id=active_nb_id or "",
+                    workspace_id=active_nb_id or "default",
+                )
+            )
+            if outcome:
+                return render_outcome(outcome)
+        except Exception as exc:
+            return f"⚠️ Không thể mở phiên phỏng vấn chuyên gia: {exc}"
+        return "Chưa mở được phiên phỏng vấn chuyên gia lúc này."
+
+    if y_dinh == THONG_KE_HE_THONG:
+        from aios_habit.chat_action import ChatActionRequest, render_outcome
+        from aios_habit.chat_action_statistics import handle_stats_command
+        try:
+            outcome = handle_stats_command(
+                ChatActionRequest(
+                    question=q_text,
+                    locale=current_ui_locale or "vi",
+                    conversation_id=getattr(active_conversation, "id", "") or "",
+                    notebook_id=active_nb_id or "",
+                    workspace_id=active_nb_id or "default",
+                )
+            )
+            if outcome:
+                return render_outcome(outcome)
+        except Exception as exc:
+            return f"⚠️ Không thể tổng hợp thống kê vận hành: {exc}"
+        return "Chưa thể xuất dữ liệu thống kê vận hành lúc này."
+
+    if y_dinh == TRANG_THAI_HE_THONG:
+        from aios_habit.chat_action import ChatActionRequest, render_outcome
+        from aios_habit.chat_action_health import handle_health_status
+        try:
+            outcome = handle_health_status(
+                ChatActionRequest(
+                    question=q_text,
+                    locale=current_ui_locale or "vi",
+                    conversation_id=getattr(active_conversation, "id", "") or "",
+                    notebook_id=active_nb_id or "",
+                    workspace_id=active_nb_id or "default",
+                )
+            )
+            if outcome:
+                return render_outcome(outcome)
+        except Exception as exc:
+            return f"⚠️ Không thể kiểm tra trạng thái sức khỏe: {exc}"
+        return "Chưa thể kiểm tra trạng thái hệ thống lúc này."
 
     if y_dinh == BAO_CAO_DIEU_TRA:
         from aios_habit.chat_action import ChatActionRequest, render_outcome

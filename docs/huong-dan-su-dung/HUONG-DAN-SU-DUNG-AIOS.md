@@ -508,6 +508,9 @@ Người dùng cũng có thể gõ câu nói tự nhiên thông thường, AIOS 
 | **`/kynang tao`**<br>Biến thể: `/kynang-tao`, `/スキル作成`, `/创建技能` | `tạo kỹ năng mới` | Khởi động phỏng vấn ngắn để tạo kỹ năng mới chuẩn Hermes lưu tại máy | Bất kỳ sổ nào | **Kỹ năng người dùng** |
 | **`/kynang xem`**<br>Biến thể: `/kynang-xem`, `/スキル確認`, `/查看技能` | `xem chi tiết kỹ năng` | Xem chi tiết quy trình SKILL.md và tệp hỗ trợ của kỹ năng cá nhân | Tên kỹ năng cần xem | **Kỹ năng người dùng** |
 | **`/kynang luu-tru`**<br>Biến thể: `/kynang-luu-tru`, `/kynang-luutru`, `/スキルアーカイブ`, `/归档技能` | `lưu trữ kỹ năng` | Đưa kỹ năng vào thư mục lưu trữ đóng băng (.archive/) an toàn | Tên kỹ năng cần lưu trữ | **Kỹ năng người dùng** |
+| **`/phongvan`**<br>Biến thể: `/phong-van`, `/インタビュー`, `/专家访谈`, `/采访` | `bắt đầu phỏng vấn chuyên gia` | Mở phiên phỏng vấn chuyên gia để thu thập tri thức và làm rõ khoảng trống kỹ thuật | Bất kỳ sổ nào | **Phỏng vấn chuyên gia** |
+| **`/thongke`**<br>Biến thể: `/thong-ke`, `/統計`, `/统计`, `/kpi` | `thống kê vận hành` | Tổng hợp số liệu thống kê vận hành hệ thống, tỷ lệ phản hồi và chỉ số KPI xưởng | Bất kỳ sổ nào | **Thống kê & KPI** |
+| **`/trangthai`**<br>Biến thể: `/trang-thai`, `/ステータス`, `/状态`, `/系统状态` | `kiểm tra trạng thái hệ thống` | Kiểm tra trạng thái kết nối, cơ sở dữ liệu và sức khỏe toàn diện các dịch vụ AIOS | Bất kỳ sổ nào | **Quản trị & Hệ thống** |
 
 *Mẹo: Gõ `/` trong ô chat, dùng phím ↑/↓ để di chuyển, Enter để chèn lệnh vào ô soạn thảo, sau đó bấm Gửi để thực thi.*
 

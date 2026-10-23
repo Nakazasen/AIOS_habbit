@@ -37,6 +37,15 @@ ACTION_NAME = "phong_van_chuyen_gia"
 ACTION_TITLE = "Phỏng vấn chuyên gia"
 
 _HINTS = (
+    "/phongvan",
+    "/phong-van",
+    "/インタビュー",
+    "/专家访谈",
+    "/采访",
+    "bắt đầu phỏng vấn chuyên gia",
+    "bat dau phong van chuyen gia",
+    "bắt đầu phỏng vấn",
+    "bat dau phong van",
     "phỏng vấn chuyên gia",
     "chạy phỏng vấn chuyên gia",
 )
@@ -384,6 +393,11 @@ def _handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
         blocks.append(_seed_table(matched_gaps[0]))
 
     return ChatActionOutcome(action=ACTION_NAME, title=ACTION_TITLE, blocks=tuple(blocks))
+
+
+def handle_interview(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
+    """Compatibility handler function for /phongvan slash command and router."""
+    return _handler(request)
 
 
 def register() -> ChatAction:
