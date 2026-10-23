@@ -568,6 +568,42 @@ def _read_second_brain_lessons(
         return []
 
 
+def _read_hermes_memory_records() -> list[dict[str, Any]]:
+    """Load curated memories from Hermes MemoryStore (USER.md / MEMORY.md)."""
+    try:
+        from aios_habit.hermes_memory import load_on_disk_store
+
+        store = load_on_disk_store()
+        records: list[dict[str, Any]] = []
+        for target in ("user", "memory"):
+            entries = store._entries_for(target)
+            for idx, entry in enumerate(entries):
+                lines = [line.strip() for line in entry.splitlines() if line.strip()]
+                first_line = lines[0].lstrip("# ").strip() if lines else f"Hermes {target.title()}"
+                title = first_line[:80] if len(first_line) > 80 else first_line
+                key = f"hermes_{target}:{idx}:{title[:20]}"
+                records.append(
+                    {
+                        "memory_key": key,
+                        "source_kind": SOURCE_KIND_USER_MEMORY,
+                        "source_id": f"hermes_{target}_{idx}",
+                        "title": title or f"Hermes {target.title()} Note",
+                        "statement": entry,
+                        "applies_when": "",
+                        "does_not_apply_when": "",
+                        "scope": "general",
+                        "status": "confirmed",
+                        "evidence_refs": ("hermes_memory_verified",),
+                        "privacy_classification": PRIVACY_LOCAL_ONLY,
+                        "export_allowed": False,
+                        "updated_at": "2026-10-24T00:00:00+00:00",
+                    }
+                )
+        return records
+    except Exception:
+        return []
+
+
 def load_live_catalog(
     collection_id: str,
     *,
@@ -580,6 +616,7 @@ def load_live_catalog(
     catalog.extend(_read_learning_card_records())
     catalog.extend(_read_case_lesson_records())
     catalog.extend(_read_skill_records())
+    catalog.extend(_read_hermes_memory_records())
     existing_source_ids = {str(item.get("source_id", "")) for item in catalog}
     catalog.extend(_read_second_brain_lessons(existing_source_ids=existing_source_ids))
     try:

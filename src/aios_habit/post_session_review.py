@@ -864,6 +864,24 @@ def _run_review_worker(
             path=drafts_path,
         )
 
+        # 5b. Hermes Ported Reviewer integration (USER.md / MEMORY.md)
+        try:
+            from aios_habit.hermes_post_session_review import extract_review_learning
+            msg_dicts = [
+                {"role": getattr(m, "role", "user"), "content": getattr(m, "content", "")}
+                for m in messages_snapshot
+            ]
+            hermes_res = extract_review_learning(msg_dicts)
+            if hermes_res:
+                _log_review_event({
+                    "conversation_id": conversation_id,
+                    "status": "hermes_review_learning_captured",
+                    "target": hermes_res.get("target"),
+                    "entry": hermes_res.get("entry"),
+                })
+        except Exception as e:
+            LOGGER.debug("Hermes review extraction: %s", e)
+
         _log_review_event({
             "conversation_id": conversation_id,
             "status": "draft_staged",
