@@ -412,7 +412,7 @@ def _draw_pareto(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], spec
     ax.legend(lines_1 + lines_2, labels_1 + labels_2, loc="upper left", framealpha=0.92, facecolor=COLOR_BG_WHITE, edgecolor=COLOR_BORDER_GRAY)
 
     title_str = format_chart_title(chart_kind="Biểu đồ Pareto", metric=target_col, jig_id=jig_id, time_range=time_range)
-    ax.set_title(title_str, fontsize=12, fontweight="bold", pad=12, color=COLOR_TEXT_TITLE)
+    ax.set_title(title_str, fontsize=11, fontweight="bold", pad=12, color=COLOR_TEXT_TITLE, wrap=True)
 
 
 def _draw_trend(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], spec: ChartSpec, table: ParsedLogTable) -> None:
@@ -420,8 +420,21 @@ def _draw_trend(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], spec:
     apply_matplotlib_theme(ax, fig)
     jig_id, time_range = _extract_device_and_time(table, spec, rows)
     y_col = spec.y_col or (table.get_columns_by_role(ROLE_NUMERIC) or table.columns)[0].name
-    x_col = spec.x_col
     unit = str(spec.options.get("unit") or "").strip() or detect_unit_from_metric(y_col)
+
+    # Xác định cột trục X hợp lệ cho xu hướng (thời gian hoặc thứ tự đo; cấm dùng cột RESULT / OK / NG)
+    dt_cols = table.get_columns_by_role(ROLE_DATETIME)
+    res_cols = table.get_columns_by_role(ROLE_RESULT)
+    res_names = {c.name.upper() for c in res_cols} | {"RESULT", "STATUS", "JUDGEMENT", "JUDGE"}
+
+    eff_x_col = spec.x_col
+    if eff_x_col and eff_x_col.upper() in res_names:
+        eff_x_col = dt_cols[0].name if dt_cols else None
+    elif not eff_x_col and dt_cols:
+        eff_x_col = dt_cols[0].name
+
+    date_col = next((c.name for c in table.columns if c.name.upper() in ("DATE", "NGAY")), None)
+    time_col = next((c.name for c in table.columns if c.name.upper() in ("TIME", "GIO")), None)
 
     # Lay gia tri so do Y
     raw_y: List[float] = []
@@ -431,10 +444,12 @@ def _draw_trend(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], spec:
         if val is not None and not (isinstance(val, float) and math.isnan(val)):
             try:
                 raw_y.append(float(val))
-                if x_col and r.get(x_col):
-                    x_labels.append(str(r.get(x_col)))
+                if date_col and time_col and r.get(date_col) and r.get(time_col):
+                    x_labels.append(f"{r.get(date_col)} {r.get(time_col)}".strip())
+                elif eff_x_col and r.get(eff_x_col):
+                    x_labels.append(str(r.get(eff_x_col)).strip())
                 else:
-                    x_labels.append(str(idx + 1))
+                    x_labels.append(f"#{idx + 1}")
             except (ValueError, TypeError):
                 continue
 
@@ -442,13 +457,13 @@ def _draw_trend(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], spec:
         raw_y = [0.0]
         x_labels = ["1"]
 
-    # Ve duong gia tri thuc do
+    # Ve duong gia tri thuc do (zorder=3 ở trên đường SMA để cả hai đường đều hiển thị rõ nét)
     x_indices = list(range(len(raw_y)))
     unit_suffix = f" [{unit}]" if unit else ""
-    ax.plot(x_indices, raw_y, color=COLOR_PRIMARY_BLUE, marker=".", markersize=5,
-            linewidth=1.5, alpha=0.85, label=f"Giá trị đo ({y_col}){unit_suffix}")
+    ax.plot(x_indices, raw_y, color=COLOR_PRIMARY_BLUE, marker=".", markersize=4.5,
+            linewidth=1.4, alpha=0.9, label=f"Giá trị đo ({y_col}){unit_suffix}", zorder=3)
 
-    # Tinh va phu duong SMA(20)
+    # Tinh va phu duong SMA(20) mảnh hơn (linewidth=1.3, zorder=2) để không che khuất đường dữ liệu
     show_sma = spec.options.get("show_sma", True)
     sma_win = int(spec.options.get("sma_window", 20))
     valid_indices: List[int] = []
@@ -459,14 +474,13 @@ def _draw_trend(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], spec:
         valid_smas = [float(v) for v in sma_vals if v is not None]
         if valid_smas:
             ax.plot(valid_indices, valid_smas, color=COLOR_SMA_PURPLE, linestyle="--",
-                    linewidth=2.0, label=f"Đường SMA({sma_win})")
+                    linewidth=1.3, alpha=0.95, label=f"Đường SMA({sma_win})", zorder=2)
 
     # Nhan dien va to mau noi bat cac diem bat thuong / NG
     anomaly_indices: List[int] = []
     anomaly_vals: List[float] = []
 
     # 1. Tu cot ket qua (ROLE_RESULT)
-    res_cols = table.get_columns_by_role(ROLE_RESULT)
     res_col_name = res_cols[0].name if res_cols else None
     if res_col_name:
         for idx, r in enumerate(rows):
@@ -495,7 +509,8 @@ def _draw_trend(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], spec:
                    label=f"Điểm bất thường / NG ({len(anomaly_indices)})")
 
     ax.set_ylabel(format_axis_label(y_col, unit=unit, axis_role="y"), fontweight="bold", color=COLOR_TEXT_LABEL, fontsize=10)
-    ax.set_xlabel(format_axis_label(x_col or "Số thứ tự điểm đo", axis_role="x"), fontweight="bold", color=COLOR_TEXT_LABEL, fontsize=10)
+    x_axis_title = "Thời gian đo lường" if (dt_cols or (date_col and time_col)) else (eff_x_col or "Thứ tự đo lường (Điểm đo)")
+    ax.set_xlabel(format_axis_label(x_axis_title, axis_role="x"), fontweight="bold", color=COLOR_TEXT_LABEL, fontsize=10)
 
     # Chia nhan truc X thong minh chong de nhau
     if len(x_indices) > 8:
@@ -504,7 +519,17 @@ def _draw_trend(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], spec:
         if x_indices[-1] not in sampled_ticks:
             sampled_ticks.append(x_indices[-1])
         ax.set_xticks(sampled_ticks)
-        ax.set_xticklabels([x_labels[i] for i in sampled_ticks], rotation=20, ha="right", fontsize=8.5)
+
+        sampled_labels = [x_labels[i] for i in sampled_ticks]
+        # Nếu toàn bộ các nhãn có dạng Date Time và cùng một ngày thì chỉ hiện phần Time để không lặp ngày
+        has_time = all(" " in s for s in sampled_labels if s and not s.startswith("#"))
+        if has_time:
+            dates = [s.split(" ")[0] for s in sampled_labels]
+            times = [s.split(" ")[1] for s in sampled_labels]
+            if len(set(dates)) == 1 and len(set(times)) == len(times):
+                sampled_labels = times
+
+        ax.set_xticklabels(sampled_labels, rotation=20, ha="right", fontsize=8.5)
     else:
         ax.set_xticks(x_indices)
         ax.set_xticklabels(x_labels, rotation=20, ha="right", fontsize=8.5)
@@ -513,7 +538,7 @@ def _draw_trend(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], spec:
     ax.legend(loc="upper right", framealpha=0.92, facecolor=COLOR_BG_WHITE, edgecolor=COLOR_BORDER_GRAY, fontsize=9)
 
     title_str = format_chart_title(chart_kind="Biểu đồ xu hướng (Run Chart)", metric=y_col, jig_id=jig_id, time_range=time_range, unit=unit)
-    ax.set_title(title_str, fontsize=12, fontweight="bold", pad=12, color=COLOR_TEXT_TITLE)
+    ax.set_title(title_str, fontsize=11, fontweight="bold", pad=12, color=COLOR_TEXT_TITLE, wrap=True)
 
 
 def _draw_spc(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], spec: ChartSpec, table: ParsedLogTable) -> None:
@@ -579,8 +604,22 @@ def _draw_spc(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], spec: C
         ax.scatter(ooc_indices, ooc_vals, color=COLOR_ANOMALY_RED, s=65,
                    edgecolors="#b71c1c", linewidth=1.5, zorder=5, label=f"Điểm lệch SPC ({len(ooc_indices)})")
 
+    dt_cols = table.get_columns_by_role(ROLE_DATETIME)
+    date_col = next((c.name for c in table.columns if c.name.upper() in ("DATE", "NGAY")), None)
+    time_col = next((c.name for c in table.columns if c.name.upper() in ("TIME", "GIO")), None)
+
+    x_labels_spc: List[str] = []
+    for idx, r in enumerate(rows):
+        if date_col and time_col and r.get(date_col) and r.get(time_col):
+            x_labels_spc.append(f"{r.get(date_col)} {r.get(time_col)}".strip())
+        elif dt_cols and r.get(dt_cols[0].name):
+            x_labels_spc.append(str(r.get(dt_cols[0].name)).strip())
+        else:
+            x_labels_spc.append(f"#{idx + 1}")
+
+    x_axis_title = "Thời gian đo lường" if (dt_cols or (date_col and time_col)) else "Số thứ tự điểm đo"
     ax.set_ylabel(format_axis_label(y_col, unit=unit, axis_role="y"), fontweight="bold", color=COLOR_TEXT_LABEL, fontsize=10)
-    ax.set_xlabel(format_axis_label("Số thứ tự điểm đo", axis_role="x"), fontweight="bold", color=COLOR_TEXT_LABEL, fontsize=10)
+    ax.set_xlabel(format_axis_label(x_axis_title, axis_role="x"), fontweight="bold", color=COLOR_TEXT_LABEL, fontsize=10)
 
     # Chia nhan truc X tranh chong de
     if len(x_indices) > 8:
@@ -589,12 +628,21 @@ def _draw_spc(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], spec: C
         if x_indices[-1] not in sampled_ticks:
             sampled_ticks.append(x_indices[-1])
         ax.set_xticks(sampled_ticks)
+        sampled_lbls = [x_labels_spc[i] if i < len(x_labels_spc) else str(i + 1) for i in sampled_ticks]
+        has_time = all(" " in s for s in sampled_lbls if s and not s.startswith("#"))
+        if has_time:
+            dates = [s.split(" ")[0] for s in sampled_lbls]
+            times = [s.split(" ")[1] for s in sampled_lbls]
+            if len(set(dates)) == 1 and len(set(times)) == len(times):
+                sampled_lbls = times
+        ax.set_xticklabels(sampled_lbls, rotation=20, ha="right", fontsize=8.5)
     else:
         ax.set_xticks(x_indices)
+        ax.set_xticklabels(x_labels_spc[:len(x_indices)], rotation=20, ha="right", fontsize=8.5)
 
     ax.legend(loc="upper right", framealpha=0.92, facecolor=COLOR_BG_WHITE, edgecolor=COLOR_BORDER_GRAY, fontsize=8.5)
     title_str = format_chart_title(chart_kind="Biểu đồ kiểm soát SPC", metric=y_col, jig_id=jig_id, time_range=time_range, unit=unit)
-    ax.set_title(f"{title_str} (σ={sigma:.2f})", fontsize=12, fontweight="bold", pad=12, color=COLOR_TEXT_TITLE)
+    ax.set_title(f"{title_str} (σ={sigma:.2f})", fontsize=11, fontweight="bold", pad=12, color=COLOR_TEXT_TITLE, wrap=True)
 
 
 def _draw_grouped_bar(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], spec: ChartSpec, table: ParsedLogTable) -> None:
@@ -635,7 +683,7 @@ def _draw_grouped_bar(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]],
                     xytext=(0, 3), textcoords="offset points", ha="center", va="bottom", fontsize=8.5, fontweight="bold")
 
     title_str = format_chart_title(chart_kind="Biểu đồ cột nhóm", metric=f"{y_col} theo {group_col}", jig_id=jig_id, time_range=time_range, unit=unit)
-    ax.set_title(title_str, fontsize=12, fontweight="bold", pad=12, color=COLOR_TEXT_TITLE)
+    ax.set_title(title_str, fontsize=11, fontweight="bold", pad=12, color=COLOR_TEXT_TITLE, wrap=True)
 
 
 def _draw_donut(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], spec: ChartSpec, table: ParsedLogTable) -> None:
@@ -665,7 +713,7 @@ def _draw_donut(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], spec:
     )
     ax.text(0, 0, f"Tổng\n{total:,}", ha="center", va="center", fontsize=10.5, fontweight="bold", color=COLOR_TEXT_TITLE)
     title_str = format_chart_title(chart_kind="Biểu đồ Donut", metric=f"Tỷ trọng cơ cấu theo '{cat_col}'", jig_id=jig_id, time_range=time_range)
-    ax.set_title(title_str, fontsize=12, fontweight="bold", pad=12, color=COLOR_TEXT_TITLE)
+    ax.set_title(title_str, fontsize=11, fontweight="bold", pad=12, color=COLOR_TEXT_TITLE, wrap=True)
 
 
 def _draw_histogram(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], spec: ChartSpec, table: ParsedLogTable) -> None:
@@ -689,7 +737,7 @@ def _draw_histogram(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], s
     ax.set_ylabel(format_axis_label("Tần suất xuất hiện", unit="lần", axis_role="y"), fontweight="bold", color=COLOR_TEXT_LABEL)
     ax.legend(loc="upper right", framealpha=0.92, facecolor=COLOR_BG_WHITE, edgecolor=COLOR_BORDER_GRAY)
     title_str = format_chart_title(chart_kind="Histogram phân bố giá trị đo", metric=y_col, jig_id=jig_id, time_range=time_range, unit=unit)
-    ax.set_title(title_str, fontsize=12, fontweight="bold", pad=12, color=COLOR_TEXT_TITLE)
+    ax.set_title(title_str, fontsize=11, fontweight="bold", pad=12, color=COLOR_TEXT_TITLE, wrap=True)
 
 
 def _draw_scatter(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], spec: ChartSpec, table: ParsedLogTable) -> None:
@@ -734,7 +782,7 @@ def _draw_scatter(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], spe
     ax.set_xlabel(format_axis_label(x_col, unit=unit_x, axis_role="x"), fontweight="bold", color=COLOR_TEXT_LABEL)
     ax.set_ylabel(format_axis_label(y_col, unit=unit_y, axis_role="y"), fontweight="bold", color=COLOR_TEXT_LABEL)
     title_str = format_chart_title(chart_kind="Biểu đồ phân tán Scatter", metric=f"{x_col} vs {y_col}", jig_id=jig_id, time_range=time_range)
-    ax.set_title(title_str, fontsize=12, fontweight="bold", pad=12, color=COLOR_TEXT_TITLE)
+    ax.set_title(title_str, fontsize=11, fontweight="bold", pad=12, color=COLOR_TEXT_TITLE, wrap=True)
 
 
 def _draw_box_plot(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], spec: ChartSpec, table: ParsedLogTable) -> None:
@@ -767,7 +815,7 @@ def _draw_box_plot(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], sp
     ax.set_ylabel(format_axis_label(y_col, unit=unit, axis_role="y"), fontweight="bold", color=COLOR_TEXT_LABEL)
     ax.set_xlabel(format_axis_label(group_col, axis_role="x"), fontweight="bold", color=COLOR_TEXT_LABEL)
     title_str = format_chart_title(chart_kind="Biểu đồ hộp Box Plot", metric=f"{y_col} theo {group_col}", jig_id=jig_id, time_range=time_range, unit=unit)
-    ax.set_title(title_str, fontsize=12, fontweight="bold", pad=12, color=COLOR_TEXT_TITLE)
+    ax.set_title(title_str, fontsize=11, fontweight="bold", pad=12, color=COLOR_TEXT_TITLE, wrap=True)
 
 
 def _draw_heatmap(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], spec: ChartSpec, table: ParsedLogTable) -> None:
@@ -823,7 +871,7 @@ def _draw_heatmap(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], spe
                     fontweight="bold", fontsize=9)
 
     title_str = format_chart_title(chart_kind="Bản đồ nhiệt Heatmap", metric=f"{y_axis_col} x {x_axis_col}", jig_id=jig_id, time_range=time_range)
-    ax.set_title(title_str, fontsize=12, fontweight="bold", pad=12, color=COLOR_TEXT_TITLE)
+    ax.set_title(title_str, fontsize=11, fontweight="bold", pad=12, color=COLOR_TEXT_TITLE, wrap=True)
 
 
 def _draw_stacked_bar(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], spec: ChartSpec, table: ParsedLogTable) -> None:
@@ -863,7 +911,7 @@ def _draw_stacked_bar(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]],
     ax.set_xlabel(format_axis_label(x_col, axis_role="x"), fontweight="bold", color=COLOR_TEXT_LABEL)
     ax.legend(loc="upper right", framealpha=0.92, facecolor=COLOR_BG_WHITE, edgecolor=COLOR_BORDER_GRAY, fontsize=8.5)
     title_str = format_chart_title(chart_kind="Cột chồng theo thời gian", metric=f"Cơ cấu '{sub_col}' theo '{x_col}'", jig_id=jig_id, time_range=time_range)
-    ax.set_title(title_str, fontsize=12, fontweight="bold", pad=12, color=COLOR_TEXT_TITLE)
+    ax.set_title(title_str, fontsize=11, fontweight="bold", pad=12, color=COLOR_TEXT_TITLE, wrap=True)
 
 
 def _render_empty_message(msg: str, spec: ChartSpec, table: ParsedLogTable) -> bytes:

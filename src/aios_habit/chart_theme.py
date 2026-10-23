@@ -301,6 +301,30 @@ def get_friendly_metric_name(metric_name: str) -> str:
     return name
 
 
+def format_chart_title_parts(
+    *,
+    chart_kind: str,
+    metric: str,
+    jig_id: str = "",
+    time_range: str = "",
+    unit: str = "",
+) -> Tuple[str, str]:
+    """Phân tách tiêu đề thành 2 phần: main_title và subtitle nhằm vẽ chống tràn mép."""
+    friendly_metric = get_friendly_metric_name(metric)
+    effective_unit = unit or detect_unit_from_metric(metric)
+    unit_part = f" ({effective_unit})" if effective_unit else ""
+    main_title = f"{chart_kind}: {friendly_metric}{unit_part}"
+
+    sub_parts = []
+    if jig_id and jig_id != "—" and jig_id != "Chung":
+        sub_parts.append(f"JIG: {jig_id}")
+    if time_range:
+        sub_parts.append(f"[{time_range}]")
+
+    subtitle = " — ".join(sub_parts)
+    return main_title, subtitle
+
+
 def format_chart_title(
     *,
     chart_kind: str,
@@ -308,23 +332,26 @@ def format_chart_title(
     jig_id: str = "",
     time_range: str = "",
     unit: str = "",
+    multiline: bool = False,
 ) -> str:
     """Định dạng tiêu đề biểu đồ hoàn chỉnh chuẩn production:
     [Loại biểu đồ] — [Thông số] (đơn vị) — JIG: [Mã] [Khoảng thời gian]
+    Tự động xuống dòng nếu tiêu đề dài để chống cắt mép.
     """
-    friendly_metric = get_friendly_metric_name(metric)
-    effective_unit = unit or detect_unit_from_metric(metric)
-    unit_part = f" ({effective_unit})" if effective_unit else ""
+    main_title, subtitle = format_chart_title_parts(
+        chart_kind=chart_kind,
+        metric=metric,
+        jig_id=jig_id,
+        time_range=time_range,
+        unit=unit,
+    )
+    if not subtitle:
+        return main_title
 
-    parts = [f"{chart_kind}: {friendly_metric}{unit_part}"]
-
-    if jig_id and jig_id != "—" and jig_id != "Chung":
-        parts.append(f"JIG: {jig_id}")
-
-    if time_range:
-        parts.append(f"[{time_range}]")
-
-    return " — ".join(parts)
+    full_title = f"{main_title} — {subtitle}"
+    if multiline or len(full_title) > 75:
+        return f"{main_title}\n{subtitle}"
+    return full_title
 
 
 def format_axis_label(name: str, unit: str = "", axis_role: str = "") -> str:

@@ -3,33 +3,41 @@
     {
       "ten_tep": "anh-chart-ux-01-31mb-trend-sma.png",
       "duong_dan_tuong_doi": "docs/phieu-viec/ket-qua/anh-chart-ux-01-31mb-trend-sma.png",
-      "dung_luong_bytes": 91805,
-      "sha256": "2729ba5cd1ccc05ec8a59ba02772aa44d9f842b3c8ee9749d7102c6694bcb2d4",
-      "loai": "Biểu đồ đường Run chart + SMA(20) trên log 30.87MB",
+      "dung_luong_bytes": 100420,
+      "sha256": "c1ff7e6c059a0dae3ea5f237aa35f374eb0fb995836f6caef9c927070fd59ed1",
+      "loai": "Biểu đồ đường Run chart + SMA(20) trên log 30.87MB (trục X thời gian, SMA thanh mảnh)",
       "kich_thuoc_px": "1500x840"
     },
     {
       "ten_tep": "anh-chart-ux-02-31mb-spc.png",
       "duong_dan_tuong_doi": "docs/phieu-viec/ket-qua/anh-chart-ux-02-31mb-spc.png",
-      "dung_luong_bytes": 91882,
-      "sha256": "dd3587acf2b31e6f04a56dabcb1a92becf01a271fb2f924138c2175879b3cebd",
+      "dung_luong_bytes": 102074,
+      "sha256": "1620539969cd8852ebd0ae093fac4b988f40b6737139e6ea4fc9f3916fba37b2",
       "loai": "Biểu đồ kiểm soát SPC (UCL/CL/LCL + Zone A/B/C) trên log 30.87MB",
       "kich_thuoc_px": "1500x840"
     },
     {
       "ten_tep": "anh-chart-ux-03-jig-spc-pillow.png",
       "duong_dan_tuong_doi": "docs/phieu-viec/ket-qua/anh-chart-ux-03-jig-spc-pillow.png",
-      "dung_luong_bytes": 95237,
-      "sha256": "fe187b42269c2ffe5587581bcf5a32b3299ecae9119f1ed3f43a15ebec202846",
-      "loai": "Biểu đồ SPC Pillow chuyên dụng sản xuất trên log JIG 2026_08_Black_Depth",
+      "dung_luong_bytes": 88772,
+      "sha256": "4f630005954c70da32fcc5a89697d75ae53915346b6fcdfb2e046f864057cb4e",
+      "loai": "Biểu đồ SPC Pillow chuyên dụng sản xuất trên log JIG 2026_08_Black_Depth (tiêu đề 2 dòng, X-ticks giờ, tem đầy đủ)",
       "kich_thuoc_px": "2000x1120"
     },
     {
       "ten_tep": "anh-chart-ux-04-weekly-trend.png",
       "duong_dan_tuong_doi": "docs/phieu-viec/ket-qua/anh-chart-ux-04-weekly-trend.png",
-      "dung_luong_bytes": 104283,
-      "sha256": "78677f3dcf0ad0d6ba2e23f1915bbb273c05af13feac37720221442bbf2dba12",
-      "loai": "Báo cáo xu hướng định kỳ tuần (Weekly Trend) kèm cảnh báo đoạn trôi",
+      "dung_luong_bytes": 79658,
+      "sha256": "e5b9e5a288787401e8044a5c3d25827645d44ee6b02e2375da55d8456d17536e",
+      "loai": "Báo cáo xu hướng định kỳ tuần (Weekly Trend) kèm gom nhóm nhãn NG liên tiếp chống đè chữ",
+      "kich_thuoc_px": "2000x1120"
+    },
+    {
+      "ten_tep": "anh-chart-ux-05-composite-other-charts.png",
+      "duong_dan_tuong_doi": "docs/phieu-viec/ket-qua/anh-chart-ux-05-composite-other-charts.png",
+      "dung_luong_bytes": 193733,
+      "sha256": "bdaf4d381752b781f6bd88e9395af5c25476c33270893abf526cfaa2c2bc3253",
+      "loai": "Ảnh tổng hợp 4 loại biểu đồ khác (Pareto, Histogram, Box Plot, Heatmap) chứng minh chuẩn hóa toàn diện",
       "kich_thuoc_px": "2000x1120"
     }
   ],

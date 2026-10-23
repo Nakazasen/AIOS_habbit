@@ -32,6 +32,7 @@ from aios_habit.chart_theme import (
     RGB_PALETTE_DISTINCT,
     get_pillow_font,
     format_chart_title,
+    format_chart_title_parts,
     format_axis_label,
     detect_unit_from_metric,
     format_time_range_from_sequence,
@@ -175,6 +176,133 @@ def _ve_bang_mo_phong(draw, chart: SpcChartInput, width: int, margin_left: int, 
     )
 
 
+def _ve_tieu_de_pillow(
+    draw,
+    *,
+    chart_kind: str,
+    metric: str,
+    jig_id: str = "",
+    time_range: str = "",
+    unit: str = "",
+    margin_left: int,
+    plot_w: int,
+    scale: int,
+) -> None:
+    """Vẽ tiêu đề Pillow 1 hoặc 2 dòng tự động thích ứng nhằm chống cắt mép 100%."""
+    main_title, subtitle = format_chart_title_parts(
+        chart_kind=chart_kind,
+        metric=metric,
+        jig_id=jig_id,
+        time_range=time_range,
+        unit=unit,
+    )
+    font_main = _font(scale, lon=True)
+    font_sub = _font(scale, lon=False, nho=False)
+
+    if subtitle:
+        full_line = f"{main_title} — {subtitle}"
+        bbox = draw.textbbox((0, 0), full_line, font=font_main)
+        # Nếu dòng đơn vừa vặn trong plot_w - 20*scale thì vẽ 1 dòng
+        if (bbox[2] - bbox[0]) <= plot_w - 20 * scale:
+            draw.text((margin_left, 16 * scale), full_line, fill=RGB_TEXT_TITLE, font=font_main)
+            return
+
+        # Nếu dài hơn thì tách 2 dòng phân tầng chuyên nghiệp
+        bbox_m = draw.textbbox((0, 0), main_title, font=font_main)
+        if (bbox_m[2] - bbox_m[0]) > plot_w - 10 * scale:
+            font_main = _font(scale, lon=False, nho=False)
+        draw.text((margin_left, 10 * scale), main_title, fill=RGB_TEXT_TITLE, font=font_main)
+        draw.text((margin_left, 36 * scale), subtitle, fill=RGB_TEXT_LABEL, font=font_sub)
+    else:
+        draw.text((margin_left, 16 * scale), main_title, fill=RGB_TEXT_TITLE, font=font_main)
+
+
+def _ve_tem_quan_ly(
+    draw,
+    chart: SpcChartInput,
+    margin_left: int,
+    plot_w: int,
+    stamp_top: int,
+    scale: int,
+) -> None:
+    """Vẽ tem quản lý / caption dưới cùng biểu đồ, tự động căn 1 hoặc 2 dòng chống cắt chữ."""
+    stamp_font = _font(scale, nho=True)
+    sigma_txt = f"{chart.sigma:.2f}" if chart.sigma is not None else "—"
+    cpk_txt = f"{chart.cpk:.2f}" if isinstance(chart.cpk, (int, float)) else (str(chart.cpk) if chart.cpk is not None else "—")
+
+    single_stamp = (
+        f"JIG: {chart.jig_id} | Công đoạn: {chart.cong_doan or '—'} | "
+        f"Ngày giờ: {datetime.now().strftime('%d/%m/%Y %H:%M')} | "
+        f"Người phụ trách: {chart.nguoi_phu_trach or '—'} | "
+        f"Cpk: {cpk_txt} | σ: {sigma_txt}"
+    )
+    bbox = draw.textbbox((0, 0), single_stamp, font=stamp_font)
+    tw = bbox[2] - bbox[0]
+    if tw <= plot_w - 16 * scale:
+        draw.rectangle([margin_left, stamp_top, margin_left + plot_w, stamp_top + 28 * scale],
+                       fill=(248, 249, 250), outline=RGB_BORDER_GRAY)
+        draw.text((margin_left + 8 * scale, stamp_top + 6 * scale), single_stamp, fill=RGB_TEXT_MUTED, font=stamp_font)
+    else:
+        line1 = f"JIG: {chart.jig_id} | Công đoạn: {chart.cong_doan or '—'} | Ngày giờ: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+        line2 = f"Người phụ trách: {chart.nguoi_phu_trach or '—'} | Cpk: {cpk_txt} | σ: {sigma_txt}"
+        box_h = 32 * scale
+        draw.rectangle([margin_left, stamp_top - 2 * scale, margin_left + plot_w, stamp_top - 2 * scale + box_h],
+                       fill=(248, 249, 250), outline=RGB_BORDER_GRAY)
+        draw.text((margin_left + 8 * scale, stamp_top + 1 * scale), line1, fill=RGB_TEXT_MUTED, font=stamp_font)
+        draw.text((margin_left + 8 * scale, stamp_top + 15 * scale), line2, fill=RGB_TEXT_MUTED, font=stamp_font)
+
+
+def _format_smart_x_ticks(
+    nhan_thoi_gian: Sequence[str],
+    indices: List[int],
+) -> List[str]:
+    """Smart tick sampling cho trục X: đảm bảo nhãn rõ nghĩa và KHÔNG BAO GIỜ bị lặp."""
+    if not nhan_thoi_gian:
+        return [str(i + 1) for i in indices]
+
+    raw_sampled = [str(nhan_thoi_gian[i]).strip() if i < len(nhan_thoi_gian) else str(i + 1) for i in indices]
+
+    # Kiểm tra nếu toàn bộ nhãn được lấy mẫu giống hệt nhau (ví dụ: toàn bộ đều là "2026.07.01")
+    if len(set(raw_sampled)) == 1 and len(raw_sampled) > 1:
+        return [f"#{i + 1}" for i in indices]
+
+    # Nếu nhãn có khoảng trắng (Date Time), kiểm tra xem ngày có giống hệt nhau không
+    has_datetime_space = all(" " in s for s in raw_sampled if s)
+    if has_datetime_space:
+        dates = [s.split(" ")[0] for s in raw_sampled]
+        times = [s.split(" ")[1] for s in raw_sampled]
+        if len(set(dates)) == 1 and len(set(times)) == len(times):
+            return times
+
+    # Khử lặp cục bộ nếu có các tick kế cận bị trùng nhãn
+    result: List[str] = []
+    seen_counts: Dict[str, int] = {}
+    for i, lbl in zip(indices, raw_sampled):
+        if lbl in seen_counts:
+            seen_counts[lbl] += 1
+            result.append(f"{lbl} (#{i + 1})")
+        else:
+            seen_counts[lbl] = 1
+            result.append(lbl)
+    return result
+
+
+def _detect_x_axis_label(nhan_thoi_gian: Sequence[str]) -> str:
+    """Tự động suy luận nhãn trục X khớp đúng loại tick hiển thị."""
+    if not nhan_thoi_gian:
+        return "Trục hoành: Thứ tự điểm đo"
+    sample = " ".join(str(s) for s in nhan_thoi_gian[:25]).lower()
+    if "tuần" in sample or "tuan" in sample or "week" in sample:
+        return "Trục hoành: Tuần sản xuất"
+    elif "tháng" in sample or "thang" in sample or "month" in sample:
+        return "Trục hoành: Tháng sản xuất"
+    elif "ca" in sample or "shift" in sample:
+        return "Trục hoành: Ca sản xuất"
+    elif any(sep in sample for sep in (":", "-", "/", ".")):
+        return "Trục hoành: Mốc thời gian"
+    return "Trục hoành: Thứ tự điểm đo"
+
+
 def render_spc_png(chart: SpcChartInput, path: str | Path, scale: int = 2) -> Path:
     """Render a Monozukuri-style SPC chart to PNG with 300 DPI metadata."""
     if Image is None or ImageDraw is None:
@@ -228,17 +356,14 @@ def render_spc_png(chart: SpcChartInput, path: str | Path, scale: int = 2) -> Pa
         x_indices_tick = list(range(0, total, step_x))
         if (total - 1) not in x_indices_tick:
             x_indices_tick.append(total - 1)
-        for xi in x_indices_tick:
+        sampled_x_labels = _format_smart_x_ticks(chart.nhan_thoi_gian, x_indices_tick)
+        for xi, t_lbl in zip(x_indices_tick, sampled_x_labels):
             x_pos = x_of(xi, total)
             for gy in range(margin_top, margin_top + plot_h, 8 * scale):
                 draw.line([(x_pos, gy), (x_pos, min(gy + 4 * scale, margin_top + plot_h))], fill=RGB_GRID_GRAY, width=max(1, scale // 2))
-            if chart.nhan_thoi_gian and xi < len(chart.nhan_thoi_gian):
-                t_lbl = chart.nhan_thoi_gian[xi]
-                if len(t_lbl) > 10 and " " in t_lbl:
-                    t_lbl = t_lbl.split(" ")[-1]
-            else:
-                t_lbl = str(xi + 1)
-            draw.text((x_pos - 15 * scale, margin_top + plot_h + 8 * scale), t_lbl, fill=RGB_TEXT_LABEL, font=_font(scale, nho=True))
+            bbox = draw.textbbox((0, 0), t_lbl, font=_font(scale, nho=True))
+            tw = bbox[2] - bbox[0]
+            draw.text((x_pos - tw // 2, margin_top + plot_h + 8 * scale), t_lbl, fill=RGB_TEXT_LABEL, font=_font(scale, nho=True))
 
     # Control/specification limits.
     for value, color, name in (
@@ -259,8 +384,8 @@ def render_spc_png(chart: SpcChartInput, path: str | Path, scale: int = 2) -> Pa
     for i in range(1, len(points)):
         draw.line([points[i - 1], points[i]], fill=RGB_PRIMARY_BLUE, width=max(2, int(2.2 * scale)))
 
-    anomaly_count = 0
-    for (x, y), v in zip(points, chart.values):
+    anomaly_indices: List[int] = []
+    for idx, ((x, y), v) in enumerate(zip(points, chart.values)):
         is_anomaly = (
             (chart.usl is not None and v > chart.usl)
             or (chart.lsl is not None and v < chart.lsl)
@@ -268,11 +393,54 @@ def render_spc_png(chart: SpcChartInput, path: str | Path, scale: int = 2) -> Pa
             or (chart.lcl is not None and v < chart.lcl)
         )
         if is_anomaly:
-            anomaly_count += 1
+            anomaly_indices.append(idx)
             draw.ellipse([x - 7 * scale, y - 7 * scale, x + 7 * scale, y + 7 * scale], outline=RGB_ANOMALY_RED, width=max(2, 2 * scale), fill=RGB_ZONE_DANGER_RED)
-            draw.text((x + 8 * scale, y - 10 * scale), "trôi dốc / NG", fill=RGB_ANOMALY_RED, font=_font(scale, nho=True))
         else:
             draw.ellipse([x - 4 * scale, y - 4 * scale, x + 4 * scale, y + 4 * scale], fill=RGB_PRIMARY_BLUE)
+
+    anomaly_count = len(anomaly_indices)
+
+    # Gom nhóm điểm NG liên tiếp để không bị đè nhãn thành vệt
+    clusters: List[List[int]] = []
+    if anomaly_indices:
+        curr = [anomaly_indices[0]]
+        for a_idx in anomaly_indices[1:]:
+            if a_idx == curr[-1] + 1:
+                curr.append(a_idx)
+            else:
+                clusters.append(curr)
+                curr = [a_idx]
+        clusters.append(curr)
+
+    for c in clusters:
+        if len(c) == 1:
+            pt_idx = c[0]
+            x, y = points[pt_idx]
+            lbl = "trôi dốc / NG"
+            bbox = draw.textbbox((0, 0), lbl, font=_font(scale, nho=True))
+            tw = bbox[2] - bbox[0]
+            if x + 8 * scale + tw > margin_left + plot_w:
+                draw.text((x - tw - 8 * scale, y - 10 * scale), lbl, fill=RGB_ANOMALY_RED, font=_font(scale, nho=True))
+            else:
+                draw.text((x + 8 * scale, y - 10 * scale), lbl, fill=RGB_ANOMALY_RED, font=_font(scale, nho=True))
+        else:
+            # Nhóm nhiều điểm NG liên tiếp: gom thành một nhãn duy nhất có leader line
+            c_xs = [points[i][0] for i in c]
+            c_ys = [points[i][1] for i in c]
+            mid_x = (min(c_xs) + max(c_xs)) // 2
+            top_y = min(c_ys)
+            lbl = f"{len(c)} điểm NG liên tiếp (trôi dốc)"
+            lbl_font = _font(scale, nho=True)
+            bbox = draw.textbbox((0, 0), lbl, font=lbl_font)
+            bw = bbox[2] - bbox[0] + 12 * scale
+            bh = bbox[3] - bbox[1] + 8 * scale
+            badge_x0 = max(margin_left + 4 * scale, min(mid_x - bw // 2, margin_left + plot_w - bw - 4 * scale))
+            badge_y0 = max(margin_top + 4 * scale, top_y - 28 * scale)
+            # Đường dẫn leader line
+            draw.line([(mid_x, badge_y0 + bh), (mid_x, top_y - 8 * scale)], fill=RGB_ANOMALY_RED, width=max(1, scale))
+            # Khung badge nổi bật
+            draw.rectangle([badge_x0, badge_y0, badge_x0 + bw, badge_y0 + bh], fill=(255, 235, 238), outline=RGB_ANOMALY_RED, width=max(1, scale))
+            draw.text((badge_x0 + 6 * scale, badge_y0 + 3 * scale), lbl, fill=RGB_ANOMALY_RED, font=lbl_font)
 
     # Duong trung binh dong SMA(20)
     try:
@@ -296,11 +464,10 @@ def render_spc_png(chart: SpcChartInput, path: str | Path, scale: int = 2) -> Pa
                 draw.line(
                     [(_ax + _dx * _t0, _ay + _dy * _t0), (_ax + _dx * _t1, _ay + _dy * _t1)],
                     fill=RGB_SMA_PURPLE,
-                    width=max(2, int(2.2 * scale)),
+                    width=max(2, int(2.0 * scale)),
                 )
-    if _sma_points:
-        _lx, _ly = _sma_points[-1]
-        draw.text((_lx - 72 * scale, _ly - 14 * scale), "SMA(20)", fill=RGB_SMA_PURPLE, font=_font(scale))
+    # Tránh vẽ chữ "SMA(20)" trôi nổi ở đuôi vì sẽ đè lên nhãn CL=-xxx trên trục phải;
+    # SMA(20) đã có chú giải chuẩn mực và mẫu đường đứt nét tím trong hộp Legend góc trên.
 
     # Dashed orange forecast trend if any
     if chart.du_bao:
@@ -314,18 +481,30 @@ def render_spc_png(chart: SpcChartInput, path: str | Path, scale: int = 2) -> Pa
     # Frame viền
     draw.rectangle([margin_left, margin_top, margin_left + plot_w, margin_top + plot_h], outline=RGB_BORDER_GRAY, width=max(1, scale))
 
-    # Tiêu đề đầy đủ chuẩn Production: Thiết bị/JIG + Thông số + Đơn vị + Khoảng thời gian
+    # Tiêu đề đầy đủ chuẩn Production: Thiết bị/JIG + Thông số + Đơn vị + Khoảng thời gian (chống cắt mép 100%)
     unit_str = chart.unit or detect_unit_from_metric(chart.metric)
     time_range = format_time_range_from_sequence(chart.nhan_thoi_gian)
-    title = format_chart_title(chart_kind="Biểu đồ kiểm soát SPC", metric=chart.metric, jig_id=chart.jig_id, time_range=time_range, unit=unit_str)
-    draw.text((margin_left, 16 * scale), title, fill=RGB_TEXT_TITLE, font=_font(scale, lon=True))
+    _ve_tieu_de_pillow(
+        draw,
+        chart_kind="Biểu đồ kiểm soát SPC",
+        metric=chart.metric,
+        jig_id=chart.jig_id,
+        time_range=time_range,
+        unit=unit_str,
+        margin_left=margin_left,
+        plot_w=plot_w,
+        scale=scale,
+    )
 
     # Nhãn trục Y kèm đơn vị
     y_unit_label = format_axis_label(chart.metric, unit=unit_str, axis_role="y")
     draw.text((margin_left, margin_top - 22 * scale), y_unit_label, fill=RGB_TEXT_LABEL, font=_font(scale))
 
-    # Nhãn trục X
-    draw.text((margin_left + plot_w // 2 - 50 * scale, margin_top + plot_h + 26 * scale), "Trục hoành: Điểm đo", fill=RGB_TEXT_LABEL, font=_font(scale))
+    # Nhãn trục X tự động suy luận khớp đúng kiểu tick
+    x_title = _detect_x_axis_label(chart.nhan_thoi_gian)
+    bbox_xt = draw.textbbox((0, 0), x_title, font=_font(scale))
+    tw_xt = bbox_xt[2] - bbox_xt[0]
+    draw.text((margin_left + (plot_w - tw_xt) // 2, margin_top + plot_h + 26 * scale), x_title, fill=RGB_TEXT_LABEL, font=_font(scale))
 
     # Hộp chú giải (Legend) góc trên trong plot
     leg_x = margin_left + plot_w - 220 * scale
@@ -341,17 +520,9 @@ def render_spc_png(chart: SpcChartInput, path: str | Path, scale: int = 2) -> Pa
 
     _ve_bang_mo_phong(draw, chart, width, margin_left, plot_w, scale)
 
-    # Management stamp box
+    # Management stamp box (tem quản lý) chống cắt chữ
     stamp_top = margin_top + plot_h + 46 * scale
-    stamp = (
-        f"JIG: {chart.jig_id} | Công đoạn: {chart.cong_doan or '—'} | "
-        f"Ngày giờ: {datetime.now().strftime('%d/%m/%Y %H:%M')} | "
-        f"Người phụ trách: {chart.nguoi_phu_trach or '—'} | "
-        f"Cpk: {chart.cpk if chart.cpk is not None else '—'} | "
-        f"σ: {chart.sigma if chart.sigma is not None else '—'}"
-    )
-    draw.rectangle([margin_left, stamp_top, margin_left + plot_w, stamp_top + 28 * scale], fill=(248, 249, 250), outline=RGB_BORDER_GRAY)
-    draw.text((margin_left + 8 * scale, stamp_top + 8 * scale), stamp, fill=RGB_TEXT_MUTED, font=_font(scale))
+    _ve_tem_quan_ly(draw, chart, margin_left, plot_w, stamp_top, scale)
     image.save(out, format="PNG", dpi=(300, 300))
     return out
 
@@ -493,16 +664,24 @@ def render_phan_bo_png(chart: SpcChartInput, path: str | Path, scale: int = 2, b
     draw.rectangle([margin_left, margin_top, margin_left + plot_w, margin_top + plot_h], outline=RGB_BORDER_GRAY, width=max(1, scale))
     unit_str = chart.unit or detect_unit_from_metric(chart.metric)
     time_range = format_time_range_from_sequence(chart.nhan_thoi_gian)
-    title = format_chart_title(chart_kind="Phân bố giá trị (Histogram)", metric=chart.metric, jig_id=chart.jig_id, time_range=time_range, unit=unit_str)
-    draw.text((margin_left, 16 * scale), title, fill=RGB_TEXT_TITLE, font=_font(scale, lon=True))
+    _ve_tieu_de_pillow(
+        draw,
+        chart_kind="Phân bố giá trị (Histogram)",
+        metric=chart.metric,
+        jig_id=chart.jig_id,
+        time_range=time_range,
+        unit=unit_str,
+        margin_left=margin_left,
+        plot_w=plot_w,
+        scale=scale,
+    )
 
     draw.text((margin_left, margin_top - 22 * scale), "Tần suất xuất hiện (lần)", fill=RGB_TEXT_LABEL, font=_font(scale))
     draw.text((margin_left + plot_w // 2 - 60 * scale, margin_top + plot_h + 10 * scale), format_axis_label(chart.metric, unit=unit_str, axis_role="x"), fill=RGB_TEXT_LABEL, font=_font(scale))
 
     _ve_bang_mo_phong(draw, chart, width, margin_left, plot_w, scale)
     stamp_top = margin_top + plot_h + 38 * scale
-    draw.rectangle([margin_left, stamp_top, margin_left + plot_w, stamp_top + 28 * scale], fill=(248, 249, 250), outline=RGB_BORDER_GRAY)
-    draw.text((margin_left + 8 * scale, stamp_top + 8 * scale), _tem_chung(chart), fill=RGB_TEXT_MUTED, font=_font(scale))
+    _ve_tem_quan_ly(draw, chart, margin_left, plot_w, stamp_top, scale)
     image.save(out, format="PNG", dpi=(300, 300))
     return out
 
@@ -630,15 +809,22 @@ def render_so_sanh_png(charts: Sequence[SpcChartInput], path: str | Path, scale:
 
     draw.rectangle([margin_left, margin_top, margin_left + plot_w, margin_top + plot_h], outline=RGB_BORDER_GRAY, width=max(1, scale))
     unit_str = goc.unit or detect_unit_from_metric(goc.metric)
-    title = format_chart_title(chart_kind="So sánh theo màu", metric=goc.metric or "Chỉ số", jig_id=goc.jig_id, unit=unit_str)
-    draw.text((margin_left, 16 * scale), title, fill=RGB_TEXT_TITLE, font=_font(scale, lon=True))
+    _ve_tieu_de_pillow(
+        draw,
+        chart_kind="So sánh theo màu",
+        metric=goc.metric or "Chỉ số",
+        jig_id=goc.jig_id,
+        unit=unit_str,
+        margin_left=margin_left,
+        plot_w=plot_w,
+        scale=scale,
+    )
     draw.text((margin_left, margin_top - 22 * scale), format_axis_label("Giá trị đo", unit=unit_str, axis_role="y"), fill=RGB_TEXT_LABEL, font=_font(scale))
 
     _ve_bang_mo_phong(draw, goc, width, margin_left, plot_w, scale,
                       ep_buoc=_co_chuoi_mo_phong(danh_sach))
     stamp_top = margin_top + plot_h + 38 * scale
-    draw.rectangle([margin_left, stamp_top, margin_left + plot_w, stamp_top + 28 * scale], fill=(248, 249, 250), outline=RGB_BORDER_GRAY)
-    draw.text((margin_left + 8 * scale, stamp_top + 8 * scale), _tem_chung(goc), fill=RGB_TEXT_MUTED, font=_font(scale))
+    _ve_tem_quan_ly(draw, goc, margin_left, plot_w, stamp_top, scale)
     image.save(out, format="PNG", dpi=(300, 300))
     return out
 
