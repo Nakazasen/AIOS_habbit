@@ -139,6 +139,8 @@ def build_realtime_alert_card(
         "thoi_diem": eff_time,
         "timestamp": eff_time,
         "nguon": nguon,
+        "color_badge": "#d32f2f" if str(muc_do).lower() in ("nguy_co", "vi phạm", "nguy cơ (vi phạm)", "cần kiểm tra") else "#e65100",
+        "sma_color": "#7b1fa2",
         "huong_dan": "Theo tài liệu quy trình: Mở phiên trực ban công đoạn để xem biểu đồ và duyệt email cảnh báo (hoặc tương tác trực tiếp qua khung chat).",
     }
 

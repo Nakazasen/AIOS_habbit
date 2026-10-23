@@ -25,6 +25,7 @@ from aios_habit.log_chart.feedback import (
     PRESET_CHART_DISLIKE_REASONS,
     RATING_CHUA_HUU_ICH,
     RATING_HUU_ICH,
+    get_weekly_chart_metrics,
     record_chart_feedback,
     record_chart_render_event,
 )
@@ -277,12 +278,20 @@ def render_log_chart_builder_card(
         )
 
         # -------------------------------------------------------------
-        # 6. VONG LAP CAI THIEN: DANH GIA HUU ICH / CHUA HUU ICH
+        # 6. VONG LAP CAI THIEN: DANH GIA HUU ICH / CHUA HUU ICH & METRIC THEO TUAN
         # -------------------------------------------------------------
         st.markdown("---")
         fb_col_l, fb_col_r = st.columns([0.65, 0.35], vertical_alignment="center")
         with fb_col_l:
             st.markdown("**Đánh giá biểu đồ này:**")
+            try:
+                w_m = get_weekly_chart_metrics()
+                st.caption(
+                    f"📈 Tuần `{w_m['current_week']}`: **{w_m['current_week_renders']}** lượt tạo · "
+                    f"Tỷ lệ phản hồi tiêu cực: **{w_m['current_week_negative_rate_pct']:.1f}%**"
+                )
+            except Exception:
+                pass
         with fb_col_r:
             b_good, b_bad = st.columns(2)
             with b_good:

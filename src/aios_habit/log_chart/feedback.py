@@ -119,6 +119,105 @@ def record_chart_render_event(
             pass
 
 
+def _iso_week_key(dt_str: str) -> str:
+    """Chuyển chuỗi ISO datetime thành khóa tuần ISO (YYYY-Www)."""
+    try:
+        # Xử lý chuỗi ISO có 'Z' hoặc '+00:00'
+        clean = dt_str.replace("Z", "+00:00")
+        dt = datetime.fromisoformat(clean)
+        iso = dt.isocalendar()
+        return f"{iso.year}-W{iso.week:02d}"
+    except Exception:
+        now_iso = datetime.now(timezone.utc).isocalendar()
+        return f"{now_iso.year}-W{now_iso.week:02d}"
+
+
+def get_weekly_chart_metrics(ref_date: Optional[datetime] = None) -> Dict[str, Any]:
+    """Tổng hợp số lượt vẽ và tỷ lệ phản hồi tiêu cực theo từng tuần (ISO Week)."""
+    now = ref_date or datetime.now(timezone.utc)
+    current_week = f"{now.isocalendar().year}-W{now.isocalendar().week:02d}"
+
+    weekly_renders: Dict[str, int] = {}
+    weekly_positive: Dict[str, int] = {}
+    weekly_negative: Dict[str, int] = {}
+
+    # Đọc render events theo tuần
+    rev_file = chart_render_events_file()
+    if rev_file.exists():
+        with open(rev_file, "r", encoding="utf-8", errors="replace") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    d = json.loads(line)
+                    t_str = str(d.get("event_time") or "")
+                    wk = _iso_week_key(t_str)
+                    weekly_renders[wk] = weekly_renders.get(wk, 0) + 1
+                except Exception:
+                    pass
+
+    # Đọc feedback theo tuần
+    fb_file = chart_feedback_file()
+    if fb_file.exists():
+        with open(fb_file, "r", encoding="utf-8", errors="replace") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    d = json.loads(line)
+                    t_str = str(d.get("event_time") or "")
+                    wk = _iso_week_key(t_str)
+                    r = d.get("rating")
+                    if r == RATING_HUU_ICH:
+                        weekly_positive[wk] = weekly_positive.get(wk, 0) + 1
+                    elif r == RATING_CHUA_HUU_ICH:
+                        weekly_negative[wk] = weekly_negative.get(wk, 0) + 1
+                except Exception:
+                    pass
+
+    all_weeks = sorted(set(list(weekly_renders.keys()) + list(weekly_positive.keys()) + list(weekly_negative.keys())), reverse=True)
+    if current_week not in all_weeks:
+        all_weeks.insert(0, current_week)
+
+    weeks_summary: List[Dict[str, Any]] = []
+    for wk in all_weeks:
+        renders = weekly_renders.get(wk, 0)
+        pos = weekly_positive.get(wk, 0)
+        neg = weekly_negative.get(wk, 0)
+        total_fb = pos + neg
+        neg_rate_pct = round((neg / total_fb * 100.0), 2) if total_fb > 0 else 0.0
+        weeks_summary.append({
+            "week": wk,
+            "renders_count": renders,
+            "positive_count": pos,
+            "negative_count": neg,
+            "total_feedback": total_fb,
+            "negative_rate_pct": neg_rate_pct,
+            "is_current_week": (wk == current_week),
+        })
+
+    cur_stats = next((w for w in weeks_summary if w["week"] == current_week), {
+        "week": current_week,
+        "renders_count": 0,
+        "positive_count": 0,
+        "negative_count": 0,
+        "total_feedback": 0,
+        "negative_rate_pct": 0.0,
+        "is_current_week": True,
+    })
+
+    return {
+        "current_week": current_week,
+        "current_week_renders": cur_stats["renders_count"],
+        "current_week_negative_rate_pct": cur_stats["negative_rate_pct"],
+        "current_week_positive": cur_stats["positive_count"],
+        "current_week_negative": cur_stats["negative_count"],
+        "weeks": weeks_summary,
+    }
+
+
 def get_chart_metrics() -> Dict[str, Any]:
     """Tong hop toan bo metric ve bieu do va phan hoi."""
     total_renders = 0
@@ -172,6 +271,8 @@ def get_chart_metrics() -> Dict[str, Any]:
                 except Exception:
                     pass
 
+    weekly_data = get_weekly_chart_metrics()
+
     return {
         "total_renders": total_renders,
         "successful_renders": successful_renders,
@@ -181,6 +282,7 @@ def get_chart_metrics() -> Dict[str, Any]:
         "feedback_counts": feedback_counts,
         "feedback_by_type": fb_by_type,
         "negative_reasons": reasons_list,
+        "weekly_metrics": weekly_data,
     }
 
 
@@ -194,6 +296,11 @@ def get_chart_feedback_summary_markdown() -> str:
     total_fb = huu_ich + chua_huu_ich
     satisfaction_rate = (huu_ich / total_fb * 100.0) if total_fb > 0 else 100.0
 
+    wm = m.get("weekly_metrics", {})
+    cur_wk = wm.get("current_week", "Hiện tại")
+    cur_wk_renders = wm.get("current_week_renders", 0)
+    cur_wk_neg_rate = wm.get("current_week_negative_rate_pct", 0.0)
+
     lines: List[str] = [
         "### 📊 Bề mặt xem lại chất lượng & tần suất sử dụng biểu đồ (Review Surface)",
         "",
@@ -201,11 +308,26 @@ def get_chart_feedback_summary_markdown() -> str:
         f"- **Tỷ lệ vẽ thành công**: `{rate}%` ({m['successful_renders']} thành công / {m['failed_renders']} lỗi)",
         f"- **Tổng lượt người dùng đánh giá**: `{total_fb}` lượt",
         f"- **Tỷ lệ hài lòng (Hữu ích)**: `{satisfaction_rate:.1f}%` ({huu_ich} hữu ích / {chua_huu_ich} chưa hữu ích)",
+        f"- **Tuần hiện tại ({cur_wk})**: `{cur_wk_renders}` lượt vẽ | Tỷ lệ phản hồi tiêu cực: `{cur_wk_neg_rate:.1f}%`",
         "",
-        "#### 1. Thống kê theo từng kiểu biểu đồ:",
+        "#### 1. Thống kê theo tuần (Vòng lặp cải thiện liên tục):",
+        "| Tuần ISO | Lượt tạo biểu đồ | Hài lòng 👍 | Chê / Tiêu cực 👎 | Tỷ lệ tiêu cực (%) |",
+        "| :--- | :---: | :---: | :---: | :---: |",
+    ]
+
+    for wk_info in wm.get("weeks", [])[:5]:
+        cur_flag = " *(tuần này)*" if wk_info.get("is_current_week") else ""
+        lines.append(
+            f"| `{wk_info['week']}`{cur_flag} | {wk_info['renders_count']} | "
+            f"{wk_info['positive_count']} | {wk_info['negative_count']} | {wk_info['negative_rate_pct']:.1f}% |"
+        )
+
+    lines.extend([
+        "",
+        "#### 2. Thống kê theo từng kiểu biểu đồ:",
         "| Kiểu biểu đồ | Số lượt vẽ | Hữu ích 👍 | Chưa hữu ích 👎 |",
         "| :--- | :---: | :---: | :---: |",
-    ]
+    ])
 
     usage_map = m["usage_by_type"]
     fb_map = m["feedback_by_type"]
@@ -224,11 +346,11 @@ def get_chart_feedback_summary_markdown() -> str:
     if m["negative_reasons"]:
         lines.extend([
             "",
-            "#### 2. Các lý do người dùng góp ý khi chê (Chưa hữu ích):",
+            "#### 3. Các lý do người dùng góp ý khi chê (Chưa hữu ích):",
         ])
         for r in m["negative_reasons"][-10:]:
             lines.append(f"- ⚠️ {r}")
 
     lines.append("")
-    lines.append("*Dữ liệu được lưu trữ độc lập tại `local_cases/chart_feedback.jsonl` (Vòng lặp cải thiện liên tục).*")
+    lines.append("*Dữ liệu được lưu trữ độc lập tại `local_cases/chart_feedback.jsonl` và `local_cases/chart_render_events.jsonl` (Vòng lặp cải thiện liên tục).*")
     return "\n".join(lines)

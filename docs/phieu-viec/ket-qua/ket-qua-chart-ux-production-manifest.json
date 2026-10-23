@@ -1,0 +1,46 @@
+{
+  "anh_nop": [
+    {
+      "ten_tep": "anh-chart-ux-01-31mb-trend-sma.png",
+      "duong_dan_tuong_doi": "docs/phieu-viec/ket-qua/anh-chart-ux-01-31mb-trend-sma.png",
+      "dung_luong_bytes": 91805,
+      "sha256": "2729ba5cd1ccc05ec8a59ba02772aa44d9f842b3c8ee9749d7102c6694bcb2d4",
+      "loai": "Biểu đồ đường Run chart + SMA(20) trên log 30.87MB",
+      "kich_thuoc_px": "1500x840"
+    },
+    {
+      "ten_tep": "anh-chart-ux-02-31mb-spc.png",
+      "duong_dan_tuong_doi": "docs/phieu-viec/ket-qua/anh-chart-ux-02-31mb-spc.png",
+      "dung_luong_bytes": 91882,
+      "sha256": "dd3587acf2b31e6f04a56dabcb1a92becf01a271fb2f924138c2175879b3cebd",
+      "loai": "Biểu đồ kiểm soát SPC (UCL/CL/LCL + Zone A/B/C) trên log 30.87MB",
+      "kich_thuoc_px": "1500x840"
+    },
+    {
+      "ten_tep": "anh-chart-ux-03-jig-spc-pillow.png",
+      "duong_dan_tuong_doi": "docs/phieu-viec/ket-qua/anh-chart-ux-03-jig-spc-pillow.png",
+      "dung_luong_bytes": 95237,
+      "sha256": "fe187b42269c2ffe5587581bcf5a32b3299ecae9119f1ed3f43a15ebec202846",
+      "loai": "Biểu đồ SPC Pillow chuyên dụng sản xuất trên log JIG 2026_08_Black_Depth",
+      "kich_thuoc_px": "2000x1120"
+    },
+    {
+      "ten_tep": "anh-chart-ux-04-weekly-trend.png",
+      "duong_dan_tuong_doi": "docs/phieu-viec/ket-qua/anh-chart-ux-04-weekly-trend.png",
+      "dung_luong_bytes": 104283,
+      "sha256": "78677f3dcf0ad0d6ba2e23f1915bbb273c05af13feac37720221442bbf2dba12",
+      "loai": "Báo cáo xu hướng định kỳ tuần (Weekly Trend) kèm cảnh báo đoạn trôi",
+      "kich_thuoc_px": "2000x1120"
+    }
+  ],
+  "doi_chieu_so_lieu": {
+    "so_diem_kiem_tra": 100,
+    "cl_trung_binh": 14.97,
+    "sigma": 50.0875,
+    "ucl_3sigma": 165.2325,
+    "lcl_3sigma": -135.2925,
+    "sma20_tai_diem_20": 13.0,
+    "sma20_tai_diem_cuoi": 17.85,
+    "so_diem_ng_ooc": 0
+  }
+}

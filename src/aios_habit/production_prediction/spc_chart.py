@@ -13,6 +13,31 @@ from pathlib import Path
 from typing import List, Optional, Sequence, Union
 from xml.sax.saxutils import escape
 
+from aios_habit.chart_theme import (
+    RGB_PRIMARY_BLUE,
+    RGB_ACCENT_ORANGE,
+    RGB_SMA_PURPLE,
+    RGB_LIMIT_RED,
+    RGB_WARN_ORANGE,
+    RGB_CENTER_GREEN,
+    RGB_ANOMALY_RED,
+    RGB_GRID_GRAY,
+    RGB_BORDER_GRAY,
+    RGB_TEXT_TITLE,
+    RGB_TEXT_LABEL,
+    RGB_TEXT_MUTED,
+    RGB_ZONE_SAFE_GREEN,
+    RGB_ZONE_WARN_YELLOW,
+    RGB_ZONE_DANGER_RED,
+    RGB_PALETTE_DISTINCT,
+    get_pillow_font,
+    format_chart_title,
+    format_axis_label,
+    detect_unit_from_metric,
+    format_time_range_from_sequence,
+)
+
+
 try:
     from PIL import Image, ImageDraw, ImageFont
 except ImportError:  # pragma: no cover - Pillow is a required dependency.
@@ -24,17 +49,26 @@ except ImportError:  # pragma: no cover - Pillow is a required dependency.
 _FONT_CACHE: dict = {}
 
 
-def _font(scale: int = 1, lon: bool = False):
-    """Load a Vietnamese-capable system font, fallback to Pillow default."""
-    co_chu = (20 if lon else 14) * max(1, int(scale))
-    if co_chu in _FONT_CACHE:
-        return _FONT_CACHE[co_chu]
+def _font(scale: int = 1, lon: bool = False, nho: bool = False):
+    """Load a Vietnamese-capable system font using shared chart_theme font system."""
+    co_chu = (20 if lon else (11 if nho else 14)) * max(1, int(scale))
+    key = (co_chu, lon, nho)
+    if key in _FONT_CACHE:
+        return _FONT_CACHE[key]
+
+    f_theme = get_pillow_font(size=co_chu, bold=bool(lon))
+    if f_theme is not None:
+        _FONT_CACHE[key] = f_theme
+        return f_theme
+
     ket_qua = None
     if ImageFont is not None:
         import os
 
         ung_vien = [
+            os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "Fonts", "segoeui.ttf"),
             os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "Fonts", "arial.ttf"),
+            r"C:\Windows\Fonts\segoeui.ttf",
             r"C:\Windows\Fonts\arial.ttf",
             r"C:\Windows\Fonts\tahoma.ttf",
             "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
@@ -45,7 +79,12 @@ def _font(scale: int = 1, lon: bool = False):
                 break
             except (OSError, ValueError):
                 continue
-    _FONT_CACHE[co_chu] = ket_qua
+    if ket_qua is None and ImageFont is not None:
+        try:
+            ket_qua = ImageFont.load_default()
+        except Exception:
+            ket_qua = None
+    _FONT_CACHE[key] = ket_qua
     return ket_qua
 
 
@@ -144,9 +183,9 @@ def render_spc_png(chart: SpcChartInput, path: str | Path, scale: int = 2) -> Pa
         raise ValueError("Thiếu chuỗi giá trị đo để vẽ biểu đồ.")
     out = Path(path)
     out.parent.mkdir(parents=True, exist_ok=True)
-    width, height = 960 * scale, 540 * scale
-    margin_left, margin_top = 90 * scale, 70 * scale
-    margin_right, margin_bottom = 30 * scale, 60 * scale
+    width, height = 1000 * scale, 560 * scale
+    margin_left, margin_top = 110 * scale, 75 * scale
+    margin_right, margin_bottom = 85 * scale, 80 * scale
     image = Image.new("RGB", (width, height), "white")
     draw = ImageDraw.Draw(image)
     low, high = _bounds(chart)
@@ -165,31 +204,62 @@ def render_spc_png(chart: SpcChartInput, path: str | Path, scale: int = 2) -> Pa
     # Zones A/B/C: safe (green tint), watch (yellow tint), danger (red tint).
     mid = (low + high) / 2
     span = (high - low) / 6
-    draw.rectangle([margin_left, y_of(mid + span), margin_left + plot_w, y_of(mid - span)], fill=(232, 245, 233))
-    draw.rectangle([margin_left, y_of(mid + 2 * span), margin_left + plot_w, y_of(mid + span)], fill=(255, 249, 196))
-    draw.rectangle([margin_left, y_of(mid - span), margin_left + plot_w, y_of(mid - 2 * span)], fill=(255, 249, 196))
-    draw.rectangle([margin_left, margin_top, margin_left + plot_w, y_of(mid + 2 * span)], fill=(255, 235, 238))
-    draw.rectangle([margin_left, y_of(mid - 2 * span), margin_left + plot_w, margin_top + plot_h], fill=(255, 235, 238))
+    draw.rectangle([margin_left, y_of(mid + span), margin_left + plot_w, y_of(mid - span)], fill=RGB_ZONE_SAFE_GREEN)
+    draw.rectangle([margin_left, y_of(mid + 2 * span), margin_left + plot_w, y_of(mid + span)], fill=RGB_ZONE_WARN_YELLOW)
+    draw.rectangle([margin_left, y_of(mid - span), margin_left + plot_w, y_of(mid - 2 * span)], fill=RGB_ZONE_WARN_YELLOW)
+    draw.rectangle([margin_left, margin_top, margin_left + plot_w, y_of(mid + 2 * span)], fill=RGB_ZONE_DANGER_RED)
+    draw.rectangle([margin_left, y_of(mid - 2 * span), margin_left + plot_w, margin_top + plot_h], fill=RGB_ZONE_DANGER_RED)
+
+    # Lưới mờ (Subtle Grid lines) ngang theo Y & số đo Y
+    n_y_ticks = 5
+    for yi in range(n_y_ticks + 1):
+        v_tick = low + (high - low) * (yi / n_y_ticks)
+        y_pos = y_of(v_tick)
+        for gx in range(margin_left, margin_left + plot_w, 8 * scale):
+            draw.line([(gx, y_pos), (min(gx + 4 * scale, margin_left + plot_w), y_pos)], fill=RGB_GRID_GRAY, width=max(1, scale // 2))
+        tick_txt = f"{v_tick:.2f}"
+        draw.text((margin_left - 65 * scale, y_pos - 7 * scale), tick_txt, fill=RGB_TEXT_LABEL, font=_font(scale, nho=True))
+
+    # Lưới mờ dọc & Nhãn trục X
+    total = len(chart.values)
+    x_tick_count = min(7, total)
+    if total > 0:
+        step_x = max(1, (total - 1) // max(1, x_tick_count - 1)) if x_tick_count > 1 else 1
+        x_indices_tick = list(range(0, total, step_x))
+        if (total - 1) not in x_indices_tick:
+            x_indices_tick.append(total - 1)
+        for xi in x_indices_tick:
+            x_pos = x_of(xi, total)
+            for gy in range(margin_top, margin_top + plot_h, 8 * scale):
+                draw.line([(x_pos, gy), (x_pos, min(gy + 4 * scale, margin_top + plot_h))], fill=RGB_GRID_GRAY, width=max(1, scale // 2))
+            if chart.nhan_thoi_gian and xi < len(chart.nhan_thoi_gian):
+                t_lbl = chart.nhan_thoi_gian[xi]
+                if len(t_lbl) > 10 and " " in t_lbl:
+                    t_lbl = t_lbl.split(" ")[-1]
+            else:
+                t_lbl = str(xi + 1)
+            draw.text((x_pos - 15 * scale, margin_top + plot_h + 8 * scale), t_lbl, fill=RGB_TEXT_LABEL, font=_font(scale, nho=True))
 
     # Control/specification limits.
     for value, color, name in (
-        (chart.usl, (183, 28, 28), "USL"),
-        (chart.ucl, (230, 81, 0), "UCL"),
-        (chart.cl, (21, 101, 192), "CL"),
-        (chart.lcl, (230, 81, 0), "LCL"),
-        (chart.lsl, (183, 28, 28), "LSL"),
+        (chart.usl, RGB_LIMIT_RED, "USL"),
+        (chart.ucl, RGB_WARN_ORANGE, "UCL"),
+        (chart.cl, RGB_CENTER_GREEN, "CL"),
+        (chart.lcl, RGB_WARN_ORANGE, "LCL"),
+        (chart.lsl, RGB_LIMIT_RED, "LSL"),
     ):
         if value is None:
             continue
         y = y_of(value)
-        draw.line([(margin_left, y), (margin_left + plot_w, y)], fill=color, width=max(1, scale))
-        draw.text((margin_left + plot_w + 4, y - 6 * scale), name, fill=color, font=_font(scale))
+        draw.line([(margin_left, y), (margin_left + plot_w, y)], fill=color, width=max(1, int(1.5 * scale)))
+        draw.text((margin_left + plot_w + 4 * scale, y - 7 * scale), f"{name}={value:.2f}", fill=color, font=_font(scale, nho=True))
 
-    # Actual measurements.
-    total = len(chart.values)
+    # Actual measurements line & points.
     points = [(x_of(i, total), y_of(v)) for i, v in enumerate(chart.values)]
     for i in range(1, len(points)):
-        draw.line([points[i - 1], points[i]], fill=(21, 101, 192), width=max(2, scale))
+        draw.line([points[i - 1], points[i]], fill=RGB_PRIMARY_BLUE, width=max(2, int(2.2 * scale)))
+
+    anomaly_count = 0
     for (x, y), v in zip(points, chart.values):
         is_anomaly = (
             (chart.usl is not None and v > chart.usl)
@@ -198,12 +268,13 @@ def render_spc_png(chart: SpcChartInput, path: str | Path, scale: int = 2) -> Pa
             or (chart.lcl is not None and v < chart.lcl)
         )
         if is_anomaly:
-            draw.ellipse([x - 6 * scale, y - 6 * scale, x + 6 * scale, y + 6 * scale], outline=(183, 28, 28), width=max(2, scale))
-            draw.text((x + 8 * scale, y - 10 * scale), "trôi dốc", fill=(183, 28, 28), font=_font(scale))
+            anomaly_count += 1
+            draw.ellipse([x - 7 * scale, y - 7 * scale, x + 7 * scale, y + 7 * scale], outline=RGB_ANOMALY_RED, width=max(2, 2 * scale), fill=RGB_ZONE_DANGER_RED)
+            draw.text((x + 8 * scale, y - 10 * scale), "trôi dốc / NG", fill=RGB_ANOMALY_RED, font=_font(scale, nho=True))
         else:
-            draw.ellipse([x - 4 * scale, y - 4 * scale, x + 4 * scale, y + 4 * scale], fill=(21, 101, 192))
+            draw.ellipse([x - 4 * scale, y - 4 * scale, x + 4 * scale, y + 4 * scale], fill=RGB_PRIMARY_BLUE)
 
-    # Duong trung binh dong SMA(20): diem bat thuong = lech xa duong nay.
+    # Duong trung binh dong SMA(20)
     try:
         from aios_habit.production_prediction.trend_alerts import sma as _sma20
         _sma_vals = _sma20([float(v) for v in chart.values], 20)
@@ -215,7 +286,6 @@ def render_spc_png(chart: SpcChartInput, path: str | Path, scale: int = 2) -> Pa
         if v is not None
     ]
     for a, b in zip(_sma_points, _sma_points[1:]):
-        # Net dut mau tim: 10 on, 6 off.
         _ax, _ay = a
         _bx, _by = b
         _dx, _dy = _bx - _ax, _by - _ay
@@ -225,31 +295,54 @@ def render_spc_png(chart: SpcChartInput, path: str | Path, scale: int = 2) -> Pa
                 _t0, _t1 = _s / _seg, (_s + 1) / _seg
                 draw.line(
                     [(_ax + _dx * _t0, _ay + _dy * _t0), (_ax + _dx * _t1, _ay + _dy * _t1)],
-                    fill=(123, 31, 162),
-                    width=max(2, scale),
+                    fill=RGB_SMA_PURPLE,
+                    width=max(2, int(2.2 * scale)),
                 )
     if _sma_points:
         _lx, _ly = _sma_points[-1]
-        draw.text((_lx - 72 * scale, _ly - 12 * scale), "SMA(20)", fill=(123, 31, 162), font=_font(scale))
+        draw.text((_lx - 72 * scale, _ly - 14 * scale), "SMA(20)", fill=RGB_SMA_PURPLE, font=_font(scale))
 
-    # Dashed orange forecast trend.
+    # Dashed orange forecast trend if any
     if chart.du_bao:
         start = points[-1] if points else (margin_left, margin_top + plot_h // 2)
         forecast_points = [start]
         for j, v in enumerate(chart.du_bao, start=1):
             forecast_points.append((x_of(total - 1 + j, total + len(chart.du_bao)), y_of(v)))
         for a, b in zip(forecast_points, forecast_points[1:]):
-            # Manual dash: 8 on, 5 off.
-            draw.line([a, b], fill=(230, 81, 0), width=max(2, scale))
+            draw.line([a, b], fill=RGB_ACCENT_ORANGE, width=max(2, scale))
 
-    # Frame and title.
-    draw.rectangle([margin_left, margin_top, margin_left + plot_w, margin_top + plot_h], outline=(66, 66, 66))
-    title = f"Biểu đồ xu hướng {chart.metric} — {chart.jig_id}".strip(" —")
-    draw.text((margin_left, 18 * scale), title, fill=(33, 33, 33), font=_font(scale, lon=True))
+    # Frame viền
+    draw.rectangle([margin_left, margin_top, margin_left + plot_w, margin_top + plot_h], outline=RGB_BORDER_GRAY, width=max(1, scale))
+
+    # Tiêu đề đầy đủ chuẩn Production: Thiết bị/JIG + Thông số + Đơn vị + Khoảng thời gian
+    unit_str = chart.unit or detect_unit_from_metric(chart.metric)
+    time_range = format_time_range_from_sequence(chart.nhan_thoi_gian)
+    title = format_chart_title(chart_kind="Biểu đồ kiểm soát SPC", metric=chart.metric, jig_id=chart.jig_id, time_range=time_range, unit=unit_str)
+    draw.text((margin_left, 16 * scale), title, fill=RGB_TEXT_TITLE, font=_font(scale, lon=True))
+
+    # Nhãn trục Y kèm đơn vị
+    y_unit_label = format_axis_label(chart.metric, unit=unit_str, axis_role="y")
+    draw.text((margin_left, margin_top - 22 * scale), y_unit_label, fill=RGB_TEXT_LABEL, font=_font(scale))
+
+    # Nhãn trục X
+    draw.text((margin_left + plot_w // 2 - 50 * scale, margin_top + plot_h + 26 * scale), "Trục hoành: Điểm đo", fill=RGB_TEXT_LABEL, font=_font(scale))
+
+    # Hộp chú giải (Legend) góc trên trong plot
+    leg_x = margin_left + plot_w - 220 * scale
+    leg_y = margin_top + 10 * scale
+    draw.rectangle([leg_x, leg_y, leg_x + 210 * scale, leg_y + 44 * scale], fill=(255, 255, 255), outline=RGB_BORDER_GRAY)
+    draw.line([(leg_x + 8 * scale, leg_y + 12 * scale), (leg_x + 32 * scale, leg_y + 12 * scale)], fill=RGB_PRIMARY_BLUE, width=max(2, scale))
+    draw.text((leg_x + 38 * scale, leg_y + 6 * scale), f"Số đo ({unit_str or 'đv'})", fill=RGB_TEXT_LABEL, font=_font(scale, nho=True))
+    draw.line([(leg_x + 8 * scale, leg_y + 28 * scale), (leg_x + 32 * scale, leg_y + 28 * scale)], fill=RGB_SMA_PURPLE, width=max(2, scale))
+    draw.text((leg_x + 38 * scale, leg_y + 22 * scale), "SMA(20)", fill=RGB_SMA_PURPLE, font=_font(scale, nho=True))
+    if anomaly_count > 0:
+        draw.ellipse([leg_x + 120 * scale, leg_y + 22 * scale, leg_x + 130 * scale, leg_y + 32 * scale], outline=RGB_ANOMALY_RED, fill=RGB_ZONE_DANGER_RED)
+        draw.text((leg_x + 135 * scale, leg_y + 20 * scale), f"NG ({anomaly_count})", fill=RGB_ANOMALY_RED, font=_font(scale, nho=True))
+
     _ve_bang_mo_phong(draw, chart, width, margin_left, plot_w, scale)
 
-    # Management stamp box.
-    stamp_top = margin_top + plot_h + 10 * scale
+    # Management stamp box
+    stamp_top = margin_top + plot_h + 46 * scale
     stamp = (
         f"JIG: {chart.jig_id} | Công đoạn: {chart.cong_doan or '—'} | "
         f"Ngày giờ: {datetime.now().strftime('%d/%m/%Y %H:%M')} | "
@@ -257,11 +350,10 @@ def render_spc_png(chart: SpcChartInput, path: str | Path, scale: int = 2) -> Pa
         f"Cpk: {chart.cpk if chart.cpk is not None else '—'} | "
         f"σ: {chart.sigma if chart.sigma is not None else '—'}"
     )
-    draw.rectangle([margin_left, stamp_top, margin_left + plot_w, stamp_top + 28 * scale], outline=(66, 66, 66))
-    draw.text((margin_left + 8 * scale, stamp_top + 8 * scale), stamp, fill=(33, 33, 33), font=_font(scale))
+    draw.rectangle([margin_left, stamp_top, margin_left + plot_w, stamp_top + 28 * scale], fill=(248, 249, 250), outline=RGB_BORDER_GRAY)
+    draw.text((margin_left + 8 * scale, stamp_top + 8 * scale), stamp, fill=RGB_TEXT_MUTED, font=_font(scale))
     image.save(out, format="PNG", dpi=(300, 300))
     return out
-
 
 def render_spc_svg(chart: SpcChartInput) -> str:
     """Render a compact vector SVG version of the same SPC chart."""
@@ -351,9 +443,9 @@ def render_phan_bo_png(chart: SpcChartInput, path: str | Path, scale: int = 2, b
         raise ValueError("Thiếu chuỗi giá trị đo để vẽ biểu đồ.")
     out = Path(path)
     out.parent.mkdir(parents=True, exist_ok=True)
-    width, height = 960 * scale, 540 * scale
-    margin_left, margin_top = 90 * scale, 70 * scale
-    margin_right, margin_bottom = 30 * scale, 60 * scale
+    width, height = 1000 * scale, 560 * scale
+    margin_left, margin_top = 110 * scale, 75 * scale
+    margin_right, margin_bottom = 85 * scale, 80 * scale
     image = Image.new("RGB", (width, height), "white")
     draw = ImageDraw.Draw(image)
     low, high = _bounds(chart)
@@ -366,6 +458,13 @@ def render_phan_bo_png(chart: SpcChartInput, path: str | Path, scale: int = 2, b
         idx = min(bins - 1, max(0, int(ratio * bins)))
         counts[idx] += 1
     peak = max(counts) or 1
+
+    # Subtle grid lines
+    for i_g in range(5):
+        gy = margin_top + int(plot_h * i_g / 4)
+        for gx in range(margin_left, margin_left + plot_w, 8 * scale):
+            draw.line([(gx, gy), (min(gx + 4 * scale, margin_left + plot_w), gy)], fill=RGB_GRID_GRAY, width=max(1, scale // 2))
+
     bar_w = plot_w / bins
     for i, count in enumerate(counts):
         x0 = margin_left + i * bar_w + 2 * scale
@@ -373,30 +472,39 @@ def render_phan_bo_png(chart: SpcChartInput, path: str | Path, scale: int = 2, b
         h = (count / peak) * plot_h
         y0 = margin_top + plot_h - h
         y1 = margin_top + plot_h
-        draw.rectangle([x0, y0, x1, y1], fill=(21, 101, 192))
+        draw.rectangle([x0, y0, x1, y1], fill=RGB_PRIMARY_BLUE, outline=RGB_BORDER_GRAY)
+        if count > 0:
+            draw.text((x0 + (x1 - x0) // 2 - 6 * scale, y0 - 14 * scale), str(count), fill=RGB_TEXT_LABEL, font=_font(scale, nho=True))
+
     for value, color, name in (
-        (chart.usl, (183, 28, 28), "USL"),
-        (chart.ucl, (230, 81, 0), "UCL"),
-        (chart.cl, (21, 101, 192), "CL"),
-        (chart.lcl, (230, 81, 0), "LCL"),
-        (chart.lsl, (183, 28, 28), "LSL"),
+        (chart.usl, RGB_LIMIT_RED, "USL"),
+        (chart.ucl, RGB_WARN_ORANGE, "UCL"),
+        (chart.cl, RGB_CENTER_GREEN, "CL"),
+        (chart.lcl, RGB_WARN_ORANGE, "LCL"),
+        (chart.lsl, RGB_LIMIT_RED, "LSL"),
     ):
         if value is None:
             continue
         ratio = (value - low) / (high - low) if high != low else 0.5
         x = margin_left + ratio * plot_w
-        draw.line([(x, margin_top), (x, margin_top + plot_h)], fill=color, width=max(1, scale))
-        draw.text((x + 4, margin_top + 2 * scale), name, fill=color, font=_font(scale))
-    draw.rectangle([margin_left, margin_top, margin_left + plot_w, margin_top + plot_h], outline=(66, 66, 66))
-    draw.text((margin_left, 18 * scale), f"Phân bố {chart.metric} — {chart.jig_id}".strip(" —"), fill=(33, 33, 33),
-                font=_font(scale, lon=True))
+        draw.line([(x, margin_top), (x, margin_top + plot_h)], fill=color, width=max(1, int(1.5 * scale)))
+        draw.text((x + 4 * scale, margin_top + 2 * scale), f"{name}={value:.2f}", fill=color, font=_font(scale, nho=True))
+
+    draw.rectangle([margin_left, margin_top, margin_left + plot_w, margin_top + plot_h], outline=RGB_BORDER_GRAY, width=max(1, scale))
+    unit_str = chart.unit or detect_unit_from_metric(chart.metric)
+    time_range = format_time_range_from_sequence(chart.nhan_thoi_gian)
+    title = format_chart_title(chart_kind="Phân bố giá trị (Histogram)", metric=chart.metric, jig_id=chart.jig_id, time_range=time_range, unit=unit_str)
+    draw.text((margin_left, 16 * scale), title, fill=RGB_TEXT_TITLE, font=_font(scale, lon=True))
+
+    draw.text((margin_left, margin_top - 22 * scale), "Tần suất xuất hiện (lần)", fill=RGB_TEXT_LABEL, font=_font(scale))
+    draw.text((margin_left + plot_w // 2 - 60 * scale, margin_top + plot_h + 10 * scale), format_axis_label(chart.metric, unit=unit_str, axis_role="x"), fill=RGB_TEXT_LABEL, font=_font(scale))
+
     _ve_bang_mo_phong(draw, chart, width, margin_left, plot_w, scale)
-    stamp_top = margin_top + plot_h + 10 * scale
-    draw.rectangle([margin_left, stamp_top, margin_left + plot_w, stamp_top + 28 * scale], outline=(66, 66, 66))
-    draw.text((margin_left + 8 * scale, stamp_top + 8 * scale), _tem_chung(chart), fill=(33, 33, 33), font=_font(scale))
+    stamp_top = margin_top + plot_h + 38 * scale
+    draw.rectangle([margin_left, stamp_top, margin_left + plot_w, stamp_top + 28 * scale], fill=(248, 249, 250), outline=RGB_BORDER_GRAY)
+    draw.text((margin_left + 8 * scale, stamp_top + 8 * scale), _tem_chung(chart), fill=RGB_TEXT_MUTED, font=_font(scale))
     image.save(out, format="PNG", dpi=(300, 300))
     return out
-
 
 def render_phan_bo_svg(chart: SpcChartInput, bins: int = 12) -> str:
     """Render a compact vector SVG version of the distribution chart."""
@@ -460,9 +568,9 @@ def render_so_sanh_png(charts: Sequence[SpcChartInput], path: str | Path, scale:
         raise ValueError("Thiếu chuỗi giá trị đo để vẽ biểu đồ.")
     out = Path(path)
     out.parent.mkdir(parents=True, exist_ok=True)
-    width, height = 960 * scale, 540 * scale
-    margin_left, margin_top = 90 * scale, 70 * scale
-    margin_right, margin_bottom = 30 * scale, 60 * scale
+    width, height = 1000 * scale, 560 * scale
+    margin_left, margin_top = 110 * scale, 75 * scale
+    margin_right, margin_bottom = 85 * scale, 80 * scale
     image = Image.new("RGB", (width, height), "white")
     draw = ImageDraw.Draw(image)
     low, high = _bounds_nhieu_chuoi(danh_sach)
@@ -473,23 +581,30 @@ def render_so_sanh_png(charts: Sequence[SpcChartInput], path: str | Path, scale:
         ratio = (value - low) / (high - low) if high != low else 0.5
         return int(margin_top + (1 - ratio) * plot_h)
 
+    # Subtle grid lines
+    for i_g in range(5):
+        gy = margin_top + int(plot_h * i_g / 4)
+        for gx in range(margin_left, margin_left + plot_w, 8 * scale):
+            draw.line([(gx, gy), (min(gx + 4 * scale, margin_left + plot_w), gy)], fill=RGB_GRID_GRAY, width=max(1, scale // 2))
+
     goc = danh_sach[0]
     for value, color, name in (
-        (goc.usl, (183, 28, 28), "USL"),
-        (goc.ucl, (230, 81, 0), "UCL"),
-        (goc.cl, (21, 101, 192), "CL"),
-        (goc.lcl, (230, 81, 0), "LCL"),
-        (goc.lsl, (183, 28, 28), "LSL"),
+        (goc.usl, RGB_LIMIT_RED, "USL"),
+        (goc.ucl, RGB_WARN_ORANGE, "UCL"),
+        (goc.cl, RGB_CENTER_GREEN, "CL"),
+        (goc.lcl, RGB_WARN_ORANGE, "LCL"),
+        (goc.lsl, RGB_LIMIT_RED, "LSL"),
     ):
         if value is None:
             continue
         y = y_of(value)
-        draw.line([(margin_left, y), (margin_left + plot_w, y)], fill=color, width=max(1, scale))
-        draw.text((margin_left + plot_w + 4, y - 6 * scale), name, fill=color, font=_font(scale))
+        draw.line([(margin_left, y), (margin_left + plot_w, y)], fill=color, width=max(1, int(1.5 * scale)))
+        draw.text((margin_left + plot_w + 4 * scale, y - 6 * scale), f"{name}={value:.2f}", fill=color, font=_font(scale, nho=True))
+
     for idx, chart in enumerate(danh_sach):
         if not chart.values:
             continue
-        mau = MAU_SERIES[idx % len(MAU_SERIES)]
+        mau = RGB_PALETTE_DISTINCT[idx % len(RGB_PALETTE_DISTINCT)]
         total = len(chart.values)
 
         def x_of(i: int) -> int:
@@ -499,7 +614,7 @@ def render_so_sanh_png(charts: Sequence[SpcChartInput], path: str | Path, scale:
 
         points = [(x_of(i), y_of(v)) for i, v in enumerate(chart.values)]
         for a, b in zip(points, points[1:]):
-            draw.line([a, b], fill=mau, width=max(2, scale))
+            draw.line([a, b], fill=mau, width=max(2, int(2.2 * scale)))
         nhan = (chart.metric or chart.jig_id)
         upper_nhan = nhan.upper()
         for ma_mau, ten_mau in (("BLACK", "Đen"), ("MAGENTA", "Hồng"),
@@ -508,20 +623,24 @@ def render_so_sanh_png(charts: Sequence[SpcChartInput], path: str | Path, scale:
                 nhan = ten_mau
                 break
         nhan = nhan[:28]
-        hang_chu_thich = 58 * scale
-        draw.rectangle([margin_left + idx * 200 * scale, hang_chu_thich,
-                        margin_left + idx * 200 * scale + 12 * scale, hang_chu_thich + 10 * scale], fill=mau)
-        draw.text((margin_left + idx * 200 * scale + 16 * scale, hang_chu_thich - 4 * scale), nhan, fill=(33, 33, 33), font=_font(scale))
-    draw.rectangle([margin_left, margin_top, margin_left + plot_w, margin_top + plot_h], outline=(66, 66, 66))
-    draw.text((margin_left, 18 * scale), f"So sánh theo màu — {goc.jig_id}", fill=(33, 33, 33), font=_font(scale, lon=True))
+        hang_chu_thich = margin_top + 10 * scale + (idx * 22 * scale)
+        leg_box_x = margin_left + 15 * scale
+        draw.rectangle([leg_box_x, hang_chu_thich, leg_box_x + 18 * scale, hang_chu_thich + 12 * scale], fill=mau)
+        draw.text((leg_box_x + 24 * scale, hang_chu_thich - 2 * scale), nhan, fill=RGB_TEXT_LABEL, font=_font(scale))
+
+    draw.rectangle([margin_left, margin_top, margin_left + plot_w, margin_top + plot_h], outline=RGB_BORDER_GRAY, width=max(1, scale))
+    unit_str = goc.unit or detect_unit_from_metric(goc.metric)
+    title = format_chart_title(chart_kind="So sánh theo màu", metric=goc.metric or "Chỉ số", jig_id=goc.jig_id, unit=unit_str)
+    draw.text((margin_left, 16 * scale), title, fill=RGB_TEXT_TITLE, font=_font(scale, lon=True))
+    draw.text((margin_left, margin_top - 22 * scale), format_axis_label("Giá trị đo", unit=unit_str, axis_role="y"), fill=RGB_TEXT_LABEL, font=_font(scale))
+
     _ve_bang_mo_phong(draw, goc, width, margin_left, plot_w, scale,
                       ep_buoc=_co_chuoi_mo_phong(danh_sach))
-    stamp_top = margin_top + plot_h + 10 * scale
-    draw.rectangle([margin_left, stamp_top, margin_left + plot_w, stamp_top + 28 * scale], outline=(66, 66, 66))
-    draw.text((margin_left + 8 * scale, stamp_top + 8 * scale), _tem_chung(goc), fill=(33, 33, 33), font=_font(scale))
+    stamp_top = margin_top + plot_h + 38 * scale
+    draw.rectangle([margin_left, stamp_top, margin_left + plot_w, stamp_top + 28 * scale], fill=(248, 249, 250), outline=RGB_BORDER_GRAY)
+    draw.text((margin_left + 8 * scale, stamp_top + 8 * scale), _tem_chung(goc), fill=RGB_TEXT_MUTED, font=_font(scale))
     image.save(out, format="PNG", dpi=(300, 300))
     return out
-
 
 def render_so_sanh_svg(charts: Sequence[SpcChartInput]) -> str:
     """Render a compact vector SVG version of the color-comparison chart."""
