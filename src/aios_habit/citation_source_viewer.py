@@ -205,30 +205,88 @@ def _get_active_library_db_path(collection_id: str = "tri_thuc") -> Optional[Pat
     return None
 
 
-def _find_file_on_machine(filename: str) -> Optional[Path]:
-    """Search for a source file on local machine if it exists."""
+_DATA_REGISTRY_ROOTS = (
+    Path(r"C:\tmp\kdtps_standard\extracted"),
+    Path(r"C:\tmp\kdtps_standard"),
+    Path(r"D:\AIOS_workspace_chat_rag_v2_production\materialized_sources"),
+    Path(r"D:\Sandbox\AIOS_habbit\local_runs\workspace_chat_rag_v2_canary\materialized_sources"),
+    Path(r"D:\Sandbox\AIOS_habbit\local_cases\workspace_chat\managed_workbooks"),
+    Path(r"D:\Sandbox\AIOS_habbit\local_cases\managed_workbooks"),
+    Path(r"D:\Sandbox\AIOS_habbit\local_cases\library_backups"),
+    Path(r"D:\Sandbox\AIOS_habbit\local_cases"),
+    Path(r"D:\Sandbox\AIOS_habbit\data"),
+    Path(r"D:\Sandbox\AIOS_habbit\docs"),
+    Path(r"C:\tmp\buoc0-deploy"),
+    Path(r"C:\tmp"),
+)
+
+
+def resolve_source_file_path(
+    filename: str,
+    file_sha256: Optional[str] = None,
+    registered_path: Optional[str] = None,
+    source_type: str = "",
+) -> Optional[Path]:
+    """Resolve an original source file path from data registration / provenance.
+
+    Checks:
+    1. Direct registered_path (from ingestion record/library).
+    2. Absolute path if filename is absolute.
+    3. Content sha256 match in managed workbooks or archives.
+    4. Registered storage roots (including C:/tmp/kdtps_standard/extracted and subdirectories).
+    """
+    if registered_path:
+        p_reg = Path(registered_path)
+        if p_reg.is_file():
+            return p_reg
+
     if not filename:
         return None
+
     p = Path(filename)
     if p.is_file():
         return p
 
-    search_roots = [
-        Path(r"D:\Sandbox\AIOS_habbit\local_cases\managed_workbooks"),
-        Path(r"D:\Sandbox\AIOS_habbit\local_cases\library_backups"),
-        Path(r"D:\Sandbox\AIOS_habbit\local_cases"),
-        Path(r"C:\tmp\kdtps_standard"),
-        Path(r"C:\tmp"),
-    ]
-    for root in search_roots:
-        if root.is_dir():
-            target = root / filename
-            if target.is_file():
-                return target
-            target_sub = root / p.name
-            if target_sub.is_file():
-                return target_sub
+    # If sha256 is provided, check managed workbooks
+    if file_sha256:
+        managed_roots = [
+            Path(r"D:\Sandbox\AIOS_habbit\local_cases\workspace_chat\managed_workbooks"),
+            Path(r"D:\Sandbox\AIOS_habbit\local_cases\managed_workbooks"),
+        ]
+        for mroot in managed_roots:
+            if mroot.is_dir():
+                for ext in (".xlsx", ".xls", ".xlsm", ""):
+                    cand = mroot / f"{file_sha256}{ext}"
+                    if cand.is_file():
+                        return cand
+
+    # Check search roots
+    norm_fn = filename.replace("\\", "/").strip("/")
+    for root in _DATA_REGISTRY_ROOTS:
+        if not root.is_dir():
+            continue
+        # Direct relative match
+        target = root / norm_fn
+        if target.is_file():
+            return target
+        # Direct basename match
+        target_name = root / p.name
+        if target_name.is_file():
+            return target_name
+
+    # Check subfolders in extracted root (e.g. old/2015/...)
+    extracted_root = Path(r"C:\tmp\kdtps_standard\extracted")
+    if extracted_root.is_dir():
+        for match in extracted_root.rglob(p.name):
+            if match.is_file():
+                return match
+
     return None
+
+
+def _find_file_on_machine(filename: str) -> Optional[Path]:
+    """Search for a source file on local machine if it exists (backward compatible)."""
+    return resolve_source_file_path(filename)
 
 
 # ---------------------------------------------------------------------------
@@ -448,7 +506,7 @@ def check_citation_exists(ref: CitationRef, notebook_id: str = "") -> bool:
                     return bool(row)
                 if ref.source_file:
                     row = conn.execute(
-                        "SELECT 1 FROM chunks WHERE source_name LIKE ? OR relative_path LIKE ? LIMIT 1",
+                        "SELECT 1 FROM chunks WHERE source_name LIKE ? OR source_path LIKE ? LIMIT 1",
                         (f"%{ref.source_file}%", f"%{ref.source_file}%"),
                     ).fetchone()
                     return bool(row)
@@ -491,7 +549,7 @@ def resolve_citation_source(ref: CitationRef, notebook_id: str = "") -> SourceVi
                 row = None
                 if ref.case_id is not None:
                     sql = (
-                        "SELECT ec.*, b.source_file AS batch_source_file, b.sheet_name AS batch_sheet_name "
+                        "SELECT ec.*, b.source_file AS batch_source_file, b.file_sha256 AS batch_file_sha256, b.sheet_name AS batch_sheet_name "
                         "FROM error_cases ec "
                         "LEFT JOIN import_batches b ON b.id = ec.batch_id "
                         "WHERE ec.id = ? LIMIT 1"
@@ -499,7 +557,7 @@ def resolve_citation_source(ref: CitationRef, notebook_id: str = "") -> SourceVi
                     row = conn.execute(sql, (ref.case_id,)).fetchone()
                 elif ref.source_row is not None:
                     sql = (
-                        "SELECT ec.*, b.source_file AS batch_source_file, b.sheet_name AS batch_sheet_name "
+                        "SELECT ec.*, b.source_file AS batch_source_file, b.file_sha256 AS batch_file_sha256, b.sheet_name AS batch_sheet_name "
                         "FROM error_cases ec "
                         "LEFT JOIN import_batches b ON b.id = ec.batch_id "
                         "WHERE ec.source_row = ? LIMIT 1"
@@ -521,6 +579,9 @@ def resolve_citation_source(ref: CitationRef, notebook_id: str = "") -> SourceVi
                 sheet = row["batch_sheet_name"] or ref.sheet_name or "History KDTPS"
                 row_num = row["source_row"] or ref.source_row or "—"
                 provenance = f"{src_file} › {sheet} › dòng {row_num}"
+                batch_sha = row["batch_file_sha256"] if "batch_file_sha256" in row.keys() else None
+                local_file = resolve_source_file_path(src_file, file_sha256=batch_sha, source_type="db_error_case")
+                can_open = bool(local_file and local_file.is_file())
 
                 # Detect format: history_29 vs legacy_25
                 is_history_29 = bool("AA" in raw or "AB" in raw or "AC" in raw or raw.get("Z"))
@@ -592,7 +653,8 @@ def resolve_citation_source(ref: CitationRef, notebook_id: str = "") -> SourceVi
                     source_type="db_error_case",
                     fields=fields_list,
                     raw_json=raw,
-                    can_open_file=False,
+                    file_path=str(local_file) if can_open else None,
+                    can_open_file=can_open,
                 )
             finally:
                 conn.close()
@@ -661,7 +723,19 @@ def resolve_citation_source(ref: CitationRef, notebook_id: str = "") -> SourceVi
                     excerpt_lines.append(f"\n**Quy trình đối sách & xử lý chuẩn (Nguyên văn từ tài liệu gốc):**\n{remedy_val}")
 
                 # Check if original file is located on machine
-                local_file = _find_file_on_machine(src_file)
+                g_sha = None
+                try:
+                    row_imp = conn.execute(
+                        "SELECT file_sha256 FROM glossary_imports WHERE source_file LIKE ? LIMIT 1",
+                        (f"%{src_file}%",),
+                    ).fetchone()
+                    if row_imp:
+                        g_sha = row_imp["file_sha256"]
+                except Exception:
+                    pass
+
+                local_file = resolve_source_file_path(src_file, file_sha256=g_sha, source_type="glossary_document")
+                can_open = bool(local_file and local_file.is_file())
 
                 return SourceViewerPayload(
                     found=True,
@@ -670,8 +744,8 @@ def resolve_citation_source(ref: CitationRef, notebook_id: str = "") -> SourceVi
                     identifier=f"{src_file} (Mã {code_val})",
                     source_type="glossary_document",
                     excerpt_text="\n".join(excerpt_lines),
-                    file_path=str(local_file) if local_file else None,
-                    can_open_file=bool(local_file and local_file.is_file()),
+                    file_path=str(local_file) if can_open else None,
+                    can_open_file=can_open,
                 )
             finally:
                 conn.close()
@@ -706,7 +780,7 @@ def resolve_citation_source(ref: CitationRef, notebook_id: str = "") -> SourceVi
                     row = conn.execute("SELECT * FROM chunks WHERE chunk_id = ? LIMIT 1", (ref.chunk_id,)).fetchone()
                 if not row and ref.source_file:
                     row = conn.execute(
-                        "SELECT * FROM chunks WHERE source_name LIKE ? OR relative_path LIKE ? LIMIT 1",
+                        "SELECT * FROM chunks WHERE source_name LIKE ? OR source_path LIKE ? LIMIT 1",
                         (f"%{ref.source_file}%", f"%{ref.source_file}%"),
                     ).fetchone()
 
@@ -735,7 +809,13 @@ def resolve_citation_source(ref: CitationRef, notebook_id: str = "") -> SourceVi
 
                 identifier_str = f"{src_name}" + (f" ({loc_str})" if loc_str else "")
 
-                local_file = Path(src_path) if src_path and Path(src_path).is_file() else _find_file_on_machine(src_name)
+                local_file = None
+                if src_path and Path(src_path).is_file():
+                    local_file = Path(src_path)
+                else:
+                    local_file = resolve_source_file_path(src_name, registered_path=src_path, source_type="library_document")
+
+                can_open = bool(local_file and local_file.is_file())
 
                 return SourceViewerPayload(
                     found=True,
@@ -744,8 +824,8 @@ def resolve_citation_source(ref: CitationRef, notebook_id: str = "") -> SourceVi
                     identifier=identifier_str,
                     source_type="library_document",
                     excerpt_text=text_content,
-                    file_path=str(local_file) if local_file else None,
-                    can_open_file=bool(local_file and local_file.is_file()),
+                    file_path=str(local_file) if can_open else None,
+                    can_open_file=can_open,
                 )
             finally:
                 conn.close()
@@ -928,10 +1008,38 @@ def render_source_viewer_panel(
                     for field_item in other_fields:
                         st.markdown(f"- **{field_item.label_vi}** `[Cột {field_item.column_letter}]`: {field_item.value}")
 
-            # Raw fidelity view
-            if payload.raw_json:
-                with st.expander("🔍 Xem dữ liệu thô nguyên vẹn (JSON A–Y)", expanded=False):
-                    st.json(payload.raw_json)
+            # Actions for db_error_case (Open original file & Download full file)
+            st.divider()
+            if payload.can_open_file and payload.file_path:
+                action_cols = st.columns(2)
+                with action_cols[0]:
+                    if st.button("📂 Mở tệp gốc trên máy", key=f"{key_prefix}_btn_open_file_db", use_container_width=True):
+                        try:
+                            os.startfile(payload.file_path)
+                            st.success(f"Đã mở tệp: {Path(payload.file_path).name}")
+                        except Exception as e:
+                            st.error(f"Không thể mở tệp trực tiếp: {e}")
+                with action_cols[1]:
+                    try:
+                        file_bytes = Path(payload.file_path).read_bytes()
+                        fname = Path(payload.file_path).name
+                        st.download_button(
+                            label=f"📥 Tải tệp gốc đầy đủ ({fname})",
+                            data=file_bytes,
+                            file_name=fname,
+                            mime="application/octet-stream",
+                            key=f"{key_prefix}_btn_dl_full_db",
+                            use_container_width=True,
+                        )
+                    except Exception:
+                        pass
+            else:
+                missing_name = payload.citation_ref.source_file or "Loi KDTPS.xlsx"
+                st.warning(
+                    f"⚠️ Không tìm thấy tệp gốc '{missing_name}' trên máy (vị trí đăng ký nạp: "
+                    f"C:\\tmp\\kdtps_standard\\extracted\\{missing_name} hoặc thư mục nguồn \\\\fstvn01\\Data\\...). "
+                    f"Toàn bộ dữ liệu của ca đã được lưu trữ và hiển thị đầy đủ ở các trường phía trên."
+                )
 
         # Case 2 & 3: Reference Document or Library Document
         elif payload.source_type in ("glossary_document", "library_document"):
@@ -939,28 +1047,58 @@ def render_source_viewer_panel(
             with st.container(border=True):
                 st.markdown(payload.excerpt_text)
 
-            # File Actions (Download & Open on machine)
-            action_cols = st.columns(2)
-            with action_cols[0]:
-                st.download_button(
-                    label="📥 Tải đoạn trích đối chiếu (.txt)",
-                    data=payload.excerpt_text.encode("utf-8"),
-                    file_name=f"trich_dan_{payload.citation_ref.id}.txt",
-                    mime="text/plain; charset=utf-8",
-                    key=f"{key_prefix}_btn_dl_excerpt",
-                    use_container_width=True,
-                )
-
-            with action_cols[1]:
-                if payload.can_open_file and payload.file_path:
+            # File Actions (Download excerpt, Open original file, Download full original file)
+            st.divider()
+            if payload.can_open_file and payload.file_path:
+                action_cols = st.columns(3)
+                with action_cols[0]:
+                    st.download_button(
+                        label="📥 Tải đoạn trích đối chiếu (.txt)",
+                        data=payload.excerpt_text.encode("utf-8"),
+                        file_name=f"trich_dan_{payload.citation_ref.id}.txt",
+                        mime="text/plain; charset=utf-8",
+                        key=f"{key_prefix}_btn_dl_excerpt",
+                        use_container_width=True,
+                    )
+                with action_cols[1]:
                     if st.button("📂 Mở tệp gốc trên máy", key=f"{key_prefix}_btn_open_file", use_container_width=True):
                         try:
                             os.startfile(payload.file_path)
                             st.success(f"Đã mở tệp: {Path(payload.file_path).name}")
                         except Exception as e:
                             st.error(f"Không thể mở tệp trực tiếp: {e}")
-                else:
-                    st.caption("ℹ️ Tệp gốc được lưu trữ trong cơ sở dữ liệu nội bộ trên máy.")
+                with action_cols[2]:
+                    try:
+                        file_bytes = Path(payload.file_path).read_bytes()
+                        fname = Path(payload.file_path).name
+                        st.download_button(
+                            label=f"📥 Tải tệp gốc đầy đủ ({fname})",
+                            data=file_bytes,
+                            file_name=fname,
+                            mime="application/octet-stream",
+                            key=f"{key_prefix}_btn_dl_full_doc",
+                            use_container_width=True,
+                        )
+                    except Exception:
+                        pass
+            else:
+                action_cols = st.columns(2)
+                with action_cols[0]:
+                    st.download_button(
+                        label="📥 Tải đoạn trích đối chiếu (.txt)",
+                        data=payload.excerpt_text.encode("utf-8"),
+                        file_name=f"trich_dan_{payload.citation_ref.id}.txt",
+                        mime="text/plain; charset=utf-8",
+                        key=f"{key_prefix}_btn_dl_excerpt",
+                        use_container_width=True,
+                    )
+                with action_cols[1]:
+                    missing_name = payload.citation_ref.source_file or "tài liệu gốc"
+                    loc = "C:\\tmp\\kdtps_standard\\extracted\\" if payload.source_type == "glossary_document" else "kho tài liệu"
+                    st.warning(
+                        f"⚠️ Không tìm thấy tệp gốc '{missing_name}' trên máy (vị trí đăng ký nạp: {loc}{missing_name}). "
+                        f"Bạn có thể xem hoặc tải đoạn trích đối chiếu nguyên văn ở trên."
+                    )
 
         st.caption("🔒 Dữ liệu được trích xuất trực tiếp từ kho lưu trữ cục bộ để phục vụ tự kiểm chứng.")
 

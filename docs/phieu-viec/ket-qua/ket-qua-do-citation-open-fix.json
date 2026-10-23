@@ -1,0 +1,208 @@
+{
+  "ticket": "DESKTOP-HOME-UX-CITATION-OPEN-FIX",
+  "timestamp": "2026-10-23T23:01:31.992394",
+  "status": "PASS",
+  "unresolved_citations_count": 0,
+  "raw_json_leaks_count": 0,
+  "metrics": {
+    "total_views": 26,
+    "views_by_type": {
+      "db_error_case": 11,
+      "glossary_document": 14,
+      "library_document": 1
+    },
+    "successful_resolutions": 26,
+    "missing_resolutions": 0,
+    "recent_events": [
+      {
+        "event_id": "SRC-VIEW-20261022124535-40FC0D",
+        "timestamp": "2026-10-22T12:45:35.723468",
+        "conversation_id": "CONV-CU-S1-05-FILTER",
+        "message_id": "MSG-A-F7BE862A",
+        "citation_id": "case_row_5",
+        "citation_type": "db_error_case",
+        "citation_label": "Loi KDTPS.xlsx › History KDTPS › dòng 5",
+        "source_file": "Loi KDTPS.xlsx",
+        "sheet_name": "History KDTPS",
+        "source_row": 5,
+        "case_id": null,
+        "found": true
+      },
+      {
+        "event_id": "SRC-VIEW-20261022125254-030B44",
+        "timestamp": "2026-10-22T12:52:54.373983",
+        "conversation_id": "CONV-CU-S1-01-C7620",
+        "message_id": "MSG-A-27E77C34",
+        "citation_id": "doc_d8912e6e",
+        "citation_type": "glossary_document",
+        "citation_label": "02XC_自己診断表示一覧表-Iris2020 VN.xls",
+        "source_file": "02XC_自己診断表示一覧表-Iris2020 VN.xls",
+        "sheet_name": "",
+        "source_row": null,
+        "case_id": null,
+        "found": true
+      },
+      {
+        "event_id": "SRC-VIEW-20261022130243-E45F59",
+        "timestamp": "2026-10-22T13:02:43.299401",
+        "conversation_id": "CONV-CU-S1-01-C7620",
+        "message_id": "MSG-A-27E77C34",
+        "citation_id": "doc_d8912e6e",
+        "citation_type": "glossary_document",
+        "citation_label": "02XC_自己診断表示一覧表-Iris2020 VN.xls",
+        "source_file": "02XC_自己診断表示一覧表-Iris2020 VN.xls",
+        "sheet_name": "",
+        "source_row": null,
+        "case_id": null,
+        "found": true
+      },
+      {
+        "event_id": "SRC-VIEW-20261022130300-FAF6F3",
+        "timestamp": "2026-10-22T13:03:00.578385",
+        "conversation_id": "CONV-CU-S1-05-FILTER",
+        "message_id": "MSG-A-1968DD68",
+        "citation_id": "case_row_5",
+        "citation_type": "db_error_case",
+        "citation_label": "Loi KDTPS.xlsx › History KDTPS › dòng 5",
+        "source_file": "Loi KDTPS.xlsx",
+        "sheet_name": "History KDTPS",
+        "source_row": 5,
+        "case_id": null,
+        "found": true
+      },
+      {
+        "event_id": "SRC-VIEW-20261022130457-69733E",
+        "timestamp": "2026-10-22T13:04:57.875534",
+        "conversation_id": "CONV-CU-S1-01-C7620",
+        "message_id": "MSG-A-27E77C34",
+        "citation_id": "doc_d8912e6e",
+        "citation_type": "glossary_document",
+        "citation_label": "02XC_自己診断表示一覧表-Iris2020 VN.xls",
+        "source_file": "02XC_自己診断表示一覧表-Iris2020 VN.xls",
+        "sheet_name": "",
+        "source_row": null,
+        "case_id": null,
+        "found": true
+      },
+      {
+        "event_id": "SRC-VIEW-20261022130516-6C205C",
+        "timestamp": "2026-10-22T13:05:16.884933",
+        "conversation_id": "CONV-CU-S1-05-FILTER",
+        "message_id": "MSG-A-1968DD68",
+        "citation_id": "case_row_5",
+        "citation_type": "db_error_case",
+        "citation_label": "Loi KDTPS.xlsx › History KDTPS › dòng 5",
+        "source_file": "Loi KDTPS.xlsx",
+        "sheet_name": "History KDTPS",
+        "source_row": 5,
+        "case_id": null,
+        "found": true
+      },
+      {
+        "event_id": "SRC-VIEW-20261023225244-134545",
+        "timestamp": "2026-10-23T22:52:44.454316",
+        "conversation_id": "CONV-CITATIONS-Q1-CASE",
+        "message_id": "msg_asst_CONV-CITATIONS-Q1-CASE",
+        "citation_id": "case_row_9609",
+        "citation_type": "db_error_case",
+        "citation_label": "Loi KDTPS.xlsx › History KDTPS › dòng 9609",
+        "source_file": "Loi KDTPS.xlsx",
+        "sheet_name": "History KDTPS",
+        "source_row": 9609,
+        "case_id": null,
+        "found": true
+      },
+      {
+        "event_id": "SRC-VIEW-20261023230112-A805B5",
+        "timestamp": "2026-10-23T23:01:12.805173",
+        "conversation_id": "CONV-CITATIONS-Q1-CASE",
+        "message_id": "msg_asst_CONV-CITATIONS-Q1-CASE",
+        "citation_id": "case_row_9609",
+        "citation_type": "db_error_case",
+        "citation_label": "Loi KDTPS.xlsx › History KDTPS › dòng 9609",
+        "source_file": "Loi KDTPS.xlsx",
+        "sheet_name": "History KDTPS",
+        "source_row": 9609,
+        "case_id": null,
+        "found": true
+      },
+      {
+        "event_id": "SRC-VIEW-20261023230121-49DBED",
+        "timestamp": "2026-10-23T23:01:21.153055",
+        "conversation_id": "CONV-CITATIONS-Q2-LIB",
+        "message_id": "msg_asst_CONV-CITATIONS-Q2-LIB",
+        "citation_id": "rag_e1",
+        "citation_type": "library_document",
+        "citation_label": "[E1] Iris2020_Cコール自己診断.xlsx",
+        "source_file": "Iris2020_Cコール自己診断.xlsx",
+        "sheet_name": "",
+        "source_row": null,
+        "case_id": null,
+        "found": true
+      },
+      {
+        "event_id": "SRC-VIEW-20261023230129-04A2FC",
+        "timestamp": "2026-10-23T23:01:29.213785",
+        "conversation_id": "CONV-CITATIONS-Q3-GLOSSARY",
+        "message_id": "msg_asst_CONV-CITATIONS-Q3-GLOSSARY",
+        "citation_id": "doc_d8912e6e",
+        "citation_type": "glossary_document",
+        "citation_label": "02XC_自己診断表示一覧表-Iris2020 VN.xls",
+        "source_file": "02XC_自己診断表示一覧表-Iris2020 VN.xls",
+        "sheet_name": "",
+        "source_row": null,
+        "case_id": null,
+        "found": true
+      }
+    ]
+  },
+  "tested_citations": [
+    {
+      "type": "db_error_case",
+      "label": "Loi KDTPS.xlsx › History KDTPS › dòng 9609",
+      "action_clicked": "🔍 Xem hồ sơ gốc (Loi KDTPS.xlsx › History KDTPS › dòng 9609)",
+      "opened_view": "Panel hồ sơ ca điều tra lịch sử Vụ 2025/1155 đầy đủ nhãn tiếng Việt",
+      "open_file_action": "📂 Mở tệp gốc trên máy (Loi KDTPS.xlsx) + 📥 Tải tệp gốc đầy đủ (9.56 MB)",
+      "raw_json_present": false,
+      "result": "THÀNH CÔNG (100% mở được, không còn JSON thô)"
+    },
+    {
+      "type": "library_document",
+      "label": "[E1] Iris2020_Cコール自己診断.xlsx",
+      "action_clicked": "📑 Mở đoạn trích nguồn: Iris2020_Cコール自己診断.xlsx",
+      "opened_view": "Panel đoạn trích tài liệu kỹ thuật nguyên văn từ kho",
+      "open_file_action": "📂 Mở tệp gốc trên máy + 📥 Tải tệp gốc đầy đủ + 📥 Tải đoạn trích đối chiếu (.txt)",
+      "raw_json_present": false,
+      "result": "THÀNH CÔNG (100% mở được, trích đoạn nguyên văn)"
+    },
+    {
+      "type": "glossary_document",
+      "label": "02XC_自己診断表示一覧表-Iris2020 VN.xls",
+      "action_clicked": "📖 Mở nguồn tài liệu: 02XC_自己診断表示一覧表-Iris2020 VN.xls",
+      "opened_view": "Panel tài liệu tham chiếu chuẩn: định nghĩa, cơ chế phát sinh, quy trình đối sách",
+      "open_file_action": "📂 Mở tệp gốc trên máy + 📥 Tải tệp gốc đầy đủ (122 KB) + 📥 Tải đoạn trích (.txt)",
+      "raw_json_present": false,
+      "result": "THÀNH CÔNG (100% mở được, không có link chết)"
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "anh-openfix-01-db-case-row9609.png",
+      "size_bytes": 159040,
+      "sha256": "34493A225EE773545D36F4E8CE675023F0B9121E7F1D0FDC2FE9AB386AAD13C8",
+      "description": "Panel hồ sơ ca điều tra lịch sử DB (dòng 9609): nhãn thuần Việt, không còn JSON thô, có nút 'Mở tệp gốc trên máy' và 'Tải tệp gốc đầy đủ'"
+    },
+    {
+      "file": "anh-openfix-02-library-doc-panel.png",
+      "size_bytes": 140202,
+      "sha256": "EDD493461B83C1AAB0C2B93D567F09333CAE30A9FE54B00AC2D8CA6746282070",
+      "description": "Panel đoạn trích tài liệu thư viện (Iris2020_Cコール自己診断.xlsx): trích đoạn nguyên văn, nút 'Mở tệp gốc trên máy', 'Tải tệp gốc đầy đủ' và 'Tải đoạn trích'"
+    },
+    {
+      "file": "anh-openfix-03-glossary-doc-panel.png",
+      "size_bytes": 140038,
+      "sha256": "FE0AB9215C2767CF55D6A31A29DEE77B8200A4334A79EB5E215FB43F7F043827",
+      "description": "Panel tài liệu tham chiếu từ điển mã lỗi chuẩn (02XC... VN.xls): cơ chế phát sinh nguyên văn, quy trình đối sách, có đầy đủ nút mở và tải tệp gốc"
+    }
+  ]
+}

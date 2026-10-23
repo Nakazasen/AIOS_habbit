@@ -248,6 +248,9 @@ class _MockStreamlit:
     def __init__(self):
         self.rendered_markdowns: List[str] = []
         self.rendered_buttons: List[str] = []
+        self.rendered_download_buttons: List[dict] = []
+        self.expander_labels: List[str] = []
+        self.json_calls: List[Any] = []
         self.session_state: dict = {}
         self.rerun_called = False
 
@@ -281,13 +284,14 @@ class _MockStreamlit:
         self.rendered_markdowns.append(text)
 
     def expander(self, label: str, expanded: bool = False):
+        self.expander_labels.append(label)
         return self
 
     def json(self, data: Any):
-        pass
+        self.json_calls.append(data)
 
-    def download_button(self, *args, **kwargs):
-        pass
+    def download_button(self, label: str = "", data: Any = None, file_name: str = "", mime: str = "", **kwargs):
+        self.rendered_download_buttons.append({"label": label, "file_name": file_name, "mime": mime})
 
     def __enter__(self):
         return self
@@ -326,3 +330,109 @@ def test_render_assistant_answer_with_citations_creates_buttons():
     markdown_output = " ".join(mock_st.rendered_markdowns)
     assert "không tìm thấy nguồn gốc" in markdown_output
     assert "999999" in markdown_output
+
+
+def test_render_source_viewer_panel_never_calls_st_json():
+    """Requirement 2.a: Proof that panel completely eliminates raw JSON from UI."""
+    mock_st = _MockStreamlit()
+    ref = CitationRef(
+        id="case_9609",
+        ref_type="db_error_case",
+        label="Loi KDTPS.xlsx › History KDTPS › dòng 9609",
+        source_file="Loi KDTPS.xlsx",
+        source_row=9609,
+    )
+    payload = resolve_citation_source(ref)
+    assert payload.found is True
+    assert len(payload.raw_json) > 0  # Backend still preserves full fidelity data
+
+    render_source_viewer_panel(st_module=mock_st, payload=payload)
+
+    # Assert st.json was NEVER called
+    assert len(mock_st.json_calls) == 0, f"Expected 0 st.json calls, found {len(mock_st.json_calls)}"
+    # Assert no expander offers raw JSON
+    for exp_label in mock_st.expander_labels:
+        assert "JSON" not in exp_label, f"Found raw JSON expander: {exp_label}"
+        assert "dữ liệu thô" not in exp_label.lower()
+
+
+def test_db_error_case_can_open_and_download_when_file_exists():
+    """Requirement 2.b: DB error case has path to open original file when workbook exists in registry."""
+    ref = CitationRef(
+        id="case_9609",
+        ref_type="db_error_case",
+        label="Loi KDTPS.xlsx › History KDTPS › dòng 9609",
+        source_file="Loi KDTPS.xlsx",
+        source_row=9609,
+    )
+    payload = resolve_citation_source(ref)
+    assert payload.found is True
+    assert payload.can_open_file is True
+    assert payload.file_path is not None
+    assert Path(payload.file_path).is_file()
+
+    mock_st = _MockStreamlit()
+    render_source_viewer_panel(st_module=mock_st, payload=payload)
+
+    # Button to open file must exist
+    btn_labels = " ".join(mock_st.rendered_buttons)
+    assert "Mở tệp gốc trên máy" in btn_labels
+
+    # Download button for full file must exist
+    dl_labels = " ".join(d["label"] for d in mock_st.rendered_download_buttons)
+    assert "Tải tệp gốc đầy đủ" in dl_labels
+
+
+def test_db_error_case_missing_file_reports_exact_missing_filename():
+    """Requirement 2.b: When workbook is missing, panel names the exact missing file and forbids generic caption."""
+    ref = CitationRef(
+        id="case_synthetic_missing",
+        ref_type="db_error_case",
+        label="MissingBook.xlsx › Sheet1 › dòng 10",
+        source_file="MissingBook_NonExistent_2026.xlsx",
+        source_row=10,
+    )
+    # Synthetic payload simulating missing local file
+    payload = SourceViewerPayload(
+        found=True,
+        citation_ref=ref,
+        title="Hồ sơ ca thử nghiệm",
+        identifier="MissingBook_NonExistent_2026.xlsx › Sheet1 › dòng 10",
+        source_type="db_error_case",
+        fields=[SourceRecordField("A", "Số vụ", "2026/01")],
+        file_path=None,
+        can_open_file=False,
+    )
+    mock_st = _MockStreamlit()
+    render_source_viewer_panel(st_module=mock_st, payload=payload)
+
+    all_markdown = " ".join(mock_st.rendered_markdowns)
+    # Must explicitly state the missing file name
+    assert "MissingBook_NonExistent_2026.xlsx" in all_markdown
+    # Must NOT have generic vague caption
+    assert "Tệp gốc được lưu trữ trong cơ sở dữ liệu nội bộ trên máy" not in all_markdown
+
+
+def test_glossary_and_library_file_actions():
+    """Requirement 2.c: Glossary & Library documents have open on machine and download full file."""
+    ref_glossary = CitationRef(
+        id="doc_02xc",
+        ref_type="glossary_document",
+        label="02XC_自己診断表示一覧表-Iris2020 VN.xls",
+        source_file="02XC_自己診断表示一覧表-Iris2020 VN.xls",
+        code="C6770",
+    )
+    payload_g = resolve_citation_source(ref_glossary)
+    assert payload_g.found is True
+    assert payload_g.can_open_file is True
+    assert payload_g.file_path is not None
+    assert Path(payload_g.file_path).is_file()
+
+    mock_st = _MockStreamlit()
+    render_source_viewer_panel(st_module=mock_st, payload=payload_g)
+
+    btn_labels = " ".join(mock_st.rendered_buttons)
+    assert "Mở tệp gốc trên máy" in btn_labels
+    dl_labels = " ".join(d["label"] for d in mock_st.rendered_download_buttons)
+    assert "Tải đoạn trích" in dl_labels
+    assert "Tải tệp gốc đầy đủ" in dl_labels
