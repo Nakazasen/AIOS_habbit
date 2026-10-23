@@ -318,7 +318,7 @@ def main() -> None:
     alert_marker = json.dumps({
         "type": "jig_realtime_alert",
         "card": alert_card_data,
-    })
+    }, ensure_ascii=False)
 
     assistant_reply_2 = (
         f"### 🚨 Kết luận kiểm tra cổng xu hướng SMA(20): Nguy cơ (Vi phạm)\n\n"

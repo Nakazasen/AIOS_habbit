@@ -769,6 +769,110 @@ def strip_instruction_header(content: str) -> str:
     return re.sub(r"^(?:[ \t]*[\r\n]+)+", "", remaining)
 
 
+def strip_all_aios_markers(content: str) -> str:
+    """Filter out ANY marker of the form <!-- aios_* ... --> from content.
+
+    Adheres to the strict UX principle: never leak machine markers,
+    unknown marker names, or corrupted/truncated JSON comments into UI.
+    """
+    if not content:
+        return ""
+    cleaned = re.sub(r"<!--\s*aios.*?(?:-->|$)", "", content, flags=re.DOTALL)
+    return cleaned.strip()
+
+
+def parse_jig_realtime_alert_marker(content: str) -> Optional[Dict[str, Any]]:
+    """Parse realtime alert marker (supporting both aios_realtime_alert and aios_jig_alert_card).
+
+    Returns a normalized dictionary with mapped keys:
+      alert_id, jig_id, metric, chi_tiet, gia_tri, don_vi, sma, muc_lech, so_diem_lien_tiep, thoi_diem.
+    Returns None if no marker is found or if JSON parsing fails.
+    """
+    if not content:
+        return None
+    m = re.search(
+        r"<!--\s*(?:aios_realtime_alert|aios_jig_alert_card):\s*(.*?)\s*-->",
+        content,
+        re.DOTALL,
+    )
+    if not m:
+        return None
+    try:
+        raw_json = m.group(1).strip()
+        data = json.loads(raw_json)
+        if not isinstance(data, dict):
+            return None
+        card_data = data.get("card") if isinstance(data.get("card"), dict) else data
+
+        alert_id = str(card_data.get("alert_id") or data.get("alert_id") or "")
+        jig_id = str(
+            card_data.get("ma_jig")
+            or card_data.get("jig_id")
+            or data.get("ma_jig")
+            or data.get("jig_id")
+            or "—"
+        )
+        metric = str(
+            card_data.get("thong_so")
+            or card_data.get("metric")
+            or data.get("thong_so")
+            or data.get("metric")
+            or "—"
+        )
+        chi_tiet = str(
+            card_data.get("chi_tiet")
+            if card_data.get("chi_tiet") is not None
+            else data.get("chi_tiet", "")
+        )
+        gia_tri = card_data.get("gia_tri") if card_data.get("gia_tri") is not None else data.get("gia_tri")
+        don_vi = str(
+            card_data.get("don_vi")
+            if card_data.get("don_vi") is not None
+            else data.get("don_vi", "")
+        )
+        sma = (
+            card_data.get("sma")
+            if card_data.get("sma") is not None
+            else (
+                card_data.get("sma20")
+                if card_data.get("sma20") is not None
+                else (
+                    data.get("sma")
+                    if data.get("sma") is not None
+                    else data.get("sma20")
+                )
+            )
+        )
+        muc_lech = card_data.get("muc_lech") if card_data.get("muc_lech") is not None else data.get("muc_lech")
+        so_diem_lien_tiep = (
+            card_data.get("so_diem_lien_tiep")
+            if card_data.get("so_diem_lien_tiep") is not None
+            else data.get("so_diem_lien_tiep")
+        )
+        thoi_diem = (
+            card_data.get("thoi_diem")
+            or card_data.get("timestamp")
+            or data.get("thoi_diem")
+            or data.get("timestamp")
+        )
+        return {
+            "alert_id": alert_id,
+            "jig_id": jig_id,
+            "ma_jig": jig_id,
+            "metric": metric,
+            "thong_so": metric,
+            "chi_tiet": chi_tiet,
+            "gia_tri": gia_tri,
+            "don_vi": don_vi,
+            "sma": sma,
+            "muc_lech": muc_lech,
+            "so_diem_lien_tiep": so_diem_lien_tiep,
+            "thoi_diem": thoi_diem,
+        }
+    except Exception:
+        return None
+
+
 def render_chat_bubble(
     msg: ChatMessage,
     is_latest: bool = False,
@@ -797,9 +901,7 @@ def render_chat_bubble(
                 clean_content = _chat_interview_ui.strip_interactive_markers(raw_content)
                 clean_content = _chat_create_case.strip_case_preview_marker(clean_content)
                 clean_content = _chat_intake_ui.strip_intake_markers(clean_content)
-                clean_content = re.sub(r"<!--\s*aios_chat_artifact:.*?-->", "", clean_content, flags=re.DOTALL)
-                clean_content = re.sub(r"<!--\s*aios_realtime_alert:.*?-->", "", clean_content, flags=re.DOTALL)
-                clean_content = re.sub(r"<!--\s*aios_log_chart_builder:.*?-->", "", clean_content, flags=re.DOTALL).strip()
+                clean_content = strip_all_aios_markers(clean_content)
                 st.markdown(clean_content)
                 return
             from aios_habit.agent_work_artifact import extract_chat_artifact_metadata
@@ -838,37 +940,33 @@ def render_chat_bubble(
                             _ext_provider_name = str(prov.get("provider_name") or "Command Code")
                 except Exception:
                     pass
-            # Realtime LSU Alert detection (DESKTOP-LSU-ALERT-WIRE-HOME)
+            # Realtime LSU Alert detection (DESKTOP-LSU-ALERT-WIRE-HOME, DESKTOP-HOME-UX-MARKER-LEAK-FIX)
             _is_realtime_alert = False
             _is_can_bien = False
             _alert_jig = ""
             _alert_id = ""
+            _alert_metric = ""
+            _alert_chi_tiet = ""
+            _alert_gia_tri = None
+            _alert_don_vi = ""
+            _alert_sma = None
+            _alert_muc_lech = None
+            _alert_so_diem = None
+            _alert_thoi_diem = None
 
-            _m_alert_marker = re.search(r"<!--\s*aios_realtime_alert:\s*(\{.*?\})\s*-->", raw_content, re.DOTALL)
-            if _m_alert_marker:
+            _parsed_alert = parse_jig_realtime_alert_marker(raw_content)
+            if _parsed_alert is not None:
                 _is_realtime_alert = True
-                try:
-                    _alert_data = json.loads(_m_alert_marker.group(1))
-                    _alert_id = str(_alert_data.get("alert_id", "") or "")
-                    _alert_jig = str(_alert_data.get("jig_id") or _alert_data.get("ma_jig") or "—")
-                    _alert_metric = str(_alert_data.get("metric") or _alert_data.get("thong_so") or "—")
-                    _alert_chi_tiet = str(_alert_data.get("chi_tiet", ""))
-                    _alert_gia_tri = _alert_data.get("gia_tri")
-                    _alert_don_vi = str(_alert_data.get("don_vi", ""))
-                    _alert_sma = _alert_data.get("sma")
-                    _alert_muc_lech = _alert_data.get("muc_lech")
-                    _alert_so_diem = _alert_data.get("so_diem_lien_tiep")
-                    _alert_thoi_diem = _alert_data.get("thoi_diem") or _alert_data.get("timestamp")
-                except Exception:
-                    _alert_jig = "—"
-                    _alert_metric = "—"
-                    _alert_chi_tiet = ""
-                    _alert_gia_tri = None
-                    _alert_don_vi = ""
-                    _alert_sma = None
-                    _alert_muc_lech = None
-                    _alert_so_diem = None
-                    _alert_thoi_diem = None
+                _alert_id = _parsed_alert["alert_id"]
+                _alert_jig = _parsed_alert["jig_id"]
+                _alert_metric = _parsed_alert["metric"]
+                _alert_chi_tiet = _parsed_alert["chi_tiet"]
+                _alert_gia_tri = _parsed_alert["gia_tri"]
+                _alert_don_vi = _parsed_alert["don_vi"]
+                _alert_sma = _parsed_alert["sma"]
+                _alert_muc_lech = _parsed_alert["muc_lech"]
+                _alert_so_diem = _parsed_alert["so_diem_lien_tiep"]
+                _alert_thoi_diem = _parsed_alert["thoi_diem"]
             elif "Cảnh báo realtime" in raw_content:
                 _is_realtime_alert = True
                 _lines = [l.strip() for l in raw_content.splitlines() if l.strip()]
@@ -897,15 +995,15 @@ def render_chat_bubble(
             # Interactive markers (interview session / suggestion feedback / case preview) are
             # rendered as widgets below; strip them from the markdown body.
             from aios_habit import chat_intake_ui as _chat_intake_ui
-            display_content = _chat_interview_ui.strip_interactive_markers(raw_content)
-            display_content = _chat_create_case.strip_case_preview_marker(display_content)
-            display_content = _chat_intake_ui.strip_intake_markers(display_content)
             interview_session_id = _chat_interview_ui.extract_interview_session_id(raw_content)
             intake_session_info = _chat_intake_ui.extract_intake_session_marker(raw_content)
             intake_review_info = _chat_intake_ui.extract_intake_review_marker(raw_content)
             suggestion_cards = _chat_interview_ui.extract_suggestion_markers(raw_content)
             case_preview_data = _chat_create_case.extract_case_preview_marker(raw_content)
-            display_content = re.sub(r"<!--\s*aios_log_chart_builder:.*?-->", "", display_content, flags=re.DOTALL)
+            display_content = _chat_interview_ui.strip_interactive_markers(raw_content)
+            display_content = _chat_create_case.strip_case_preview_marker(display_content)
+            display_content = _chat_intake_ui.strip_intake_markers(display_content)
+            display_content = strip_all_aios_markers(display_content)
             log_chart_data = None
             _m_chart = re.search(r"<!--\s*aios_log_chart_builder:\s*(\{.*?\})\s*-->", raw_content, re.DOTALL)
             if _m_chart:
@@ -936,7 +1034,7 @@ def render_chat_bubble(
                 except Exception:
                     pass
 
-                clean_content = re.sub(r"<!--\s*aios_chat_artifact:.*?-->", "", display_content, flags=re.DOTALL).strip()
+                clean_content = strip_all_aios_markers(display_content)
                 if is_rolled_back:
                     st.warning(f"↩️ {t('agent_queue_status_rolled_back', locale=locale)}")
                     st.markdown(clean_content)
