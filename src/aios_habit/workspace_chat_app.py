@@ -253,6 +253,12 @@ st.html('''
         [class*="st-key-wsc-composer-"] [data-testid="stVerticalBlockBorderWrapper"] {
             padding: 0.25rem 0.35rem !important;
             border: none !important;
+            overflow: visible !important;
+        }
+        [class*="st-key-wsc_question_input_"],
+        [class*="st-key-wsc-composer-"],
+        [class*="st-key-wsc-composer-"] [data-testid="stVerticalBlock"] {
+            overflow: visible !important;
         }
         [class*="st-key-wsc-composer-"] [data-testid="stHorizontalBlock"] {
             align-items: center !important;
@@ -6961,10 +6967,30 @@ else:
                           parentWin.__wscSlashCatalog = slashCatalog;
 
                           // 0. Ensure Palette styles in parentDoc.head
-                          if (!parentDoc.getElementById("wsc-palette-styles")) {{
-                            const styleEl = parentDoc.createElement("style");
+                          let styleEl = parentDoc.getElementById("wsc-palette-styles");
+                          if (!styleEl) {{
+                            styleEl = parentDoc.createElement("style");
                             styleEl.id = "wsc-palette-styles";
+                            parentDoc.head.appendChild(styleEl);
+                          }}
+                          if (styleEl) {{
                             styleEl.textContent = `
+                              [class*="st-key-wsc_question_input_"],
+                              [class*="st-key-wsc-composer-"],
+                              [class*="st-key-wsc-composer-"] [data-testid="stVerticalBlock"],
+                              [class*="st-key-wsc-composer-"] [data-testid="stVerticalBlockBorderWrapper"] {{
+                                overflow: visible !important;
+                              }}
+                              .wsc-palette-group-header {{
+                                padding: 5px 12px 3px 12px;
+                                font-size: 0.72rem;
+                                font-weight: 700;
+                                color: #0369A1;
+                                background: #F1F5F9;
+                                border-top: 1px solid #E2E8F0;
+                                border-bottom: 1px solid #E2E8F0;
+                                letter-spacing: 0.02em;
+                              }}
                               .wsc-slash-palette {{
                                 position: absolute;
                                 bottom: calc(100% + 8px);
@@ -7054,22 +7080,28 @@ else:
                                 color: #64748B;
                               }}
                             `;
-                            parentDoc.head.appendChild(styleEl);
                           }}
 
                           // Setup / Re-anchor palette element
-                          const composerBlock = parentDoc.querySelector('[class*="st-key-wsc_question_input_"]') || parentDoc.querySelector('[class*="st-key-wsc-composer-"]');
-                          let paletteEl = parentDoc.getElementById("wsc-slash-palette");
-                          if (!paletteEl) {{
-                            paletteEl = parentDoc.createElement("div");
-                            paletteEl.id = "wsc-slash-palette";
-                            paletteEl.className = "wsc-slash-palette";
-                          }}
-                          if (composerBlock && paletteEl.parentElement !== composerBlock) {{
-                            composerBlock.style.position = "relative";
-                            composerBlock.appendChild(paletteEl);
-                          }}
-                          parentWin.__wscActivePaletteEl = paletteEl;
+                          parentWin.__wscEnsurePaletteAttached = function() {{
+                            const composerBlock = parentDoc.querySelector('[class*="st-key-wsc_question_input_"]') || parentDoc.querySelector('[class*="st-key-wsc-composer-"]');
+                            let paletteEl = parentDoc.getElementById("wsc-slash-palette") || parentWin.__wscActivePaletteEl;
+                            if (!paletteEl) {{
+                              paletteEl = parentDoc.createElement("div");
+                              paletteEl.id = "wsc-slash-palette";
+                              paletteEl.className = "wsc-slash-palette";
+                            }}
+                            if (composerBlock) {{
+                              composerBlock.style.position = "relative";
+                              composerBlock.style.overflow = "visible";
+                              if (paletteEl.parentElement !== composerBlock) {{
+                                composerBlock.appendChild(paletteEl);
+                              }}
+                            }}
+                            parentWin.__wscActivePaletteEl = paletteEl;
+                            return paletteEl;
+                          }};
+                          const paletteEl = parentWin.__wscEnsurePaletteAttached();
 
                           parentWin.__wscStripDiacritics = function(str) {{
                             return (str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/đ/g, "d");
@@ -7225,7 +7257,7 @@ else:
                             if (!textarea || !cmdItem) return;
                             const insertText = cmdItem.command;
 
-                            const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
+                            const _valDesc = (parentWin.HTMLTextAreaElement && Object.getOwnPropertyDescriptor(parentWin.HTMLTextAreaElement.prototype, "value")) || (window.HTMLTextAreaElement && Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")); const nativeSetter = _valDesc ? _valDesc.set : null;
                             if (nativeSetter) {{
                               nativeSetter.call(textarea, insertText);
                             }} else {{
@@ -7245,7 +7277,9 @@ else:
                           }};
 
                           parentWin.__wscShowPalette = function() {{
-                            const el = parentWin.__wscActivePaletteEl;
+                            const el = typeof parentWin.__wscEnsurePaletteAttached === "function"
+                              ? parentWin.__wscEnsurePaletteAttached()
+                              : parentWin.__wscActivePaletteEl;
                             if (el) {{
                               el.style.display = "block";
                               if (typeof parentWin.__wscRecordPaletteEvent === "function") {{
@@ -7299,6 +7333,16 @@ else:
                             currentTextarea.removeAttribute("disabled");
                             currentTextarea.style.pointerEvents = "";
                             currentTextarea.style.opacity = "";
+                            const initVal = currentTextarea.value || "";
+                            if (initVal.startsWith("/")) {{
+                              const initMatches = typeof parentWin.__wscFilterCatalog === "function" ? parentWin.__wscFilterCatalog(initVal) : [];
+                              if (typeof parentWin.__wscRenderPalette === "function") {{
+                                parentWin.__wscRenderPalette(initMatches, 0);
+                              }}
+                              if (typeof parentWin.__wscShowPalette === "function") {{
+                                parentWin.__wscShowPalette();
+                              }}
+                            }}
                           }}
 
                           if (!isAnswering) {{

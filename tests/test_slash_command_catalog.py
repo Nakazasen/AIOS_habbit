@@ -258,3 +258,129 @@ def test_slash_palette_dom_contract_in_workspace_chat_app() -> None:
 
     # 5. Ghi log khi gửi lệnh slash
     assert 'record_palette_event' in app_source
+
+    # 6. Chống cắt khung (overflow: auto của stElementContainer): bắt buộc mở overflow: visible
+    assert "__wscEnsurePaletteAttached" in app_source
+    assert 'composerBlock.style.overflow = "visible"' in app_source
+    assert "overflow: visible !important;" in app_source
+
+
+def test_slash_palette_trigger_execution_and_anti_clipping(tmp_path: Path) -> None:
+    """Chứng minh đường kích hoạt palette khi gõ '/' chạy thực tế (render DOM + chống cắt overflow)."""
+    import json
+    import subprocess
+
+    app_source = Path("src/aios_habit/workspace_chat_app.py").read_text(encoding="utf-8")
+    start = app_source.find("_wsc_components.html(")
+    end = app_source.find("height=0,", start)
+    block = app_source[start:end]
+
+    _js_is_answering = "false"
+    _js_has_error = "false"
+    class _DummyConv:
+        id = "CONV-UNIT-PALETTE"
+    active_conversation = _DummyConv()
+    current_ui_locale = "vi"
+    _js_slash_catalog = json.dumps(get_command_catalog(), ensure_ascii=False)
+    _js_ack_text = "ack"
+    _js_wait_spinner = "spin"
+    _js_wait_title = "title"
+    _js_step_find = "find"
+    _js_step_read = "read"
+    _js_step_synth = "synth"
+
+    q3 = '"""'
+    s_idx = block.find("f" + q3)
+    e_idx = block.rfind(q3) + 3
+    rendered_html = eval(block[s_idx:e_idx])
+    js_code = rendered_html.replace("<script>", "").replace("</script>", "")
+
+    node_harness = """
+const listeners = {};
+const styleSheets = [];
+const composerBlock = {
+  style: { position: "static", overflow: "auto" },
+  children: [],
+  appendChild(el) {
+    el.parentElement = this;
+    if (!this.children.includes(el)) this.children.push(el);
+  }
+};
+const textarea = {
+  value: "",
+  style: {},
+  attributes: {},
+  removeAttribute(k) { delete this.attributes[k]; },
+  setAttribute(k, v) { this.attributes[k] = v; },
+  focus() { this.focused = true; },
+  setSelectionRange(a, b) { this.sel = [a, b]; },
+  dispatchEvent(evt) { this.lastEvt = evt.type; },
+  matches(sel) { return sel.includes("wsc_question_input_"); }
+};
+const elementsById = {};
+const parentDoc = {
+  head: {
+    appendChild(el) {
+      if (el.id) elementsById[el.id] = el;
+      styleSheets.push(el);
+    }
+  },
+  getElementById(id) { return elementsById[id] || null; },
+  createElement(tag) {
+    return {
+      tagName: tag.toUpperCase(),
+      id: "",
+      className: "",
+      style: {},
+      innerHTML: "",
+      textContent: "",
+      parentElement: null,
+      querySelector() { return null; }
+    };
+  },
+  querySelector(sel) {
+    if (sel.includes("wsc_question_input_") && sel.includes("textarea")) return textarea;
+    if (sel.includes("wsc_question_input_") || sel.includes("wsc-composer-")) return composerBlock;
+    return null;
+  },
+  querySelectorAll() { return []; },
+  addEventListener(type, fn) {
+    listeners[type] = listeners[type] || [];
+    listeners[type].push(fn);
+  }
+};
+global.window = {
+  parent: { document: parentDoc },
+  HTMLTextAreaElement: { prototype: {} }
+};
+global.Event = function(type) { this.type = type; };
+""" + js_code + """
+textarea.value = "/";
+for (const fn of (listeners["input"] || [])) {
+  fn({ target: textarea });
+}
+const pal = window.parent.__wscActivePaletteEl;
+if (!pal) throw new Error("Palette element not created");
+if (pal.style.display !== "block") throw new Error("Palette display is not block: " + pal.style.display);
+if (composerBlock.style.overflow !== "visible") throw new Error("composerBlock overflow not visible: " + composerBlock.style.overflow);
+if (composerBlock.style.position !== "relative") throw new Error("composerBlock position not relative: " + composerBlock.style.position);
+if (!pal.innerHTML.includes("/huongdan") || !pal.innerHTML.includes("/kynang")) {
+  throw new Error("Palette innerHTML missing expected commands");
+}
+textarea.value = "/kynang";
+for (const fn of (listeners["input"] || [])) {
+  fn({ target: textarea });
+}
+if (!pal.innerHTML.includes("/kynang tao")) {
+  throw new Error("Filtered palette missing /kynang tao");
+}
+window.parent.__wscSelectCommand(window.parent.__wscActiveItems[0]);
+if (pal.style.display !== "none") throw new Error("Palette did not hide after selection");
+if (!textarea.value.startsWith("/kynang")) throw new Error("Textarea value not updated on select: " + textarea.value);
+console.log("PALETTE_TRIGGER_OK");
+"""
+    harness_file = tmp_path / "palette_harness.js"
+    harness_file.write_text(node_harness, encoding="utf-8")
+    proc = subprocess.run(["node", str(harness_file)], capture_output=True, text=True, encoding="utf-8")
+    assert proc.returncode == 0, f"Node execution failed: {proc.stderr}"
+    assert "PALETTE_TRIGGER_OK" in proc.stdout
