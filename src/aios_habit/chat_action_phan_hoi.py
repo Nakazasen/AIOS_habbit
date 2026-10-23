@@ -239,7 +239,7 @@ nguyên nhân thật: ...
 ```
 
 - **Bắt buộc:** nguyên nhân thật + đối sách thật (thiếu thì không đóng được).
-- **Phiếu mới (từ 2026):** bắt buộc thêm `hiện tượng:` và `công đoạn:`.
+- **Vụ mới (từ 2026):** bắt buộc thêm `hiện tượng:` và `công đoạn:`.
 - Kết quả thật được ghi ngược vào hồ sơ vụ (kho `local_cases`, không ghi kho tri thức).
 """
 
@@ -392,7 +392,7 @@ def _close_handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
             CLOSE_TITLE,
             "### Đã đóng phiếu `{}`\n\n"
             "- Nguyên nhân thật + đối sách thật đã ghi ngược vào kho tri thức.\n"
-            "- Phiếu được đánh dấu hoàn thành.".format(parsed["case_ref"]) + extra,
+            "- Vụ được đánh dấu hoàn thành.".format(parsed["case_ref"]) + extra,
         )
     except Exception:
         return None

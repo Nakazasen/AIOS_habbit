@@ -360,6 +360,17 @@ def probe_cagent_liveness(
         _LIVENESS_CACHE = {"result": res, "ts": now}
         return res
 
+    elif mock_mode in ("connected", "dang_ket_noi", "ok"):
+        res = {
+            "code": "connected",
+            "label": "đang kết nối",
+            "dot": "🟢",
+            "message": "Đang kết nối bình thường với nền tảng C-Agent.",
+            "checked_at": now,
+            "username": "mock_connected_user",
+        }
+        _LIVENESS_CACHE = {"result": res, "ts": now}
+        return res
     root_url = _extract_base_url(base_url)
     session = load_session()
     username = session.username if session else ""

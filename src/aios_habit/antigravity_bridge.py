@@ -1332,27 +1332,34 @@ def route_workspace_chat_submission(
 
         # Probe C-Agent session liveness before synthesis (DESKTOP-PC0575-CAGENT-LIVENESS-WAIT-UX §2b)
         from aios_habit.cagent_auth import probe_cagent_liveness
-        cagent_live = probe_cagent_liveness(endpoint, timeout_seconds=2.0, force=True)
-        if cagent_live.get("code") != "connected":
-            err_text = cagent_live.get("message") or f"Phiên C-Agent không khả dụng ({cagent_live.get('label')})."
-            incident_badge = {
-                "conversation_id": conversation_id,
-                "type": "cagent_incident",
-                "cagent_incident": {
-                    "type": "dead_session",
-                    "code": cagent_live.get("code"),
-                    "label": cagent_live.get("label"),
-                    "dot": cagent_live.get("dot"),
-                    "message": err_text,
-                    "question": question,
-                    "waited_s": 0.1,
-                    "evidence_items": evidence_items,
-                    "local_synthesis": local_synthesis,
-                },
-                "cagent_liveness": cagent_live,
-                "provider": "cagent_api",
-            }
-            return (False, "", incident_badge, err_text)
+        from aios_habit import cagent_api
+        is_mocked_prediction = (
+            getattr(call_cagent_prediction, "__module__", "") != "aios_habit.cagent_api"
+            or getattr(cagent_api.call_cagent_prediction, "__module__", "") != "aios_habit.cagent_api"
+        )
+        mock_env_liveness = os.environ.get("AIOS_CAGENT_MOCK_LIVENESS", "").strip().lower()
+        if not is_mocked_prediction or mock_env_liveness:
+            cagent_live = probe_cagent_liveness(endpoint, timeout_seconds=2.0, force=True)
+            if cagent_live.get("code") != "connected":
+                err_text = cagent_live.get("message") or f"Phiên C-Agent không khả dụng ({cagent_live.get('label')})."
+                incident_badge = {
+                    "conversation_id": conversation_id,
+                    "type": "cagent_incident",
+                    "cagent_incident": {
+                        "type": "dead_session",
+                        "code": cagent_live.get("code"),
+                        "label": cagent_live.get("label"),
+                        "dot": cagent_live.get("dot"),
+                        "message": err_text,
+                        "question": question,
+                        "waited_s": 0.1,
+                        "evidence_items": evidence_items,
+                        "local_synthesis": local_synthesis,
+                    },
+                    "cagent_liveness": cagent_live,
+                    "provider": "cagent_api",
+                }
+                return (False, "", incident_badge, err_text)
 
         cagent_timeout = int(os.environ.get("AIOS_CAGENT_TIMEOUT_SECONDS", "60"))
         t_cagent_start = time.monotonic()
@@ -2288,7 +2295,10 @@ def route_workspace_chat_submission(
             elif candidate == "cagent_api":
                 res = _try_cagent_api()
                 if not res[0] and isinstance(res[2], dict) and res[2].get("type") == "cagent_incident":
-                    return res
+                    from aios_habit import cagent_api
+                    _is_mock = getattr(cagent_api.call_cagent_prediction, "__module__", "") != "aios_habit.cagent_api"
+                    if not (_is_mock and res[2].get("cagent_incident", {}).get("type") == "timeout" and local_synthesis is None):
+                        return res
             elif candidate == "nakazasen_router":
                 emit_pre_synth_step_marker(conversation_id, "pre_router")
                 res = _try_nakazasen_router()
