@@ -48,7 +48,13 @@ TITLE_HO_SO = "Bản đồ hồ sơ"
 ACTION_BANG_CHUNG = "do_thi_bang_chung"
 TITLE_BANG_CHUNG = "Đồ thị bằng chứng"
 
-_HINTS_TRI_THUC = ("bản đồ tri thức", "sơ đồ tri thức")
+_HINTS_TRI_THUC = (
+    "bản đồ tri thức", "sơ đồ tri thức",
+    "ban do tri thuc", "so do tri thuc",
+    "/bando", "/ban-do",
+    "/ナレッジマップ", "/知識マップ",
+    "/知识地图", "/关系图",
+)
 _HINTS_HO_SO = ("bản đồ hồ sơ", "sơ đồ hồ sơ", "bản đồ case", "sơ đồ case")
 _HINTS_BANG_CHUNG = ("đồ thị bằng chứng", "sơ đồ bằng chứng")
 

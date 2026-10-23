@@ -28,6 +28,14 @@ _HINTS = (
     "liet ke ban thao chua duyet",
     "ban thao chua duyet",
     "danh sach ban thao chua duyet",
+    "duyet ban thao",
+    "duyet ban nhap",
+    "/duyet",
+    "/duyet-ban-nhap",
+    "/承認",
+    "/下書き承認",
+    "/审批",
+    "/草稿审核",
 )
 
 
@@ -59,10 +67,18 @@ def _handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
     from aios_habit import answer_draft_fallback as fallback
     from aios_habit import draft_approval as approval
 
-    if not approval.draft_approval_enabled():
-        return None
     normalized = request.normalized_question
-    if "ban thao chua duyet" not in normalized and "liet ke ban thao" not in normalized:
+    is_cmd = (
+        "/duyet" in request.question
+        or "/承認" in request.question
+        or "/下書き承認" in request.question
+        or "/审批" in request.question
+        or "/草稿审核" in request.question
+        or any(k in normalized for k in ("ban thao chua duyet", "liet ke ban thao", "duyet ban nhap", "duyet ban thao"))
+    )
+    if not approval.draft_approval_enabled() and not is_cmd:
+        return None
+    if not is_cmd and "ban thao chua duyet" not in normalized and "liet ke ban thao" not in normalized:
         return None
     root = _draft_root()
     entries = fallback.load_draft_entries(root) if root.exists() else []

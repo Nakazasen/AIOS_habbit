@@ -76,7 +76,7 @@ _MAU_DAT_NGUONG = re.compile(
     r"(?:(vượt|vuot|dưới|duoi)\s+)?([0-9]+(?:[.,][0-9]+)?)",
     re.IGNORECASE,
 )
-_MAU_LIET_KE = re.compile(r"liệt kê cảnh báo|liet ke canh bao|danh sách cảnh báo", re.IGNORECASE)
+_MAU_LIET_KE = re.compile(r"liệt kê cảnh báo|liet ke canh bao|danh sách cảnh báo|cảnh báo ngưỡng|canh bao nguong|/canhbao|/canh-bao|/アラート|/警告|/预警|しきい値アラート|阈值预警", re.IGNORECASE)
 _MAU_XOA = re.compile(r"(?:xóa|hủy|tắt)\s+cảnh báo\s+(\S+)", re.IGNORECASE)
 
 _PHEP_TREN = {"vượt", "vuot", "lớn hơn", "lon hon", "cao hơn", "cao hon", ">", ">="}

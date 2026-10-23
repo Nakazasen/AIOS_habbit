@@ -41,9 +41,9 @@ from aios_habit.chat_intent_router import (
 )
 
 
-EXPECTED_VI_SHA256 = "B7A6E23DBA0E2BF4B09F7EB2BCFD8C2440874A5D0C560BF1974163209F9918B7"
-EXPECTED_ZH_SHA256 = "3FBFBEEF65FA29AE83387E25A4249A185077E566E87009E4E41E1CA3587FBFC9"
-EXPECTED_JA_SHA256 = "9E9ACBAD3E4BFC6551277E82E6E04E5F257D7446048FB4988ABF44BC90A41971"
+EXPECTED_VI_SHA256 = "ADC5CDDA1D1E8A896A5EC87A0A32EFA8CE51D9E553F6A8376A0F3DE2AE0FC595"
+EXPECTED_ZH_SHA256 = "945C5EC6970ED368ED8717EF1FF957F50577DC17A0AB4C080C6FD9035CBCE7C5"
+EXPECTED_JA_SHA256 = "9D07A2376AFA6999F44F4715DCBCD5E974B848F0115CBF89356A7AE10049DDAB"
 
 
 def test_manual_file_integrity_and_57_images():
@@ -54,7 +54,7 @@ def test_manual_file_integrity_and_57_images():
     data_vi = path_vi.read_bytes()
     sha_vi = hashlib.sha256(data_vi).hexdigest().upper()
     assert sha_vi == EXPECTED_VI_SHA256, f"SHA-256 VI không khớp: nhận {sha_vi}"
-    assert len(data_vi) == 38802, f"Số byte VI không khớp: {len(data_vi)}"
+    assert len(data_vi) == 42695, f"Số byte VI không khớp: {len(data_vi)}"
 
     # 2. Tiếng Trung (ZH)
     path_zh = resolve_manual_path("zh")
@@ -62,7 +62,7 @@ def test_manual_file_integrity_and_57_images():
     data_zh = path_zh.read_bytes()
     sha_zh = hashlib.sha256(data_zh).hexdigest().upper()
     assert sha_zh == EXPECTED_ZH_SHA256, f"SHA-256 ZH không khớp: nhận {sha_zh}"
-    assert len(data_zh) == 31600, f"Số byte ZH không khớp: {len(data_zh)}"
+    assert len(data_zh) == 35132, f"Số byte ZH không khớp: {len(data_zh)}"
 
     # 3. Tiếng Nhật (JA)
     path_ja = resolve_manual_path("ja")
@@ -70,7 +70,7 @@ def test_manual_file_integrity_and_57_images():
     data_ja = path_ja.read_bytes()
     sha_ja = hashlib.sha256(data_ja).hexdigest().upper()
     assert sha_ja == EXPECTED_JA_SHA256, f"SHA-256 JA không khớp: nhận {sha_ja}"
-    assert len(data_ja) == 40961, f"Số byte JA không khớp: {len(data_ja)}"
+    assert len(data_ja) == 45053, f"Số byte JA không khớp: {len(data_ja)}"
 
     # 4. Thư mục ảnh dùng chung 57 ảnh PNG
     images_dir = resolve_images_dir()

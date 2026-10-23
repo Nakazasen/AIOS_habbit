@@ -9,6 +9,7 @@ os.environ.setdefault("AIOS_DOMAIN_ROUTING_ENABLED", "1")
 os.environ.setdefault("AIOS_RAG_V2_NUMPY_DENSE", "1")
 os.environ.setdefault("AIOS_BGE_INIT_TIMEOUT", "420")
 os.environ.setdefault("AIOS_BGE_QUERY_TIMEOUT", "1200")
+os.environ.setdefault("AIOS_RAG_WARMED_OVERRIDE", "1")
 
 try:
     if hasattr(sys.stdout, "reconfigure"):
@@ -6836,16 +6837,20 @@ else:
                                     safe_rerun()
                             else:
                                 _is_slash_or_hd = False
+                                _is_interview = False
                                 try:
                                     from aios_habit.huongdan_command import is_huongdan_command
                                     from aios_habit.slash_command_catalog import get_all_alive_slash_commands
+                                    from aios_habit.user_skill_manager import has_active_interview
                                     _alive_cmds = get_all_alive_slash_commands()
                                     _cmd_prefix = (user_input or "").strip().split()[0].lower() if user_input else ""
                                     _is_slash_or_hd = is_huongdan_command(user_input) or (_cmd_prefix in _alive_cmds)
+                                    _is_interview = has_active_interview(getattr(active_conversation, "id", "") or "")
                                 except Exception:
                                     _is_slash_or_hd = False
+                                    _is_interview = False
 
-                                if _is_slash_or_hd:
+                                if _is_slash_or_hd or _is_interview:
                                     _ask_disabled = False
                                     _ask_tooltip = labels["ai_action"]
                                 else:

@@ -15,6 +15,16 @@ import unicodedata
 from typing import Dict, Optional, Tuple
 
 # Recognized intents. "hoi_tai_lieu" is the default fallback.
+# Skill creation and management intents (DESKTOP-HOME-USER-SKILL-CREATE)
+KYNANG_DANH_SACH = "kynang_danh_sach"    # list user personal skills
+KYNANG_TAO = "kynang_tao"                # create skill via short interview
+KYNANG_XEM = "kynang_xem"                # view skill SKILL.md and files
+KYNANG_LUU_TRU = "kynang_luu_tru"        # archive skill to .archive/
+BAO_CAO_DIEU_TRA = "bao_cao_dieu_tra"  # investigation report export (.docx)
+DUYET_BAN_NHAP = "duyet_ban_nhap"      # expert review draft queue
+NAP_TAI_LIEU = "nap_tai_lieu"          # knowledge / doc intake into store
+DU_DOAN_RUI_RO = "du_doan_rui_ro"      # shadow-risk / recurrence prediction
+BAN_DO_TRI_THUC = "ban_do_tri_thuc"    # knowledge graph & visual maps
 CANH_BAO_NGUONG = "canh_bao_nguong"      # threshold alert request
 HUONG_DAN = "huong_dan"                  # user guide manual request (DESKTOP-HOME-HUONGDAN-COMMAND)
 BAO_CAO_XU_HUONG = "bao_cao_xu_huong"    # periodic trend report (Step 4)
@@ -37,6 +47,16 @@ HOI_TAI_LIEU = "hoi_tai_lieu"            # document Q&A (RAG) fallback
 DU_LIEU_DAN = "du_lieu_dan"              # pasted CSV/log block in the message
 
 TAT_CA_Y_DINH = (
+    BAO_CAO_DIEU_TRA,
+    DUYET_BAN_NHAP,
+    NAP_TAI_LIEU,
+    DU_DOAN_RUI_RO,
+    BAN_DO_TRI_THUC,
+
+    KYNANG_DANH_SACH,
+    KYNANG_TAO,
+    KYNANG_XEM,
+    KYNANG_LUU_TRU,
     DANH_GIA_DIEU_TRA,
     DANH_GIA_NHAN,
     CANH_BAO_NGUONG,
@@ -70,12 +90,12 @@ def _khong_dau(text: str) -> str:
 
 
 def _la_lenh_xem_phan_hoi(clean: str, norm: str) -> bool:
-    """Kiểm tra câu chat có phải là lệnh xem phản hồi hay không.
-
-    Quy tắc (DESKTOP-FEEDBACK-REVIEW-CHATCMD-HOME Yêu cầu chất lượng (1)):
-    Lệnh không phá đường hỏi đáp thông thường - câu hỏi bình thường chứa từ khóa
-    của lệnh vẫn đi đường RAG như cũ.
-    """
+    """Kiểm tra câu chat có phải là lệnh xem phản hồi hay không."""
+    c_low = clean.strip().lower()
+    if c_low.startswith(("/分類確認", "/分类确认", "/調査確認", "/调查确认", "/フィードバック", "/系统反馈")):
+        return True
+    if any(k in clean for k in ("分類フィードバック確認", "查看分类反馈", "調査フィードバック確認", "查看调查反馈", "回答フィードバック確認", "查看回答反馈")):
+        return True
     if norm.startswith(("/xemphanhoi", "/phanhoi", "/phanloai", "/phanloai-phanhoi", "/phanloai-duyet", "/dieutra-phanhoi", "/dieutra-duyet", "/dieutra", "lenh: xem phan hoi")):
         return True
     if any(c in norm for c in ("xem phan hoi dieu tra", "thong ke cay dieu tra", "thong ke dieu tra", "bao cao phan hoi dieu tra", "phan hoi cay dieu tra", "danh gia cay dieu tra", "xem phan hoi bieu do", "thong ke bieu do", "phan hoi bieu do", "danh gia bieu do")):
@@ -119,6 +139,79 @@ def _la_lenh_xem_phan_hoi(clean: str, norm: str) -> bool:
 # Priority order: specific intents first, generic ones last.
 _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
     (
+        BAO_CAO_DIEU_TRA,
+        (
+            "/baocaodieutra", "/bao-cao-dieu-tra", "/baocao-dieutra",
+            "/調査報告書", "/调查报告",
+            "lap bao cao dieu tra", "lập báo cáo điều tra",
+            "tao bao cao dieu tra", "tạo báo cáo điều tra",
+            "xuat bao cao dieu tra", "xuất báo cáo điều tra",
+            "viet bao cao dieu tra", "viết báo cáo điều tra",
+            "lap bao cao cho ca", "lập báo cáo cho ca",
+            "bao cao dieu tra cho ca", "báo cáo điều tra cho ca",
+            "調査報告書作成", "生成调查报告",
+        ),
+    ),
+    (
+        DUYET_BAN_NHAP,
+        (
+            "/duyet", "/duyet-ban-nhap",
+            "/承認", "/下書き承認", "/审批", "/草稿审核",
+            "liet ke ban thao chua duyet", "liệt kê bản thảo chưa duyệt",
+            "ban thao chua duyet", "bản thảo chưa duyệt",
+            "danh sach ban thao chua duyet", "danh sách bản thảo chưa duyệt",
+            "duyet ban thao", "duyệt bản thảo",
+            "duyet ban nhap", "duyệt bản nháp",
+            "未承認下書き一覧", "列出未审批草稿",
+        ),
+    ),
+    (
+        NAP_TAI_LIEU,
+        (
+            "/naptailieu", "/nap-tai-lieu", "/naptri-thuc",
+            "/資料取込", "/知識取込", "/导入资料", "/知识录入",
+            "thu tri thuc", "thu tri thức",
+            "phong van tri thuc", "phỏng vấn tri thức",
+            "day kien thuc", "dạy kiến thức",
+            "mo phien thu tri thuc", "mở phiên thu tri thức",
+            "bat dau thu tri thuc", "bắt đầu thu tri thức",
+            "xem muc cho nap", "xem mục chờ nạp",
+            "muc cho nap", "mục chờ nạp",
+            "danh sach cho nap", "danh sách chờ nạp",
+            "thong ke thu tri thuc", "thống kê thu tri thức",
+            "kiem tra muc cho nap", "kiểm tra mục chờ nạp",
+            "phien day kien thuc", "phiên dạy kiến thức",
+            "phien phong van tri thuc", "phiên phỏng vấn tri thức",
+            "専門家知識取込", "录入专家知识",
+        ),
+    ),
+    (
+        DU_DOAN_RUI_RO,
+        (
+            "/dudoan", "/du-doan",
+            "/再発予測", "/リスク予測", "/预测", "/复发预测",
+            "du doan rui ro", "dự đoán rủi ro",
+            "du doan tai phat", "dự đoán tái phát",
+            "nguy co tai phat", "nguy cơ tái phát",
+            "du doan", "dự đoán",
+            "リスク予測", "风险预测",
+        ),
+    ),
+    (
+        BAN_DO_TRI_THUC,
+        (
+            "/bando", "/ban-do",
+            "/ナレッジマップ", "/知識マップ", "/知识地图", "/关系图",
+            "ban do tri thuc", "bản đồ tri thức",
+            "so do tri thuc", "sơ đồ tri thức",
+            "ban do ho so", "bản đồ hồ sơ",
+            "do thi bang chung", "đồ thị bằng chứng",
+            "so do bang chung", "sơ đồ bằng chứng",
+            "ナレッジマップ表示", "显示知识地图",
+        ),
+    ),
+
+    (
         HUONG_DAN,
         (
             "/huongdan", "/huong-dan",
@@ -143,7 +236,13 @@ _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
             "danh gia cay dieu tra", "thong ke dieu tra",
             "/xemphanhoi", "/phanhoi",
             "/phanloai", "/phanloai-phanhoi", "/phanloai-duyet",
+            "/分類確認", "/分类确认",
             "/dieutra-phanhoi", "/dieutra-duyet", "/dieutra",
+            "/調査確認", "/调查确认",
+            "/フィードバック", "/系统反馈",
+            "分類フィードバック確認", "查看分类反馈",
+            "調査フィードバック確認", "查看调查反馈",
+            "回答フィードバック確認", "查看回答反馈",
         ),
     ),
     (
@@ -158,6 +257,8 @@ _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
             "phan hoi dieu tra:",
             "gop y dieu tra:",
             "/danhgiadieutra",
+            "/調査評価", "/调查评价",
+            "調査ツリー方向性良好", "调查树方向正确",
         ),
     ),
     (
@@ -167,6 +268,8 @@ _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
             "danh gia dung nhan", "danh gia sai nhan",
             "sua nhan thanh", "sua nhan:", "sua nhan",
             "/danhgianhan",
+            "/ラベル評価", "/标签评价",
+            "ラベル正確性評価", "评价正确标签",
         ),
     ),
     (
@@ -192,6 +295,8 @@ _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
             "báo cáo định kỳ",
             "/baocaoxuhuong",
             "/baocaodinhky",
+            "/定期レポート", "/定期报告",
+            "定期トレンドレポート", "定期趋势报告",
         ),
     ),
     (
@@ -209,6 +314,8 @@ _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
     (
         CANH_BAO_NGUONG,
         (
+            "/canhbao", "/canh-bao", "/アラート", "/警告", "/预警",
+            "canh bao nguong", "cảnh báo ngưỡng", "しきい値アラート", "阈值预警",
             "canh bao khi", "dat nguong", "thiet lap nguong",
             "thiet lap canh bao", "canh bao vuot", "nguong canh bao",
             "liet ke canh bao", "xoa canh bao", "tat canh bao",
@@ -217,6 +324,8 @@ _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
     (
         VE_BIEU_DO,
         (
+            "/bieudo", "/bieu-do", "/グラフ", "/チャート", "/图表",
+            "グラフ作成", "绘制图表",
             "ve bieu do",
             "chon bieu do",
             "tao bieu do",
@@ -320,11 +429,15 @@ _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
             "ket thuc ca",
             "/dongvu",
             "/dong-vu",
+            "/ケース終了", "/关闭案例",
+            "障害ケース終了", "关闭调查案例",
         ),
     ),
     (
         TAO_VU_DIEU_TRA,
         (
+            "/taovu", "/tao-vu", "/新規調査", "/新規ケース", "/新建调查", "/创建案例",
+            "新規障害調査作成", "创建调查案例",
             "tao vu dieu tra",
             "tao ho so dieu tra",
             "lap vu dieu tra",
@@ -367,6 +480,48 @@ _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
 )
 
 
+
+def _nhan_dien_y_dinh_kynang(clean: str, norm: str) -> Optional[Tuple[str, Dict[str, str]]]:
+    """Nhận diện các lệnh /kynang và câu tự nhiên tương đương (VI, JA, ZH)."""
+    c_strip = clean.strip()
+    c_lower = c_strip.lower()
+
+    # 1. Kỹ năng tạo (/kynang tao)
+    if c_lower.startswith(("/kynang tao", "/kynang-tao", "/スキル作成", "/创建技能")):
+        raw_tail = re.sub(r"^(?:/kynang\s+tao|/kynang-tao|/スキル作成|/创建技能)[:\s]*", "", c_strip, flags=re.IGNORECASE).strip()
+        return (KYNANG_TAO, {"raw_input": raw_tail})
+    if any(k in norm for k in ("tao ky nang moi", "tao ky nang", "muon tao ky nang", "muon tu tao skill", "tao skill moi")):
+        return (KYNANG_TAO, {"raw_input": clean})
+    if any(k in clean for k in ("新規スキル作成", "スキル作成", "创建新技能", "创建技能")):
+        return (KYNANG_TAO, {"raw_input": clean})
+
+    # 2. Kỹ năng xem (/kynang xem <ten>)
+    if c_lower.startswith(("/kynang xem", "/kynang-xem", "/スキル確認", "/查看技能")):
+        target = re.sub(r"^(?:/kynang\s+xem|/kynang-xem|/スキル確認|/查看技能)[:\s]*", "", c_strip, flags=re.IGNORECASE).strip()
+        return (KYNANG_XEM, {"skill_name": target})
+    if "xem chi tiet ky nang" in norm or "chi tiet ky nang" in norm or "スキル詳細確認" in clean or "查看技能详情" in clean:
+        target = re.sub(r"^(?:xem\s+chi\s+tiet\s+ky\s+nang|chi\s+tiet\s+ky\s+nang|スキル詳細確認|查看技能详情)[:\s]*", "", norm, flags=re.IGNORECASE).strip()
+        return (KYNANG_XEM, {"skill_name": target})
+
+    # 3. Kỹ năng lưu trữ (/kynang luu-tru <ten>)
+    if c_lower.startswith(("/kynang luu-tru", "/kynang-luu-tru", "/kynang luutru", "/kynang-luutru", "/スキルアーカイブ", "/归档技能")):
+        target = re.sub(r"^(?:/kynang\s+luu-tru|/kynang-luu-tru|/kynang\s+luutru|/kynang-luutru|/スキルアーカイブ|/归档技能)[:\s]*", "", c_strip, flags=re.IGNORECASE).strip()
+        return (KYNANG_LUU_TRU, {"skill_name": target})
+    if any(k in norm for k in ("luu tru ky nang", "dong bang ky nang", "dong ky nang")) or "スキルをアーカイブ" in clean or "归档此技能" in clean or "归档技能" in clean:
+        target = re.sub(r"^(?:luu\s+tru\s+ky\s+nang|dong\s+bang\s+ky\s+nang|スキルをアーカイブ|归档此技能|归档技能)[:\s]*", "", norm, flags=re.IGNORECASE).strip()
+        return (KYNANG_LUU_TRU, {"skill_name": target})
+
+    # 4. Kỹ năng danh sách (/kynang)
+    if c_lower in ("/kynang", "/ky-nang", "/スキル", "/技能") or c_lower.startswith(("/kynang ", "/ky-nang ")):
+        return (KYNANG_DANH_SACH, {})
+    if any(k in norm for k in ("xem ky nang cua toi", "ky nang cua toi", "danh sach ky nang", "xem danh sach ky nang", "cac ky nang cua toi")):
+        return (KYNANG_DANH_SACH, {})
+    if any(k in clean for k in ("私のスキル一覧", "スキル一覧", "查看我的技能", "技能列表")):
+        return (KYNANG_DANH_SACH, {})
+
+    return None
+
+
 def classify_intent(text: str) -> str:
     """Classify one chat sentence. Always returns a valid intent."""
     intents = classify_all_intents(text)
@@ -401,6 +556,11 @@ def classify_all_intents(text: str) -> list:
     norm = _khong_dau(clean)
     if not norm:
         return [(HOI_DAP_CHUNG, {})]
+        # Kiểm tra bộ lệnh kỹ năng cá nhân (DESKTOP-HOME-USER-SKILL-CREATE)
+    res_kn = _nhan_dien_y_dinh_kynang(clean, norm)
+    if res_kn is not None:
+        return [res_kn]
+
     try:
         from aios_habit.huongdan_command import is_huongdan_command, parse_huongdan_args, detect_huongdan_language
         if is_huongdan_command(clean):
@@ -409,6 +569,7 @@ def classify_all_intents(text: str) -> list:
     except Exception:
         pass
     ngan = len(norm) < 80
+    clean_lower = clean.strip().lower()
     found: list = []
     for y_dinh, cum_tu in _QUY_TAC:
         if y_dinh in (HO_SO_DIEU_TRA, CONG_CU_NANG_CAO) and not ngan:
@@ -419,7 +580,8 @@ def classify_all_intents(text: str) -> list:
         if y_dinh == XEM_PHAN_HOI and not _la_lenh_xem_phan_hoi(clean, norm):
             continue
         for cum in cum_tu:
-            if cum in norm:
+            c_low = cum.lower()
+            if (cum in norm) or (c_low in clean_lower) or (_khong_dau(cum) in norm):
                 # Avoid "mo so" misfiring on "mo ho so".
                 if y_dinh == MO_SO and "mo ho so" in norm:
                     continue
@@ -519,6 +681,18 @@ def extract_case_id_from_text(text: str) -> str:
 
 
 def extract_slots(text: str, intent: str) -> Dict[str, str]:
+    if intent == KYNANG_XEM:
+        target = re.sub(r"^(?:/kynang\s+xem|/kynang-xem|/スキル確認|/查看技能|xem chi tiet ky nang|xem chi tiết kỹ năng|xem ky nang|xem kỹ năng)[:\s]*", "", text, flags=re.IGNORECASE).strip()
+        return {"skill_name": target}
+    if intent == KYNANG_LUU_TRU:
+        target = re.sub(r"^(?:/kynang\s+luu-tru|/kynang-luu-tru|/kynang-luutru|/スキルアーカイブ|/归档技能|luu tru ky nang|lưu trữ kỹ năng|dong bang ky nang)[:\s]*", "", text, flags=re.IGNORECASE).strip()
+        return {"skill_name": target}
+    if intent == KYNANG_TAO:
+        target = re.sub(r"^(?:/kynang\s+tao|/kynang-tao|/スキル作成|/创建技能|tao ky nang moi|tạo kỹ năng mới|tao ky nang|tạo kỹ năng)[:\s]*", "", text, flags=re.IGNORECASE).strip()
+        return {"raw_input": target}
+    if intent == KYNANG_DANH_SACH:
+        return {}
+
     """Extract simple slots for a few intents (notebook title, case entities...)."""
     slots: Dict[str, str] = {}
     clean = (text or "").strip()
@@ -664,6 +838,11 @@ def giai_thich_y_dinh(intent: str) -> str:
 def nhan_y_dinh(intent: str) -> str:
     """Short Vietnamese label for one intent (section header in a merged reply)."""
     return {
+                BAO_CAO_DIEU_TRA: "Báo cáo điều tra",
+        DUYET_BAN_NHAP: "Duyệt bản nháp",
+        NAP_TAI_LIEU: "Thu nạp tri thức",
+        DU_DOAN_RUI_RO: "Dự đoán rủi ro",
+        BAN_DO_TRI_THUC: "Bản đồ tri thức",
         DANH_GIA_DIEU_TRA: "Đánh giá cây điều tra",
         DANH_GIA_NHAN: "Đánh giá nhãn phân loại",
         HUONG_DAN: "Cẩm nang hướng dẫn",

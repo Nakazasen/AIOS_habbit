@@ -36,7 +36,14 @@ from aios_habit.chat_action import (
 ACTION_NAME = "du_doan_rui_ro"
 ACTION_TITLE = "Dự đoán rủi ro (LSU Iris)"
 
-_HINTS = ("dự đoán",)
+_HINTS = (
+    "dự đoán", "du doan",
+    "dự đoán rủi ro", "du doan rui ro",
+    "dự đoán tái phát", "du doan tai phat",
+    "/dudoan", "/du-doan",
+    "/再発予測", "/リスク予測",
+    "/预测", "/复发预测",
+)
 
 # Leading words stripped from the target tail: "rủi ro cho SYN_UNIT_002" -> "SYN_UNIT_002".
 _TARGET_LEADING_WORDS = (

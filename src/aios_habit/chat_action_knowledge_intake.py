@@ -63,6 +63,13 @@ _HINTS = (
     "kiem tra muc cho nap",
     "phien day kien thuc",
     "phien phong van tri thuc",
+    "/naptailieu",
+    "/nap-tai-lieu",
+    "/naptri-thuc",
+    "/資料取込",
+    "/知識取込",
+    "/导入资料",
+    "/知识录入",
 )
 
 

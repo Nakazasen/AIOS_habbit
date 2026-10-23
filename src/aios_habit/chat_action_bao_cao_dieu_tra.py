@@ -78,6 +78,11 @@ _HINTS = (
     "viet bao cao dieu tra",
     "lap bao cao cho ca",
     "bao cao dieu tra cho ca",
+    "/baocaodieutra",
+    "/bao-cao-dieu-tra",
+    "/baocao-dieutra",
+    "/調査報告書",
+    "/调查报告",
 )
 
 _EXPORT_DIRNAME = "bao_cao_dieu_tra"

@@ -489,13 +489,25 @@ Người dùng cũng có thể gõ câu nói tự nhiên thông thường, AIOS 
 | Lệnh chính & Biến thể | Câu tự nhiên tương đương | Công dụng chức năng | Ngữ cảnh cần thiết | Nhóm tính năng |
 | :--- | :--- | :--- | :--- | :--- |
 | **`/huongdan`**<br>Biến thể: `/huong-dan`, `/使い方`, `/つかいかた`, `/使用指南` | `hướng dẫn sử dụng aios` | Mở cẩm nang hướng dẫn sử dụng AIOS (hỗ trợ 3 ngôn ngữ Việt/Nhật/Trung) | Bất kỳ sổ nào | **Hướng dẫn sử dụng** |
-| **`/baocaodinhky`**<br>Biến thể: `/baocaoxuhuong` | `báo cáo xu hướng định kỳ` | Xuất báo cáo xu hướng định kỳ tình hình lỗi theo dây chuyền và tuần sản xuất | Bất kỳ sổ nào | **Báo cáo & Xu hướng** |
-| **`/phanloai`**<br>Biến thể: `/phanloai-phanhoi`, `/phanloai-duyet` | `xem phản hồi phân loại` | Xem tổng hợp thống kê và đánh giá nhãn phân loại tự động sự cố Bước 5 | Bất kỳ sổ nào (đọc từ local_cases) | **Phân loại Bước 5** |
-| **`/dieutra-phanhoi`**<br>Biến thể: `/dieutra-duyet`, `/dieutra` | `xem phản hồi điều tra` | Xem tổng hợp đánh giá và góp ý cây điều tra sự cố 4M Bước 3 | Bất kỳ sổ nào (đọc từ local_cases) | **Điều tra sự cố** |
-| **`/danhgiadieutra`**<br>Biến thể: *(không)* | `cây điều tra đúng hướng` | Đánh giá nhanh gợi ý cây điều tra 4M (đúng hướng, thiếu nhánh, không hữu ích) | Sổ Điều tra lỗi (ngữ cảnh ca điều tra đang mở) | **Điều tra sự cố** |
-| **`/danhgianhan`**<br>Biến thể: *(không)* | `đánh giá đúng nhãn` | Đánh giá độ chính xác của nhãn phân loại tự động Bước 5 (đúng nhãn, sai, một phần) | Sổ Điều tra lỗi (ngữ cảnh phân loại sự cố) | **Phân loại Bước 5** |
-| **`/dongvu`**<br>Biến thể: `/dong-vu` | `đóng vụ điều tra` | Đóng vụ điều tra sự cố kèm bắt buộc ghi nhận nguyên nhân thật và biện pháp khắc phục | Sổ Điều tra lỗi (yêu cầu mã vụ, nguyên nhân và đối sách) | **Đóng vụ điều tra** |
-| **`/phanhoi`**<br>Biến thể: `/xemphanhoi` | `xem phản hồi` | Xem tổng hợp thống kê tỷ lệ hài lòng (đạt/chê) và lý do phản hồi đáp án AI | Bất kỳ sổ nào (đọc từ local_cases) | **Phản hồi hệ thống** |
+| **`/bieudo`**<br>Biến thể: `/bieu-do`, `/グラフ`, `/チャート`, `/图表` | `vẽ biểu đồ` | Dựng biểu đồ phân tích trực quan từ dữ liệu log hoặc dây chuyền sản xuất LSU | Bất kỳ sổ nào hoặc phiên phân tích log | **Biểu đồ & Xu hướng** |
+| **`/baocaodinhky`**<br>Biến thể: `/baocaoxuhuong`, `/定期レポート`, `/定期报告` | `báo cáo xu hướng định kỳ` | Xuất báo cáo xu hướng định kỳ tình hình lỗi theo dây chuyền và tuần sản xuất | Bất kỳ sổ nào | **Báo cáo & Xu hướng** |
+| **`/baocaodieutra`**<br>Biến thể: `/bao-cao-dieu-tra`, `/baocao-dieutra`, `/調査報告書`, `/调查报告` | `lập báo cáo điều tra` | Tổng hợp và xuất báo cáo điều tra sự cố chuẩn .docx kèm cây 4M, biểu đồ và đối sách | Sổ Điều tra lỗi (kèm mã ca lỗi) | **Báo cáo & Xu hướng** |
+| **`/canhbao`**<br>Biến thể: `/canh-bao`, `/アラート`, `/警告`, `/预警` | `cảnh báo ngưỡng` | Xem trạng thái hoặc thiết lập ngưỡng cảnh báo xu hướng và điểm bất thường JIG-LSU | Bất kỳ sổ nào | **Cảnh báo & Giám sát** |
+| **`/taovu`**<br>Biến thể: `/tao-vu`, `/新規調査`, `/新規ケース`, `/新建调查`, `/创建案例` | `tạo vụ điều tra` | Tạo vụ điều tra sự cố mới, trích xuất thông tin lỗi và đối soát lịch sử tương tự | Sổ Điều tra lỗi hoặc bất kỳ sổ nào | **Điều tra sự cố** |
+| **`/dieutra-phanhoi`**<br>Biến thể: `/dieutra-duyet`, `/dieutra`, `/調査確認`, `/调查确认` | `xem phản hồi điều tra` | Xem tổng hợp đánh giá và góp ý cây điều tra sự cố 4M Bước 3 | Bất kỳ sổ nào (đọc từ local_cases) | **Điều tra sự cố** |
+| **`/danhgiadieutra`**<br>Biến thể: `/調査評価`, `/调查评价` | `cây điều tra đúng hướng` | Đánh giá nhanh gợi ý cây điều tra 4M (đúng hướng, thiếu nhánh, không hữu ích) | Sổ Điều tra lỗi (ngữ cảnh ca điều tra đang mở) | **Điều tra sự cố** |
+| **`/dongvu`**<br>Biến thể: `/dong-vu`, `/ケース終了`, `/关闭案例` | `đóng vụ điều tra` | Đóng vụ điều tra sự cố kèm bắt buộc ghi nhận nguyên nhân thật và biện pháp khắc phục | Sổ Điều tra lỗi (yêu cầu mã vụ, nguyên nhân và đối sách) | **Đóng vụ điều tra** |
+| **`/dudoan`**<br>Biến thể: `/du-doan`, `/再発予測`, `/リスク予測`, `/预测`, `/复发预测` | `dự đoán rủi ro` | Chạy mô hình dự đoán rủi ro bóng (shadow risk) và nguy cơ tái phát lỗi trên dữ liệu LSU Iris | Sổ Điều tra lỗi hoặc kho LSU | **Dự đoán & Phân tích** |
+| **`/bando`**<br>Biến thể: `/ban-do`, `/ナレッジマップ`, `/知識マップ`, `/知识地图`, `/关系图` | `bản đồ tri thức` | Hiển thị bản đồ cấu trúc tri thức, mối liên kết hồ sơ và mạng lưới thực thể dạng đồ thị | Bất kỳ sổ nào | **Bản đồ & Trực quan** |
+| **`/naptailieu`**<br>Biến thể: `/nap-tai-lieu`, `/naptri-thuc`, `/資料取込`, `/知識取込`, `/导入资料`, `/知识录入` | `thu tri thức` | Mở phiên thu nạp tri thức chuyên gia hoặc kiểm tra các mục tri thức chờ nạp vào kho | Bất kỳ sổ nào | **Tri thức & Tài liệu** |
+| **`/duyet`**<br>Biến thể: `/duyet-ban-nhap`, `/承認`, `/下書き承認`, `/审批`, `/草稿审核` | `liệt kê bản thảo chưa duyệt` | Xem danh sách hàng đợi các bản thảo tri thức chưa duyệt cần chuyên gia thẩm định | Bất kỳ sổ nào | **Duyệt tri thức** |
+| **`/phanloai`**<br>Biến thể: `/phanloai-phanhoi`, `/phanloai-duyet`, `/分類確認`, `/分类确认` | `xem phản hồi phân loại` | Xem tổng hợp thống kê và đánh giá nhãn phân loại tự động sự cố Bước 5 | Bất kỳ sổ nào (đọc từ local_cases) | **Phân loại Bước 5** |
+| **`/danhgianhan`**<br>Biến thể: `/ラベル評価`, `/标签评价` | `đánh giá đúng nhãn` | Đánh giá độ chính xác của nhãn phân loại tự động Bước 5 (đúng nhãn, sai, một phần) | Sổ Điều tra lỗi (ngữ cảnh phân loại sự cố) | **Phân loại Bước 5** |
+| **`/phanhoi`**<br>Biến thể: `/xemphanhoi`, `/フィードバック`, `/系统反馈` | `xem phản hồi` | Xem tổng hợp thống kê tỷ lệ hài lòng (đạt/chê) và lý do phản hồi đáp án AI | Bất kỳ sổ nào (đọc từ local_cases) | **Phản hồi hệ thống** |
+| **`/kynang`**<br>Biến thể: `/ky-nang`, `/スキル`, `/技能` | `xem kỹ năng của tôi` | Xem danh sách và trạng thái các kỹ năng cá nhân đã lưu trong máy | Bất kỳ sổ nào (đọc từ local_cases/skills) | **Kỹ năng người dùng** |
+| **`/kynang tao`**<br>Biến thể: `/kynang-tao`, `/スキル作成`, `/创建技能` | `tạo kỹ năng mới` | Khởi động phỏng vấn ngắn để tạo kỹ năng mới chuẩn Hermes lưu tại máy | Bất kỳ sổ nào | **Kỹ năng người dùng** |
+| **`/kynang xem`**<br>Biến thể: `/kynang-xem`, `/スキル確認`, `/查看技能` | `xem chi tiết kỹ năng` | Xem chi tiết quy trình SKILL.md và tệp hỗ trợ của kỹ năng cá nhân | Tên kỹ năng cần xem | **Kỹ năng người dùng** |
+| **`/kynang luu-tru`**<br>Biến thể: `/kynang-luu-tru`, `/kynang-luutru`, `/スキルアーカイブ`, `/归档技能` | `lưu trữ kỹ năng` | Đưa kỹ năng vào thư mục lưu trữ đóng băng (.archive/) an toàn | Tên kỹ năng cần lưu trữ | **Kỹ năng người dùng** |
 
 *Mẹo: Gõ `/` trong ô chat, dùng phím ↑/↓ để di chuyển, Enter để chèn lệnh vào ô soạn thảo, sau đó bấm Gửi để thực thi.*
 
