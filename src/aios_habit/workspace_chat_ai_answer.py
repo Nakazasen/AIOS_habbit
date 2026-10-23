@@ -880,11 +880,18 @@ def _generate_real_router_answer(
         source_candidates=source_candidates,
         outbound_sources=outbound_sources,
     )
+    memory_result = recall_memory_for_answer(request)
     if decision.sanitized_payload and isinstance(decision.sanitized_payload.metadata, dict):
         if getattr(request, "anchored_context", None):
             decision.sanitized_payload.metadata["anchored_context"] = request.anchored_context
         if getattr(request, "chat_history", None):
             decision.sanitized_payload.metadata["chat_history"] = request.chat_history
+        if memory_result and getattr(memory_result, "items", None):
+            from aios_habit.workspace_memory_service import format_memory_prompt_block
+            decision.sanitized_payload.metadata["memory_block"] = format_memory_prompt_block(memory_result)
+            decision.sanitized_payload.metadata["memory_items"] = [
+                {"title": it.title, "statement": it.statement} for it in memory_result.items
+            ]
     if _router_adapter.generate_answer_via_router is not _ORIGINAL_GENERATE_ANSWER_VIA_ROUTER:
         ok, response_text = _router_adapter.generate_answer_via_router(decision.sanitized_payload)
         effective_provider = ""

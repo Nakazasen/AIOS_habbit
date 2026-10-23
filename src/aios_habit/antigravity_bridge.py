@@ -2096,6 +2096,26 @@ def route_workspace_chat_submission(
                 if "]:" in file_raw:
                     file_raw = file_raw.split("]:", 1)[1]
                 lines.append(f"Dữ liệu trích từ tệp đính kèm:\n\n{file_raw.strip()}\n")
+            mem_block = ""
+            try:
+                from aios_habit.workspace_memory_service import recall_workspace_memory, WorkspaceMemoryRecallRequest
+                rec_res = recall_workspace_memory(WorkspaceMemoryRecallRequest(
+                    question=question,
+                    workspace_id=notebook_id or "default",
+                    collection_id="tri_thuc",
+                    provider_mode="local",
+                    include_local_only=True,
+                ))
+                if rec_res and rec_res.items:
+                    best_item = rec_res.items[0]
+                    mem_block = (
+                        f"### 🛠️ Áp dụng kỹ năng cá nhân: **{best_item.title}**\n\n"
+                        f"{best_item.statement}\n\n---\n"
+                    )
+            except Exception:
+                pass
+            if mem_block:
+                lines.append(mem_block)
             if cited_items:
                 lines.append("Dựa trên các trích đoạn tài liệu đã tìm kiếm:\n")
                 for idx, itm in enumerate(cited_items, 1):
