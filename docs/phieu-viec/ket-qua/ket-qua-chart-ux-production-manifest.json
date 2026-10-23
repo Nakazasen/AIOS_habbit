@@ -3,17 +3,17 @@
     {
       "ten_tep": "anh-chart-ux-01-31mb-trend-sma.png",
       "duong_dan_tuong_doi": "docs/phieu-viec/ket-qua/anh-chart-ux-01-31mb-trend-sma.png",
-      "dung_luong_bytes": 100420,
-      "sha256": "c1ff7e6c059a0dae3ea5f237aa35f374eb0fb995836f6caef9c927070fd59ed1",
-      "loai": "Biểu đồ đường Run chart + SMA(20) trên log 30.87MB (trục X thời gian, SMA thanh mảnh)",
+      "dung_luong_bytes": 390573,
+      "sha256": "2955736037914294bd0a987855c5718984a6ac7a101133bcfa9b05fdfea9be51",
+      "loai": "Biểu đồ đường Run chart + SMA(20) trên log 30.87MB (giảm tải mật độ hiển thị ~400 điểm, không dùng marker đặc, đường SMA(20) nét đứt tím đậm ở zorder=5 nổi bật trên đường dữ liệu, các điểm NG màu đỏ phân bổ đều không lem vệt)",
       "kich_thuoc_px": "1500x840"
     },
     {
       "ten_tep": "anh-chart-ux-02-31mb-spc.png",
       "duong_dan_tuong_doi": "docs/phieu-viec/ket-qua/anh-chart-ux-02-31mb-spc.png",
-      "dung_luong_bytes": 102074,
-      "sha256": "1620539969cd8852ebd0ae093fac4b988f40b6737139e6ea4fc9f3916fba37b2",
-      "loai": "Biểu đồ kiểm soát SPC (UCL/CL/LCL + Zone A/B/C) trên log 30.87MB",
+      "dung_luong_bytes": 218165,
+      "sha256": "aa4cd7208fc21ae4dd5f64cf0f04071948810d7009e90c50b09a6ad2687696cd",
+      "loai": "Biểu đồ kiểm soát SPC trên log 30.87MB (giảm tải mật độ hiển thị ~400 điểm, đường dữ liệu không che khuất các dải phân vùng Zone A/B/C, 3 đường giới hạn UCL/CL/LCL tại zorder=4 sắc nét)",
       "kich_thuoc_px": "1500x840"
     },
     {

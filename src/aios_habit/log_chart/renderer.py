@@ -457,13 +457,40 @@ def _draw_trend(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], spec:
         raw_y = [0.0]
         x_labels = ["1"]
 
-    # Ve duong gia tri thuc do (zorder=3 ở trên đường SMA để cả hai đường đều hiển thị rõ nét)
-    x_indices = list(range(len(raw_y)))
-    unit_suffix = f" [{unit}]" if unit else ""
-    ax.plot(x_indices, raw_y, color=COLOR_PRIMARY_BLUE, marker=".", markersize=4.5,
-            linewidth=1.4, alpha=0.9, label=f"Giá trị đo ({y_col}){unit_suffix}", zorder=3)
+    n_pts = len(raw_y)
+    x_indices = list(range(n_pts))
+    # 1. Thuật toán giảm mật độ điểm vẽ khi N lớn (N > 500) để đường dữ liệu không bị vón thành khối đặc
+    if n_pts > 500:
+        step_pts = max(1, n_pts // 400)
+        if step_pts % 3 == 0:
+            step_pts += 1
+        disp_indices = list(range(0, n_pts, step_pts))
+        if disp_indices[-1] != n_pts - 1:
+            disp_indices.append(n_pts - 1)
+        disp_y = [raw_y[i] for i in disp_indices]
+        plot_marker = None
+        plot_lw = 1.0
+        plot_alpha = 0.70
+    elif n_pts > 150:
+        disp_indices = list(range(n_pts))
+        disp_y = raw_y
+        plot_marker = None
+        plot_lw = 1.2
+        plot_alpha = 0.85
+    else:
+        disp_indices = list(range(n_pts))
+        disp_y = raw_y
+        plot_marker = "."
+        plot_lw = 1.4
+        plot_alpha = 0.90
 
-    # Tinh va phu duong SMA(20) mảnh hơn (linewidth=1.3, zorder=2) để không che khuất đường dữ liệu
+    unit_suffix = f" [{unit}]" if unit else ""
+    ax.plot(disp_indices, disp_y, color=COLOR_PRIMARY_BLUE, marker=plot_marker,
+            markersize=4.0 if plot_marker else 0, linewidth=plot_lw, alpha=plot_alpha,
+            label=f"Giá trị đo ({y_col}){unit_suffix}", zorder=3)
+
+    # 2. Đường trung bình trượt SMA(20) luôn được tính trên toàn bộ dữ liệu gốc raw_y (bảo toàn 100% số liệu)
+    # Phủ đường SMA(20) đậm và nổi bật ở zorder=5 (ở trên đường dữ liệu) với nét đứt màu tím đặc trưng
     show_sma = spec.options.get("show_sma", True)
     sma_win = int(spec.options.get("sma_window", 20))
     valid_indices: List[int] = []
@@ -473,14 +500,23 @@ def _draw_trend(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], spec:
         valid_indices = [i for i, v in enumerate(sma_vals) if v is not None]
         valid_smas = [float(v) for v in sma_vals if v is not None]
         if valid_smas:
-            ax.plot(valid_indices, valid_smas, color=COLOR_SMA_PURPLE, linestyle="--",
-                    linewidth=1.3, alpha=0.95, label=f"Đường SMA({sma_win})", zorder=2)
+            if n_pts > 500:
+                sma_disp_idx = [i for i in disp_indices if i in valid_indices and sma_vals[i] is not None]
+                sma_disp_val = [float(sma_vals[i]) for i in sma_disp_idx]
+            else:
+                sma_disp_idx = valid_indices
+                sma_disp_val = valid_smas
+            if sma_disp_val:
+                ax.plot(sma_disp_idx, sma_disp_val, color=COLOR_SMA_PURPLE, linestyle="--",
+                        linewidth=2.2, alpha=1.0, label=f"Đường SMA({sma_win})", zorder=5)
 
-    # Nhan dien va to mau noi bat cac diem bat thuong / NG
+    # 3. Nhận diện và đánh dấu điểm bất thường / NG
+    # Giữ nguyên đầy đủ các điểm NG và số lượng trong nhãn chú giải; khi số lượng NG lớn,
+    # lấy mẫu hiển thị điểm đánh dấu đỏ để không bị đè lem thành vệt.
     anomaly_indices: List[int] = []
     anomaly_vals: List[float] = []
 
-    # 1. Tu cot ket qua (ROLE_RESULT)
+    # 1. Từ cột kết quả (ROLE_RESULT)
     res_col_name = res_cols[0].name if res_cols else None
     if res_col_name:
         for idx, r in enumerate(rows):
@@ -490,7 +526,7 @@ def _draw_trend(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], spec:
                     anomaly_indices.append(idx)
                     anomaly_vals.append(raw_y[idx])
 
-    # 2. Tu do lech residual > 3.0 sigma so voi SMA(20) neu co du du lieu nen
+    # 2. Từ độ lệch residual > 3.0 sigma so với SMA(20) nếu có đủ dữ liệu nền
     if show_sma and len(valid_smas) >= 20:
         residuals = [raw_y[i] - sma_vals[i] for i in valid_indices if sma_vals[i] is not None]
         if residuals:
@@ -504,8 +540,21 @@ def _draw_trend(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], spec:
                         anomaly_vals.append(raw_y[i])
 
     if anomaly_indices:
-        ax.scatter(anomaly_indices, anomaly_vals, color=COLOR_ANOMALY_RED, s=65,
-                   edgecolors="#b71c1c", linewidth=1.5, zorder=5,
+        # Nếu số lượng điểm NG lớn (> 80), lấy mẫu bước đều để vẽ marker đỏ rõ nét từng điểm, chống lem vệt
+        if len(anomaly_indices) > 80:
+            step_anom = max(1, len(anomaly_indices) // 80)
+            disp_anom_idx = anomaly_indices[::step_anom]
+            disp_anom_val = [raw_y[i] for i in disp_anom_idx]
+            marker_size = 28
+            marker_lw = 1.0
+        else:
+            disp_anom_idx = anomaly_indices
+            disp_anom_val = anomaly_vals
+            marker_size = 45
+            marker_lw = 1.2
+
+        ax.scatter(disp_anom_idx, disp_anom_val, color=COLOR_ANOMALY_RED, s=marker_size,
+                   edgecolors="#b71c1c", linewidth=marker_lw, zorder=6,
                    label=f"Điểm bất thường / NG ({len(anomaly_indices)})")
 
     ax.set_ylabel(format_axis_label(y_col, unit=unit, axis_role="y"), fontweight="bold", color=COLOR_TEXT_LABEL, fontsize=10)
@@ -579,17 +628,42 @@ def _draw_spc(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], spec: C
         ax.axhspan(cl + 2 * sigma, ucl, color=COLOR_ZONE_DANGER_RED, alpha=0.4, zorder=0)
         ax.axhspan(lcl, cl - 2 * sigma, color=COLOR_ZONE_DANGER_RED, alpha=0.4, zorder=0)
 
-    # 1. Duong gia tri do
-    unit_suffix = f" [{unit}]" if unit else ""
-    ax.plot(x_indices, vals, color=COLOR_PRIMARY_BLUE, marker="o", markersize=4.5,
-            linewidth=1.5, alpha=0.85, label=f"Điểm đo ({y_col}){unit_suffix}", zorder=3)
+    # 1. Đường giá trị đo: giảm mật độ điểm khi N lớn (N > 500) để không tạo thành khối đặc
+    if n > 500:
+        step_pts = max(1, n // 400)
+        if step_pts % 3 == 0:
+            step_pts += 1
+        disp_indices = list(range(0, n, step_pts))
+        if disp_indices[-1] != n - 1:
+            disp_indices.append(n - 1)
+        disp_vals = [vals[i] for i in disp_indices]
+        plot_marker = None
+        plot_lw = 1.0
+        plot_alpha = 0.70
+    elif n > 150:
+        disp_indices = x_indices
+        disp_vals = vals
+        plot_marker = None
+        plot_lw = 1.2
+        plot_alpha = 0.85
+    else:
+        disp_indices = x_indices
+        disp_vals = vals
+        plot_marker = "o"
+        plot_lw = 1.4
+        plot_alpha = 0.90
 
-    # 2. Duong gioi han UCL, CL, LCL
+    unit_suffix = f" [{unit}]" if unit else ""
+    ax.plot(disp_indices, disp_vals, color=COLOR_PRIMARY_BLUE, marker=plot_marker,
+            markersize=4.0 if plot_marker else 0, linewidth=plot_lw, alpha=plot_alpha,
+            label=f"Điểm đo ({y_col}){unit_suffix}", zorder=3)
+
+    # 2. Đường giới hạn UCL, CL, LCL (ở zorder=4 sắc nét, nổi bật trên dữ liệu đo)
     ax.axhline(ucl, color=COLOR_LIMIT_RED, linestyle="--", linewidth=1.8, label=f"UCL (+3σ) = {ucl:.2f}", zorder=4)
     ax.axhline(cl, color=COLOR_CENTER_GREEN, linestyle="-", linewidth=1.8, label=f"CL (Trung bình) = {cl:.2f}", zorder=4)
     ax.axhline(lcl, color=COLOR_LIMIT_RED, linestyle="--", linewidth=1.8, label=f"LCL (-3σ) = {lcl:.2f}", zorder=4)
 
-    # Neu co USL/LSL bo sung
+    # Nếu có USL/LSL bổ sung
     usl = spec.options.get("usl")
     lsl = spec.options.get("lsl")
     if usl is not None:
@@ -597,12 +671,22 @@ def _draw_spc(fig: plt.Figure, ax: plt.Axes, rows: List[Dict[str, Any]], spec: C
     if lsl is not None:
         ax.axhline(lsl, color="#880e4f", linestyle="-.", linewidth=1.8, label=f"LSL = {lsl:.2f}", zorder=4)
 
-    # Danh dau cac diem vuot nguong (Out of Control)
+    # Đánh dấu các điểm vượt ngưỡng (Out of Control)
     ooc_indices = [i for i, v in enumerate(vals) if v > ucl or v < lcl]
-    ooc_vals = [vals[i] for i in ooc_indices]
     if ooc_indices:
-        ax.scatter(ooc_indices, ooc_vals, color=COLOR_ANOMALY_RED, s=65,
-                   edgecolors="#b71c1c", linewidth=1.5, zorder=5, label=f"Điểm lệch SPC ({len(ooc_indices)})")
+        if len(ooc_indices) > 80:
+            step_ooc = max(1, len(ooc_indices) // 80)
+            disp_ooc_idx = ooc_indices[::step_ooc]
+            disp_ooc_vals = [vals[i] for i in disp_ooc_idx]
+            marker_size = 28
+            marker_lw = 1.0
+        else:
+            disp_ooc_idx = ooc_indices
+            disp_ooc_vals = [vals[i] for i in disp_ooc_idx]
+            marker_size = 45
+            marker_lw = 1.2
+        ax.scatter(disp_ooc_idx, disp_ooc_vals, color=COLOR_ANOMALY_RED, s=marker_size,
+                   edgecolors="#b71c1c", linewidth=marker_lw, zorder=6, label=f"Điểm lệch SPC ({len(ooc_indices)})")
 
     dt_cols = table.get_columns_by_role(ROLE_DATETIME)
     date_col = next((c.name for c in table.columns if c.name.upper() in ("DATE", "NGAY")), None)

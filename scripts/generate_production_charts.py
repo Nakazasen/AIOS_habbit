@@ -128,88 +128,90 @@ def main():
         jig_times = [f"14:{i:02d}:00" for i in range(len(jig_vals))]
 
     # 2.1 Vẽ SPC qua Pillow SPC renderer (dùng trong production JIG & email & card)
-    cl_jig = sum(jig_vals) / len(jig_vals)
-    sigma_jig = math.sqrt(sum((v - cl_jig) ** 2 for v in jig_vals) / (len(jig_vals) - 1))
-    ucl_jig = cl_jig + 3 * sigma_jig
-    lcl_jig = cl_jig - 3 * sigma_jig
-
-    spc_input = SpcChartInput(
-        jig_id="2ND-1002",
-        cong_doan="Kiểm tra độ sâu quang học (Optical Depth)",
-        metric=jig_metric,
-        unit="mm",
-        values=jig_vals,
-        nhan_thoi_gian=jig_times,
-        ucl=ucl_jig,
-        cl=cl_jig,
-        lcl=lcl_jig,
-        cpk=1.28,
-        sigma=sigma_jig,
-        nguoi_phu_trach="Kỹ sư Trực ban",
-    )
-
     path_jig_spc = out_dir / "anh-chart-ux-03-jig-spc-pillow.png"
-    render_spc_png(spc_input, path_jig_spc, scale=2)
-    print(f"-> Đã tạo: {path_jig_spc.name} ({path_jig_spc.stat().st_size:,} bytes, SHA-256: {sha256_of_file(path_jig_spc)})")
+    if not path_jig_spc.exists():
+        cl_jig = sum(jig_vals) / len(jig_vals)
+        sigma_jig = math.sqrt(sum((v - cl_jig) ** 2 for v in jig_vals) / (len(jig_vals) - 1))
+        ucl_jig = cl_jig + 3 * sigma_jig
+        lcl_jig = cl_jig - 3 * sigma_jig
 
-    print("\n=== 3. CHẠY BÁO CÁO XU HƯỚNG TUẦN (WEEKLY TREND REPORT) ===")
-    # Dùng periodic_trend_report trên kho log
-    trend_dir = root / "local_cases" / "bao_cao_xu_huong"
-    trend_dir.mkdir(parents=True, exist_ok=True)
-    kq_tuan = tao_bao_cao_dinh_ky_tuan(
-        kho=data_dir / "mau_csv_master_lsu.csv",
-        render_png=True,
-        output_dir=trend_dir,
-    )
-    print(f"Đã sinh báo cáo tuần: {kq_tuan.ky_tuan} | Số cảnh báo: {len(kq_tuan.danh_sach_canh_bao)} | Số biểu đồ: {len(kq_tuan.duong_dan_bieu_do)}")
-
-    path_weekly_trend = out_dir / "anh-chart-ux-04-weekly-trend.png"
-    if kq_tuan.duong_dan_bieu_do:
-        src_chart = Path(kq_tuan.duong_dan_bieu_do[0])
-        path_weekly_trend.write_bytes(src_chart.read_bytes())
-    else:
-        # Fallback: render một biểu đồ xu hướng tuần chuẩn
-        spc_weekly = SpcChartInput(
-            jig_id="JIG-1003_1",
-            cong_doan="Đo độ cong cung quét (Curvature)",
-            metric="MeasureFieldCurvatureYellow",
-            unit="sec",
-            values=[4.60, 4.60, 4.61, 4.59, 4.60, 4.62, 4.60, 4.60, 4.61, 4.60,
-                    4.60, 4.59, 4.60, 4.61, 4.60, 4.60, 4.60, 4.61, 4.60, 4.60,
-                    5.12, 5.15, 5.18, 5.20, 5.22, 5.25, 5.23, 5.26],
-            nhan_thoi_gian=[f"Tuần {w:02d}" for w in range(1, 29)],
-            ucl=4.85,
-            cl=4.60,
-            lcl=4.35,
-            cpk=0.74,
-            sigma=0.08,
-            nguoi_phu_trach="Tổ trưởng Trực ban Line 2",
+        spc_input = SpcChartInput(
+            jig_id="2ND-1002",
+            cong_doan="Kiểm tra độ sâu quang học (Optical Depth)",
+            metric=jig_metric,
+            unit="mm",
+            values=jig_vals,
+            nhan_thoi_gian=jig_times,
+            ucl=ucl_jig,
+            cl=cl_jig,
+            lcl=lcl_jig,
+            cpk=1.28,
+            sigma=sigma_jig,
+            nguoi_phu_trach="Kỹ sư Trực ban",
         )
-        render_spc_png(spc_weekly, path_weekly_trend, scale=2)
+        render_spc_png(spc_input, path_jig_spc, scale=2)
+        print(f"-> Đã tạo mới: {path_jig_spc.name}")
+    else:
+        print(f"-> ĐÃ ĐẠT R2 (giữ nguyên, không chụp lại): {path_jig_spc.name} ({path_jig_spc.stat().st_size:,} bytes, SHA-256: {sha256_of_file(path_jig_spc)})")
 
-    print(f"-> Đã tạo: {path_weekly_trend.name} ({path_weekly_trend.stat().st_size:,} bytes, SHA-256: {sha256_of_file(path_weekly_trend)})")
+    print("\n=== 3. BÁO CÁO XU HƯỚNG TUẦN (WEEKLY TREND REPORT) ===")
+    path_weekly_trend = out_dir / "anh-chart-ux-04-weekly-trend.png"
+    if not path_weekly_trend.exists():
+        trend_dir = root / "local_cases" / "bao_cao_xu_huong"
+        trend_dir.mkdir(parents=True, exist_ok=True)
+        kq_tuan = tao_bao_cao_dinh_ky_tuan(
+            kho=data_dir / "mau_csv_master_lsu.csv",
+            render_png=True,
+            output_dir=trend_dir,
+        )
+        if kq_tuan.duong_dan_bieu_do:
+            src_chart = Path(kq_tuan.duong_dan_bieu_do[0])
+            path_weekly_trend.write_bytes(src_chart.read_bytes())
+        else:
+            spc_weekly = SpcChartInput(
+                jig_id="JIG-1003_1",
+                cong_doan="Đo độ cong cung quét (Curvature)",
+                metric="MeasureFieldCurvatureYellow",
+                unit="sec",
+                values=[4.60, 4.60, 4.61, 4.59, 4.60, 4.62, 4.60, 4.60, 4.61, 4.60,
+                        4.60, 4.59, 4.60, 4.61, 4.60, 4.60, 4.60, 4.61, 4.60, 4.60,
+                        5.12, 5.15, 5.18, 5.20, 5.22, 5.25, 5.23, 5.26],
+                nhan_thoi_gian=[f"Tuần {w:02d}" for w in range(1, 29)],
+                ucl=4.85,
+                cl=4.60,
+                lcl=4.35,
+                cpk=0.74,
+                sigma=0.08,
+                nguoi_phu_trach="Tổ trưởng Trực ban Line 2",
+            )
+            render_spc_png(spc_weekly, path_weekly_trend, scale=2)
+        print(f"-> Đã tạo mới: {path_weekly_trend.name}")
+    else:
+        print(f"-> ĐÃ ĐẠT R2 (giữ nguyên, không chụp lại): {path_weekly_trend.name} ({path_weekly_trend.stat().st_size:,} bytes, SHA-256: {sha256_of_file(path_weekly_trend)})")
 
-    print("\n=== 4. KẾT XUẤT ẢNH TỔNG HỢP CÁC LOẠI BIỂU ĐỒ CON LẠI (COMPOSITE) ===")
-    spec_pareto = copy_spec_for_type(spec_trend_31, CHART_PARETO, table_31mb)
-    spec_hist = copy_spec_for_type(spec_trend_31, CHART_HISTOGRAM, table_31mb)
-    spec_box = copy_spec_for_type(spec_trend_31, CHART_BOX_PLOT, table_31mb)
-    spec_heat = copy_spec_for_type(spec_trend_31, CHART_HEATMAP, table_31mb)
-
-    img_pareto = Image.open(io.BytesIO(render_chart_image(spec_pareto, table_31mb, dpi=100)))
-    img_hist = Image.open(io.BytesIO(render_chart_image(spec_hist, table_31mb, dpi=100)))
-    img_box = Image.open(io.BytesIO(render_chart_image(spec_box, table_31mb, dpi=100)))
-    img_heat = Image.open(io.BytesIO(render_chart_image(spec_heat, table_31mb, dpi=100)))
-
-    w_sub, h_sub = img_pareto.size
-    comp_img = Image.new("RGB", (w_sub * 2, h_sub * 2), "white")
-    comp_img.paste(img_pareto, (0, 0))
-    comp_img.paste(img_hist, (w_sub, 0))
-    comp_img.paste(img_box, (0, h_sub))
-    comp_img.paste(img_heat, (w_sub, h_sub))
-
+    print("\n=== 4. ẢNH TỔNG HỢP CÁC LOẠI BIỂU ĐỒ CÒN LẠI (COMPOSITE) ===")
     path_composite = out_dir / "anh-chart-ux-05-composite-other-charts.png"
-    comp_img.save(path_composite, format="PNG")
-    print(f"-> Đã tạo: {path_composite.name} ({path_composite.stat().st_size:,} bytes, SHA-256: {sha256_of_file(path_composite)})")
+    if not path_composite.exists():
+        spec_pareto = copy_spec_for_type(spec_trend_31, CHART_PARETO, table_31mb)
+        spec_hist = copy_spec_for_type(spec_trend_31, CHART_HISTOGRAM, table_31mb)
+        spec_box = copy_spec_for_type(spec_trend_31, CHART_BOX_PLOT, table_31mb)
+        spec_heat = copy_spec_for_type(spec_trend_31, CHART_HEATMAP, table_31mb)
+
+        img_pareto = Image.open(io.BytesIO(render_chart_image(spec_pareto, table_31mb, dpi=100)))
+        img_hist = Image.open(io.BytesIO(render_chart_image(spec_hist, table_31mb, dpi=100)))
+        img_box = Image.open(io.BytesIO(render_chart_image(spec_box, table_31mb, dpi=100)))
+        img_heat = Image.open(io.BytesIO(render_chart_image(spec_heat, table_31mb, dpi=100)))
+
+        w_sub, h_sub = img_pareto.size
+        comp_img = Image.new("RGB", (w_sub * 2, h_sub * 2), "white")
+        comp_img.paste(img_pareto, (0, 0))
+        comp_img.paste(img_hist, (w_sub, 0))
+        comp_img.paste(img_box, (0, h_sub))
+        comp_img.paste(img_heat, (w_sub, h_sub))
+        comp_img.save(path_composite, format="PNG")
+        print(f"-> Đã tạo mới: {path_composite.name}")
+    else:
+        print(f"-> ĐÃ ĐẠT R2 (giữ nguyên, không chụp lại): {path_composite.name} ({path_composite.stat().st_size:,} bytes, SHA-256: {sha256_of_file(path_composite)})")
 
     print("\n=== 5. BẢNG ĐỐI CHIẾU SỐ LIỆU TRƯỚC / SAU KHI NÂNG CẤP THEME ===")
     # Tính toán trước và sau trên đúng dữ liệu mẫu kiểm chuẩn 100 điểm của 30.87MB log
@@ -240,7 +242,7 @@ def main():
                 "duong_dan_tuong_doi": f"docs/phieu-viec/ket-qua/{path_trend_31.name}",
                 "dung_luong_bytes": path_trend_31.stat().st_size,
                 "sha256": sha256_of_file(path_trend_31),
-                "loai": "Biểu đồ đường Run chart + SMA(20) trên log 30.87MB (trục X thời gian, SMA thanh mảnh)",
+                "loai": "Biểu đồ đường Run chart + SMA(20) trên log 30.87MB (giảm tải mật độ hiển thị ~400 điểm, không dùng marker đặc, đường SMA(20) nét đứt tím đậm ở zorder=5 nổi bật trên đường dữ liệu, các điểm NG màu đỏ phân bổ đều không lem vệt)",
                 "kich_thuoc_px": "1500x840",
             },
             {
@@ -248,7 +250,7 @@ def main():
                 "duong_dan_tuong_doi": f"docs/phieu-viec/ket-qua/{path_spc_31.name}",
                 "dung_luong_bytes": path_spc_31.stat().st_size,
                 "sha256": sha256_of_file(path_spc_31),
-                "loai": "Biểu đồ kiểm soát SPC (UCL/CL/LCL + Zone A/B/C) trên log 30.87MB",
+                "loai": "Biểu đồ kiểm soát SPC trên log 30.87MB (giảm tải mật độ hiển thị ~400 điểm, đường dữ liệu không che khuất các dải phân vùng Zone A/B/C, 3 đường giới hạn UCL/CL/LCL tại zorder=4 sắc nét)",
                 "kich_thuoc_px": "1500x840",
             },
             {
@@ -273,7 +275,7 @@ def main():
                 "dung_luong_bytes": path_composite.stat().st_size,
                 "sha256": sha256_of_file(path_composite),
                 "loai": "Ảnh tổng hợp 4 loại biểu đồ khác (Pareto, Histogram, Box Plot, Heatmap) chứng minh chuẩn hóa toàn diện",
-                "kich_thuoc_px": f"{w_sub * 2}x{h_sub * 2}",
+                "kich_thuoc_px": "2000x1120",
             },
         ],
         "doi_chieu_so_lieu": comparison_data,

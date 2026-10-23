@@ -314,3 +314,91 @@ def test_r2_evidence_visual_defects_fixed(tmp_path: Path):
     # Even if x_col was RESULT, renderer handles it gracefully
     png_bytes = render_chart_image(spec_trend, table)
     assert len(png_bytes) > 1000
+
+
+def test_r3_large_n_chart_ux_density_and_sma_visibility(tmp_path: Path):
+    """Verify DESKTOP-HOME-CHART-UX-EVIDENCE-R3 visual improvements on large datasets:
+    1. Large N (>500) reduces point density for raw data lines (no dense solid blocks).
+    2. Large N disables point markers (marker=None) to prevent dot clumping.
+    3. SMA(20) is placed at zorder=5 with linewidth >= 2.0, prominent over raw data.
+    4. Outlier / NG scatter markers with large counts (>80) are sampled to avoid smeared streaks.
+    5. Legend maintains the true total count of NG points.
+    6. Both trend and SPC charts on 1000+ points render cleanly.
+    """
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from aios_habit.log_chart.renderer import _draw_trend, _draw_spc
+
+    # Generate 1200 rows of alternating data with 400 NG points
+    rows = []
+    for i in range(1200):
+        val = 52.0 if i % 3 == 0 else (-56.0 if i % 3 == 1 else 48.0)
+        res = "NG" if i % 3 == 1 else "OK"
+        rows.append({"INDEX": i, "BOW_VALUE": val, "RESULT": res, "DATE": "2026.10.24", "TIME": f"04:00:{i%60:02d}"})
+
+    csv_lines = ["INDEX,BOW_VALUE,RESULT,DATE,TIME"] + [f"{r['INDEX']},{r['BOW_VALUE']},{r['RESULT']},{r['DATE']},{r['TIME']}" for r in rows]
+    csv_file = tmp_path / "large_n_log.csv"
+    csv_file.write_text("\n".join(csv_lines), encoding="utf-8")
+
+    table = parse_log_file(csv_file)
+    spec_trend = build_initial_spec(table)
+    spec_trend.chart_type = CHART_TREND
+    spec_trend.y_col = "BOW_VALUE"
+    spec_trend.options["show_sma"] = True
+    spec_trend.options["sma_window"] = 20
+
+    fig, ax = plt.subplots(figsize=(10, 5.6), dpi=150)
+    _draw_trend(fig, ax, rows, spec_trend, table)
+
+    # Inspect lines on axes
+    lines = ax.get_lines()
+    # At least raw line and SMA line
+    assert len(lines) >= 2
+    raw_line = lines[0]
+    sma_line = lines[1]
+
+    # 1. Raw line decimation: 1200 points decimated to ~400 points
+    x_data, y_data = raw_line.get_data()
+    assert len(x_data) < 600
+    assert len(x_data) >= 200
+    # 2. Marker is None on large N
+    assert raw_line.get_marker() is None or raw_line.get_marker() == "None" or raw_line.get_marker() == ""
+
+    # 3. SMA(20) is placed at zorder=5 with bold line
+    assert sma_line.get_zorder() == 5
+    assert sma_line.get_linewidth() >= 2.0
+    assert sma_line.get_linestyle() == "--"
+
+    # 4. Check scatter collections for NG
+    collections = ax.collections
+    assert len(collections) >= 1
+    scatter_coll = collections[0]
+    # Check that drawn scatter points are sampled (not all 400 NG points drawn to avoid streak)
+    offsets = scatter_coll.get_offsets()
+    assert len(offsets) < 150
+    assert len(offsets) >= 50
+
+    # 5. Legend maintains the true total count (400 NG points)
+    legend = ax.get_legend()
+    assert legend is not None
+    legend_texts = [t.get_text() for t in legend.get_texts()]
+    ng_labels = [t for t in legend_texts if "NG" in t or "bất thường" in t]
+    assert len(ng_labels) == 1
+    assert "400" in ng_labels[0]
+    plt.close(fig)
+
+    # 6. Test SPC chart on large N
+    spec_spc = build_initial_spec(table)
+    spec_spc.chart_type = CHART_SPC
+    spec_spc.y_col = "BOW_VALUE"
+
+    fig_spc, ax_spc = plt.subplots(figsize=(10, 5.6), dpi=150)
+    _draw_spc(fig_spc, ax_spc, rows, spec_spc, table)
+    spc_lines = ax_spc.get_lines()
+    assert len(spc_lines) >= 4  # raw line + UCL + CL + LCL
+    raw_spc_line = spc_lines[0]
+    x_spc, y_spc = raw_spc_line.get_data()
+    assert len(x_spc) < 600
+    assert raw_spc_line.get_marker() is None or raw_spc_line.get_marker() == "None" or raw_spc_line.get_marker() == ""
+    plt.close(fig_spc)
