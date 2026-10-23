@@ -370,9 +370,17 @@ def test_step3_chat_intent_routing_danh_gia_dieu_tra():
     assert intent3 == XEM_PHAN_HOI
     assert slots3.get("loai_phan_hoi") == "dieu_tra"
 
-    intent4, slots4 = route("/investigation-feedback")
+    intent4, slots4 = route("/dieutra-phanhoi")
     assert intent4 == XEM_PHAN_HOI
     assert slots4.get("loai_phan_hoi") == "dieu_tra"
+
+    intent5, slots5 = route("/dieutra-duyet")
+    assert intent5 == XEM_PHAN_HOI
+    assert slots5.get("loai_phan_hoi") == "dieu_tra"
+
+    from aios_habit.chat_intent_router import HOI_TAI_LIEU
+    assert classify_intent("/investigation-feedback") == HOI_TAI_LIEU
+    assert classify_intent("/investigation") == HOI_TAI_LIEU
 
 
 def test_step3_chat_action_execution_end_to_end():

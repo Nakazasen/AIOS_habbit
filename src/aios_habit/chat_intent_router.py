@@ -76,7 +76,7 @@ def _la_lenh_xem_phan_hoi(clean: str, norm: str) -> bool:
     Lệnh không phá đường hỏi đáp thông thường - câu hỏi bình thường chứa từ khóa
     của lệnh vẫn đi đường RAG như cũ.
     """
-    if norm.startswith(("/xemphanhoi", "/feedback", "/phanhoi", "/autoclassify", "/phanloai", "/investigation", "lenh: xem phan hoi", "cmd: feedback")):
+    if norm.startswith(("/xemphanhoi", "/phanhoi", "/phanloai", "/phanloai-phanhoi", "/phanloai-duyet", "/dieutra-phanhoi", "/dieutra-duyet", "/dieutra", "lenh: xem phan hoi")):
         return True
     if any(c in norm for c in ("xem phan hoi dieu tra", "thong ke cay dieu tra", "thong ke dieu tra", "bao cao phan hoi dieu tra", "phan hoi cay dieu tra", "danh gia cay dieu tra", "xem phan hoi bieu do", "thong ke bieu do", "phan hoi bieu do", "danh gia bieu do")):
         return True
@@ -121,8 +121,9 @@ _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
     (
         HUONG_DAN,
         (
-            "/huongdan", "/huong-dan", "/guide", "/help",
+            "/huongdan", "/huong-dan",
             "/使い方", "/使用指南", "使い方", "使用指南",
+            "/つかいかた", "つかいかた",
             "huong dan su dung aios", "cam nang huong dan",
             "cam nang aios", "huong dan aios", "danh muc huong dan",
         ),
@@ -140,11 +141,9 @@ _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
             "xem phan hoi dieu tra", "thong ke cay dieu tra",
             "bao cao phan hoi dieu tra", "phan hoi cay dieu tra",
             "danh gia cay dieu tra", "thong ke dieu tra",
-            "/xemphanhoi", "/feedback", "/phanhoi",
-            "/autoclassify", "/phanloai",
-            "/autoclassify-feedback", "/autoclassify-review",
-            "/investigation",
-            "/investigation-feedback", "/investigation-review",
+            "/xemphanhoi", "/phanhoi",
+            "/phanloai", "/phanloai-phanhoi", "/phanloai-duyet",
+            "/dieutra-phanhoi", "/dieutra-duyet", "/dieutra",
         ),
     ),
     (
@@ -321,8 +320,6 @@ _QUY_TAC: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
             "ket thuc ca",
             "/dongvu",
             "/dong-vu",
-            "/close-case",
-            "/closecase",
         ),
     ),
     (
@@ -615,9 +612,9 @@ def extract_slots(text: str, intent: str) -> Dict[str, str]:
         return slots_dg
     elif intent == XEM_PHAN_HOI:
         norm_c = _khong_dau(clean)
-        if "phan loai" in norm_c or "autoclassify" in norm_c or "phanloai" in norm_c:
+        if "phan loai" in norm_c or "phanloai" in norm_c:
             return {"loai_phan_hoi": "phan_loai"}
-        if "dieu tra" in norm_c or "cay 4m" in norm_c or "investigation" in norm_c:
+        if "dieu tra" in norm_c or "cay 4m" in norm_c or "dieutra" in norm_c:
             return {"loai_phan_hoi": "dieu_tra"}
         return {}
     elif intent == XU_HUONG_LOG_TINH:

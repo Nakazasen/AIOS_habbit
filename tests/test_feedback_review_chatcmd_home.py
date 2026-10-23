@@ -80,12 +80,16 @@ def test_nhan_dien_dung_cac_bien_the_lenh_xem_phan_hoi():
         "bao cao phan hoi",
         "tom tat phan hoi",
         "/xemphanhoi",
-        "/feedback",
         "/phanhoi",
+        "/phanloai",
+        "/dieutra-phanhoi",
     ]
     for cmd in lenh_dung:
         intent = classify_intent(cmd)
         assert intent == XEM_PHAN_HOI, f"Lệnh '{cmd}' không nhận diện được XEM_PHAN_HOI (ra {intent})!"
+    # Lệnh tiếng Anh /feedback bị rút, phải trả lời theo RAG thông thường
+    from aios_habit.chat_intent_router import HOI_TAI_LIEU
+    assert classify_intent("/feedback") == HOI_TAI_LIEU
 
 
 # ---------------------------------------------------------------------------

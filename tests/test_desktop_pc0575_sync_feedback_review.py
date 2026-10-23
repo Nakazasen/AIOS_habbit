@@ -67,11 +67,12 @@ def test_pc0575_chat_command_classification_and_rag_preservation():
         "xem phản hồi",
         "xem lại phản hồi",
         "thống kê phản hồi",
-        "/feedback",
+        "/phanhoi",
         "/xemphanhoi",
     ]
     for cmd in feedback_cmds:
         assert classify_intent(cmd) == XEM_PHAN_HOI
+    assert classify_intent("/feedback") == HOI_TAI_LIEU
 
     rag_queries = [
         "C23 và C24 có quy trình phản hồi thế nào?",

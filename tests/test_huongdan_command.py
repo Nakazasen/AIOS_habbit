@@ -41,9 +41,9 @@ from aios_habit.chat_intent_router import (
 )
 
 
-EXPECTED_VI_SHA256 = "BFDEF6A91AE7D9B7FA5930A57894281A2BFE6CDB828913E570A30AD9FAD2A5F5"
-EXPECTED_ZH_SHA256 = "8BF0E0D56187E476020D2AF7D23563ABC45583812AD58CC524B8E97166FB0935"
-EXPECTED_JA_SHA256 = "D2F5E056B471D867BAAF83EF9E90FE743478CA526DB46291EEEA40763C06A1CB"
+EXPECTED_VI_SHA256 = "B7A6E23DBA0E2BF4B09F7EB2BCFD8C2440874A5D0C560BF1974163209F9918B7"
+EXPECTED_ZH_SHA256 = "3FBFBEEF65FA29AE83387E25A4249A185077E566E87009E4E41E1CA3587FBFC9"
+EXPECTED_JA_SHA256 = "9E9ACBAD3E4BFC6551277E82E6E04E5F257D7446048FB4988ABF44BC90A41971"
 
 
 def test_manual_file_integrity_and_57_images():
@@ -54,7 +54,7 @@ def test_manual_file_integrity_and_57_images():
     data_vi = path_vi.read_bytes()
     sha_vi = hashlib.sha256(data_vi).hexdigest().upper()
     assert sha_vi == EXPECTED_VI_SHA256, f"SHA-256 VI không khớp: nhận {sha_vi}"
-    assert len(data_vi) == 38890, f"Số byte VI không khớp: {len(data_vi)}"
+    assert len(data_vi) == 38802, f"Số byte VI không khớp: {len(data_vi)}"
 
     # 2. Tiếng Trung (ZH)
     path_zh = resolve_manual_path("zh")
@@ -62,7 +62,7 @@ def test_manual_file_integrity_and_57_images():
     data_zh = path_zh.read_bytes()
     sha_zh = hashlib.sha256(data_zh).hexdigest().upper()
     assert sha_zh == EXPECTED_ZH_SHA256, f"SHA-256 ZH không khớp: nhận {sha_zh}"
-    assert len(data_zh) == 31688, f"Số byte ZH không khớp: {len(data_zh)}"
+    assert len(data_zh) == 31600, f"Số byte ZH không khớp: {len(data_zh)}"
 
     # 3. Tiếng Nhật (JA)
     path_ja = resolve_manual_path("ja")
@@ -70,7 +70,7 @@ def test_manual_file_integrity_and_57_images():
     data_ja = path_ja.read_bytes()
     sha_ja = hashlib.sha256(data_ja).hexdigest().upper()
     assert sha_ja == EXPECTED_JA_SHA256, f"SHA-256 JA không khớp: nhận {sha_ja}"
-    assert len(data_ja) == 41049, f"Số byte JA không khớp: {len(data_ja)}"
+    assert len(data_ja) == 40961, f"Số byte JA không khớp: {len(data_ja)}"
 
     # 4. Thư mục ảnh dùng chung 57 ảnh PNG
     images_dir = resolve_images_dir()
@@ -89,8 +89,8 @@ def test_is_huongdan_command_positive_and_negative():
     assert is_huongdan_command("/huongdan toan-bo")
     assert is_huongdan_command("/huongdan B")
     assert is_huongdan_command("/huong-dan")
-    assert is_huongdan_command("/help")
-    assert is_huongdan_command("/guide")
+    assert not is_huongdan_command("/help")
+    assert not is_huongdan_command("/guide")
     assert is_huongdan_command("huong dan")
     assert is_huongdan_command("huong dan su dung")
     assert is_huongdan_command("cam nang aios")

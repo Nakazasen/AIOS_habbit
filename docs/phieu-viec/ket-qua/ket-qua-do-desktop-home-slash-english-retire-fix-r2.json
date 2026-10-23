@@ -1,0 +1,123 @@
+{
+  "ticket": "DESKTOP-HOME-SLASH-ENGLISH-RETIRE-FIX-R2",
+  "machine": "H410ASROCK (may nha)",
+  "python_version": "3.11.14",
+  "catalog_size": 8,
+  "timestamp_start": "2026-10-23T23:24:47.267170",
+  "gates": {
+    "gate_1_slash_no_english": {
+      "status": "PASSED",
+      "items_count": 8,
+      "screenshot": {
+        "file": "anh-retire-01-slash-trigger.png",
+        "size_bytes": 124158,
+        "sha256": "659889E2A566EB204B603F86C6FC08EB5EA81768EB746C11A712E1656EB5ABB7",
+        "is_valid_png": true
+      }
+    },
+    "gate_2_filter_phanloai": {
+      "status": "PASSED",
+      "screenshot": {
+        "file": "anh-retire-02-filter-phanloai.png",
+        "size_bytes": 124805,
+        "sha256": "C45673873BE38833ECC9BBF2CEC78E9D17E3B50EC3C557BA41185FEB7D1198DA",
+        "is_valid_png": true
+      },
+      "elapsed_seconds": 13.0
+    },
+    "gate_3_dieutra_phanhoi": {
+      "status": "PASSED",
+      "screenshot": {
+        "file": "anh-retire-03-dieutra-phanhoi.png",
+        "size_bytes": 107931,
+        "sha256": "A774404F242D8A04A4D7E2831D480EAACCB2C937DFA0A9F511572E5A966DF7EC",
+        "is_valid_png": true
+      }
+    },
+    "gate_4_huongdan_lenh_vi": {
+      "status": "PASSED",
+      "screenshot": {
+        "file": "anh-retire-04-huongdan-lenh-vi.png",
+        "size_bytes": 179312,
+        "sha256": "DDD4616472ECA16B19016549E18803FB4FEE598361DB717D44CB5CE5C3EC250E",
+        "is_valid_png": true
+      }
+    },
+    "gate_5_huongdan_lenh_ja": {
+      "status": "PASSED",
+      "screenshot": {
+        "file": "anh-retire-05-huongdan-lenh-ja.png",
+        "size_bytes": 186401,
+        "sha256": "4028BCDBD0C53C1354526B9310A5AB323FBA7D7D393DD93B2299E6BF9E96D6C6",
+        "is_valid_png": true
+      }
+    },
+    "gate_6_huongdan_lenh_zh": {
+      "status": "PASSED",
+      "screenshot": {
+        "file": "anh-retire-06-huongdan-lenh-zh.png",
+        "size_bytes": 220592,
+        "sha256": "84EE9FB8693C5C2E12419491B2BD4A5B0F5E06940D59661E0761A78B1600F42D",
+        "is_valid_png": true
+      }
+    },
+    "gate_7_english_retired_behavior": {
+      "status": "PASSED",
+      "screenshot": {
+        "file": "anh-retire-07-english-retired-behavior.png",
+        "size_bytes": 145881,
+        "sha256": "E0A2793CDCA65F41BA587BC97E982739702682E240B53EEC162BD61F855CA03E",
+        "is_valid_png": true
+      }
+    },
+    "gate_8a_stillness_60s": {
+      "status": "PASSED",
+      "elapsed_seconds": 137.03,
+      "messages_count": 2,
+      "screenshot": {
+        "file": "anh-retire-08-gate-stillness-60s.png",
+        "size_bytes": 151847,
+        "sha256": "BEBC2CCC22FAE89B80403E9A33A42FC74C4693E32926449B0B879B00262D9EF4",
+        "is_valid_png": true
+      }
+    },
+    "gate_8b_suggest_chip": {
+      "status": "PASSED",
+      "screenshot": {
+        "file": "anh-retire-09-gate-suggest-chip.png",
+        "size_bytes": 186704,
+        "sha256": "94C1CC1E01E54911B7FF29CC2C21739B25FCD66C8A0E97DB7C0EDD5984546ECE",
+        "is_valid_png": true
+      }
+    },
+    "gate_8c_cold_notebook": {
+      "status": "PASSED",
+      "screenshot": {
+        "file": "anh-retire-10-gate-cold-notebook.png",
+        "size_bytes": 119020,
+        "sha256": "EC8E65F13D0969AB614AFF8CCAF95306BD932D809A539CE8114E7AD96FBB761D",
+        "is_valid_png": true
+      }
+    },
+    "gate_8d_draft_cadence": {
+      "status": "PASSED",
+      "screenshot": {
+        "file": "anh-retire-11-gate-draft-cadence.png",
+        "size_bytes": 101498,
+        "sha256": "BA912F3601620F0A540DD48BA2ED3BC68514D318858675DCDFA5F9C65496B8A8",
+        "is_valid_png": true
+      }
+    },
+    "gate_8e_baocaodinhky": {
+      "status": "PASSED",
+      "screenshot": {
+        "file": "anh-retire-12-baocaodinhky.png",
+        "size_bytes": 108520,
+        "sha256": "AAED115B1E8397F53261981D5A0E61D20B4A0F7A82D6CB78C0C190BF302081FA",
+        "is_valid_png": true
+      }
+    }
+  },
+  "timestamp_end": "2026-10-23T23:32:01.010182",
+  "overall_verdict": "PASSED"
+}

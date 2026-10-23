@@ -350,8 +350,8 @@ def is_huongdan_command(text: str) -> bool:
     if clean == "使用指南" or clean.startswith("使用指南 "):
         return True
 
-    # 3. Tiếng Việt & chung: bắt đầu bằng /huongdan, /huong-dan, /guide, /help
-    if re.match(r"^/(?:huongdan|huong-dan|guide|help)(?:\s|$)", clean, re.IGNORECASE):
+    # 3. Tiếng Việt & chung: bắt đầu bằng /huongdan, /huong-dan
+    if re.match(r"^/(?:huongdan|huong-dan)(?:\s|$)", clean, re.IGNORECASE):
         return True
 
     # 4. Kiểm tra các cụm từ lệnh tiếng Việt chính xác (không dấu hoặc có dấu)
@@ -403,7 +403,7 @@ def parse_huongdan_args(text: str, lang: Optional[str] = None) -> str:
     elif clean.startswith("使用指南"):
         arg = clean[len("使用指南"):].strip()
     else:
-        m = re.match(r"^/(?:huongdan|huong-dan|guide|help)\s*(.*)$", clean, re.IGNORECASE)
+        m = re.match(r"^/(?:huongdan|huong-dan)\s*(.*)$", clean, re.IGNORECASE)
         if m:
             arg = m.group(1).strip()
         else:

@@ -5683,7 +5683,7 @@ else:
                             return True
                         for m in reversed(messages[-20:] if len(messages) > 20 else messages):
                             c = str(getattr(m, "content", "") or "")
-                            if "<!-- aios_realtime_alert:" in c or "Cảnh báo realtime" in c:
+                            if "<!-- aios_realtime_alert:" in c or "<!-- aios_jig_alert_card:" in c or "Cảnh báo realtime" in c:
                                 return True
                     except Exception:
                         pass
@@ -6655,14 +6655,17 @@ else:
                                         )
                                     safe_rerun()
                             else:
-                                _is_hd = False
+                                _is_slash_or_hd = False
                                 try:
                                     from aios_habit.huongdan_command import is_huongdan_command
-                                    _is_hd = is_huongdan_command(user_input)
+                                    from aios_habit.slash_command_catalog import get_all_alive_slash_commands
+                                    _alive_cmds = get_all_alive_slash_commands()
+                                    _cmd_prefix = (user_input or "").strip().split()[0].lower() if user_input else ""
+                                    _is_slash_or_hd = is_huongdan_command(user_input) or (_cmd_prefix in _alive_cmds)
                                 except Exception:
-                                    _is_hd = False
+                                    _is_slash_or_hd = False
 
-                                if _is_hd:
+                                if _is_slash_or_hd:
                                     _ask_disabled = False
                                     _ask_tooltip = labels["ai_action"]
                                 else:
@@ -7359,7 +7362,11 @@ else:
 
                     try:
                         from aios_habit.huongdan_command import is_huongdan_command
-                        if q_text and is_huongdan_command(q_text):
+                        from aios_habit.slash_command_catalog import get_all_alive_slash_commands
+                        _alive_cmds = get_all_alive_slash_commands()
+                        _cmd_prefix = (q_text or "").strip().split()[0].lower() if q_text else ""
+                        _is_immediate_cmd = is_huongdan_command(q_text) or (_cmd_prefix in _alive_cmds)
+                        if q_text and _is_immediate_cmd:
                             st.session_state.pop(_suggest_send_key, None)
                             st.session_state.pop(f"wsc_submitting_ack_{active_conversation.id}", None)
                             st.session_state.pop(draft_backup_key, None)

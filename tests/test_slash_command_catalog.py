@@ -50,15 +50,66 @@ def test_catalog_completeness_and_no_duplicates() -> None:
     expected_core = [
         "/huongdan",
         "/baocaodinhky",
-        "/autoclassify",
-        "/investigation",
+        "/phanloai",
+        "/dieutra-phanhoi",
         "/danhgiadieutra",
         "/danhgianhan",
-        "/close-case",
-        "/feedback",
+        "/dongvu",
+        "/phanhoi",
     ]
     for core in expected_core:
         assert core in primary_cmds, f"Thiếu lệnh cốt lõi trong danh mục: {core}"
+
+
+def test_catalog_contains_no_english_commands() -> None:
+    """Catalog và danh sách lệnh slash không được chứa bất kỳ lệnh tiếng Anh nào (DESKTOP-HOME-SLASH-ENGLISH-RETIRE-FIX)."""
+    retired_english_commands = [
+        "/guide",
+        "/help",
+        "/autoclassify",
+        "/autoclassify-feedback",
+        "/autoclassify-review",
+        "/investigation",
+        "/investigation-feedback",
+        "/investigation-review",
+        "/close-case",
+        "/closecase",
+        "/feedback",
+    ]
+    alive_commands = get_all_alive_slash_commands()
+    for eng in retired_english_commands:
+        assert eng not in alive_commands, f"Lệnh tiếng Anh '{eng}' vẫn còn tồn tại trong alive_commands!"
+
+    cat = get_command_catalog()
+    for item in cat:
+        cmd = item["command"]
+        assert cmd not in retired_english_commands, f"Lệnh chính '{cmd}' là tiếng Anh!"
+        for alias in item.get("aliases", []):
+            assert alias not in retired_english_commands, f"Biến thể '{alias}' là tiếng Anh!"
+
+
+def test_retired_english_commands_do_not_trigger_command_intent() -> None:
+    """Các lệnh tiếng Anh bị rút khi gõ vào ô chat phải ứng xử như văn bản thường (HOI_TAI_LIEU), không kích hoạt lệnh."""
+    from aios_habit.chat_intent_router import HOI_TAI_LIEU
+
+    retired_english_commands = [
+        "/guide",
+        "/help",
+        "/autoclassify",
+        "/autoclassify-feedback",
+        "/autoclassify-review",
+        "/investigation",
+        "/investigation-feedback",
+        "/investigation-review",
+        "/close-case",
+        "/closecase",
+        "/feedback",
+    ]
+    for eng_cmd in retired_english_commands:
+        intent = classify_intent(eng_cmd)
+        assert intent == HOI_TAI_LIEU, (
+            f"Lệnh tiếng Anh '{eng_cmd}' đã bị rút nhưng vẫn kích hoạt intent '{intent}'!"
+        )
 
 
 def test_every_catalog_command_has_natural_query_recognized_by_router() -> None:

@@ -36,7 +36,7 @@ def _get_local_cases_dir() -> Path:
 _SLASH_COMMANDS_CATALOG: Tuple[Dict[str, Any], ...] = (
     {
         "command": "/huongdan",
-        "aliases": ["/huong-dan", "/guide", "/help", "/使い方", "/使用指南"],
+        "aliases": ["/huong-dan", "/使い方", "/つかいかた", "/使用指南"],
         "category": "Hướng dẫn sử dụng",
         "category_ja": "利用ガイド",
         "category_zh": "使用指南",
@@ -69,8 +69,8 @@ _SLASH_COMMANDS_CATALOG: Tuple[Dict[str, Any], ...] = (
         "intent": "bao_cao_xu_huong",
     },
     {
-        "command": "/autoclassify",
-        "aliases": ["/phanloai", "/autoclassify-feedback", "/autoclassify-review"],
+        "command": "/phanloai",
+        "aliases": ["/phanloai-phanhoi", "/phanloai-duyet"],
         "category": "Phân loại Bước 5",
         "category_ja": "ステップ5自動分類",
         "category_zh": "第5步自动分类",
@@ -86,8 +86,8 @@ _SLASH_COMMANDS_CATALOG: Tuple[Dict[str, Any], ...] = (
         "intent": "xem_phan_hoi",
     },
     {
-        "command": "/investigation",
-        "aliases": ["/investigation-feedback", "/investigation-review"],
+        "command": "/dieutra-phanhoi",
+        "aliases": ["/dieutra-duyet", "/dieutra"],
         "category": "Điều tra sự cố",
         "category_ja": "障害調査業務",
         "category_zh": "故障调查业务",
@@ -137,8 +137,8 @@ _SLASH_COMMANDS_CATALOG: Tuple[Dict[str, Any], ...] = (
         "intent": "danh_gia_nhan",
     },
     {
-        "command": "/close-case",
-        "aliases": ["/closecase", "/dong-vu", "/dongvu"],
+        "command": "/dongvu",
+        "aliases": ["/dong-vu"],
         "category": "Đóng vụ điều tra",
         "category_ja": "ケース終了",
         "category_zh": "关闭案例",
@@ -154,8 +154,8 @@ _SLASH_COMMANDS_CATALOG: Tuple[Dict[str, Any], ...] = (
         "intent": "dong_vu",
     },
     {
-        "command": "/feedback",
-        "aliases": ["/phanhoi", "/xemphanhoi"],
+        "command": "/phanhoi",
+        "aliases": ["/xemphanhoi"],
         "category": "Phản hồi hệ thống",
         "category_ja": "システム評価",
         "category_zh": "系统反馈",
