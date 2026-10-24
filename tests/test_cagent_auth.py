@@ -199,3 +199,87 @@ def test_call_cagent_prediction_uses_auth_session(monkeypatch: pytest.MonkeyPatc
     )
     assert res.ok is True
     assert auth_header_sent == f"Bearer {valid_token}"
+
+
+def test_refresh_cagent_token_omits_expired_bearer_avoids_401(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Mock server rejects requests with expired Bearer token (HTTP 401) and accepts clean requests."""
+    expired_acc = _make_dummy_jwt({"username": "tvn183660", "exp": time.time() - 3600})
+    save_session(CAgentAuthTokens(expired_acc, "ref_original", "tvn183660", time.time() - 3600))
+
+    new_acc = _make_dummy_jwt({"username": "tvn183660", "exp": time.time() + 3600})
+    recorded_headers: list[dict] = []
+
+    def fake_urlopen(request, timeout):
+        assert "/api/v1/user/refresh-token" in request.full_url
+        headers_dict = dict(request.headers)
+        recorded_headers.append(headers_dict)
+        # Server behavior: if Authorization header is present with Bearer, reject with 401
+        auth = headers_dict.get("Authorization") or headers_dict.get("authorization")
+        if auth:
+            raise HTTPError(request.full_url, 401, "Unauthorized: Expired Bearer Rejected", {}, None)
+        data = json.loads(request.data.decode("utf-8"))
+        assert data["refreshToken"] == "ref_original"
+        return _MockResponse({"accessToken": new_acc, "refreshToken": "ref_renewed"})
+
+    monkeypatch.setattr("aios_habit.cagent_auth.urlopen", fake_urlopen)
+
+    ok, msg = refresh_cagent_token()
+    assert ok is True
+    assert "thành công" in msg
+    assert len(recorded_headers) == 1
+    assert "Authorization" not in recorded_headers[0]
+    assert "authorization" not in recorded_headers[0]
+
+    session = load_session()
+    assert session is not None
+    assert session.access_token == new_acc
+    assert session.refresh_token == "ref_renewed"
+
+
+def test_refresh_cagent_token_retries_without_auth_on_401(monkeypatch: pytest.MonkeyPatch) -> None:
+    """If Authorization header was sent (e.g. clock skew) and server returns 401, client retries without Authorization."""
+    unexpired_acc = _make_dummy_jwt({"username": "tvn183660", "exp": time.time() + 1800})
+    save_session(CAgentAuthTokens(unexpired_acc, "ref_valid", "tvn183660", time.time() + 1800))
+
+    new_acc = _make_dummy_jwt({"username": "tvn183660", "exp": time.time() + 3600})
+    attempts: list[dict] = []
+
+    def fake_urlopen(request, timeout):
+        headers_dict = dict(request.headers)
+        attempts.append(headers_dict)
+        auth = headers_dict.get("Authorization") or headers_dict.get("authorization")
+        if auth:
+            # Server revoked token or considers it invalid despite local timestamp
+            raise HTTPError(request.full_url, 401, "Unauthorized", {}, None)
+        return _MockResponse({"data": {"accessToken": new_acc, "refreshToken": "ref_valid_renewed"}})
+
+    monkeypatch.setattr("aios_habit.cagent_auth.urlopen", fake_urlopen)
+
+    ok, msg = refresh_cagent_token()
+    assert ok is True
+    assert len(attempts) == 2
+    # First attempt sent Authorization header
+    assert "Authorization" in attempts[0]
+    # Second attempt (retry) omitted Authorization header
+    assert "Authorization" not in attempts[1]
+
+    session = load_session()
+    assert session is not None
+    assert session.access_token == new_acc
+    assert session.refresh_token == "ref_valid_renewed"
+
+
+def test_refresh_cagent_token_fails_gracefully_when_server_returns_401_on_both(monkeypatch: pytest.MonkeyPatch) -> None:
+    """When refresh token itself is invalid or revoked, both initial and retry return 401."""
+    valid_acc = _make_dummy_jwt({"username": "tvn183660", "exp": time.time() + 1800})
+    save_session(CAgentAuthTokens(valid_acc, "ref_bad", "tvn183660", time.time() + 1800))
+
+    def fake_urlopen(request, timeout):
+        raise HTTPError(request.full_url, 401, "Unauthorized", {}, None)
+
+    monkeypatch.setattr("aios_habit.cagent_auth.urlopen", fake_urlopen)
+
+    ok, msg = refresh_cagent_token()
+    assert ok is False
+    assert "HTTP 401" in msg
+

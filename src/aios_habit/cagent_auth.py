@@ -193,19 +193,44 @@ def refresh_cagent_token(
     refresh_endpoint = f"{root_url}/api/v1/user/refresh-token"
     payload = json.dumps({"refreshToken": session.refresh_token}, ensure_ascii=False).encode("utf-8")
 
+    now = time.time()
+    exp = session.expires_at
+    if not exp and session.access_token:
+        claims = decode_jwt_payload(session.access_token)
+        exp = float(claims.get("exp", 0.0))
+    is_expired = bool(exp and exp <= now)
+
     headers = {"Content-Type": "application/json", "Accept": "application/json"}
-    if session.access_token:
+    if session.access_token and not is_expired:
         headers["Authorization"] = f"Bearer {session.access_token}"
 
     req = Request(refresh_endpoint, data=payload, method="POST", headers=headers)
 
+    res_data = None
     try:
         with urlopen(req, timeout=timeout_seconds) as response:
             raw = response.read().decode("utf-8", errors="replace")
             res_data = json.loads(raw)
     except HTTPError as err:
-        LOGGER.warning("C-Agent token refresh HTTP %s", err.code)
-        return False, f"Không thể làm mới phiên (HTTP {err.code}). Vui lòng đăng nhập lại."
+        if err.code == 401 and "Authorization" in headers:
+            LOGGER.info(
+                "C-Agent refresh returned HTTP 401 with Authorization header; retrying once without Authorization..."
+            )
+            headers_no_auth = {"Content-Type": "application/json", "Accept": "application/json"}
+            req_retry = Request(refresh_endpoint, data=payload, method="POST", headers=headers_no_auth)
+            try:
+                with urlopen(req_retry, timeout=timeout_seconds) as retry_resp:
+                    raw = retry_resp.read().decode("utf-8", errors="replace")
+                    res_data = json.loads(raw)
+            except HTTPError as retry_err:
+                LOGGER.warning("C-Agent token refresh retry failed HTTP %s", retry_err.code)
+                return False, f"Không thể làm mới phiên (HTTP {retry_err.code}). Vui lòng đăng nhập lại."
+            except Exception as retry_exc:
+                LOGGER.warning("C-Agent token refresh retry error: %s", retry_exc)
+                return False, f"Lỗi làm mới phiên C-Agent: {retry_exc}"
+        else:
+            LOGGER.warning("C-Agent token refresh HTTP %s", err.code)
+            return False, f"Không thể làm mới phiên (HTTP {err.code}). Vui lòng đăng nhập lại."
     except Exception as exc:
         LOGGER.warning("C-Agent token refresh error: %s", exc)
         return False, f"Lỗi làm mới phiên C-Agent: {exc}"
