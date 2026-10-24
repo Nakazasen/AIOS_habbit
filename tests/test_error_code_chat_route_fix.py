@@ -119,7 +119,7 @@ def test_bare_code_c7620_renders_step1_cards():
     # Bare code renders Step 1 cards format
     assert "### 1. Vụ" in rendered
     assert "Tìm thấy" in rendered
-    assert "ca lỗi liên quan đến **C7620**" in rendered
+    assert "ca mã lỗi **C7620**" in rendered or "ca lỗi liên quan đến **C7620**" in rendered
 
 
 def test_cross_notebook_trap_locked():

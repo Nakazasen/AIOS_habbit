@@ -1926,11 +1926,16 @@ def _run_chat_turn_async(
                 _open_ro,
                 extract_codes,
                 extract_filter_entities,
+                is_document_content_query,
                 resolve_db_path,
             )
 
             norm_q = normalize_text(q_text)
-            if not DOC_REF_RE.search(q_text) and not any(h in norm_q for h in _OFFTOPIC_HINTS):
+            if (
+                not DOC_REF_RE.search(q_text)
+                and not is_document_content_query(q_text)
+                and not any(h in norm_q for h in _OFFTOPIC_HINTS)
+            ):
                 req_dtl = ChatActionRequest(question=q_text, notebook_id=notebook_id)
                 db_dtl = resolve_db_path(req_dtl)
                 if db_dtl:

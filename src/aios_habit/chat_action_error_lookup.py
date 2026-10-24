@@ -1630,6 +1630,71 @@ def _is_dieu_tra_loi_scope(request: ChatActionRequest) -> bool:
 
     return True
 
+# ---------------------------------------------------------------------------
+# Document Content Query Detection & Routing Protocol
+# (DESKTOP-HOME-ERRORLOOKUP-ROUTING-FIX)
+# ---------------------------------------------------------------------------
+_DOC_CODE_RE = re.compile(r"\bKTD-\d{2,4}[A-Za-z0-9_\-]*\b", re.IGNORECASE)
+_DOC_FILE_EXT_RE = re.compile(
+    r"\b[\w\-\.\u00C0-\u1EF9\(\)\ ]+\.(?:xlsx|xls|pdf|docx|doc|pptx|msg|csv|txt)\b",
+    re.IGNORECASE,
+)
+_DOC_CONTENT_PHRASE_RE = re.compile(
+    r"\b(?:tai\s+lieu|tep|file|van\s+ban|bao\s+cao)\s+[\w\-\.\ ]{1,80}?\s+(?:co\s+noi\s+dung\s+gi|noi\s+ve\s+(?:cai\s+)?gi|gom\s+nhung\s+gi|viet\s+ve\s+gi|noi\s+dung\s+la\s+gi)\b|"
+    r"\bnoi\s+dung\s+(?:chinh\s+)?(?:cua\s+)?(?:tai\s+lieu|tep|file|van\s+ban|bao\s+cao)\b|"
+    r"\b(?:tom\s+tat|giai\s+thich\s+noi\s+dung)\s+(?:tai\s+lieu|tep|file|van\s+ban|bao\s+cao)\b",
+    re.IGNORECASE,
+)
+
+
+def is_document_content_query(question: str) -> bool:
+    """Detect whether a question is asking about the content of a specific document.
+
+    Ticket DESKTOP-HOME-ERRORLOOKUP-ROUTING-FIX (2026-10-24):
+    When the question explicitly specifies a document (document ID KTD-..., file
+    extension like .xlsx, or phrasing 'tài liệu ... có nội dung gì'), the query
+    must route to the RAG synthesis pipeline rather than being swallowed by
+    the error-lookup action card.
+    """
+    if not question:
+        return False
+    if _DOC_CODE_RE.search(question):
+        return True
+    if _DOC_FILE_EXT_RE.search(question):
+        return True
+    norm = _khong_dau(question)
+    if _DOC_CONTENT_PHRASE_RE.search(norm):
+        return True
+    return False
+
+
+def log_routing_event(
+    question: str,
+    decision: str,
+    codes: Sequence[str],
+    is_doc_query: bool,
+    conversation_id: str = "",
+    base_dir: Optional[Path] = None,
+) -> None:
+    """Log routing decisions between ErrorLookupAction and RAG for continuous improvement."""
+    try:
+        root = base_dir or Path("local_cases")
+        root.mkdir(parents=True, exist_ok=True)
+        log_file = root / "errorlookup_routing_events.jsonl"
+        event = {
+            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "question": question,
+            "conversation_id": conversation_id,
+            "decision": decision,
+            "codes": list(codes),
+            "is_document_content_query": is_doc_query,
+        }
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write(json.dumps(event, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+
+
 class _ErrorLookupAction(ChatAction):
     """ChatAction that fires on error codes, machine/serial/date filters, or symptom search."""
 
@@ -1639,7 +1704,20 @@ class _ErrorLookupAction(ChatAction):
         if any(h in norm for h in _OFFTOPIC_HINTS):
             return False
 
-        # 2. Domain scope isolation (Requirements 2.7 & 2.8)
+        # 2. Reject document content queries (DESKTOP-HOME-ERRORLOOKUP-ROUTING-FIX)
+        # When user asks about document content (KTD-..., .xlsx, 'tai lieu ... co noi dung gi'),
+        # route to RAG synthesis pipeline rather than intercepting with error lookup card.
+        if is_document_content_query(request.question):
+            log_routing_event(
+                question=request.question,
+                decision="rag_pipeline",
+                codes=extract_codes(request.question),
+                is_doc_query=True,
+                conversation_id=request.conversation_id or "",
+            )
+            return False
+
+        # 3. Domain scope isolation (Requirements 2.7 & 2.8)
         if not _is_dieu_tra_loi_scope(request):
             return False
 
@@ -1648,20 +1726,48 @@ class _ErrorLookupAction(ChatAction):
         # Check for error codes
         codes = extract_codes(request.question)
         if codes:
+            log_routing_event(
+                question=request.question,
+                decision="error_lookup_action",
+                codes=codes,
+                is_doc_query=False,
+                conversation_id=request.conversation_id or "",
+            )
             return True
 
         # Check for structured filters (machine, serial, date, phenomenon concepts)
         ents = extract_filter_entities(None, request.question)
         if ents.get("machine") or ents.get("serial") or ents.get("phenomenon_concepts"):
+            log_routing_event(
+                question=request.question,
+                decision="error_lookup_action",
+                codes=codes,
+                is_doc_query=False,
+                conversation_id=request.conversation_id or "",
+            )
             return True
         if ents.get("date_range") and (
             nb_id in ("NB-LAZY-DTL", "dieu_tra_loi")
             or any(w in norm for w in ("ca", "loi", "phieu", "dieu tra", "su co"))
         ):
+            log_routing_event(
+                question=request.question,
+                decision="error_lookup_action",
+                codes=codes,
+                is_doc_query=False,
+                conversation_id=request.conversation_id or "",
+            )
             return True
 
         # Check generic hints (symptom search like "kẹt giấy cụm sấy")
         if super().matches(request):
+            log_routing_event(
+                question=request.question,
+                decision="error_lookup_action",
+                codes=codes,
+                is_doc_query=False,
+                conversation_id=request.conversation_id or "",
+            )
             return True
 
         return False
@@ -1670,6 +1776,9 @@ class _ErrorLookupAction(ChatAction):
 def _handler(request: ChatActionRequest) -> Optional[ChatActionOutcome]:
     norm = request.normalized_question
     if any(h in norm for h in _OFFTOPIC_HINTS):
+        return None
+
+    if is_document_content_query(request.question):
         return None
 
     if not _is_dieu_tra_loi_scope(request):
