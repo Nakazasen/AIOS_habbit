@@ -1,3 +1,9 @@
+## ĐIỀU PHỐI — DỌN SỔ QA-CONTEXT-DIAG — 2026-10-24 ~09:36 +07
+
+Theo quyết của user ngày 2026-10-24 (dọn dòng trạng thái cũ): dòng `dang-lam` của khối QA-CONTEXT-DIAG-R2-PC0575 trong tệp này đã đổi sang `xong` (phiên R2 đã dừng và làn đã đóng băng từ 2026-10-12, xem khối đóng băng 14:18 12/10). Bản sao gieo ở kho điều phối cũng đã dọn cùng lượt. Không thay đổi nội dung nghiệp vụ nào.
+
+---
+
 ## ĐIỀU PHỐI — VERDICT AUDIT-SHAKEDOWN-PC0575-R2: CHƯA ĐẠT model lần 2 — CHỜ USER ĐÓNG HẲN PHIÊN AGY GEMINI TẠI MÁY — 2026-10-12 ~16:26 +07
 
 Điều phối đã đọc toàn văn báo cáo `docs/phieu-viec/ket-qua/audit-shakedown-pc0575-r2.md` (commit nộp `732c6ee7`): ca bốc vé vòng 2 vẫn khai model Gemini 3.8 Flash (High), trích dòng "abstained" khớp nguyên văn như vòng 1, và dừng đúng điều 1. Kết luận: cơ chế hộp thư + kỷ luật khai/dừng ĐẠT tiếp; phần model CHƯA ĐẠT lần 2 — phiên gemini cũ vẫn còn sống và nhặt vé gần như ngay khi phát hành (ghi_chu tiếp nhận 16:20, sát mốc phát hành), nên ca opus của watcher hiện hành chưa có cơ hội chạy.
@@ -68,7 +74,8 @@ ghi_chu: 2026-10-12 14:18 +07 — User xac nhan truc tiep tai may cong ty: phien
 
 ## Vé hiện tại: QA-CONTEXT-DIAG-R2-PC0575 (chạy lại nghiệm thu mở rộng — bốc ngay)
 
-- Trạng thái: `dang-lam`
+- Trạng thái: `xong`
+- `ghi_chu` (điều phối Muse — DỌN SỔ): 2026-10-24 ~09:36 +07 — Đổi dòng trạng thái cũ `dang-lam` -> `xong` cho khớp khối đóng băng 2026-10-12 14:18 ở phía trên (phiên đã dừng theo lệnh user, làn agy PC0575 đã đóng băng). Dọn theo quyết của user ngày 2026-10-24. Không có phiên nào đang chạy vé này.
 - `ghi_chu`: 2026-10-12 14:15 +07 — Đang thực hiện QA-CONTEXT-DIAG-R2-PC0575: Đã xác định nguyên nhân abstained của 3 câu mã lỗi (do tầng local fallback chặn nhầm trạng thái abstained của local synthesis thay vì fallback sang các mảnh trích đoạn tài liệu đích có sẵn); đã sửa an toàn fail-safe tại antigravity_bridge.py; 62/62 unit test PASS; đang kích hoạt Playwright chạy nghiệm thu tự động 4 câu hỏi trên giao diện Streamlit port 8501.
 - `ghi_chu`: 2026-10-12 12:10 +07 — Đang thực hiện QA-CONTEXT-DIAG-R2-PC0575: Kiểm cổng gate đạt (watcher 1/4 lúc 12:03, launchStallCount: 1, máy rảnh không có phiên app song song, cổng mở hợp lệ); đang chạy kiểm tra truy hồi đo đạc 4 câu hỏi nghiệm thu thực tế (WMS khối MOM, JAM4212 Điều tra lỗi, C3100 Điều tra lỗi, C7620 LSU) và chuẩn bị kiểm tra trên giao diện Streamlit.
 - `ghi_chu`: 2026-10-12 10:32 +07 — Tiếp nhận vé QA-CONTEXT-DIAG-R2-PC0575: đặt trạng thái dang-lam; cổng mở hợp lệ (phiên do người dùng gọi trực tiếp, máy rảnh không có phiên app người dùng chạy song song, port 8501 sẵn sàng, không chạm ngưỡng 4 lần watcher kẹt); bắt đầu thực thi nghiệm thu mở rộng 4 câu trên giao diện thật (WMS khối MOM, JAM4212 khối Điều tra lỗi, C3100 khối Điều tra lỗi, C7620 khối LSU) và đính chính đoạn trích WMS.
