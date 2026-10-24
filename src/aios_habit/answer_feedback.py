@@ -362,6 +362,18 @@ def record_feedback(
         raw_records.append(new_record.to_dict())
 
     _write_all_records_atomic(raw_records)
+    if rating_norm == RATING_CHUA_HUU_ICH and q_text:
+        try:
+            from aios_habit.answer_cache import invalidate_cached_answer
+            env_dir = os.environ.get("AIOS_LOCAL_CASES_DIR", "").strip()
+            invalidate_cached_answer(
+                q_text,
+                scope_id=str(domain or "").strip() or None,
+                reason="disliked_by_user",
+                base_dir=Path(env_dir) if env_dir else None,
+            )
+        except Exception:
+            pass
     res: Dict[str, Any] = {"ok": True}
     if is_update:
         res["updated"] = True

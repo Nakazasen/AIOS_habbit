@@ -1,0 +1,99 @@
+{
+  "ma_ve": "DESKTOP-HOME-UX-ANSWER-CACHE",
+  "executed_at": "2026-10-24T11:00:05.166042",
+  "conv_main": "CONV-AC-MAIN-5AF655B4",
+  "conv_new": "CONV-AC-NEW-5349AE71",
+  "timings": {
+    "q1": {
+      "question": "Mã lỗi C7620 nguyên nhân và đối sách là gì?",
+      "turn1_fresh_metric_ms": 4855.59,
+      "turn1_fresh_ui_ms": 8714.4,
+      "turn2_cache_hit_metric_ms": 181.8,
+      "turn2_cache_hit_ui_ms": 1501.6,
+      "metric_ratio_pct": 3.744,
+      "ui_ratio_pct": 17.23
+    },
+    "q2": {
+      "question": "Lỗi kẹt giấy tại cụm sấy Fuser nguyên nhân và cách xử lý là gì?",
+      "turn1_fresh_metric_ms": 49309.03,
+      "turn1_fresh_ui_ms": 53307.5,
+      "turn2_cache_hit_metric_ms": 155.16,
+      "turn2_cache_hit_ui_ms": 1451.9,
+      "metric_ratio_pct": 0.315,
+      "ui_ratio_pct": 2.72
+    },
+    "retry_button": {
+      "metric_ms": 30806.35,
+      "ui_ms": 35397.4,
+      "cache_hit": false,
+      "bypass_requested": true
+    },
+    "new_conversation_hit": {
+      "metric_ms": 180.9,
+      "ui_ms": 1319.9,
+      "cache_hit": true
+    },
+    "post_dislike_fresh": {
+      "metric_ms": 4638.8,
+      "ui_ms": 9135.2,
+      "cache_hit": false
+    },
+    "stand_still_60s_no_duplicate": {
+      "user_bubbles": 1,
+      "assistant_bubbles": 1,
+      "passed": true
+    }
+  },
+  "metrics_summary": {
+    "total_turns": 7,
+    "hit_count": 3,
+    "miss_count": 4,
+    "hit_rate_pct": 42.86,
+    "avg_hit_ms": 172.62,
+    "avg_miss_ms": 22402.44
+  },
+  "screenshots": [
+    {
+      "filename": "anh-ac-01-cau1-lan1-fresh-60s-no-dup.png",
+      "bytes": 130022,
+      "sha256": "C59C756C3D38F16ED85EC315BA6131928DA0BFA9FFE7381E46C909F9712E9351",
+      "local_path": "D:\\Sandbox\\AIOS_habbit\\docs\\phieu-viec\\ket-qua\\anh-ac-01-cau1-lan1-fresh-60s-no-dup.png",
+      "desktop_path": "D:\\Sandbox\\aios-dieu-phoi-desktop\\hop-thu\\lan-desktop\\ket-qua\\anh-ac-01-cau1-lan1-fresh-60s-no-dup.png"
+    },
+    {
+      "filename": "anh-ac-02-cau1-lan2-cache-hit-kem-trich-dan.png",
+      "bytes": 111151,
+      "sha256": "2BAF4CAA5E5ACF11BFC42E75099501A58EE37FF2ACC3E16EF04A77C936311E2E",
+      "local_path": "D:\\Sandbox\\AIOS_habbit\\docs\\phieu-viec\\ket-qua\\anh-ac-02-cau1-lan2-cache-hit-kem-trich-dan.png",
+      "desktop_path": "D:\\Sandbox\\aios-dieu-phoi-desktop\\hop-thu\\lan-desktop\\ket-qua\\anh-ac-02-cau1-lan2-cache-hit-kem-trich-dan.png"
+    },
+    {
+      "filename": "anh-ac-03-cau2-lan2-cache-hit-kem-trich-dan.png",
+      "bytes": 117769,
+      "sha256": "5A90DF6C68462C3DA28BBDBF6C1724940C1424DF5DDB1156D2A47C4569562445",
+      "local_path": "D:\\Sandbox\\AIOS_habbit\\docs\\phieu-viec\\ket-qua\\anh-ac-03-cau2-lan2-cache-hit-kem-trich-dan.png",
+      "desktop_path": "D:\\Sandbox\\aios-dieu-phoi-desktop\\hop-thu\\lan-desktop\\ket-qua\\anh-ac-03-cau2-lan2-cache-hit-kem-trich-dan.png"
+    },
+    {
+      "filename": "anh-ac-04-bam-hoi-lai-chay-tuoi.png",
+      "bytes": 154029,
+      "sha256": "7A188D698095C77B70E9B4A7E3264192FD6D2B8B41E0B0F8D18AADF22B126202",
+      "local_path": "D:\\Sandbox\\AIOS_habbit\\docs\\phieu-viec\\ket-qua\\anh-ac-04-bam-hoi-lai-chay-tuoi.png",
+      "desktop_path": "D:\\Sandbox\\aios-dieu-phoi-desktop\\hop-thu\\lan-desktop\\ket-qua\\anh-ac-04-bam-hoi-lai-chay-tuoi.png"
+    },
+    {
+      "filename": "anh-ac-05-hoi-thoai-moi-trung-bo-nho.png",
+      "bytes": 111127,
+      "sha256": "7D8A723FD8BA360B531CD7607E56C7699050EAEB410EEF079EB131569130D165",
+      "local_path": "D:\\Sandbox\\AIOS_habbit\\docs\\phieu-viec\\ket-qua\\anh-ac-05-hoi-thoai-moi-trung-bo-nho.png",
+      "desktop_path": "D:\\Sandbox\\aios-dieu-phoi-desktop\\hop-thu\\lan-desktop\\ket-qua\\anh-ac-05-hoi-thoai-moi-trung-bo-nho.png"
+    },
+    {
+      "filename": "anh-ac-06-khong-thich-va-doi-van-tay-vo-hieu-cache.png",
+      "bytes": 126259,
+      "sha256": "84F6B3738472B25D28969873A12BE94B5980C6C0055A62F9DAD198DF4AB5947B",
+      "local_path": "D:\\Sandbox\\AIOS_habbit\\docs\\phieu-viec\\ket-qua\\anh-ac-06-khong-thich-va-doi-van-tay-vo-hieu-cache.png",
+      "desktop_path": "D:\\Sandbox\\aios-dieu-phoi-desktop\\hop-thu\\lan-desktop\\ket-qua\\anh-ac-06-khong-thich-va-doi-van-tay-vo-hieu-cache.png"
+    }
+  ]
+}

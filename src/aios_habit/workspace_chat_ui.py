@@ -1126,6 +1126,59 @@ def render_per_answer_evidence_block(
             st.error(f"Error: {err}")
 
 
+def render_cached_answer_notice_block(
+    msg: ChatMessage,
+    conversation_id: str,
+    feedback_question: str = "",
+    badge_data: Optional[Dict[str, Any]] = None,
+    render_interactive: bool = True,
+) -> bool:
+    """Render the fast-answer cache caption and 'Hỏi lại' button under a cached assistant answer.
+
+    Returns True if the message is a cached answer and the notice was rendered.
+    """
+    meta = getattr(msg, "metadata", None)
+    meta_dict = meta if isinstance(meta, dict) else {}
+    is_cache_hit = bool(meta_dict.get("cache_hit"))
+    if not is_cache_hit and isinstance(badge_data, dict):
+        if str(badge_data.get("message_id") or "") == str(getattr(msg, "id", "") or ""):
+            is_cache_hit = bool(badge_data.get("cache_hit"))
+    if not is_cache_hit:
+        return False
+
+    snapshot_time = str(
+        meta_dict.get("cache_snapshot_time")
+        or (badge_data.get("cache_snapshot_time") if isinstance(badge_data, dict) else "")
+        or ""
+    ).strip()
+    retry_q = str(
+        meta_dict.get("cached_question")
+        or feedback_question
+        or (badge_data.get("cached_question") if isinstance(badge_data, dict) else "")
+        or ""
+    ).strip()
+
+    from aios_habit.answer_cache import format_fast_answer_notice
+
+    notice_text = format_fast_answer_notice(snapshot_time)
+    if not render_interactive:
+        st.caption(notice_text)
+        return True
+
+    cols = st.columns([0.78, 0.22])
+    with cols[0]:
+        st.caption(notice_text)
+    with cols[1]:
+        btn_key = f"wsc_cache_retry_{getattr(msg, 'id', '')}_{conversation_id}"
+        if st.button("🔄 Hỏi lại", key=btn_key, use_container_width=True):
+            if hasattr(st, "session_state") and retry_q:
+                st.session_state[f"wsc_bypass_answer_cache_{conversation_id}"] = True
+                st.session_state[f"wsc_suggest_send_{conversation_id}"] = retry_q
+            if hasattr(st, "rerun"):
+                st.rerun()
+    return True
+
+
 
 def render_chat_bubble(
     msg: ChatMessage,
@@ -1185,6 +1238,13 @@ def render_chat_bubble(
                             locale=locale,
                             display_content=clean_content,
                         )
+                    render_cached_answer_notice_block(
+                        msg=msg,
+                        conversation_id=conversation_id,
+                        feedback_question=feedback_question,
+                        badge_data=badge_data,
+                        render_interactive=False,
+                    )
                 except Exception:
                     pass
                 return
@@ -1482,6 +1542,18 @@ def render_chat_bubble(
                     except Exception:
                         pass
 
+                    # DESKTOP-HOME-UX-ANSWER-CACHE: Render fast-answer notice & 'Hỏi lại' button
+                    try:
+                        render_cached_answer_notice_block(
+                            msg=msg,
+                            conversation_id=conversation_id,
+                            feedback_question=feedback_question,
+                            badge_data=badge_data,
+                            render_interactive=render_interactive,
+                        )
+                    except Exception:
+                        pass
+
                     if "aios_user_skill_draft:" in raw_content:
                         st.caption("⚡ Thao tác nhanh cho bản nháp kỹ năng:")
                         c1, c2, c3 = st.columns(3)
@@ -1632,10 +1704,16 @@ def render_chat_bubble(
                         src = getattr(n, "title", "") or getattr(n, "source_id", "")
                         if src and src not in _msg_sources:
                             _msg_sources.append(src)
+                if not _msg_domain:
+                    _meta_d = getattr(msg, "metadata", None)
+                    if isinstance(_meta_d, dict):
+                        _msg_domain = str(_meta_d.get("scope_id") or _meta_d.get("notebook_id") or "")
+                    if not _msg_domain:
+                        _msg_domain = _active_nb or ""
                 render_answer_feedback_row(
                     conversation_id=conversation_id,
                     message_id=str(msg.id or ""),
-                    question=feedback_question,
+                    question=feedback_question or str((getattr(msg, "metadata", {}) or {}).get("cached_question") or ""),
                     answer=display_content,
                     locale=locale,
                     cited_sources=_msg_sources,

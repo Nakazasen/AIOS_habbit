@@ -1711,11 +1711,23 @@ def _run_chat_turn_async(
     anchored_context: Optional[str] = None,
     stream_state: Optional[dict[str, Any]] = None,
     allowed_source_ids: Any = None,
+    bypass_cache: bool = False,
+    cache_checked_upstream: bool = False,
+    collection_id: Optional[str] = None,
 ) -> tuple[bool, str, dict[str, Any] | None, str | None]:
     """Execute evidence retrieval and model answer routing inside background thread pool."""
     from aios_habit.antigravity_bridge import route_workspace_chat_submission
     from aios_habit.workspace_chat_rag_v2_adapter import (
         retrieve_workspace_chat_evidence as retrieve_local_evidence,
+    )
+    from aios_habit.answer_cache import (
+        apply_cached_answer_to_conversation,
+        build_cache_key,
+        capture_last_assistant_turn_to_cache,
+        compute_relevant_data_fingerprint,
+        lookup_cached_answer,
+        normalize_scope_id,
+        record_cache_turn_metric,
     )
 
     from aios_habit.answer_language_policy import detect_question_language
@@ -1726,6 +1738,55 @@ def _run_chat_turn_async(
         answer_language = "vi"
 
     t_turn_start = time.time()
+    _cache_scope_id = normalize_scope_id(
+        notebook_id=notebook_id,
+        forced_domain=forced_domain,
+        collection_id=collection_id,
+    )
+    _cache_data_fp = compute_relevant_data_fingerprint(
+        notebook_id=notebook_id,
+        forced_domain=forced_domain,
+        collection_id=collection_id,
+    )
+    _, _cache_key_hash = build_cache_key(
+        q_text,
+        scope_id=_cache_scope_id,
+        data_fingerprint=_cache_data_fp,
+    )
+
+    if not cache_checked_upstream and ai_mode != "external" and not anchored_context:
+        try:
+            _cached_hit = lookup_cached_answer(
+                q_text,
+                scope_id=_cache_scope_id,
+                data_fingerprint=_cache_data_fp,
+                bypass_cache=bypass_cache,
+            )
+            if _cached_hit is not None:
+                _, _hit_badge = apply_cached_answer_to_conversation(
+                    _cached_hit,
+                    conversation_id=conversation_id,
+                    question=q_text,
+                    notebook_id=notebook_id,
+                    user_message_id=user_message_id,
+                )
+                _hit_ms = max(0.5, (time.time() - t_turn_start) * 1000.0)
+                record_cache_turn_metric(
+                    cache_hit=True,
+                    response_time_ms=_hit_ms,
+                    key_hash=_cached_hit.key_hash,
+                    scope_id=_cache_scope_id,
+                    data_fingerprint=_cache_data_fp,
+                    bypass_requested=False,
+                    conversation_id=conversation_id,
+                )
+                _safe_print_streaming_marker(
+                    f"[ANSWER_CACHE_HIT] conv={conversation_id} ms={_hit_ms:.2f} key_hash={_cached_hit.key_hash} scope={_cache_scope_id}"
+                )
+                return (True, "Đã trả lời nhanh từ câu hỏi đã hỏi trước.", _hit_badge, None)
+        except Exception:
+            pass
+
     worker_wait_s: float = 0.0
     ts_start = format_marker_timestamp()
     try:
@@ -1910,6 +1971,27 @@ def _run_chat_turn_async(
                                 f"[STREAMING_QA_COMPLETE] conv={conversation_id} total_s={turn_total_s:.3f} total_ms={turn_total_s * 1000:.1f} backend={eff_back} ok={ladder_res[0]} timestamp={ts_ladder}"
                             )
                             _update_step("synth", "done", duration=max(0.1, turn_total_s))
+                            if ladder_res[0] and not anchored_context:
+                                try:
+                                    capture_last_assistant_turn_to_cache(
+                                        q_text,
+                                        conversation_id=conversation_id,
+                                        scope_id=_cache_scope_id,
+                                        data_fingerprint=_cache_data_fp,
+                                        notebook_id=notebook_id,
+                                        badge=badge_l,
+                                    )
+                                    record_cache_turn_metric(
+                                        cache_hit=False,
+                                        response_time_ms=turn_total_s * 1000.0,
+                                        key_hash=_cache_key_hash,
+                                        scope_id=_cache_scope_id,
+                                        data_fingerprint=_cache_data_fp,
+                                        bypass_requested=bypass_cache,
+                                        conversation_id=conversation_id,
+                                    )
+                                except Exception:
+                                    pass
                             return ladder_res
         except Exception:
             pass
@@ -2436,6 +2518,28 @@ def _run_chat_turn_async(
         f"[STREAMING_QA_COMPLETE] conv={conversation_id} total_s={turn_total_s:.3f} total_ms={turn_total_s * 1000:.1f} backend={eff_backend} ok={res[0]} timestamp={ts_complete}"
     )
     _update_step("synth", "done", duration=max(0.1, time.time() - t_synth_start))
+
+    if res[0] and ai_mode != "external" and not anchored_context:
+        try:
+            capture_last_assistant_turn_to_cache(
+                q_text,
+                conversation_id=conversation_id,
+                scope_id=_cache_scope_id,
+                data_fingerprint=_cache_data_fp,
+                notebook_id=notebook_id,
+                badge=badge,
+            )
+            record_cache_turn_metric(
+                cache_hit=False,
+                response_time_ms=turn_total_s * 1000.0,
+                key_hash=_cache_key_hash,
+                scope_id=_cache_scope_id,
+                data_fingerprint=_cache_data_fp,
+                bypass_requested=bypass_cache,
+                conversation_id=conversation_id,
+            )
+        except Exception:
+            pass
 
     try:
         from aios_habit.post_session_review import spawn_post_session_review
@@ -5737,6 +5841,75 @@ else:
                 st.session_state[input_key] = ""
                 st.session_state.pop(f"wsc_draft_input_backup_{conv_id}", None)
                 st.session_state[f"wsc_clear_input_{conv_id}"] = True
+
+                # DESKTOP-HOME-UX-ANSWER-CACHE: Fast-path cache hit in composer send callback
+                _bypass_cb = bool(st.session_state.get(f"wsc_bypass_answer_cache_{conv_id}", False))
+                _is_anchored_cb = bool(st.session_state.get(f"wsc_anchored_answer_{conv_id}"))
+                _is_ext_cb = getattr(active_conversation, "ai_mode", "grounded") == "external"
+                if (
+                    raw_text
+                    and not has_image
+                    and not raw_text.startswith("/")
+                    and not _bypass_cb
+                    and not _is_anchored_cb
+                    and not _is_ext_cb
+                ):
+                    try:
+                        from aios_habit.answer_cache import (
+                            apply_cached_answer_to_conversation,
+                            compute_relevant_data_fingerprint,
+                            lookup_cached_answer,
+                            normalize_scope_id,
+                            record_cache_turn_metric,
+                        )
+                        _cb_t0 = time.perf_counter()
+                        _cb_forced_dom = str(
+                            st.session_state.get(f"wsc_knowledge_block_{conv_id}", "auto") or "auto"
+                        )
+                        _cb_nb_id = getattr(active_conversation, "notebook_id", None) or active_nb_id or ""
+                        _cb_col_id = getattr(notebook, "collection_id", None) or getattr(active_conversation, "collection_id", None)
+                        _cb_scope_id = normalize_scope_id(
+                            notebook_id=_cb_nb_id,
+                            forced_domain=_cb_forced_dom,
+                            collection_id=_cb_col_id,
+                        )
+                        _cb_data_fp = compute_relevant_data_fingerprint(
+                            notebook_id=_cb_nb_id,
+                            forced_domain=_cb_forced_dom,
+                            collection_id=_cb_col_id,
+                        )
+                        _cb_hit = lookup_cached_answer(
+                            raw_text,
+                            scope_id=_cb_scope_id,
+                            data_fingerprint=_cb_data_fp,
+                            bypass_cache=False,
+                        )
+                        if _cb_hit is not None:
+                            _, _cb_badge = apply_cached_answer_to_conversation(
+                                _cb_hit,
+                                conversation_id=conv_id,
+                                question=raw_text,
+                                notebook_id=_cb_nb_id,
+                            )
+                            _cb_ms = max(0.5, (time.perf_counter() - _cb_t0) * 1000.0)
+                            st.session_state.wsc_last_ai_badge = _cb_badge
+                            st.session_state.wsc_action_error = None
+                            record_cache_turn_metric(
+                                cache_hit=True,
+                                response_time_ms=_cb_ms,
+                                key_hash=_cb_hit.key_hash,
+                                scope_id=_cb_scope_id,
+                                data_fingerprint=_cb_data_fp,
+                                bypass_requested=False,
+                                conversation_id=conv_id,
+                            )
+                            _safe_print_streaming_marker(
+                                f"[ANSWER_CACHE_HIT] conv={conv_id} ms={_cb_ms:.2f} key_hash={_cb_hit.key_hash} scope={_cb_scope_id}"
+                            )
+                            return
+                    except Exception:
+                        pass
+
                 st.session_state[f"wsc_submitting_ack_{conv_id}"] = {
                     "q_text": raw_text,
                     "user_msg_id": f"MSG-U-{uuid.uuid4().hex[:8].upper()}",
@@ -6962,6 +7135,7 @@ else:
                           const isAnswering = {_js_is_answering};
                           const hasError = {_js_has_error};
                           const convId = "{active_conversation.id}";
+                          const totalMsgs = {total_msgs};
                           const currentLocale = "{current_ui_locale}";
                           const slashCatalog = {_js_slash_catalog};
                           parentWin.__wscSlashCatalog = slashCatalog;
@@ -7365,16 +7539,19 @@ else:
                             const rawText = (textarea ? textarea.value : "").trim();
                             if (!rawText) return;
 
-                            // (b) Lock controls immediately to prevent duplicates
-                            sendBtn.setAttribute("data-wsc-sending", "true");
-                            sendBtn.setAttribute("disabled", "true");
+                            // (b) Lock controls right after the click event bubbles to React to prevent duplicates without swallowing React onClick
                             sendBtn.style.pointerEvents = "none";
                             sendBtn.style.opacity = "0.5";
-
-                            if (textarea) {{
-                              textarea.setAttribute("readonly", "true");
-                              textarea.style.opacity = "0.7";
-                            }}
+                            setTimeout(function() {{
+                              try {{
+                                sendBtn.setAttribute("data-wsc-sending", "true");
+                                sendBtn.setAttribute("disabled", "true");
+                                if (textarea) {{
+                                  textarea.setAttribute("readonly", "true");
+                                  textarea.style.opacity = "0.7";
+                                }}
+                              }} catch (e) {{}}
+                            }}, 25);
 
                             // Safety auto-release timeout (6s) so UI cannot permanently lock up if server errors or stalls
                             setTimeout(function() {{
@@ -7730,6 +7907,89 @@ else:
                     except Exception:
                         pass
 
+                    _bypass_cache_key = f"wsc_bypass_answer_cache_{active_conversation.id}"
+                    _peek_bypass_cache = bool(st.session_state.get(_bypass_cache_key, False))
+                    _turn_forced_domain = str(
+                        st.session_state.get(f"wsc_knowledge_block_{active_conversation.id}", "auto") or "auto"
+                    )
+                    _turn_nb_id = active_conversation.notebook_id or active_nb_id or ""
+                    _turn_col_id = getattr(notebook, "collection_id", None) or getattr(active_conversation, "collection_id", None)
+                    from aios_habit.answer_cache import (
+                        apply_cached_answer_to_conversation as _ui_apply_cached,
+                        build_cache_key as _ui_build_cache_key,
+                        capture_last_assistant_turn_to_cache as _ui_capture_cache,
+                        compute_relevant_data_fingerprint as _ui_compute_fp,
+                        lookup_cached_answer as _ui_lookup_cache,
+                        normalize_scope_id as _ui_norm_scope,
+                        record_cache_turn_metric as _ui_record_metric,
+                    )
+                    _turn_scope_id = _ui_norm_scope(
+                        notebook_id=_turn_nb_id,
+                        forced_domain=_turn_forced_domain,
+                        collection_id=_turn_col_id,
+                    )
+                    _turn_data_fp = _ui_compute_fp(
+                        notebook_id=_turn_nb_id,
+                        forced_domain=_turn_forced_domain,
+                        collection_id=_turn_col_id,
+                    )
+                    _, _turn_key_hash = _ui_build_cache_key(
+                        q_text,
+                        scope_id=_turn_scope_id,
+                        data_fingerprint=_turn_data_fp,
+                    )
+                    if (
+                        q_text
+                        and not user_attached_image
+                        and not _peek_bypass_cache
+                        and getattr(active_conversation, "ai_mode", "grounded") != "external"
+                        and not st.session_state.get(f"wsc_anchored_answer_{active_conversation.id}")
+                    ):
+                        try:
+                            _ui_hit_t0 = time.perf_counter()
+                            _ui_cached_hit = _ui_lookup_cache(
+                                q_text,
+                                scope_id=_turn_scope_id,
+                                data_fingerprint=_turn_data_fp,
+                                bypass_cache=False,
+                            )
+                            if _ui_cached_hit is not None:
+                                st.session_state.pop(_suggest_send_key, None)
+                                _ack_pop = st.session_state.pop(f"wsc_submitting_ack_{active_conversation.id}", None)
+                                st.session_state.pop(draft_backup_key, None)
+                                st.session_state.pop(_bypass_cache_key, None)
+                                st.session_state[f"wsc_clear_input_{active_conversation.id}"] = True
+                                _hit_u_id = (
+                                    _ack_pop.get("user_msg_id", "")
+                                    if isinstance(_ack_pop, dict)
+                                    else ""
+                                )
+                                _, _ui_hit_badge = _ui_apply_cached(
+                                    _ui_cached_hit,
+                                    conversation_id=active_conversation.id,
+                                    question=q_text,
+                                    notebook_id=_turn_nb_id,
+                                    user_message_id=_hit_u_id,
+                                )
+                                _ui_hit_ms = max(0.5, (time.perf_counter() - _ui_hit_t0) * 1000.0)
+                                st.session_state.wsc_last_ai_badge = _ui_hit_badge
+                                st.session_state.wsc_action_error = None
+                                _ui_record_metric(
+                                    cache_hit=True,
+                                    response_time_ms=_ui_hit_ms,
+                                    key_hash=_ui_cached_hit.key_hash,
+                                    scope_id=_turn_scope_id,
+                                    data_fingerprint=_turn_data_fp,
+                                    bypass_requested=False,
+                                    conversation_id=active_conversation.id,
+                                )
+                                _safe_print_streaming_marker(
+                                    f"[ANSWER_CACHE_HIT] conv={active_conversation.id} ms={_ui_hit_ms:.2f} key_hash={_ui_cached_hit.key_hash} scope={_turn_scope_id}"
+                                )
+                                safe_rerun()
+                        except Exception:
+                            pass
+
                     if not is_workspace_chat_worker_warmed(collection_id=_target_composer_col):
                         if q_text and not st.session_state.get(_suggest_send_key):
                             st.session_state[_suggest_send_key] = q_text
@@ -7754,6 +8014,7 @@ else:
                     st.session_state.pop(_suggest_send_key, None)
                     _active_ack = st.session_state.pop(f"wsc_submitting_ack_{active_conversation.id}", None)
                     st.session_state.pop(draft_backup_key, None)
+                    _bypass_answer_cache = bool(st.session_state.pop(_bypass_cache_key, False))
                     st.session_state[f"wsc_clear_input_{active_conversation.id}"] = True
 
                     # UX-CHAT-CORE: bo dinh tuyen y dinh chat-first. Nguoi dung chi
@@ -7836,6 +8097,7 @@ else:
                             _action_forced_domain = str(
                                 st.session_state.get(f"wsc_knowledge_block_{active_conversation.id}", "auto") or "auto"
                             )
+                            _action_t0 = time.perf_counter()
                             if handle_chat_text(
                                 q_text,
                                 conversation_id=active_conversation.id,
@@ -7850,6 +8112,26 @@ else:
                                 save_user=lambda content: _action_save("user", content),
                                 save_assistant=lambda content: _action_save("assistant", content),
                             ):
+                                _action_elapsed_ms = max(1.0, (time.perf_counter() - _action_t0) * 1000.0)
+                                try:
+                                    _ui_capture_cache(
+                                        q_text,
+                                        conversation_id=active_conversation.id,
+                                        scope_id=_turn_scope_id,
+                                        data_fingerprint=_turn_data_fp,
+                                        notebook_id=_action_nb_id,
+                                    )
+                                    _ui_record_metric(
+                                        cache_hit=False,
+                                        response_time_ms=_action_elapsed_ms,
+                                        key_hash=_turn_key_hash,
+                                        scope_id=_turn_scope_id,
+                                        data_fingerprint=_turn_data_fp,
+                                        bypass_requested=_bypass_answer_cache,
+                                        conversation_id=active_conversation.id,
+                                    )
+                                except Exception:
+                                    pass
                                 safe_rerun()
                     if not q_text and not user_attached_image:
                         with st.container(key=f"wsc_composer_hint_{active_conversation.id}"):
@@ -8529,6 +8811,9 @@ else:
                                     anchored_context=anchored_context,
                                     stream_state=stream_state,
                                     allowed_source_ids=turn_allowed_source_ids,
+                                    bypass_cache=_bypass_answer_cache,
+                                    cache_checked_upstream=True,
+                                    collection_id=_turn_col_id,
                                 )
                                 st.session_state[ai_request_key] = {
                                     "future": request_future,
